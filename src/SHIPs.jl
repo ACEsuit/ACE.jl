@@ -1,5 +1,11 @@
 module SHIPs
 
-greet() = print("Hello World!")
+include("jacobi.jl")
+
+include("basis.jl")
+
+include("calculators.jl")
+
+
 
 end # module
