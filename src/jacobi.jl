@@ -58,10 +58,10 @@ function eval_basis!(P::AbstractVector, J::Jacobi, x,
    @assert length(P) >= N+1
    @assert 0 <= N <= length(J.A)
    α, β = J.α, J.β
-   P[1] = 1
-   if N >= 1; P[2] = (α+1) + 0.5 * (α+β+2) * (x-1); end
+   @inbounds P[1] = 1
+   @inbounds if N >= 1; P[2] = (α+1) + 0.5 * (α+β+2) * (x-1); end
    for n = 2:N
-      P[n+1] = (J.A[n] * x + J.B[n]) * P[n] + J.C[n] * P[n-1]
+      @inbounds P[n+1] = (J.A[n] * x + J.B[n]) * P[n] + J.C[n] * P[n-1]
    end
    return P
 end
@@ -79,17 +79,17 @@ function eval_grad!(P::AbstractVector, dP::AbstractVector,
    @assert length(dP) >= N+1
    @assert 0 <= N <= length(J.A)
    α, β = J.α, J.β
-   P[1] = 1
-   dP[1] = 0
+   @inbounds P[1] = 1
+   @inbounds dP[1] = 0
    if N >= 1
-      P[2] = (α+1) + 0.5 * (α+β+2) * (x-1)
-      dP[2] = 0.5 * (α+β+2)
+      @inbounds P[2] = (α+1) + 0.5 * (α+β+2) * (x-1)
+      @inbounds dP[2] = 0.5 * (α+β+2)
    end
    for n = 2:N
-      c1 = J.A[n] * x + J.B[n]
-      c2 = J.C[n]
-      P[n+1] = c1 * P[n] + c2 * P[n-1]
-      dP[n+1] = J.A[n] * P[n] + c1 * dP[n] + J.C[n] * dP[n-1]
+      @inbounds c1 = J.A[n] * x + J.B[n]
+      @inbounds c2 = J.C[n]
+      @inbounds P[n+1] = c1 * P[n] + c2 * P[n-1]
+      @inbounds dP[n+1] = J.A[n] * P[n] + c1 * dP[n] + J.C[n] * dP[n-1]
    end
    return P, dP
 end
@@ -99,6 +99,12 @@ eval_grad(J::Jacobi, x::Number, N::Integer, T=Float64) =
 
 eval_grad(J, x::Number, T=Float64) =
       eval_grad(J, x, length(J.A), T)
+
+
+
+# Transformed Jacobi Polynomials
+# ------------------------------
+
 
 
 end
