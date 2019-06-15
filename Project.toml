@@ -3,6 +3,9 @@ uuid = "07029e18-8f70-11e9-35ce-2d4df590abdc"
 authors = ["Christoph Ortner <c.ortner@warwick.ac.uk>"]
 version = "0.1.0"
 
+[deps]
+SphericalHarmonics = "c489a379-e885-57ff-9236-bd896d33c250"
+
 [compat]
 julia = "1"
 
