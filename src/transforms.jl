@@ -16,7 +16,7 @@ abstract type DistanceTransform end
 """
 Implements the distance transform
 ```
-r -> (r0/r)^p
+r -> ( (1+r0)/(1+r))^p
 ```
 
 Constructor:
@@ -29,8 +29,9 @@ struct PolyTransform{TP, T} <: DistanceTransform
    r0::T
 end
 
-transform(t::PolyTransform, r::Number) = @fastmath((t.r0/r)^t.p)
-transform_d(t::PolyTransform, r::Number) = @fastmath((-t.p/t.r0) * (t.r0/r)^(t.p+1))
+transform(t::PolyTransform, r::Number) = @fastmath(((1+t.r0)/(1+r))^t.p)
+transform_d(t::PolyTransform, r::Number) =
+   @fastmath((-t.p/(1+t.r0)) * ((1+t.r0)/(1+r))^(t.p+1))
 
 # x = (r0/r)^p
 # r x^{1/p} = r0
@@ -120,7 +121,8 @@ function eval_basis!(P, J::TransformedJacobi, r, N=length(P)-1)
       return P
    end
    # transform coordinates
-   x = -1 + 2 * (transform(J.trans, r) + J.tl) / (J.tu-J.tl)
+   t = transform(J.trans, r)
+   x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
    # evaluate the actual Jacobi polynomials
    eval_basis!(P, J.J, x, N)
    # apply the cutoff multiplier
@@ -140,7 +142,8 @@ function eval_basis_d!(P, dP, J::TransformedJacobi, r, N=length(P)-1)
       return P, dP
    end
    # transform coordinates
-   x = -1 + 2 * (transform(J.trans, r) + J.tl) / (J.tu-J.tl)
+   t = transform(J.trans, r)
+   x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
    dx = (2/(J.tu-J.tl)) * transform_d(J.trans, r)
    # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
    eval_basis_d!(P, dP, J.J, x, N)

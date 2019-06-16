@@ -86,11 +86,11 @@ function eval_basis!(P::AbstractVector, J::Jacobi, x,
    return P
 end
 
-eval_basis(J::Jacobi, x::Number, N::Integer, T=Float64) =
-      eval_basis!(zeros(T, N+1), J, x, N)
-
-eval_basis(J, x::Number, T=Float64) =
-      eval_basis(J, x, length(J.A), T)
+# eval_basis(J::Jacobi, x::Number, N::Integer, T=Float64) =
+#       eval_basis!(zeros(T, N+1), J, x, N)
+#
+# eval_basis(J, x::Number, T=Float64) =
+#       eval_basis(J, x, length(J.A), T)
 
 
 function eval_basis_d!(P::AbstractVector, dP::AbstractVector,
@@ -114,11 +114,11 @@ function eval_basis_d!(P::AbstractVector, dP::AbstractVector,
    return P, dP
 end
 
-eval_grad(J::Jacobi, x::Number, N::Integer, T=Float64) =
-      eval_basis_d!(zeros(T, N+1), zeros(T, N+1), J, x, N)
-
-eval_grad(J, x::Number, T=Float64) =
-      eval_grad(J, x, length(J.A), T)
+# eval_grad(J::Jacobi, x::Number, N::Integer, T=Float64) =
+#       eval_basis_d!(zeros(T, N+1), zeros(T, N+1), J, x, N)
+#
+# eval_grad(J, x::Number, T=Float64) =
+#       eval_grad(J, x, length(J.A), T)
 
 
 end
