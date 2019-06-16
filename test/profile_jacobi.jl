@@ -6,8 +6,8 @@
 # --------------------------------------------------------------------------
 
 using SHIPs, BenchmarkTools
-using SHIPs.JacobiPolys: Jacobi, eval_basis, eval_grad
-
+using SHIPs.JacobiPolys: Jacobi
+using SHIPs: eval_basis, eval_grad
 
 
 
@@ -20,13 +20,13 @@ dP = zeros(N+1)
 J = Jacobi(α, β, N)
 
 SHIPs.JacobiPolys.eval_basis!(P, J, x, 15)
-SHIPs.JacobiPolys.eval_grad!(P, dP, J, x, 15)
+SHIPs.JacobiPolys.eval_basis_d!(P, dP, J, x, 15)
 @info("Timing for eval_basis!")
 @btime SHIPs.JacobiPolys.eval_basis!($P, $J, $x, 15)
 @btime SHIPs.JacobiPolys.eval_basis!($P, $J, $x, 15)
-@info("Timing for eval_grad!")
-@btime SHIPs.JacobiPolys.eval_grad!($P, $dP, $J, $x, 15)
-@btime SHIPs.JacobiPolys.eval_grad!($P, $dP, $J, $x, 15)
+@info("Timing for eval_basis_d!")
+@btime SHIPs.JacobiPolys.eval_basis_d!($P, $dP, $J, $x, 15)
+@btime SHIPs.JacobiPolys.eval_basis_d!($P, $dP, $J, $x, 15)
 
 # Julia Bug?
 @info("Looking at that strange allocation?")
@@ -38,3 +38,13 @@ B = rand(5)
 @btime f($A, $B);
 @btime f(1, 2);
 @btime g($A, $B);
+
+function runn(P, dP, J, x, N)
+   for n = 1:1000
+      SHIPs.JacobiPolys.eval_basis_d!(P, dP, J, rand(), N)
+   end
+   return nothing
+end
+
+@info("Try again inside a function - no allocation!")
+@btime runn($P, $dP, $J, $x, 15)

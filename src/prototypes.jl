@@ -5,13 +5,15 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-module SHIPs
 
-include("prototypes.jl")
-include("jacobi.jl")
-include("sphericalharmonics.jl")
-include("transforms.jl")
-include("basis.jl")
-include("calculators.jl")
 
-end # module
+function eval_basis end
+function eval_basis! end
+function eval_grad end
+function eval_basis_d! end
+
+
+function transform end
+function transform_d end
+function fcut end
+function fcut_d end

@@ -8,7 +8,12 @@
 
 module JacobiPolys
 
-export Jacobi, eval_basis, eval_basis!, eval_grad, eval_grad!
+import SHIPs: eval_basis,
+              eval_basis!,
+              eval_grad,
+              eval_basis_d!
+
+export Jacobi
 
 """
 `Jacobi{T} : ` represents the basis of Jacobi polynomials
@@ -25,7 +30,7 @@ x = 2*(rand() - 0.5)
 P = zeros(N)
 eval_basis!(P, J, x, N)
 dP = zeros(N)
-eval_grad!(P, dP, J, x, N)   # evaluates both P, dP
+eval_basis_d!(P, dP, J, x, N)   # evaluates both P, dP
 ```
 """
 # the recursion is then given by
@@ -53,10 +58,12 @@ function Jacobi(α, β, N, T=Float64)
    return Jacobi(α, β, A, B, C)
 end
 
+maxdegree(J::Jacobi) = length(J.A)
+
 function eval_basis!(P::AbstractVector, J::Jacobi, x,
                      N::Integer = length(P)-1 )
    @assert length(P) >= N+1
-   @assert 0 <= N <= length(J.A)
+   @assert 0 <= N <= maxdegree(J)
    α, β = J.α, J.β
    @inbounds P[1] = 1
    @inbounds if N >= 1; P[2] = (α+1) + 0.5 * (α+β+2) * (x-1); end
@@ -73,11 +80,11 @@ eval_basis(J, x::Number, T=Float64) =
       eval_basis(J, x, length(J.A), T)
 
 
-function eval_grad!(P::AbstractVector, dP::AbstractVector,
+function eval_basis_d!(P::AbstractVector, dP::AbstractVector,
                     J::Jacobi, x::Number, N::Integer = length(P)-1)
    @assert length(P) >= N+1
    @assert length(dP) >= N+1
-   @assert 0 <= N <= length(J.A)
+   @assert 0 <= N <= maxdegree(J)
    α, β = J.α, J.β
    @inbounds P[1] = 1
    @inbounds dP[1] = 0
@@ -95,26 +102,10 @@ function eval_grad!(P::AbstractVector, dP::AbstractVector,
 end
 
 eval_grad(J::Jacobi, x::Number, N::Integer, T=Float64) =
-      eval_grad!(zeros(T, N+1), zeros(T, N+1), J, x, N)
+      eval_basis_d!(zeros(T, N+1), zeros(T, N+1), J, x, N)
 
 eval_grad(J, x::Number, T=Float64) =
       eval_grad(J, x, length(J.A), T)
-
-
-
-# Transformed Jacobi Polynomials
-# ------------------------------
-
-struct TransformedJacobi{T, TT, TM}
-   J::Jacobi{T}
-   transform::TT   # coordinate transform
-   multiplier::TM  # a multiplier function (cutoff)
-   a::T          # lower bound r
-   b::T          # upper bound r
-   ta::T         # lower bound x = t(r)
-   tb::T         # upper bound x = t(r)
-end
-
 
 
 end

@@ -5,5 +5,3 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-
-# using SphericalHarmonics
