@@ -95,12 +95,17 @@ struct TransformedJacobi{T, TT, TM}
    J::Jacobi{T}
    trans::TT      # coordinate transform
    mult::TM       # a multiplier function (cutoff)
-   ru::T          # lower bound r
-   rl::T          # upper bound r
-   tu::T          #  bound t(ru)
-   tl::T          #  bound t(rl)
+   rl::T          # lower bound r
+   ru::T          # upper bound r
+   tl::T          #  bound t(ru)
+   tu::T          #  bound t(rl)
 end
 
+TransformedJacobi(J, trans, mult, rl, ru) =
+   TransformedJacobi(J, trans, mult, rl, ru,
+                     transform(trans, rl), transform(trans, ru) )
+
+Base.length(J::TransformedJacobi) = length(J.J)
 cutoff(J::TransformedJacobi) = J.ru
 transform(J::TransformedJacobi, r) = transform(J.trans, r)
 transform_d(J::TransformedJacobi, r) = transform_d(J.trans, r)
@@ -152,11 +157,15 @@ function eval_basis_d!(P, dP, J::TransformedJacobi, r, N=length(P)-1)
 end
 
 
-function rbasis(p, N, trans, ru)
-   α = p
-   β = 0.0
-   rl = 0.0
-   xl, xu = transform.(trans, (rl, ru))
-   C = PolyCutoff1s(p, xu)
 
-   TransformedJacobi(
+"""
+```
+rbasis(maxdeg, trans, p, ru)      # with 1-sided cutoff
+rbasis(maxdeg, trans, p, rl, ru)  # with 2-sided cutoff
+```
+"""
+rbasis(maxdeg, trans, p, ru) =
+   TransformedJacobi( Jacobi(p, 0, maxdeg), trans, PolyCutoff1s(p), 0.0, ru )
+
+rbasis(maxdeg, trans, p, rl, ru) =
+   TransformedJacobi( Jacobi(p, p, maxdeg), trans, PolyCutoff2s(p), rl, ru )
