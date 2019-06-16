@@ -113,6 +113,9 @@ transform_d(J::TransformedJacobi, r) = transform_d(J.trans, r)
 fcut(J::TransformedJacobi, r) = fcut(J.mult, r)
 fcut_d(J::TransformedJacobi, r) = fcut_d(J.mult, r)
 
+SHIPs.alloc_B( J::TransformedJacobi{T}) where {T} = Vector{T}(undef, length(J.J))
+SHIPs.alloc_dB(J::TransformedJacobi{T}) where {T} = Vector{T}(undef, length(J.J))
+
 function eval_basis!(P, J::TransformedJacobi, r, N=length(P)-1)
    @assert length(P) >= N+1
    # apply the cutoff
