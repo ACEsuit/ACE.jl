@@ -105,6 +105,16 @@ eval_grad(J, x::Number, T=Float64) =
 # Transformed Jacobi Polynomials
 # ------------------------------
 
+struct TransformedJacobi{T, TT, TM}
+   J::Jacobi{T}
+   transform::TT   # coordinate transform
+   multiplier::TM  # a multiplier function (cutoff)
+   a::T          # lower bound r
+   b::T          # upper bound r
+   ta::T         # lower bound x = t(r)
+   tb::T         # upper bound x = t(r)
+end
+
 
 
 end
