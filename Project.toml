@@ -1,14 +1,19 @@
 name = "SHIPs"
 uuid = "07029e18-8f70-11e9-35ce-2d4df590abdc"
-authors = ["Christoph Ortner <c.ortner@warwick.ac.uk>"]
 version = "0.1.0"
+
+[deps]
+JuLIP = "945c410c-986d-556a-acb1-167a618e0462"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 julia = "1"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "BenchmarkTools"]
+test = ["Test", "LinearAlgebra", "PyCall", "BenchmarkTools"]
