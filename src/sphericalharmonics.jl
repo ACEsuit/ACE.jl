@@ -45,7 +45,7 @@ with respect to cartesian coordinates
 dspher_to_dcart(S, f_φ, f_θ) =
 	SVector( - ((S.sinφ * f_φ) / S.r) / S.sinθ + (S.cosφ * S.cosθ * f_θ) / S.r,
 	           ((S.cosφ * f_φ) / S.r) / S.sinθ + (S.sinφ * S.cosθ * f_θ) / S.r,
-				                                  - (         S.sinθ * f_θ) / S.r  )
+				                                  - (         S.sinθ * f_θ) / S.r )
 
 
 # --------------------------------------------------------
@@ -218,60 +218,6 @@ end
 
 
 
-# function compute_dp!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
-# 					      P, dP)
-#    @assert L > 0
-# 	@assert length(coeff.A) >= sizeP(L)
-# 	@assert length(coeff.B) >= sizeP(L)
-# 	@assert length(P) >= sizeP(L)
-# 	@assert length(dP) >= sizeP(L)
-#
-# 	x = S.cosθ
-# 	sinθ = S.sinθ
-# 	sinθ_dθ = x
-# 	x_dθ = - sinθ
-#
-# 	temp = 0.39894228040143267794 # = sqrt(0.5/M_PI)
-# 	P[index_p(0, 0)] = temp
-# 	dP[index_p(0, 0)] = 0
-#
-# 	SQRT3 = 1.7320508075688772935
-# 	P[index_p(1, 0)] = x * SQRT3 * temp
-# 	dP[index_p(1, 0)] = x_dθ * SQRT3 * temp
-#
-# 	SQRT3DIV2 = -1.2247448713915890491
-# 	temp = SQRT3DIV2 * sinθ * temp
-# 	temp_dθ = SQRT3DIV2 * sinθ_dθ * temp
-# 	P[index_p(1, 1)] = temp
-# 	dP[index_p(1, 1)] = temp_dθ
-#
-# 	for l in 2:L
-# 		for m in 0:(l-2)
-# 			P[index_p(l, m)] =
-# 					coeff.A[index_p(l, m)] * (
-# 						x * P[index_p(l - 1, m)]
-# 					     + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)]
-# 				   )
-# 			dP[index_p(l, m)] =
-# 					coeff.A[index_p(l, m)] * (
-# 						x_dθ * P[index_p(l - 1, m)]
-# 						+ x * dP[index_p(l - 1, m)]
-# 					   + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)]
-# 				   )
-# 		end
-# 		P[index_p(l, l - 1)] = x * sqrt(2 * (l - 1) + 3) * temp
-# 		dP[index_p(l, l - 1)] = ( x_dθ * sqrt(2 * (l - 1) + 3) * temp
-# 		     							  + x * sqrt(2 * (l - 1) + 3) * temp_dθ )
-# 		temp = -sqrt(1.0 + 0.5 / l) * sinθ * temp
-# 		temp_dθ = ( -sqrt(1.0 + 0.5 / l) * sinθ_dθ * temp
-# 		            -sqrt(1.0 + 0.5 / l) * sinθ * temp_dθ )
-# 		P[index_p(l, l)] = temp
-# 		dP[index_p(l, l)] = temp_dθ
-# 	end
-# 	return P, dP
-# end
-
-
 """
 	compute_p(L, x)
 
@@ -306,28 +252,12 @@ compute_dp(L::Integer, θ::Real) =
 # ------------------------------------------------------------------------
 
 
-# OLD VERSION: somewhat faster -> return to this if it is a bottleneck
-# """
-# R = r(cosφ sinθ, sinφ sinθ, cosθ)
-# x = sinφ
-# z = cosθ
-# s picks the correct inverse of sinφ -> φ
-# """
-# function compute_rxz(R::SVec3{T}) where {T}
-#    r = norm(R)
-#    z = R[3] / r
-#    x = R[2] / sqrt(1 - z^2) / r
-#    s = sign(R[1])
-#    return r, x, z, s
-# end
-
 function cYlm!(Y, L, S::PseudoSpherical, P)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
 
 	ep = 1 / sqrt(2)
-
 	for l = 0:L
 		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
 	end
@@ -352,39 +282,72 @@ end
 function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
+	@assert length(dY) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
-
-	INVSQRT2 = 1 / sqrt(2)
-
+	ep = 1 / sqrt(2)
 	for l = 0:L
-		Y[index_y(l, 0)] = P[index_p(l, 0)] * INVSQRT2
-		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * INVSQRT2)
+		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
+		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * ep)
 	end
 
    sig = 1
-   ep = INVSQRT2
    ep_fact = S.cosφ + im * S.sinφ
-
 	for m in 1:L
 		sig *= -1
 		ep *= ep_fact            # ep =   exp(i *   m  * φ)
 		em = sig * conj(ep)      # ep = ± exp(i * (-m) * φ)
-		ep_dφ = im * m * ep
-		em_dφ = - im * m * em
-
+		dep_dφ = im *   m  * ep
+		dem_dφ = im * (-m) * em
 		for l in m:L
 			p = P[index_p(l,m)]
 			Y[index_y(l, -m)] = em * p   # (-1)^m * p * exp(-im*m*phi) / sqrt(2)
 			Y[index_y(l,  m)] = ep * p   #          p * exp( im*m*phi) / sqrt(2)
 
-			p_dθ = dP[index_p(l,m)]
-			dY[index_y(l, -m)] = dspher_to_dcart(S, em_dφ * p, em * p_dθ)
-			dY[index_y(l,  m)] = dspher_to_dcart(S, ep_dφ * p, ep * p_dθ)
+			dp_dθ = dP[index_p(l,m)]
+			dY[index_y(l, -m)] = dspher_to_dcart(S, dem_dφ * p, em * dp_dθ)
+			dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p, ep * dp_dθ)
 		end
 	end
-
 	return Y, dY
 end
+
+
+# function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
+# 	@assert length(P) >= sizeP(L)
+# 	@assert length(Y) >= sizeY(L)
+#    @assert abs(S.cosθ) <= 1.0
+#
+# 	INVSQRT2 = 1 / sqrt(2)
+#
+# 	for l = 0:L
+# 		Y[index_y(l, 0)] = P[index_p(l, 0)] * INVSQRT2
+# 		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * INVSQRT2)
+# 	end
+#
+#    sig = 1
+#    ep = INVSQRT2
+#    ep_fact = S.cosφ + im * S.sinφ
+#
+# 	for m in 1:L
+# 		sig *= -1
+# 		ep *= ep_fact            # ep =   exp(i *   m  * φ)
+# 		em = sig * conj(ep)      # ep = ± exp(i * (-m) * φ)
+# 		ep_dφ = im * m * ep
+# 		em_dφ = - im * m * em
+#
+# 		for l in m:L
+# 			p = P[index_p(l,m)]
+# 			Y[index_y(l, -m)] = em * p   # (-1)^m * p * exp(-im*m*phi) / sqrt(2)
+# 			Y[index_y(l,  m)] = ep * p   #          p * exp( im*m*phi) / sqrt(2)
+#
+# 			p_dθ = dP[index_p(l,m)]
+# 			dY[index_y(l, -m)] = dspher_to_dcart(S, em_dφ * p, em * p_dθ)
+# 			dY[index_y(l,  m)] = dspher_to_dcart(S, ep_dφ * p, ep * p_dθ)
+# 		end
+# 	end
+#
+# 	return Y, dY
+# end
 
 
 # revive if needed

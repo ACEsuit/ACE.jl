@@ -9,13 +9,13 @@
 @testset "Ylm" begin
 
 import SHIPs
-using LinearAlgebra, Printf, StaticArrays, BenchmarkTools, Test
+using LinearAlgebra, StaticArrays, BenchmarkTools, Test
 using SHIPs.SphericalHarmonics
 using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart
 using SHIPs: eval_basis, eval_basis_d
 
-verbose = true
+verbose = false
 
 function explicit_shs(θ, φ)
    Y00 = 0.5 * sqrt(1/π)
@@ -62,17 +62,17 @@ for nsamples = 1:10
    L = 5
    P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
    errs = []
-   # verbose && @printf("     h    | error \n")
+   verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
       dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
       push!(errs, norm(dP - dPh, Inf))
-      # verbose && @printf(" %.2e | %.2e \n", h, errs[end])
+      verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
    success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
    print(@test success)
-   println()
 end
+println()
 
 @info("Test : spher-cart conversion")
 for nsamples = 1:10
@@ -85,6 +85,7 @@ println()
 φθ(S::PseudoSpherical) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
 φθ(R::AbstractVector) = φθ(cart2spher(R))
 EE = [ [1,0,0], [0,1,0], [0,0,1] ]
+h = 1e-5
 for nsamples = 1:10
    R = rand(3)
    S = cart2spher(R)
@@ -97,27 +98,27 @@ end
 println()
 
 @info("Test: check derivatives of complex spherical harmonics")
-R = @SVector rand(3)
-SH = SHBasis(5)
-Y, dY = eval_basis_d(SH, R)
-DY = Matrix((hcat(dY...))')
-errs = []
-verbose && @printf("     h    | error \n")
-for p = 2:10
-   h = 0.1^p
-   DYh = similar(DY)
-   Rh = Vector(R)
-   for i = 1:3
-      Rh[i] += h
-      DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
-      Rh[i] -= h
+for nsamples = 1:10
+   R = @SVector rand(3)
+   SH = SHBasis(5)
+   Y, dY = eval_basis_d(SH, R)
+   DY = Matrix(transpose(hcat(dY...)))
+   errs = []
+   verbose && @printf("     h    | error \n")
+   for p = 2:10
+      h = 0.1^p
+      DYh = similar(DY)
+      Rh = Vector(R)
+      for i = 1:3
+         Rh[i] += h
+         DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
+         Rh[i] -= h
+      end
+      push!(errs, norm(DY - DYh, Inf))
+      verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
-   push!(errs, norm(DY - DYh, Inf))
-   verbose && @printf(" %.2e | %.2e \n", h, errs[end])
-   if p == 6
-      @show [DY[:,1] DYh[:,1]]
-      break
-   end
+   success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+   print(@test success)
 end
 println()
 

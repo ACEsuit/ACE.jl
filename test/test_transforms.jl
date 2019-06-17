@@ -6,13 +6,17 @@
 # --------------------------------------------------------------------------
 
 
-# - for both 1s and 2s and p = 2, 3, 4
-# - consistency of derivatives (finite-difference test)
-# - L2 orthogonality
+# - TODO: TEST L2 orthogonality
+
+@testset "Transforms" begin
 
 using SHIPs, Printf, Test, LinearAlgebra
 using SHIPs: PolyTransform, rbasis, eval_basis, eval_basis_d
 using SHIPs.JacobiPolys: Jacobi
+using SHIPs.SphericalHarmonics
+using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
+               cart2spher, spher2cart
+using SHIPs: eval_basis, eval_basis_d
 
 
 
@@ -40,4 +44,7 @@ for p in 2:4
       end
       println()
    end
+end
+
+
 end
