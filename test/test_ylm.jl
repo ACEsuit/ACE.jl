@@ -9,8 +9,10 @@
 @testset "Ylm" begin
 
 import SHIPs
-using Printf, LinearAlgebra
-using SHIPs.SphericalHarmonics, StaticArrays, BenchmarkTools, Test
+using LinearAlgebra, Printf, StaticArrays, BenchmarkTools, Test
+using SHIPs.SphericalHarmonics
+using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
+               cart2spher, spher2cart
 using SHIPs: eval_basis, eval_basis_d
 
 verbose = true
@@ -53,31 +55,46 @@ println()
 
 @info("Test: check derivatives of associated legendre polynomials")
 
+using Printf
+
 for nsamples = 1:10
    θ = 0.1+0.4 * pi * rand()
    L = 5
    P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
    errs = []
-   @printf("     h    | error \n")
+   # verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
       dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
       push!(errs, norm(dP - dPh, Inf))
-      verbose && @printf(" %.2e | %.2e \n", h, errs[end])
+      # verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
    success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
    print(@test success)
    println()
 end
 
-# # follow-up for failed tests
-# θ = 0.41944075415893467
-# L = 5
-# P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
-# h = 1e-6
-# dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
-# [dP dPh]
-# @show norm(dP - dPh, Inf)
+@info("Test : spher-cart conversion")
+for nsamples = 1:10
+   R = (rand(3) .- 0.5) * (1+rand())
+   print((@test R ≈ spher2cart(cart2spher(R))), " ")
+end
+println()
+
+@info("Test : spher-cart jacobian")
+φθ(S::PseudoSpherical) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
+φθ(R::AbstractVector) = φθ(cart2spher(R))
+EE = [ [1,0,0], [0,1,0], [0,0,1] ]
+for nsamples = 1:10
+   R = rand(3)
+   S = cart2spher(R)
+   dR_dS = [ dspher_to_dcart(S, 1.0, 0.0) dspher_to_dcart(S, 0.0, 1.0) ]
+   dR_dS_h = hcat( (φθ(R+h*EE[1])-φθ(R-h*EE[1])) / (2*h),
+                   (φθ(R+h*EE[2])-φθ(R-h*EE[2])) / (2*h),
+                   (φθ(R+h*EE[3])-φθ(R-h*EE[3])) / (2*h) )'
+   print((@test norm(dR_dS - dR_dS_h, Inf) < 1e-6), " ")
+end
+println()
 
 @info("Test: check derivatives of complex spherical harmonics")
 R = @SVector rand(3)
@@ -85,6 +102,7 @@ SH = SHBasis(5)
 Y, dY = eval_basis_d(SH, R)
 DY = Matrix((hcat(dY...))')
 errs = []
+verbose && @printf("     h    | error \n")
 for p = 2:10
    h = 0.1^p
    DYh = similar(DY)
@@ -96,6 +114,11 @@ for p = 2:10
    end
    push!(errs, norm(DY - DYh, Inf))
    verbose && @printf(" %.2e | %.2e \n", h, errs[end])
+   if p == 6
+      @show [DY[:,1] DYh[:,1]]
+      break
+   end
 end
+println()
 
 end # @testset

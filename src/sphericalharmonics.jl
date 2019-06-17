@@ -25,7 +25,9 @@ struct PseudoSpherical{T}
 	sinθ::T
 end
 
-function cart2spher(R::SVec3)
+spher2cart(S::PseudoSpherical) = S.r * SVec3(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
+
+function cart2spher(R::AbstractVector)
 	r = norm(R)
 	φ = atan(R[2], R[1])
 	sinφ, cosφ = sincos(φ)
@@ -33,6 +35,17 @@ function cart2spher(R::SVec3)
 	sinθ = sqrt(1-cosθ^2)
 	return PseudoSpherical(r, cosφ, sinφ, cosθ, sinθ)
 end
+
+PseudoSpherical(φ, θ) = PseudoSpherical(1.0, cos(φ), sin(φ), cos(θ), sin(θ))
+
+"""
+convert a gradient with respect to spherical coordinates to a gradient
+with respect to cartesian coordinates
+"""
+dspher_to_dcart(S, f_φ, f_θ) =
+	SVector( - ((S.sinφ * f_φ) / S.r) / S.sinθ + (S.cosφ * S.cosθ * f_θ) / S.r,
+	           ((S.cosφ * f_φ) / S.r) / S.sinθ + (S.sinφ * S.cosθ * f_θ) / S.r,
+				                                  - (         S.sinθ * f_θ) / S.r  )
 
 
 # --------------------------------------------------------
@@ -168,7 +181,7 @@ function compute_dp!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
 	temp = sqrt(0.5/π)
 	P[index_p(0, 0)] = temp
 	temp_d = 0.0
-	dP[index_p(0, 0)] = temp_d 
+	dP[index_p(0, 0)] = temp_d
 
 	if (L > 0)
 		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
@@ -313,14 +326,13 @@ function cYlm!(Y, L, S::PseudoSpherical, P)
 	@assert length(Y) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
 
-	INVSQRT2 = 1 / sqrt(2)
+	ep = 1 / sqrt(2)
 
 	for l = 0:L
-		Y[index_y(l, 0)] = P[index_p(l, 0)] * INVSQRT2
+		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
 	end
 
    sig = 1
-   ep = INVSQRT2
    ep_fact = S.cosφ + im * S.sinφ
 	for m in 1:L
 		sig *= -1
@@ -336,14 +348,6 @@ function cYlm!(Y, L, S::PseudoSpherical, P)
 	return Y
 end
 
-"""
-convert a gradient with respect to spherical coordinates to a gradient
-with respect to cartesian coordinates
-"""
-dspher_to_dcart(S, f_φ, f_θ) =
-	SVector( S.sinφ * S.sinθ * f_φ + S.cosθ * f_θ,
-	         (S.cosφ * f_φ / S.r) / S.sinθ,
-				(S.cosθ * S.sinφ / S.r) * f_φ - (S.sinθ / S.r) * f_θ )
 
 function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 	@assert length(P) >= sizeP(L)
