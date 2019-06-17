@@ -8,8 +8,10 @@
 
 @testset "Ylm" begin
 
+import SHIPs
+using Printf, LinearAlgebra
 using SHIPs.SphericalHarmonics, StaticArrays, BenchmarkTools, Test
-using SHIPs: eval_basis
+using SHIPs: eval_basis, eval_basis_d
 
 function explicit_shs(θ, φ)
    Y00 = 0.5 * sqrt(1/π)
@@ -32,7 +34,7 @@ function explicit_shs(θ, φ)
            Y3m3, Y3m2, Y3m1, Y30, Y31, Y32, Y33]
 end
 
-@info("Test 1: check complex spherical harmonics against explicit expressions")
+@info("Test: check complex spherical harmonics against explicit expressions")
 nsamples = 30
 for n = 1:nsamples
    θ = rand() * π
@@ -45,5 +47,40 @@ for n = 1:nsamples
    print((@test Y ≈ Yex), " ")
 end
 println()
+
+
+# @info("Test: check derivatives of associated legendre polynomials")
+#
+# θ = 0.1+0.4 * pi * rand()
+# L = 5
+# P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
+# errs = []
+# for p = 2:10
+#    h = 0.1^p
+#    dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+#    push!(errs, norm(dP - dPh, Inf))
+#    @printf(" %.2e | %.2e \n", h, errs[end])
+# end
+# println()
+#
+# @info("Test: check derivatives of complex spherical harmonics")
+#
+# R = @SVector rand(3)
+# SH = SHBasis(5)
+# Y, dY = eval_basis_d(SH, R)
+# DY = Matrix((hcat(dY...))')
+# errs = []
+# for p = 2:10
+#    h = 0.1^p
+#    DYh = similar(DY)
+#    Rh = Vector(R)
+#    for i = 1:3
+#       Rh[i] += h
+#       DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
+#       Rh[i] -= h
+#    end
+#    push!(errs, norm(DY - DYh, Inf))
+#    @printf(" %.2e | %.2e \n", h, errs[end])
+# end
 
 end # @testset
