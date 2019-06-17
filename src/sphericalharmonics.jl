@@ -138,7 +138,8 @@ function compute_p!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
 
 	if (L > 0)
 		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
-		P[index_p(1, 1)] = temp = - sqrt(1.5) * S.sinθ * temp
+		temp = - sqrt(1.5) * S.sinθ * temp
+		P[index_p(1, 1)] = temp
 
 		for l in 2:L
 			for m in 0:(l-2)
@@ -147,7 +148,8 @@ function compute_p!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
 						             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
 			end
 			P[index_p(l, l - 1)] = S.cosθ * sqrt(2 * (l - 1) + 3) * temp
-			P[index_p(l, l)] = temp = -sqrt(1.0 + 0.5 / l) * S.sinθ * temp 
+			temp = -sqrt(1.0 + 0.5 / l) * S.sinθ * temp
+			P[index_p(l, l)] = temp
 		end
 	end
 	return P
@@ -157,57 +159,104 @@ end
 dP = dP / dθ (and not dP / dx!!!)
 """
 function compute_dp!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
-					      P, dP)
+					     P::Array{Float64,1}, dP::Array{Float64,1})
    @assert L > 0
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
 	@assert length(P) >= sizeP(L)
-	@assert length(dP) >= sizeP(L)
 
-	x = S.cosθ
-	sinθ = S.sinθ
-	sinθ_dθ = x
-	x_dθ = - sinθ
-
-	temp = 0.39894228040143267794 # = sqrt(0.5/M_PI)
+	temp = sqrt(0.5/π)
 	P[index_p(0, 0)] = temp
-	dP[index_p(0, 0)] = 0
+	temp_d = 0.0
+	dP[index_p(0, 0)] = temp_d 
 
-	SQRT3 = 1.7320508075688772935
-	P[index_p(1, 0)] = x * SQRT3 * temp
-	dP[index_p(1, 0)] = x_dθ * SQRT3 * temp
+	if (L > 0)
+		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
+		dP[index_p(1, 0)] = -S.sinθ * sqrt(3) * temp + S.cosθ * sqrt(3) * temp_d
 
-	SQRT3DIV2 = -1.2247448713915890491
-	temp = SQRT3DIV2 * sinθ * temp
-	temp_dθ = SQRT3DIV2 * sinθ_dθ * temp
-	P[index_p(1, 1)] = temp
-	dP[index_p(1, 1)] = temp_dθ
+		temp, temp_d = ( - sqrt(1.5) * S.sinθ * temp,
+						     - sqrt(1.5) * (S.cosθ * temp + S.sinθ * temp_d) )
+		P[index_p(1, 1)] = temp
+		dP[index_p(1, 1)] = temp_d
 
-	for l in 2:L
-		for m in 0:(l-2)
-			P[index_p(l, m)] =
+		for l in 2:L
+			for m in 0:(l-2)
+				P[index_p(l, m)] =
+						coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
+						             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
+				dP[index_p(l, m)] =
 					coeff.A[index_p(l, m)] * (
-						x * P[index_p(l - 1, m)]
-					     + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)]
-				   )
-			dP[index_p(l, m)] =
-					coeff.A[index_p(l, m)] * (
-						x_dθ * P[index_p(l - 1, m)]
-						+ x * dP[index_p(l - 1, m)]
-					   + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)]
-				   )
+									- S.sinθ * P[index_p(l - 1, m)]
+									+ S.cosθ * dP[index_p(l - 1, m)]
+					             + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)] )
+			end
+			P[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * S.cosθ * temp
+			dP[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * (
+										        -S.sinθ * temp + S.cosθ * temp_d )
+
+         (temp, temp_d) = (-sqrt(1.0+0.5/l) * S.sinθ * temp,
+						         -sqrt(1.0+0.5/l) * (S.cosθ * temp + S.sinθ * temp_d) )
+			P[index_p(l, l)] = temp
+			dP[index_p(l, l)] = temp_d
 		end
-		P[index_p(l, l - 1)] = x * sqrt(2 * (l - 1) + 3) * temp
-		dP[index_p(l, l - 1)] = ( x_dθ * sqrt(2 * (l - 1) + 3) * temp
-		     							  + x * sqrt(2 * (l - 1) + 3) * temp_dθ )
-		temp = -sqrt(1.0 + 0.5 / l) * sinθ * temp
-		temp_dθ = ( -sqrt(1.0 + 0.5 / l) * sinθ_dθ * temp
-		            -sqrt(1.0 + 0.5 / l) * sinθ * temp_dθ )
-		P[index_p(l, l)] = temp
-		dP[index_p(l, l)] = temp_dθ
 	end
 	return P, dP
 end
+
+
+
+# function compute_dp!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
+# 					      P, dP)
+#    @assert L > 0
+# 	@assert length(coeff.A) >= sizeP(L)
+# 	@assert length(coeff.B) >= sizeP(L)
+# 	@assert length(P) >= sizeP(L)
+# 	@assert length(dP) >= sizeP(L)
+#
+# 	x = S.cosθ
+# 	sinθ = S.sinθ
+# 	sinθ_dθ = x
+# 	x_dθ = - sinθ
+#
+# 	temp = 0.39894228040143267794 # = sqrt(0.5/M_PI)
+# 	P[index_p(0, 0)] = temp
+# 	dP[index_p(0, 0)] = 0
+#
+# 	SQRT3 = 1.7320508075688772935
+# 	P[index_p(1, 0)] = x * SQRT3 * temp
+# 	dP[index_p(1, 0)] = x_dθ * SQRT3 * temp
+#
+# 	SQRT3DIV2 = -1.2247448713915890491
+# 	temp = SQRT3DIV2 * sinθ * temp
+# 	temp_dθ = SQRT3DIV2 * sinθ_dθ * temp
+# 	P[index_p(1, 1)] = temp
+# 	dP[index_p(1, 1)] = temp_dθ
+#
+# 	for l in 2:L
+# 		for m in 0:(l-2)
+# 			P[index_p(l, m)] =
+# 					coeff.A[index_p(l, m)] * (
+# 						x * P[index_p(l - 1, m)]
+# 					     + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)]
+# 				   )
+# 			dP[index_p(l, m)] =
+# 					coeff.A[index_p(l, m)] * (
+# 						x_dθ * P[index_p(l - 1, m)]
+# 						+ x * dP[index_p(l - 1, m)]
+# 					   + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)]
+# 				   )
+# 		end
+# 		P[index_p(l, l - 1)] = x * sqrt(2 * (l - 1) + 3) * temp
+# 		dP[index_p(l, l - 1)] = ( x_dθ * sqrt(2 * (l - 1) + 3) * temp
+# 		     							  + x * sqrt(2 * (l - 1) + 3) * temp_dθ )
+# 		temp = -sqrt(1.0 + 0.5 / l) * sinθ * temp
+# 		temp_dθ = ( -sqrt(1.0 + 0.5 / l) * sinθ_dθ * temp
+# 		            -sqrt(1.0 + 0.5 / l) * sinθ * temp_dθ )
+# 		P[index_p(l, l)] = temp
+# 		dP[index_p(l, l)] = temp_dθ
+# 	end
+# 	return P, dP
+# end
 
 
 """

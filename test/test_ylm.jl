@@ -13,6 +13,8 @@ using Printf, LinearAlgebra
 using SHIPs.SphericalHarmonics, StaticArrays, BenchmarkTools, Test
 using SHIPs: eval_basis, eval_basis_d
 
+verbose = true
+
 function explicit_shs(θ, φ)
    Y00 = 0.5 * sqrt(1/π)
    Y1m1 = 0.5 * sqrt(3/(2*π))*sin(θ)*exp(-im*φ)
@@ -49,38 +51,51 @@ end
 println()
 
 
-# @info("Test: check derivatives of associated legendre polynomials")
-#
-# θ = 0.1+0.4 * pi * rand()
+@info("Test: check derivatives of associated legendre polynomials")
+
+for nsamples = 1:10
+   θ = 0.1+0.4 * pi * rand()
+   L = 5
+   P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
+   errs = []
+   @printf("     h    | error \n")
+   for p = 2:10
+      h = 0.1^p
+      dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+      push!(errs, norm(dP - dPh, Inf))
+      verbose && @printf(" %.2e | %.2e \n", h, errs[end])
+   end
+   success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+   print(@test success)
+   println()
+end
+
+# # follow-up for failed tests
+# θ = 0.41944075415893467
 # L = 5
 # P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
-# errs = []
-# for p = 2:10
-#    h = 0.1^p
-#    dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
-#    push!(errs, norm(dP - dPh, Inf))
-#    @printf(" %.2e | %.2e \n", h, errs[end])
-# end
-# println()
-#
-# @info("Test: check derivatives of complex spherical harmonics")
-#
-# R = @SVector rand(3)
-# SH = SHBasis(5)
-# Y, dY = eval_basis_d(SH, R)
-# DY = Matrix((hcat(dY...))')
-# errs = []
-# for p = 2:10
-#    h = 0.1^p
-#    DYh = similar(DY)
-#    Rh = Vector(R)
-#    for i = 1:3
-#       Rh[i] += h
-#       DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
-#       Rh[i] -= h
-#    end
-#    push!(errs, norm(DY - DYh, Inf))
-#    @printf(" %.2e | %.2e \n", h, errs[end])
-# end
+# h = 1e-6
+# dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+# [dP dPh]
+# @show norm(dP - dPh, Inf)
+
+@info("Test: check derivatives of complex spherical harmonics")
+R = @SVector rand(3)
+SH = SHBasis(5)
+Y, dY = eval_basis_d(SH, R)
+DY = Matrix((hcat(dY...))')
+errs = []
+for p = 2:10
+   h = 0.1^p
+   DYh = similar(DY)
+   Rh = Vector(R)
+   for i = 1:3
+      Rh[i] += h
+      DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
+      Rh[i] -= h
+   end
+   push!(errs, norm(DY - DYh, Inf))
+   verbose && @printf(" %.2e | %.2e \n", h, errs[end])
+end
 
 end # @testset
