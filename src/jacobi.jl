@@ -4,7 +4,9 @@ module JacobiPolys
 import SHIPs: eval_basis,
               eval_basis!,
               eval_grad,
-              eval_basis_d!
+              eval_basis_d!,
+              alloc_B,
+              alloc_dB
 
 export Jacobi
 
@@ -61,8 +63,11 @@ function Jacobi(α, β, N, T=Float64)
    return Jacobi(T(α), T(β), A, B, C)
 end
 
+
 Base.length(J::Jacobi) = maxdegree(J) + 1
 maxdegree(J::Jacobi) = length(J.A)
+alloc_B(J::Jacobi{T}) where {T} = zeros(T, length(J))
+alloc_dB(J::Jacobi{T}) where {T} = zeros(T, length(J))
 
 function eval_basis!(P::AbstractVector, J::Jacobi, x,
                      N::Integer = length(P)-1 )
@@ -78,12 +83,6 @@ function eval_basis!(P::AbstractVector, J::Jacobi, x,
    end
    return P
 end
-
-# eval_basis(J::Jacobi, x::Number, N::Integer, T=Float64) =
-#       eval_basis!(zeros(T, N+1), J, x, N)
-#
-# eval_basis(J, x::Number, T=Float64) =
-#       eval_basis(J, x, length(J.A), T)
 
 
 function eval_basis_d!(P::AbstractVector, dP::AbstractVector,
@@ -106,12 +105,6 @@ function eval_basis_d!(P::AbstractVector, dP::AbstractVector,
    end # @inbounds
    return P, dP
 end
-
-# eval_grad(J::Jacobi, x::Number, N::Integer, T=Float64) =
-#       eval_basis_d!(zeros(T, N+1), zeros(T, N+1), J, x, N)
-#
-# eval_grad(J, x::Number, T=Float64) =
-#       eval_grad(J, x, length(J.A), T)
 
 
 end
