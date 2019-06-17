@@ -70,8 +70,8 @@ index_y(l,m) = m + l + (l*l) + 1
 
 # --------------------------------------------------------
 #     Associated Legendre Polynomials
-#     TODO: these are a special case of the
-#           Jacobi polynomials so could reuse that code!
+#     TODO: rewrite within general interface?
+#           - alloc_B, alloc_dB, alloc_temp, ...
 # --------------------------------------------------------
 
 """
@@ -126,26 +126,21 @@ function compute_p!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
 	@assert length(coeff.B) >= sizeP(L)
 	@assert length(P) >= sizeP(L)
 
-	x = S.cosθ
-	sinθ = S.sinθ
-	temp = 0.39894228040143267794 # = sqrt(0.5/M_PI)
+	temp = sqrt(0.5/π)
 	P[index_p(0, 0)] = temp
 
 	if (L > 0)
-		SQRT3 = 1.7320508075688772935
-		P[index_p(1, 0)] = x * SQRT3 * temp
-		SQRT3DIV2 = -1.2247448713915890491
-		temp = SQRT3DIV2 * sinθ * temp
-		P[index_p(1, 1)] = temp
+		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
+		P[index_p(1, 1)] = temp = - sqrt(1.5) * S.sinθ * temp
 
 		for l in 2:L
 			for m in 0:(l-2)
-				P[index_p(l, m)] = coeff.A[index_p(l, m)] *(x * P[index_p(l - 1, m)]
-						     + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)])
+				P[index_p(l, m)] =
+						coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
+						             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
 			end
-			P[index_p(l, l - 1)] = x * sqrt(2 * (l - 1) + 3) * temp
-			temp = -sqrt(1.0 + 0.5 / l) * sinθ * temp
-			P[index_p(l, l)] = temp
+			P[index_p(l, l - 1)] = S.cosθ * sqrt(2 * (l - 1) + 3) * temp
+			P[index_p(l, l)] = temp = -sqrt(1.0 + 0.5 / l) * S.sinθ * temp 
 		end
 	end
 	return P
@@ -214,12 +209,27 @@ end
 Compute an entire set of Associated Legendre Polynomials ``P_l^m(x)`` where
 ``0 ≤ l ≤ L`` and ``0 ≤ m ≤ l``. Assumes ``|x| ≤ 1``.
 """
-function compute_p(L::Int, S::PseudoSpherical)
+function compute_p(L::Integer, S::PseudoSpherical)
 	P = Array{Float64}(undef, sizeP(L))
 	coeff = compute_coefficients(L)
 	compute_p!(L, S, coeff, P)
 	return P
 end
+
+function compute_dp(L::Integer, S::PseudoSpherical)
+	P = Array{Float64}(undef, sizeP(L))
+	dP = Array{Float64}(undef, sizeP(L))
+	coeff = compute_coefficients(L)
+	compute_dp!(L, S, coeff, P, dP)
+	return P, dP
+end
+
+compute_p(L::Integer, θ::Real) =
+	compute_p(L, PseudoSpherical(0.0, 0.0, 0.0, cos(θ), sin(θ)))
+
+compute_dp(L::Integer, θ::Real) =
+	compute_dp(L, PseudoSpherical(0.0, 0.0, 0.0, cos(θ), sin(θ)))
+
 
 
 # ------------------------------------------------------------------------
@@ -276,10 +286,10 @@ with respect to cartesian coordinates
 """
 dspher_to_dcart(S, f_φ, f_θ) =
 	SVector( S.sinφ * S.sinθ * f_φ + S.cosθ * f_θ,
-	         (S.cosφ * f_φ / r) / S.sinθ,
-				(S.cosθ * S.sinφ / r) * f_φ - (S.sinθ / r) * f_θ )
+	         (S.cosφ * f_φ / S.r) / S.sinθ,
+				(S.cosθ * S.sinφ / S.r) * f_φ - (S.sinθ / S.r) * f_θ )
 
-function cYlm_from_cart_d!(Y, dY, L, S::PseudoSpherical, dP)
+function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
@@ -308,8 +318,8 @@ function cYlm_from_cart_d!(Y, dY, L, S::PseudoSpherical, dP)
 			Y[index_y(l,  m)] = ep * p   #          p * exp( im*m*phi) / sqrt(2)
 
 			p_dθ = dP[index_p(l,m)]
-			dY[index_y(l, -m)] = dspher_to_dcart(S, em_dφ * p, em * dp)
-			dY[index_y(l,  m)] = dspher_to_dcart(S, ep_dφ * p, ep * dp)
+			dY[index_y(l, -m)] = dspher_to_dcart(S, em_dφ * p, em * p_dθ)
+			dY[index_y(l,  m)] = dspher_to_dcart(S, ep_dφ * p, ep * p_dθ)
 		end
 	end
 
@@ -317,7 +327,7 @@ function cYlm_from_cart_d!(Y, dY, L, S::PseudoSpherical, dP)
 end
 
 
-# revive if needed 
+# revive if needed
 # """
 # 	cYlm_from_xz(L, x, z)
 #
@@ -341,11 +351,14 @@ end
 struct SHBasis{T}
 	maxL::Int
 	P::Vector{T}
+	dP::Vector{T}
 	coeff::ALPCoefficients
 end
 
 SHBasis(maxL::Integer, T=Float64) =
-		SHBasis(maxL, Vector{T}(undef, sizeP(maxL)), compute_coefficients(maxL))
+		SHBasis(maxL, Vector{T}(undef, sizeP(maxL)),
+					     Vector{T}(undef, sizeP(maxL)),
+						  compute_coefficients(maxL))
 
 Base.length(S::SHBasis) = sizeY(S.maxL)
 
@@ -368,9 +381,9 @@ function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, L=SH.maxL)
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
 	S = cart2spher(R)
-	compute_p!(L, S, SH.coeff, SH.P)
-	cYlm_from_cart_d!(Y, L, S, SH.P)
-	return Y
+	compute_dp!(L, S, SH.coeff, SH.P, SH.dP)
+	cYlm_d!(Y, dY, L, S, SH.P, SH.dP)
+	return Y, dY
 end
 
 
