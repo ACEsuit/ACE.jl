@@ -16,6 +16,25 @@ const SVec3 = SVector{3}
 
 export SHBasis
 
+
+struct PseudoSpherical{T}
+	r::T
+	cosφ::T
+	sinφ::T
+	cosθ::T
+	sinθ::T
+end
+
+function cart2spher(R::SVec3)
+	r = norm(R)
+	φ = atan(R[2], R[1])
+	sinφ, cosφ = sincos(φ)
+	cosθ = R[3] / r
+	sinθ = sqrt(1-cosθ^2)
+	return PseudoSpherical(r, cosφ, sinφ, cosθ, sinθ)
+end
+
+
 # --------------------------------------------------------
 #     Indexing
 # --------------------------------------------------------
@@ -107,14 +126,15 @@ allocate_p(L::Int) = Array{Float64}(undef, sizeP(L))
 Compute an entire set of Associated Legendre Polynomials ``P_l^m(x)``
 using the given coefficients, and store in the array P.
 """
-function compute_p!(L::Int, x::Float64, coeff::ALPCoefficients,
+function compute_p!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
 					     P::Array{Float64,1})
    @assert L > 0
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
 	@assert length(P) >= sizeP(L)
 
-	sinθ = sqrt(1.0 - x * x)
+	x = S.cosθ
+	sinθ = S.sinθ
 	temp = 0.39894228040143267794 # = sqrt(0.5/M_PI)
 	P[index_p(0, 0)] = temp
 
@@ -141,7 +161,7 @@ end
 """
 dP = dP / dθ (and not dP / dx!!!)
 """
-function compute_dp!(L::Int, x::Float64, coeff::ALPCoefficients,
+function compute_dp!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
 					      P, dP)
    @assert L > 0
 	@assert length(coeff.A) >= sizeP(L)
@@ -149,8 +169,8 @@ function compute_dp!(L::Int, x::Float64, coeff::ALPCoefficients,
 	@assert length(P) >= sizeP(L)
 	@assert length(dP) >= sizeP(L)
 
-	# x = cosθ
-	sinθ = sqrt(1.0 - x * x)
+	x = S.cosθ
+	sinθ = S.sinθ
 	sinθ_dθ = x
 	x_dθ = - sinθ
 
@@ -201,10 +221,10 @@ end
 Compute an entire set of Associated Legendre Polynomials ``P_l^m(x)`` where
 ``0 ≤ l ≤ L`` and ``0 ≤ m ≤ l``. Assumes ``|x| ≤ 1``.
 """
-function compute_p(L::Int, x::Float64)
+function compute_p(L::Int, S::PseudoSpherical)
 	P = Array{Float64}(undef, sizeP(L))
 	coeff = compute_coefficients(L)
-	compute_p!(L, x, coeff, P)
+	compute_p!(L, S, coeff, P)
 	return P
 end
 
@@ -213,24 +233,26 @@ end
 #                  Spherical Harmonics
 # ------------------------------------------------------------------------
 
-"""
-R = r(cosφ sinθ, sinφ sinθ, cosθ)
-x = sinφ
-z = cosθ
-s picks the correct inverse of sinφ -> φ
-"""
-function compute_rxz(R::SVec3{T}) where {T}
-   r = norm(R)
-   z = R[3] / r
-   x = R[2] / sqrt(1 - z^2) / r
-   s = sign(R[1])
-   return r, x, z, s
-end
 
-function cYlm_from_cart!(Y, L, r, x, z, s, P)
+# OLD VERSION: somewhat faster -> return to this if it is a bottleneck
+# """
+# R = r(cosφ sinθ, sinφ sinθ, cosθ)
+# x = sinφ
+# z = cosθ
+# s picks the correct inverse of sinφ -> φ
+# """
+# function compute_rxz(R::SVec3{T}) where {T}
+#    r = norm(R)
+#    z = R[3] / r
+#    x = R[2] / sqrt(1 - z^2) / r
+#    s = sign(R[1])
+#    return r, x, z, s
+# end
+
+function cYlm!(Y, L, S::PseudoSpherical, P)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
-   @assert abs(z) <= 1.0
+   @assert abs(S.cosθ) <= 1.0
 
 	INVSQRT2 = 1 / sqrt(2)
 
@@ -240,7 +262,7 @@ function cYlm_from_cart!(Y, L, r, x, z, s, P)
 
    sig = 1
    ep = INVSQRT2
-   ep_fact = s * sqrt(1-x^2) + im * x
+   ep_fact = S.cosφ + im * S.sinφ
 	for m in 1:L
 		sig *= -1
 		ep *= ep_fact            # ep =   exp(i *   m  * φ)
@@ -257,31 +279,28 @@ end
 
 """
 convert a gradient with respect to spherical coordinates to a gradient
-with respect to cartesian coordinates  
+with respect to cartesian coordinates
 """
-function dspher_to_dcart(r, sinφ, cosθ, s, f_φ, f_θ)
+dspher_to_dcart(S, f_φ, f_θ) =
+	SVector( S.sinφ * S.sinθ * f_φ + S.cosθ * f_θ,
+	         (S.cosφ * f_φ / r) / S.sinθ,
+				(S.cosθ * S.sinφ / r) * f_φ - (S.sinθ / r) * f_θ )
 
-end
-
-# x = sinφ, z = cosθ, s = a sign
-function cYlm_from_cart_d!(Y, dY, L, r, x, z, s, P, dP)
+function cYlm_from_cart_d!(Y, dY, L, S::PseudoSpherical, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
-   @assert abs(z) <= 1.0
+   @assert abs(S.cosθ) <= 1.0
 
 	INVSQRT2 = 1 / sqrt(2)
 
 	for l = 0:L
 		Y[index_y(l, 0)] = P[index_p(l, 0)] * INVSQRT2
-		dY[index_y(l, 0)] = dspher_to_dcart(r, x, z, s,
-														0, dP[index_p(l, 0)] * INVSQRT2)
+		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * INVSQRT2)
 	end
 
    sig = 1
    ep = INVSQRT2
-	cosφ = sqrt(1-x^2)
-
-   ep_fact = s * cosφ + im * x
+   ep_fact = S.cosφ + im * S.sinφ
 
 	for m in 1:L
 		sig *= -1
@@ -296,10 +315,8 @@ function cYlm_from_cart_d!(Y, dY, L, r, x, z, s, P, dP)
 			Y[index_y(l,  m)] = ep * p   #          p * exp( im*m*phi) / sqrt(2)
 
 			p_dθ = dP[index_p(l,m)]
-			dY[index_y(l, -m)] = dspher_to_dcart(r, x, z, s,
-														    em_dφ * p, em * dp)
-			dY[index_y(l,  m)] = dspher_to_dcart(r, x, z, s,
-															 ep_dφ * p, ep * dp)
+			dY[index_y(l, -m)] = dspher_to_dcart(S, em_dφ * p, em * dp)
+			dY[index_y(l,  m)] = dspher_to_dcart(S, ep_dφ * p, ep * dp)
 		end
 	end
 
@@ -307,21 +324,22 @@ function cYlm_from_cart_d!(Y, dY, L, r, x, z, s, P, dP)
 end
 
 
-"""
-	cYlm_from_xz(L, x, z)
-
-Compute an entire set of real spherical harmonics ``Y_{l,m}(θ, φ)`` for
-``x = cos θ, z = sin φ`` where ``0 ≤ l ≤ L`` and ``-l ≤ m ≤ l``.
-"""
-function cYlm_from_cart(L::Integer, R::SVec3{T}) where {T}
-   r, x, z, s = compute_rxz(R)
-	P = Vector{T}(undef, sizeP(L))
-	coeff = compute_coefficients(L)
-	compute_p!(L, z, coeff, P)
-	Y = Vector{ComplexF64}(undef, sizeY(L))
-	cYlm_from_cart!(Y, L, r, x, z, s, P)
-	return Y
-end
+# revive if needed 
+# """
+# 	cYlm_from_xz(L, x, z)
+#
+# Compute an entire set of real spherical harmonics ``Y_{l,m}(θ, φ)`` for
+# ``x = cos θ, z = sin φ`` where ``0 ≤ l ≤ L`` and ``-l ≤ m ≤ l``.
+# """
+# function cYlm_from_cart(L::Integer, R::SVec3{T}) where {T}
+# 	S = cart2spher(R)
+# 	P = Vector{T}(undef, sizeP(L))
+# 	coeff = compute_coefficients(L)
+# 	compute_p!(L, S, coeff, P)
+# 	Y = Vector{ComplexF64}(undef, sizeY(L))
+# 	cYlm!(Y, L, S, P)
+# 	return Y
+# end
 
 # ---------------------------------------------
 #      Nicer interface
@@ -343,21 +361,22 @@ SHIPs.alloc_B( S::SHBasis{T}) where {T} =
 SHIPs.alloc_dB(S::SHBasis{T}) where {T} =
 		Vector{SVec3{Complex{T}}}(undef, length(S))
 
-function SHIPs.eval_basis!(Y, S::SHBasis, R::SVec3, L=S.maxL)
-	@assert 0 <= L <= S.maxL
+function SHIPs.eval_basis!(Y, SH::SHBasis, R::SVec3, L=SH.maxL)
+	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
-	r, x, z, s = compute_rxz(R)
-	compute_p!(L, z, S.coeff, S.P)
-	cYlm_from_cart!(Y, L, r, x, z, s, S.P)
+	S = cart2spher(R)
+	compute_p!(L, S, SH.coeff, SH.P)
+	cYlm!(Y, L, S, SH.P)
 	return Y
 end
 
 
-function SHIPs.eval_basis_d!(Y, dY, S::SHBasis, R::SVec3, L=S.maxL)
-	@assert 0 <= L <= S.maxL
+function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, L=SH.maxL)
+	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
-	r, x, z, s = compute_rxz(R)
-	cYlm_from_cart_d!(Y, L, r, x, z, s, P)
+	S = cart2spher(R)
+	compute_p!(L, S, SH.coeff, SH.P)
+	cYlm_from_cart_d!(Y, L, S, SH.P)
 	return Y
 end
 

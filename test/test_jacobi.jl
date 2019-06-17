@@ -10,7 +10,8 @@
 
 using SHIPs, Test
 
-using SHIPs.JacobiPolys: Jacobi, eval_basis, eval_grad
+using SHIPs.JacobiPolys: Jacobi
+using SHIPs: eval_basis, eval_basis_d
 
 # copy-pasted from
 # https://github.com/pjabardo/Jacobi.jl/blob/master/src/jac_poly.jl
@@ -50,7 +51,7 @@ for ntest = 1:30
    α, β = rand(), rand()
    N = 30
    P = eval_basis(Jacobi(α, β, N), x)
-   P1, dP = eval_grad(Jacobi(α, β, N), x)
+   P1, dP = eval_basis_d(Jacobi(α, β, N), x)
    Ptest = [ jacobi(x, n, α, β) for n = 0:N ]
    dPtest = [ djacobi(x, n, α, β) for n = 0:N ]
    print((@test P ≈ P1 ≈ Ptest), " ")
