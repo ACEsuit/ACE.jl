@@ -267,7 +267,7 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
          end
          # compute the symmetry prefactor from the CG-coefficients
          mm = SVector(Tuple(m1)..., mN)
-         C = _Bcoeff(ll, mm, ship.cg)::Float64
+         C = _Bcoeff(ll, mm, ship.cg)
          bm = one(ComplexF64) * C
          for (i, (k, l, m)) in enumerate(zip(kk, ll, mm))
             # this is the indexing convention used to construct A
