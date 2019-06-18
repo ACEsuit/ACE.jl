@@ -29,6 +29,11 @@ However, the `Jn(x)` only form the starting point. To construct the `r`-basis, w
 - This C(x) also acts as a cut-off! That, Pn(x) = C(x) Jn(x) are orthogonal w.r.t. the L2-inner product and for a, b > 0 are zero at the end-points. (Ack: this is an idea due to Markus Bachmayr.)
 - Finally, these transformed and cut-off-multiplied polynomials Pn(x) form our basis functions in the `r` variable.
 
+### Spherical Harmonics
+
+We implement standard complex spherical harmonics; our code is a straightforward modification of [SphericalHarmonics.jl](https://github.com/milthorpe/SphericalHarmonics.jl), including fixing some type instabilities for speed. This package follows the same design principle as most of the `SHIPs.jl` code of using buffer arrays for various precomputations and fast computation of multiple basis functions at the same time.
+
+There is another spherical harmonics package which we did not know about when starting to write `SHIPs.jl` but which we should look at to see whether it contains useful ideas [SphericalHarmonics.jl](https://github.com/hofmannmartin/SphericalHarmonics.jl).
 
 ### `SHIPBasis`
 
@@ -41,6 +46,9 @@ B_kl = ∑_m C_lm ∏_a A_kₐlₐmₐ   # k, l, m :: Tuple{Int} or Vector{Int}
 The klm values are restriced as follows:
 * For every k,l, the m values range through -l:l.
 * k + wY l <= D  where D is a prescribe total degree.
+
+For more information  on how a `SHIPBasis` is constructed and stored, see
+`?SHIPBasis`.
 
 ---------------------------------------------------------------------------
  ACE.jl and SHIPs.jl: Julia implementation of the Atomic Cluster Expansion

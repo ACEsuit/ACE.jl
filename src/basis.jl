@@ -20,8 +20,7 @@ export SHIPBasis
 #       construct l,k tuples that specify basis functions
 # -------------------------------------------------------------
 
-function generate_LK_tuples(deg, wY::Real, bo)
-   # all possible (k, l) pairs
+function generate_LK(deg, wY::Real)
    allKL = NamedTuple{(:k, :l, :deg),Tuple{Int,Int,Float64}}[]
    degs = Float64[]
    # k + wY * l <= deg
@@ -31,8 +30,35 @@ function generate_LK_tuples(deg, wY::Real, bo)
    end
    # sort allKL according to total degree
    I = sortperm(degs)
-   allKL = allKL[I]
-   degs = degs[I]
+   return allKL[I], degs[I]
+end
+
+function filter_tuples(KL, Nu, ::Val{2})  # 3B version
+   keep = fill(true, length(Nu))
+   for (i, ν) in enumerate(Nu)
+      kl1, kl2 = KL[ν[1]], KL[ν[2]]
+      if kl1.l != kl2.l
+         keep[i] = false
+      end
+   end
+   return Nu[keep]
+end
+
+function filter_tuples(KL, Nu, ::Val{3})  # 4B version
+   keep = fill(true, length(Nu))
+   for (i, ν) in enumerate(Nu)
+      l1, l2, l3 = KL[ν[1]].l, KL[ν[2]].l, KL[ν[3]].l
+      if !( (abs(l1-l2) <= l3 <= l1+l2) && iseven(l1+l2+l3) )
+         keep[i] = false
+      end
+   end
+   return Nu[keep]
+end
+
+
+function generate_LK_tuples(deg, wY::Real, bo; filter=true)
+   # all possible (k, l) pairs
+   allKL, degs = generate_LK(deg, wY)
 
    # the first iterm is just (0, ..., 0)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
@@ -42,7 +68,6 @@ function generate_LK_tuples(deg, wY::Real, bo)
    # while retaining the ordering ν₁ ≤ ν₂ ≤ …
    lastidx = 0
    ν = MVector(ones(Int, bo)...)
-   ctr = 1000
    while true
       # we want to increment `curindex`, but if we've reach the maximum degree
       # then we need to move to the next index down
@@ -64,6 +89,7 @@ function generate_LK_tuples(deg, wY::Real, bo)
          lastidx -= 1
       end
    end
+   if filter; Nu = filter_tuples(allKL, Nu, Val(bo)); end
    return allKL, [ν for ν in Nu]
 end
 
@@ -123,7 +149,7 @@ function _firstA(KL)
    return firstA
 end
 
-function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru)
+function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru; filter=true)
    # r - basis
    maxP = deg
    J = rbasis(maxP, trans, p, rl, ru)
@@ -131,7 +157,7 @@ function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru)
    maxL = floor(Int, deg / wY)
    SH = SHBasis(maxL)
    # get the basis specification
-   allKL, Nu = generate_LK_tuples(deg, wY, bo)
+   allKL, Nu = generate_LK_tuples(deg, wY, bo; filter=filter)
    # allocate space for the A array
    A = alloc_A(deg, wY)
    dA = alloc_dA(deg, wY)
@@ -157,18 +183,17 @@ alloc_dB(ship::SHIPBasis) = zeros(SVec3{Float64}, length_B(ship))
 
 
 # -------------------------------------------------------------
-#       precompute the J, SH and A arrays
+#       precompute the A arrays
 # -------------------------------------------------------------
 
 function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
    for (iR, R) in enumerate(Rs)
-      # evaluate the r-basis and the R̂-basis
+      # evaluate the r-basis and the R̂-basis for the current neighbour at R
       eval_basis!(ship.BJ, ship.J, norm(R))
       eval_basis!(ship.BSH, ship.SH, R)
       # add the contributions to the A_klm; the indexing into the
       # A array is determined by `ship.firstA` which was precomputed
-      for (kl, iA) in zip(ship.KL, ship.firstA)
-         k, l = kl.k, kl.l
+      for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
             @inbounds ship.A[iA+l+m] += ship.BJ[k+1] * ship.BSH[index_y(l, m)]
          end
@@ -200,6 +225,7 @@ function _klm(ν::SVector{BO, T}, KL) where {BO, T}
    return kk, ll, mrange
 end
 
+
 """
 return the coefficients derived from the Clebsch-Gordan coefficients
 that guarantee rotational invariance of the B functions
@@ -207,6 +233,16 @@ that guarantee rotational invariance of the B functions
 function _Bcoeff(ll::SVector{Int, BO}, mm::SVector{Int, BO}) where {BO}
 
 end
+
+"""
+return the coefficients derived from the Clebsch-Gordan coefficients
+that guarantee rotational invariance of the B functions
+"""
+function _Bcoeff(ll::SVector{Int, 2}, mm::SVector{Int, 2})
+   @assert(mm[1] + mm[2] == 0)
+   return (-1)^(mm[1])
+end
+
 
 function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    precompute_A!(ship, Rs)
@@ -224,7 +260,7 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
          b = C
          for (k, l, m) in zip(kk, ll, mm)
             # this is the indexing convention used to construct A
-            # (feels a bit brittle - maybe rethink it!)
+            #    (feels brittle - maybe rethink it and write a function for it)
             i0 = ship.firstA[k, l]
             b *= ship.A[i0 + l + m]
          end
@@ -234,5 +270,5 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    return B
 end
 
-# TODO 
+# TODO
 # function eval_basis_d!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})

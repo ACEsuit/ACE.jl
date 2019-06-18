@@ -9,8 +9,9 @@
 using SHIPs, JuLIP, BenchmarkTools
 
 trans = PolyTransform(2, 1.0)
-ship = SHIPBasis(3, 15, 2.0, trans, 2, 0.5, 3.0
-   )
+ship = SHIPBasis(3, 15, 2.0, trans, 2, 0.5, 3.0)
+
+length(ship.Nu)
 
 Rs = 1.0 .+ rand(JVecF, 100)
 @btime SHIPs.precompute_A!($ship, $Rs)
