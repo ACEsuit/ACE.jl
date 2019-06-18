@@ -5,12 +5,16 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using JuLIP
+using JuLIP, StaticArrays, LinearAlgebra
+
 
 # TODO: Idea => replace (deg, wY) by a "Degree" type and dispatch a lot of
 #       functionality on that => e.g. we can then try hyperbolic cross, etc.
 
-using SHIPs.SphericalHarmonics: SHBasis, sizeY, SVec3
+using SHIPs.SphericalHarmonics: SHBasis, sizeY, SVec3, cart2spher, index_y
+
+export SHIPBasis
+
 
 # -------------------------------------------------------------
 #       construct l,k tuples that specify basis functions
@@ -19,7 +23,7 @@ using SHIPs.SphericalHarmonics: SHBasis, sizeY, SVec3
 function generate_LK_tuples(deg, wY::Real, bo)
    # all possible (k, l) pairs
    allKL = NamedTuple{(:k, :l, :deg),Tuple{Int,Int,Float64}}[]
-   degs = Int[]
+   degs = Float64[]
    # k + wY * l <= deg
    for k = 0:deg, l = 0:floor(Int, (deg-k)/wY)
       push!(allKL, (k=k, l=l, deg=(k+wY*l)))
@@ -60,7 +64,7 @@ function generate_LK_tuples(deg, wY::Real, bo)
          lastidx -= 1
       end
    end
-   return allKL, Nu
+   return allKL, [ν for ν in Nu]
 end
 
 
@@ -68,16 +72,31 @@ end
 #       define the basis itself
 # -------------------------------------------------------------
 
+"""
+`struct SHIPBasis` : the main type around eveything in `SHIPs.jl` revolves;
+it implements a permutation and rotation invariant basis.
 
+### Developer Docs
+
+* `deg` : total degree (to be generalised)
+* `wY` : relative weighting of total degree definition; a (k,l) pair has total degree `deg(k,l) = k + wY * l`
+* `J` : `TransformedJacobi` basis set for the `r`-component
+* `SH` : spherical harmonics basis set for the `R̂`-component
+* `KL` : list of all admissible `(k,l)` tuples
+* `Nu` : a ν ∈ `Nu` specifies a basis function B_ν = ∑_m ∏_i A_νᵢm (details see `README.md`)
+* `A, dA` : buffers for precomputing the `A_klm` functions
+* `firstA` : same length as `KL`; each `(k,l) = KL[i]` has `2l+1` A_klm-functions associated which will be stored in the `A` buffer, the first of these is stored as `A[firstA[i]]`.
+"""
 struct SHIPBasis{BO, T, TJ, TSH}
    deg::Int
    wY::T
    J::TJ
    SH::TSH
-   A::Vector{Complex{T}}
-   dA::Vector{SVec3{Complex{T}}}
-   allKL::NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}
+   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}}
    Nu::Vector{SVector{BO, Int}}
+   A::Vector{Complex{T}}
+   dA::Vector{JVec{Complex{T}}}
+   firstA::Vector{Int}
    valBO::Val{BO}
 end
 
@@ -98,7 +117,7 @@ function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru)
    SH = SHBasis(maxL)
    # allocate space for the A array
    A = alloc_A(deg, wY)
-   dA = alloc_B(deg, wY)
+   dA = alloc_dA(deg, wY)
    # get the basis specification
    allKL, Nu = generate_LK_tuples(deg, wY, bo)
    # precompute the Clebsch-Gordan coefficients
@@ -114,6 +133,37 @@ length_B(ship::SHIPBasis{BO}) where {BO} = length(ship.Nu)
 
 alloc_B(ship::SHIPBasis) = zeros(Float64, length_B(ship))
 alloc_dB(ship::SHIPBasis) = zeros(SVec3{Float64}, length_B(ship))
+
+
+
+# -------------------------------------------------------------
+#       precompute the J, SH and A arrays
+# -------------------------------------------------------------
+
+function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
+   PB = alloc_B(ship.J)
+   SHB = alloc_B(ship.SH)
+   for (iR, R) in enumerate(Rs)
+      # evaluate the r-basis and the R̂-basis
+      eval_basis!(PB, ship.J, norm(R))
+      eval_basis!(SHB, ship.SH, R)
+      # add the contributions to the A_klm
+      #   >>>>>>> CANONICAL ORDERING <<<<<<<
+      #   TODO: fix this somehow in a more transparent way?
+      #         e.g. and index_A function based on index_Y
+      #         but this will be non-trivial since we don't compute
+      #         a tensor basis here!
+      #  we may need to use the ordering determined by allLK here, but
+      #  where do the m-indices go?
+      iA = 0
+      for k = 0:ship.deg, l = 0:floor(Int, (ship.deg - k)/ship.wY)
+         for m = -l:l
+            iA += 1
+            ship.A[iA] += PB[k+1] * SHB[index_y(l, m)]
+         end
+      end
+   end
+end
 
 
 
