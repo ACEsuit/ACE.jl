@@ -14,7 +14,7 @@ using StaticArrays, LinearAlgebra
 
 const SVec3 = SVector{3}
 
-export SHBasis
+export SHBasis, ClebschGordan
 
 
 struct PseudoSpherical{T}
@@ -385,7 +385,8 @@ end
 
 export clebschgordan, cg1
 
-
+cg_l_condition(j1, j2, j3) = (abs(j1-j2) <= j3 <= j1 + j2)
+cg_m_condition(m1, m2, m3) = (m3 == m1 + m2)
 
 """
 `cg1(j1, m1, j2, m2, j3, m3, T=Float64)` : A reference implementation of
@@ -398,7 +399,7 @@ This heavily uses BigInt and BigFloat and should therefore not be employed
 for performance critical tasks.
 """
 function cg1(j1, m1, j2, m2, j3, m3, T=Float64)
-   if (m3 != m1 + m2) || !(abs(j1-j2) <= j3 <= j1 + j2)
+   if !cg_m_condition(m1, m2, m3) || !cg_l_condition(j1, j2, j3)
       return zero(T)
    end
 
@@ -429,5 +430,34 @@ function cg1(j1, m1, j2, m2, j3, m3, T=Float64)
 end
 
 clebschgordan = cg1
+
+
+struct ClebschGordan{T}
+	maxL::Int
+	cg::Array{T, 3}
+end
+
+function ClebschGordan(maxL, T=Float64)
+	n = sizeY(maxL)
+	cg = zeros(T, n, n, n)
+	# TODO: insert restrictions on (j1,j2,j3)-values!
+	for j1 = 0:maxL, j2 = 0:maxL, j3 = 0:maxL
+		if !cg_l_condition(j1, j2, j3)
+			continue
+		end
+		for m1 = -j1:j1, m2 = -j2:j2
+			m3 = m1 + m2  # cf. cg_m_condition
+			if abs(m3) > j3
+				continue
+			end
+			cg[index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)] =
+					clebschgordan(j1,m1,j2,m2,j3,m3)
+		end
+	end
+	return ClebschGordan(maxL, cg)
+end
+
+(cg::ClebschGordan)(j1,m1,j2,m2,j3,m3) =
+	cg.cg[index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)]
 
 end

@@ -11,7 +11,8 @@ using JuLIP, StaticArrays, LinearAlgebra
 # TODO: Idea => replace (deg, wY) by a "Degree" type and dispatch a lot of
 #       functionality on that => e.g. we can then try hyperbolic cross, etc.
 
-using SHIPs.SphericalHarmonics: SHBasis, sizeY, SVec3, cart2spher, index_y
+using SHIPs.SphericalHarmonics: SHBasis, sizeY, SVec3, cart2spher, index_y,
+         ClebschGordan
 
 export SHIPBasis
 
@@ -55,6 +56,8 @@ function filter_tuples(KL, Nu, ::Val{3})  # 4B version
    return Nu[keep]
 end
 
+# general tuple filter: !(abs(j1-j2) <= j3 <= j1 + j2)
+#   for all (j1, j2, j3) ⊂ (l1, ..., ln)
 
 function generate_LK_tuples(deg, wY::Real, bo; filter=true)
    # all possible (k, l) pairs
@@ -127,6 +130,7 @@ struct SHIPBasis{BO, T, TJ}
    dBJ::Vector{T}
    BSH::Vector{Complex{T}}
    dBSH::Vector{JVec{Complex{T}}}
+   cg::ClebschGordan{T}
    # --------
    firstA::Vector{Int}   # indexing into A
    valBO::Val{BO}
@@ -165,11 +169,11 @@ function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru; filter
    firstA = _firstA(allKL)
    @assert firstA[end] == length(A)+1
    # precompute the Clebsch-Gordan coefficients
-   #    TODO: maybe later ...
+   cg = ClebschGordan(maxL)
    # putting it all together ...
    return SHIPBasis(deg, wY, J, SH, allKL, Nu, A, dA,
                     alloc_B(J), alloc_dB(J), alloc_B(SH), alloc_dB(SH),
-                    firstA, Val(bo))
+                    cg,  firstA, Val(bo))
 end
 
 
@@ -187,6 +191,7 @@ alloc_dB(ship::SHIPBasis) = zeros(SVec3{Float64}, length_B(ship))
 # -------------------------------------------------------------
 
 function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
+   fill!(ship.A, 0.0)
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
       eval_basis!(ship.BJ, ship.J, norm(R))
@@ -230,17 +235,20 @@ end
 return the coefficients derived from the Clebsch-Gordan coefficients
 that guarantee rotational invariance of the B functions
 """
-function _Bcoeff(ll::SVector{Int, BO}, mm::SVector{Int, BO}) where {BO}
-
+function _Bcoeff(ll::SVector{BO, Int}, mm::SVector{BO, Int}) where {BO}
+   @error("general case of B-coefficients has not yet been implemented")
 end
 
-"""
-return the coefficients derived from the Clebsch-Gordan coefficients
-that guarantee rotational invariance of the B functions
-"""
-function _Bcoeff(ll::SVector{Int, 2}, mm::SVector{Int, 2})
+function _Bcoeff(ll::SVector{2, Int}, mm::SVector{2, Int}, cg)
    @assert(mm[1] + mm[2] == 0)
    return (-1)^(mm[1])
+end
+
+function _Bcoeff(ll::SVector{3, Int}, mm::SVector{3, Int}, cg)
+   @assert(mm[1] + mm[2] + mm[3] == 0)
+   c = (ll[1], mm[1], ll[2], mm[3], ll[3], mm[3])
+   w3j = (-1)^(ll[1]-ll[2]-mm[3]) / sqrt(2*ll[3]+1)
+   return w3j
 end
 
 
@@ -249,23 +257,34 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    KL = ship.KL
    for (idx, ν) in enumerate(ship.Nu)
       kk, ll, mrange = _klm(ν, KL)
+      # b will eventually become B[idx], but we keep it Complex for now
+      # so we can do a sanity check that it is in fact real.
+      b = zero(ComplexF64)
       for m1 in mrange    # this is a cartesian loop over BO-1 indices
-         mN = - sum(m1)   # the last m-index is such that \sum mm = 0 (see paper!)
+         mN = - sum(Tuple(m1))   # the last m-index is such that \sum mm = 0 (see paper!)
          if abs(mN) > ll[end]    # skip any m-tuples that aren't admissible
             continue
          end
          # compute the symmetry prefactor from the CG-coefficients
-         mm = SVector(m1..., mN)
-         C =  _Bcoeff(ll, mm)
-         b = C
-         for (k, l, m) in zip(kk, ll, mm)
+         mm = SVector(Tuple(m1)..., mN)
+         C = _Bcoeff(ll, mm, ship.cg)::Float64
+         bm = one(ComplexF64) * C
+         for (i, (k, l, m)) in enumerate(zip(kk, ll, mm))
             # this is the indexing convention used to construct A
             #    (feels brittle - maybe rethink it and write a function for it)
-            i0 = ship.firstA[k, l]
-            b *= ship.A[i0 + l + m]
+            i0 = ship.firstA[ν[i]]
+            bm *= ship.A[i0 + l + m]
          end
-         B[idx] += b
+         b += bm
       end
+      # two little sanity checks
+      if b == 0.0
+         @warn("B[idx] == 0!")
+      end
+      if abs(imag(b) / abs(b)) > 1e-10
+         @warn("b/|b| == $(b/abs(b))")
+      end
+      B[idx] = real(b)
    end
    return B
 end
