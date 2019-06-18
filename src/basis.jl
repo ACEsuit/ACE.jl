@@ -177,28 +177,62 @@ function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
    return nothing
 end
 
+
 # TODO
 # function precompute_dA!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
-#    PB = alloc_B(ship.J)
-#    SHB = alloc_B(ship.SH)
-#    for (iR, R) in enumerate(Rs)
-#       # evaluate the r-basis and the R̂-basis
-#       eval_basis!(PB, ship.J, norm(R))
-#       eval_basis!(SHB, ship.SH, R)
-#       # add the contributions to the A_klm; the indexing into the
-#       # A array is determined by `ship.firstA` which was precomputed
-#       for (kl, iA) in zip(ship.KL, ship.firstA)
-#          k, l = kl.k, kl.l
-#          for m = -l:l
-#             ship.A[iA+l+m] += PB[k+1] * SHB[index_y(l, m)]
-#          end
-#       end
-#    end
-#    return nothing
-# end
-
 
 
 # -------------------------------------------------------------
-#       precompute the J, SH and A arrays
+#       Evaluate the actual basis functions
 # -------------------------------------------------------------
+
+"""
+return kk, ll, mrange
+where kk, ll is BO-tuples of k and l indices, while mrange is a
+cartesian range over which to iterate to construct the basis functions
+
+(note: this is tested for correcteness and speed)
+"""
+function _klm(ν::SVector{BO, T}, KL) where {BO, T}
+   kk = SVector( ntuple(i -> KL[ν[i]].k, BO) )
+   ll = SVector( ntuple(i -> KL[ν[i]].l, BO) )
+   mrange = CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
+   return kk, ll, mrange
+end
+
+"""
+return the coefficients derived from the Clebsch-Gordan coefficients
+that guarantee rotational invariance of the B functions
+"""
+function _Bcoeff(ll::SVector{Int, BO}, mm::SVector{Int, BO}) where {BO}
+
+end
+
+function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
+   precompute_A!(ship, Rs)
+   KL = ship.KL
+   for (idx, ν) in enumerate(ship.Nu)
+      kk, ll, mrange = _klm(ν, KL)
+      for m1 in mrange    # this is a cartesian loop over BO-1 indices
+         mN = - sum(m1)   # the last m-index is such that \sum mm = 0 (see paper!)
+         if abs(mN) > ll[end]    # skip any m-tuples that aren't admissible
+            continue
+         end
+         # compute the symmetry prefactor from the CG-coefficients
+         mm = SVector(m1..., mN)
+         C =  _Bcoeff(ll, mm)
+         b = C
+         for (k, l, m) in zip(kk, ll, mm)
+            # this is the indexing convention used to construct A
+            # (feels a bit brittle - maybe rethink it!)
+            i0 = ship.firstA[k, l]
+            b *= ship.A[i0 + l + m]
+         end
+         B[idx] += b
+      end
+   end
+   return B
+end
+
+# TODO 
+# function eval_basis_d!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})

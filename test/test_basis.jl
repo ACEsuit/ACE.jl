@@ -17,17 +17,17 @@ Rs = 1.0 .+ rand(JVecF, 100)
 SHIPs.length_B(ship)
 length(ship.A)
 
-@code_warntype SHIPs.precompute_A!(ship, Rs)
+ν = ship.Nu[456]
+ship.KL[ν]
+kk, ll, mrange =  SHIPs._klm(ν, ship.KL)
+kk
+ll
 
-using Profile
-##
-function runn(ship, Rs, N)
+function runn(Nu, KL, N)
    for n = 1:N
-      SHIPs.precompute_A!(ship, Rs)
+      ν = Nu[n]
+      kk, ll, mrange = SHIPs._klm(ν, KL)
    end
-   return ship
 end
-Profile.clear()
-runn(ship, Rs, 10)
-@profile runn(ship, Rs, 10_000)
-Profile.print()
+
+@btime runn($(ship.Nu), $(ship.KL), 1000)
