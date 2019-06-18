@@ -3,6 +3,7 @@
 import JuLIP: cutoff
 using SHIPs.JacobiPolys: Jacobi
 
+export PolyTransform
 
 abstract type DistanceTransform end
 
