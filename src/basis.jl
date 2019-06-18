@@ -87,16 +87,22 @@ it implements a permutation and rotation invariant basis.
 * `A, dA` : buffers for precomputing the `A_klm` functions
 * `firstA` : same length as `KL`; each `(k,l) = KL[i]` has `2l+1` A_klm-functions associated which will be stored in the `A` buffer, the first of these is stored as `A[firstA[i]]`.
 """
-struct SHIPBasis{BO, T, TJ, TSH}
+struct SHIPBasis{BO, T, TJ}
    deg::Int
    wY::T
    J::TJ
-   SH::TSH
+   SH::SHBasis{T}
    KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}}
    Nu::Vector{SVector{BO, Int}}
+   # ------ temporary storage arrays | TODO: create a `temp` function?
    A::Vector{Complex{T}}
    dA::Vector{JVec{Complex{T}}}
-   firstA::Vector{Int}
+   BJ::Vector{T}
+   dBJ::Vector{T}
+   BSH::Vector{Complex{T}}
+   dBSH::Vector{JVec{Complex{T}}}
+   # --------
+   firstA::Vector{Int}   # indexing into A
    valBO::Val{BO}
 end
 
@@ -106,7 +112,16 @@ length_A(deg, wY) = sum( sizeY( floor(Int, (deg - k)/wY) ) for k = 0:deg )
 alloc_A(deg, wY) = zeros(ComplexF64, length_A(deg, wY))
 alloc_dA(deg, wY) = zeros(SVec3{ComplexF64}, length_A(deg, wY))
 
-
+function _firstA(KL)
+   idx = 1
+   firstA = zeros(Int, length(KL) + 1)
+   for i = 1:length(KL)
+      firstA[i] = idx
+      idx += 2 * KL[i].l + 1
+   end
+   firstA[end] = idx
+   return firstA
+end
 
 function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru)
    # r - basis
@@ -115,15 +130,20 @@ function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru)
    # R̂ - basis
    maxL = floor(Int, deg / wY)
    SH = SHBasis(maxL)
+   # get the basis specification
+   allKL, Nu = generate_LK_tuples(deg, wY, bo)
    # allocate space for the A array
    A = alloc_A(deg, wY)
    dA = alloc_dA(deg, wY)
-   # get the basis specification
-   allKL, Nu = generate_LK_tuples(deg, wY, bo)
+   # compute the (l,k) -> indexing into A information
+   firstA = _firstA(allKL)
+   @assert firstA[end] == length(A)+1
    # precompute the Clebsch-Gordan coefficients
-   # TODO: maybe later ...
+   #    TODO: maybe later ...
    # putting it all together ...
-   return SHIPBasis(deg, wY, J, SH, A, dA, allKL, Nu, Val(bo))
+   return SHIPBasis(deg, wY, J, SH, allKL, Nu, A, dA,
+                    alloc_B(J), alloc_dB(J), alloc_B(SH), alloc_dB(SH),
+                    firstA, Val(bo))
 end
 
 
@@ -141,29 +161,41 @@ alloc_dB(ship::SHIPBasis) = zeros(SVec3{Float64}, length_B(ship))
 # -------------------------------------------------------------
 
 function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
-   PB = alloc_B(ship.J)
-   SHB = alloc_B(ship.SH)
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis
-      eval_basis!(PB, ship.J, norm(R))
-      eval_basis!(SHB, ship.SH, R)
-      # add the contributions to the A_klm
-      #   >>>>>>> CANONICAL ORDERING <<<<<<<
-      #   TODO: fix this somehow in a more transparent way?
-      #         e.g. and index_A function based on index_Y
-      #         but this will be non-trivial since we don't compute
-      #         a tensor basis here!
-      #  we may need to use the ordering determined by allLK here, but
-      #  where do the m-indices go?
-      iA = 0
-      for k = 0:ship.deg, l = 0:floor(Int, (ship.deg - k)/ship.wY)
+      eval_basis!(ship.BJ, ship.J, norm(R))
+      eval_basis!(ship.BSH, ship.SH, R)
+      # add the contributions to the A_klm; the indexing into the
+      # A array is determined by `ship.firstA` which was precomputed
+      for (kl, iA) in zip(ship.KL, ship.firstA)
+         k, l = kl.k, kl.l
          for m = -l:l
-            iA += 1
-            ship.A[iA] += PB[k+1] * SHB[index_y(l, m)]
+            @inbounds ship.A[iA+l+m] += ship.BJ[k+1] * ship.BSH[index_y(l, m)]
          end
       end
    end
+   return nothing
 end
+
+# TODO
+# function precompute_dA!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
+#    PB = alloc_B(ship.J)
+#    SHB = alloc_B(ship.SH)
+#    for (iR, R) in enumerate(Rs)
+#       # evaluate the r-basis and the R̂-basis
+#       eval_basis!(PB, ship.J, norm(R))
+#       eval_basis!(SHB, ship.SH, R)
+#       # add the contributions to the A_klm; the indexing into the
+#       # A array is determined by `ship.firstA` which was precomputed
+#       for (kl, iA) in zip(ship.KL, ship.firstA)
+#          k, l = kl.k, kl.l
+#          for m = -l:l
+#             ship.A[iA+l+m] += PB[k+1] * SHB[index_y(l, m)]
+#          end
+#       end
+#    end
+#    return nothing
+# end
 
 
 

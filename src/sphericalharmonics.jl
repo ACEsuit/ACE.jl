@@ -75,7 +75,8 @@ Return the index into a flat array of Associated Legendre Polynomials ``P_l^m``
 for the given indices ``(l,m)``.
 ``P_l^m`` are stored in l-major order i.e. [P(0,0), [P(1,0), P(1,1), P(2,0), ...]
 """
-index_p(l,m) = m + div(l*(l+1), 2) + 1
+# Base.@pure index_p(l,m) = m + div(l*(l+1), 2) + 1
+@inline index_p(l,m) = m + div(l*(l+1), 2) + 1
 
 """
 	index_y(l,m)
@@ -85,7 +86,7 @@ for the given indices ``(l,m)``.
 ``Y_{l,m}`` are stored in l-major order i.e.
 [Y(0,0), [Y(1,-1), Y(1,0), Y(1,1), Y(2,-2), ...]
 """
-index_y(l,m) = m + l + (l*l) + 1
+Base.@pure index_y(l,m) = m + l + (l*l) + 1
 
 
 # --------------------------------------------------------
@@ -97,21 +98,21 @@ index_y(l,m) = m + l + (l*l) + 1
 """
 TODO: documentation
 """
-struct ALPCoefficients
-	A::Array{Float64}
-	B::Array{Float64}
+struct ALPCoefficients{T}
+	A::Vector{T}
+	B::Vector{T}
 end
 
-ALPCoefficients(maxDegree::Int) =
-	ALPCoefficients( Array{Float64}(undef, sizeP(maxDegree)),
-						  Array{Float64}(undef, sizeP(maxDegree)) )
+ALPCoefficients(maxDegree::Integer, T=Float64) =
+	ALPCoefficients( Vector{T}(undef, sizeP(maxDegree)),
+						  Vector{T}(undef, sizeP(maxDegree)) )
 
 """
 	compute_coefficients(L)
 
 Precompute coefficients ``a_l^m`` and ``b_l^m`` for all l <= L, m <= l
 """
-function compute_coefficients(L::Int)
+function compute_coefficients(L::Integer)
 	coeff = ALPCoefficients(L)
 	for l in 2:L
 		ls = l*l
@@ -139,8 +140,8 @@ allocate_p(L::Int) = Array{Float64}(undef, sizeP(L))
 Compute an entire set of Associated Legendre Polynomials ``P_l^m(x)``
 using the given coefficients, and store in the array P.
 """
-function compute_p!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
-					     P::Array{Float64,1})
+function compute_p!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
+					     P::Array{T,1}) where {T}
    @assert L > 0
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
@@ -155,14 +156,20 @@ function compute_p!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
 		P[index_p(1, 1)] = temp
 
 		for l in 2:L
+			il = ((l*(l+1)) ÷ 2) + 1
+			ilm1 = il - l
+			ilm2 = ilm1 - l + 1
 			for m in 0:(l-2)
-				P[index_p(l, m)] =
-						coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
-						             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
+				# FOR DEBUGGING TURN ON THESE ASSERTS!
+				# @assert il+m == index_p(l, m)
+				# @assert ilm1+m == index_p(l-1,m)
+				# @assert ilm2+m == index_p(l-2,m)
+				@inbounds P[il+m] = coeff.A[il+m] * (     S.cosθ * P[ilm1+m]
+						                           + coeff.B[il+m] * P[ilm2+m] )
 			end
-			P[index_p(l, l - 1)] = S.cosθ * sqrt(2 * (l - 1) + 3) * temp
+			@inbounds P[il+l-1] = S.cosθ * sqrt(2 * (l - 1) + 3) * temp
 			temp = -sqrt(1.0 + 0.5 / l) * S.sinθ * temp
-			P[index_p(l, l)] = temp
+			@inbounds P[il+l] = temp
 		end
 	end
 	return P
@@ -171,8 +178,8 @@ end
 """
 dP = dP / dθ (and not dP / dx!!!)
 """
-function compute_dp!(L::Int, S::PseudoSpherical, coeff::ALPCoefficients,
-					     P::Array{Float64,1}, dP::Array{Float64,1})
+function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
+					     P::Array{T,1}, dP::Array{T,1}) where T
    @assert L > 0
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
@@ -224,16 +231,16 @@ end
 Compute an entire set of Associated Legendre Polynomials ``P_l^m(x)`` where
 ``0 ≤ l ≤ L`` and ``0 ≤ m ≤ l``. Assumes ``|x| ≤ 1``.
 """
-function compute_p(L::Integer, S::PseudoSpherical)
-	P = Array{Float64}(undef, sizeP(L))
+function compute_p(L::Integer, S::PseudoSpherical{T}) where {T}
+	P = Array{T}(undef, sizeP(L))
 	coeff = compute_coefficients(L)
 	compute_p!(L, S, coeff, P)
 	return P
 end
 
-function compute_dp(L::Integer, S::PseudoSpherical)
-	P = Array{Float64}(undef, sizeP(L))
-	dP = Array{Float64}(undef, sizeP(L))
+function compute_dp(L::Integer, S::PseudoSpherical{T}) where {T}
+	P = Array{T}(undef, sizeP(L))
+	dP = Array{T}(undef, sizeP(L))
 	coeff = compute_coefficients(L)
 	compute_dp!(L, S, coeff, P, dP)
 	return P, dP
@@ -338,7 +345,7 @@ struct SHBasis{T}
 	maxL::Int
 	P::Vector{T}
 	dP::Vector{T}
-	coeff::ALPCoefficients
+	coeff::ALPCoefficients{T}
 end
 
 SHBasis(maxL::Integer, T=Float64) =
