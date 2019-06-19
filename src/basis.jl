@@ -34,6 +34,7 @@ function generate_LK(deg, wY::Real)
    return allKL[I], degs[I]
 end
 
+# keep this for the sake of a record and comparison with the general case
 function filter_tuples(KL, Nu, ::Val{2})  # 3B version
    keep = fill(true, length(Nu))
    for (i, ν) in enumerate(Nu)
@@ -45,6 +46,7 @@ function filter_tuples(KL, Nu, ::Val{2})  # 3B version
    return Nu[keep]
 end
 
+# keep this for the sake of a record and comparison with the general case
 function filter_tuples(KL, Nu, ::Val{3})  # 4B version
    keep = fill(true, length(Nu))
    for (i, ν) in enumerate(Nu)
@@ -55,6 +57,38 @@ function filter_tuples(KL, Nu, ::Val{3})  # 4B version
    end
    return Nu[keep]
 end
+
+function filter_tuples(KL, Nu, ::Val{4})
+   keep = fill(true, length(Nu))
+   for (i, ν) in enumerate(Nu)
+      ll = SVector(ntuple(i -> KL[ν[i]].l, 4))
+      if (  !iseven(sum(ll)) ||
+          ( max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])) <=
+               min(ll[1]+ll[2], ll[3]+ll[4]) ) )
+         keep[i] = false
+      end
+   end
+   return Nu[keep]
+end
+
+# function filter_tuples(KL, Nu, ::Val{BO}) where {BO}  # general version
+#    keep = fill(true, length(Nu))
+#    for (i, ν) in enumerate(Nu)
+#       ll = SVector(ntuple(i -> KL[ν[i]].l, BO))
+#       if !iseven(sum(ll))
+#          keep[i] = false
+#          continue
+#       end
+#
+#       l1, l2, l3 = KL[ν[1]].l, KL[ν[2]].l, KL[ν[3]].l
+#       if
+#       if !( (abs(l1-l2) <= l3 <= l1+l2) && iseven(l1+l2+l3) )
+#          keep[i] = false
+#       end
+#    end
+#    return Nu[keep]
+# end
+
 
 # general tuple filter: !(abs(j1-j2) <= j3 <= j1 + j2)
 #   for all (j1, j2, j3) ⊂ (l1, ..., ln)
@@ -250,6 +284,17 @@ function _Bcoeff(ll::SVector{3, Int}, mm::SVector{3, Int}, cg)
    return (-1)^(mm[3]) * c
 end
 
+function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
+   @assert(sum(mm) == 0)
+   M = mm[1]+mm[2] # == -(mm[3]+mm[4])
+   c = 0.0
+   for J = max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])):min(ll[1]+ll[2],ll[3]+ll[4])
+      @assert abs(M) <= J
+      c += cg(ll[1], mm[1], ll[2], mm[2], J, M) *
+                    cg(ll[3], mm[3], ll[4], mm[4], J, -M)
+   end
+   return (-1)^M * c
+end
 
 function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    precompute_A!(ship, Rs)
@@ -277,12 +322,12 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
          b += bm
       end
       # two little sanity checks
-      if b == 0.0
-         @warn("B[idx] == 0!")
-      end
-      if abs(imag(b) / abs(b)) > 1e-10
-         @warn("b/|b| == $(b/abs(b))")
-      end
+      # if b == 0.0
+      #    @warn("B[idx] == 0!")
+      # end
+      # if abs(imag(b) / abs(b)) > 1e-10
+      #    @warn("b/|b| == $(b/abs(b))")
+      # end
       B[idx] = real(b)
    end
    return B
