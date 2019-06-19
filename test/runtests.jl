@@ -6,4 +6,5 @@ using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
     include("test_transforms.jl")
     include("test_ylm.jl")
     include("test_cg.jl")
+    include("test_basis.jl")
 end
