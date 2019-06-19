@@ -62,7 +62,7 @@ for ntest = 1:10
             cg1(l1, m1, l2, m2, L, M) *
             Ylm[index_y(L, M)]
    end
-   print(@test p ≈ p2); print(" ")
+   print((@test (p ≈ p2) || (abs(p-p2) < 1e-15)), " ")
 end
 println()
 

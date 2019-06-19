@@ -246,9 +246,8 @@ end
 
 function _Bcoeff(ll::SVector{3, Int}, mm::SVector{3, Int}, cg)
    @assert(mm[1] + mm[2] + mm[3] == 0)
-   c = (ll[1], mm[1], ll[2], mm[3], ll[3], mm[3])
-   w3j = (-1)^(ll[1]-ll[2]-mm[3]) / sqrt(2*ll[3]+1)
-   return w3j
+   c = cg(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3])
+   return (-1)^(mm[3]) * c
 end
 
 
@@ -261,7 +260,7 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
       # so we can do a sanity check that it is in fact real.
       b = zero(ComplexF64)
       for m1 in mrange    # this is a cartesian loop over BO-1 indices
-         mN = - sum(Tuple(m1))   # the last m-index is such that \sum mm = 0 (see paper!)
+         mN = -sum(Tuple(m1))   # the last m-index is such that \sum mm = 0 (see paper!)
          if abs(mN) > ll[end]    # skip any m-tuples that aren't admissible
             continue
          end
