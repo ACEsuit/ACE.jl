@@ -76,8 +76,8 @@ maxdegree(J::Jacobi) = length(J.A)
 alloc_B(J::Jacobi{T}) where {T} = zeros(T, length(J))
 alloc_dB(J::Jacobi{T}) where {T} = zeros(T, length(J))
 
-function eval_basis!(P::AbstractVector, J::Jacobi, x,
-                     N::Integer = length(P)-1 )
+function eval_basis!(P::AbstractVector, J::Jacobi, x, _)
+   N = maxdegree(J) #::Integer = length(P)-1
    @assert length(P) >= N+1
    @assert 2 <= N <= maxdegree(J)
    α, β = J.α, J.β
@@ -93,7 +93,8 @@ end
 
 
 function eval_basis_d!(P::AbstractVector, dP::AbstractVector,
-                    J::Jacobi, x::Number, N::Integer = length(P)-1)
+                    J::Jacobi, x::Number, _)
+   N = maxdegree(J) #::Integer = length(P)-1
    @assert length(P) >= N+1
    @assert length(dP) >= N+1
    @assert 2 <= N <= maxdegree(J)

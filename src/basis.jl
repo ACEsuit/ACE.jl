@@ -211,6 +211,7 @@ end
 
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO
 
+Base.length(ship::SHIPBasis) = length_B(ship)
 length_B(ship::SHIPBasis{BO}) where {BO} = length(ship.Nu)
 
 alloc_B(ship::SHIPBasis) = zeros(Float64, length_B(ship))
