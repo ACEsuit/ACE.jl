@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+@testset "Fast SHIP Implementation" begin
 
 using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using SHIPs: eval_basis!, eval_basis
@@ -27,6 +28,9 @@ B4 = SHIPBasis(4, 12, 2.0, trans3, 2, 0.5, 3.0)
 BB = [B2, B3, B4]
 
 ##
+
+@info("--------------- Fast 🚢 Implementation ---------------")
+
 @info("Testing correctness of `SHIP` against `SHIPBasis`")
 for B in BB
    @info("   bodyorder = $(SHIPs.bodyorder(B))")
@@ -78,4 +82,6 @@ for B in BB
       print_tf(@test success)
    end
    println()
+end
+
 end

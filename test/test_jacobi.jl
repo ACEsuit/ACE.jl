@@ -46,6 +46,8 @@ end
 
 djacobi(x, n, a, b) =  one(x)/2 * (a + b + n + 1) * jacobi(x, n-1, a+1, b+1)
 
+@info("--------------  JACOBI TESTS ---------------")
+@info("testing jacobi implementation against reference.") 
 for ntest = 1:30
    x = 2*rand() - 1
    α, β = rand(), rand()

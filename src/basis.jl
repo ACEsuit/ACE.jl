@@ -228,8 +228,8 @@ function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
    fill!(ship.A, 0.0)
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(ship.BJ, ship.J, norm(R))
-      eval_basis!(ship.BSH, ship.SH, R)
+      eval_basis!(ship.BJ, ship.J, norm(R), nothing)
+      eval_basis!(ship.BSH, ship.SH, R, nothing)
       # add the contributions to the A_klm; the indexing into the
       # A array is determined by `ship.firstA` which was precomputed
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
@@ -244,7 +244,6 @@ end
 function alloc_temp_d(ship::SHIPBasis, Rs::AbstractVector{JVecF})
    N = length(Rs)
    return ( A = zeros(ComplexF64, length(ship.A)),
-            # r = zeros(N),  # TODO: reintroduce this later for faster precomputation
             J = zeros(N, length(ship.J)),
             dJ = zeros(N, length(ship.J)),
             Y = zeros(ComplexF64, N, length(ship.SH)),
@@ -257,14 +256,14 @@ function precompute_grads!(store, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    #        => then can SIMD them and avoid all copying!
    for (iR, R) in enumerate(Rs)
       # ---------- precompute the derivatives of the Jacobi polynomials
-      eval_basis_d!(ship.BJ, ship.dBJ, ship.J, norm(R))
+      eval_basis_d!(ship.BJ, ship.dBJ, ship.J, norm(R), nothing)
       # copy into the store array
       for i = 1:length(ship.BJ)
          store.J[iR, i] = ship.BJ[i]
          store.dJ[iR, i] = ship.dBJ[i]
       end
       # ----------- precompute the Ylm derivatives
-      eval_basis_d!(ship.BSH, ship.dBSH, ship.SH, R)
+      eval_basis_d!(ship.BSH, ship.dBSH, ship.SH, R, nothing)
       for i = 1:length(ship.SH)
          store.Y[iR, i] = ship.BSH[i]
          store.dY[iR, i] = ship.dBSH[i]
@@ -335,7 +334,7 @@ function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
 end
 
 
-function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
+function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF}, _)
    precompute_A!(ship, Rs)
    KL = ship.KL
    for (idx, ν) in enumerate(ship.Nu)
