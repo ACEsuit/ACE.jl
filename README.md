@@ -49,3 +49,26 @@ The klm values are restriced as follows:
 
 For more information  on how a `SHIPBasis` is constructed and stored, see
 `?SHIPBasis`.
+
+
+### `SHIP` : the fast implementation of a SHIP calculator
+
+While, for training, we use the `SHIPBasis` type, for simulation we convert
+this to the `SHIP` type. The idea is to rewrite the site energy as
+```
+E = ∑_𝐤𝐥𝐦 c_𝐤𝐥𝐦 ∏_a A_kₐlₐkₐ
+```
+and avoid the inner loop over `m` (for given 𝐤,𝐥). The coefficients
+`c_𝐤𝐥𝐦` are precomputed in the construction of the `SHIP` type, in particular
+no more Clebsch-Gordan evaluations are required after this.
+
+The key point however is that computing the gradients of all basis functions is
+much more expensive than computing the gradient of a site energy using the above
+identity. Gradients based on the `SHIP` type are very efficient to compute as
+follows (pseudo-code)
+```
+(1) Precompute {A_k}
+(2) Precompute ∇_Rj ϕ_{klm}
+    (precomputing ∇_rj J_k and ∇_Rj Y_lm is in fact enough)
+(3) 
+```
