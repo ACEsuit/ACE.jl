@@ -220,7 +220,7 @@ function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T
 			dP[index_p(l, l)] = temp_d
 		end
 	end
-	return P, dP
+	# return P, dP
 end
 
 
@@ -315,7 +315,7 @@ function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 			dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p, ep * dp_dθ)
 		end
 	end
-	return Y, dY
+	# return Y, dY
 end
 
 
@@ -376,7 +376,7 @@ function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, L=SH.maxL)
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, SH.P, SH.dP)
 	cYlm_d!(Y, dY, L, S, SH.P, SH.dP)
-	return Y, dY
+	# return Y, dY
 end
 
 
@@ -432,7 +432,7 @@ end
 clebschgordan = cg1
 
 # TODO: reduce dimensionality of the storage tensor
-#       to numY x numY x maxL (or possibly less?) 
+#       to numY x numY x maxL (or possibly less?)
 struct ClebschGordan{T}
 	maxL::Int
 	cg::Array{T, 3}

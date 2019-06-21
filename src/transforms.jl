@@ -143,7 +143,7 @@ function eval_basis_d!(P, dP, J::TransformedJacobi, r, N=length(P)-1)
    if !(J.rl < r < J.ru)
       fill!(P, 0.0)
       fill!(dP, 0.0)
-      return P, dP
+      # return P, dP
    end
    # transform coordinates
    t = transform(J.trans, r)
@@ -160,7 +160,7 @@ function eval_basis_d!(P, dP, J::TransformedJacobi, r, N=length(P)-1)
       @inbounds P[n] = p * fc
       @inbounds dP[n] = (dp * fc + p * fc_d) * dx
    end
-   return P, dP
+   # return P, dP
 end
 
 

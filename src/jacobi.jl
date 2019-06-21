@@ -110,7 +110,7 @@ function eval_basis_d!(P::AbstractVector, dP::AbstractVector,
          dP[n+1] = J.A[n] * P[n] + c1 * dP[n] + J.C[n] * dP[n-1]
       end
    end # @inbounds
-   return P, dP
+   # return P, dP
 end
 
 
