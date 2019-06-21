@@ -214,7 +214,8 @@ bodyorder(ship::SHIPBasis{BO}) where {BO} = BO
 length_B(ship::SHIPBasis{BO}) where {BO} = length(ship.Nu)
 
 alloc_B(ship::SHIPBasis) = zeros(Float64, length_B(ship))
-alloc_dB(ship::SHIPBasis) = zeros(SVec3{Float64}, length_B(ship))
+alloc_dB(ship::SHIPBasis, N::Integer) = zeros(SVec3{Float64}, N, length_B(ship))
+alloc_dB(ship::SHIPBasis, Rs::AbstractVector) = alloc_dB(ship, length(Rs))
 
 
 
@@ -239,9 +240,43 @@ function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
    return nothing
 end
 
+function alloc_temp_d(ship::SHIPBasis, Rs::AbstractVector{JVecF})
+   N = length(Rs)
+   return ( A = zeros(ComplexF64, length(ship.A)),
+            # r = zeros(N),  # TODO: reintroduce this later for faster precomputation
+            J = zeros(N, length(ship.J)),
+            dJ = zeros(N, length(ship.J)),
+            Y = zeros(ComplexF64, N, length(ship.SH)),
+            dY = zeros(JVec{ComplexF64}, N, length(ship.SH)) )
+end
 
-# TODO
-# function precompute_dA!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
+function precompute_grads!(store, ship::SHIPBasis, Rs::AbstractVector{JVecF})
+   fill!(store.A, 0.0)
+   # TODO: re-order these loops => cf. Issue #2
+   #        => then can SIMD them and avoid all copying!
+   for (iR, R) in enumerate(Rs)
+      # ---------- precompute the derivatives of the Jacobi polynomials
+      eval_basis_d!(ship.BJ, ship.dBJ, ship.J, norm(R))
+      # copy into the store array
+      for i = 1:length(ship.BJ)
+         store.J[iR, i] = ship.BJ[i]
+         store.dJ[iR, i] = ship.dBJ[i]
+      end
+      # ----------- precompute the Ylm derivatives
+      eval_basis_d!(ship.BSH, ship.dBSH, ship.SH, R)
+      for i = 1:length(ship.SH)
+         store.Y[iR, i] = ship.BSH[i]
+         store.dY[iR, i] = ship.dBSH[i]
+      end
+      # ----------- precompute the A values
+      for ((k, l), iA) in zip(ship.KL, ship.firstA)
+         for m = -l:l
+            store.A[iA+l+m] += store.J[iR, k+1] * store.Y[iR, index_y(l, m)]
+         end
+      end
+   end
+   return store
+end
 
 
 # -------------------------------------------------------------
@@ -336,5 +371,63 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    return B
 end
 
-# TODO
-# function eval_basis_d!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
+
+
+
+function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
+   fill!(B, 0.0)
+   fill!(dB, zero(JVecF))
+   # all precomputations of "local" gradients
+   precompute_grads!(store, ship, Rs)
+   KL = ship.KL
+   for (idx, ν) in enumerate(ship.Nu)
+      kk, ll, mrange = _klm(ν, KL)
+      # b will eventually become B[idx], but we keep it Complex for now
+      # so we can do a sanity check that it is in fact real.
+      b = zero(ComplexF64)
+      for mpre in mrange    # this is a cartesian loop over BO-1 indices
+         mm = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+         # skip any m-tuples that aren't admissible
+         if abs(mm[end]) > ll[end]; continue; end
+         # ------------------------------------------------------------------
+         # compute the symmetry prefactor from the CG-coefficients
+         C = _Bcoeff(ll, mm, ship.cg)
+         if C != 0
+
+            # [1] The basis function B_{k}{l} itself
+            CxA = ComplexF64(C)
+            for α = 1:length(ν)
+               lα, mα = ll[α], mm[α]
+               i0 = ship.firstA[ν[α]]
+               CxA *= store.A[i0 + lα + mα] # the k-info is contained in ν[α]
+            end
+            b += CxA
+
+            # [2]  The gradients ∂B_{k}{l} / ∂Rⱼ
+            for α = 1:length(ν)
+               # CxA_α =  CxA / A_α   (but need it numerically stable)
+               kα, lα, mα = kk[α], ll[α], mm[α]
+               CxA_α = ComplexF64(C)
+               for β = 1:length(ν)
+                  if β != α
+                     lβ, mβ = kk[β], ll[β], mm[β]
+                     i0 = ship.firstA[ν[β]]
+                     CxA_α *= store.A[i0 + lβ + mβ]
+                  end
+               end
+               # now compute and write gradients
+               iy = index_y(lα, mα)
+               for j = 1:length(Rs)
+                  R = Rs[j]
+                  ∇ϕ_klm = (store.dP[j, kα+1] *  store.Y[j, iy] * (R/norm(R))
+                           + store.P[j, kα+1] * store.dY[j, iy] )
+                  dB[j, idx] += real(∇ϕ_klm)
+               end
+            end
+         end
+         # ------------------------------------------------------------------
+      end
+      B[idx] = real(b)
+   end
+   return B, dB
+end

@@ -36,11 +36,10 @@ ship2 = SHIPBasis(2, 15, 2.0, trans2, 2, 0.5, 3.0)
 ship4 = SHIPBasis(4, 11, 1.0, trans3, 2, 0.5, 3.0)
 ships = [ship2, ship3, ship4]
 
-Rs = randR(20)
-BB = [ eval_basis(🚢, Rs) for 🚢 in ships ]
-
 @info("Test isometry invariance for 3B, 4B and 5B 🚢 s")
 for ntest = 1:20
+   Rs = randR(20)
+   BB = [ eval_basis(🚢, Rs) for 🚢 in ships ]
    RsX = randiso(Rs)
    BBX = [ eval_basis(🚢, RsX) for 🚢 in ships ]
    for (B, BX) in zip(BB, BBX)
@@ -49,5 +48,15 @@ for ntest = 1:20
 end
 println()
 
+
+@info("Test gradients for 3B, 4B and 5B 🚢 s")
+
+Rs = randR(20)
+🚢 = ships[1]
+store = SHIPs.alloc_temp_d(🚢, Rs)
+SHIPs.precompute_grads!(store, 🚢, Rs)
+B1 = eval_basis(🚢, Rs)
+B, dB = SHIPs.alloc_dB(🚢, Rs)
+SHIPs.eval_basis_d!(B, dB, 🚢, Rs, store)
 
 end
