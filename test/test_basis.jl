@@ -33,7 +33,7 @@ trans3 = PolyTransform(3, 1.0)
 ship3 = SHIPBasis(3, 13, 2.0, trans3, 2, 0.5, 3.0)
 trans2 = PolyTransform(2, 1.3)
 ship2 = SHIPBasis(2, 15, 2.0, trans2, 2, 0.5, 3.0)
-ship4 = SHIPBasis(4, 11, 2.0, trans3, 2, 0.5, 3.0)
+ship4 = SHIPBasis(4, 11, 1.0, trans3, 2, 0.5, 3.0)
 ships = [ship2, ship3, ship4]
 
 Rs = randR(20)
@@ -44,7 +44,7 @@ for ntest = 1:10
    RsX = randrot(Rs)
    BBX = [ eval_basis(🚢, RsX) for 🚢 in ships ]
    for (B, BX) in zip(BB, BBX)
-      print((@test B ≈ BX), " ")
+      print_tf((@test B ≈ BX), " ")
    end
 end
 println()

@@ -35,7 +35,7 @@ function generate_LK(deg, wY::Real)
 end
 
 # keep this for the sake of a record and comparison with the general case
-function filter_tuples(KL, Nu, ::Val{2})  # 3B version
+function filter_tuples(KL, Nu, ::Val{2}, cg)  # 3B version
    keep = fill(true, length(Nu))
    for (i, ν) in enumerate(Nu)
       kl1, kl2 = KL[ν[1]], KL[ν[2]]
@@ -47,7 +47,7 @@ function filter_tuples(KL, Nu, ::Val{2})  # 3B version
 end
 
 # keep this for the sake of a record and comparison with the general case
-function filter_tuples(KL, Nu, ::Val{3})  # 4B version
+function filter_tuples(KL, Nu, ::Val{3}, cg)  # 4B version
    keep = fill(true, length(Nu))
    for (i, ν) in enumerate(Nu)
       l1, l2, l3 = KL[ν[1]].l, KL[ν[2]].l, KL[ν[3]].l
@@ -58,42 +58,40 @@ function filter_tuples(KL, Nu, ::Val{3})  # 4B version
    return Nu[keep]
 end
 
-function filter_tuples(KL, Nu, ::Val{4})
+function filter_tuples(KL, Nu, ::Val{4}, cg)
    keep = fill(true, length(Nu))
    for (i, ν) in enumerate(Nu)
       ll = SVector(ntuple(i -> KL[ν[i]].l, 4))
-      if (  !iseven(sum(ll)) ||
-          ( max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])) <=
-               min(ll[1]+ll[2], ll[3]+ll[4]) ) )
+      # invariance under reflections
+      if !iseven(sum(ll))
          keep[i] = false
+         continue
       end
+      # requirement to define the CG coefficients
+      if max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])) > min(ll[1]+ll[2], ll[3]+ll[4])
+         keep[i] = false
+         continue
+      end
+
+      # The next part is purely a health-check, that should not be necessary!
+      # basically we are checking that all basis functions that we are
+      # retaining are really non-zero!
+      foundnz = false
+      for mpre in _mrange(ll)
+         mm = SVector(Tuple(mpre)..., -sum(Tuple(mpre)))
+         if abs(mm[end]) > ll[4]; continue; end
+         if _Bcoeff(ll, mm, cg) != 0.0
+            foundnz = true
+         end
+      end
+      @assert foundnz
    end
    return Nu[keep]
 end
 
-# function filter_tuples(KL, Nu, ::Val{BO}) where {BO}  # general version
-#    keep = fill(true, length(Nu))
-#    for (i, ν) in enumerate(Nu)
-#       ll = SVector(ntuple(i -> KL[ν[i]].l, BO))
-#       if !iseven(sum(ll))
-#          keep[i] = false
-#          continue
-#       end
-#
-#       l1, l2, l3 = KL[ν[1]].l, KL[ν[2]].l, KL[ν[3]].l
-#       if
-#       if !( (abs(l1-l2) <= l3 <= l1+l2) && iseven(l1+l2+l3) )
-#          keep[i] = false
-#       end
-#    end
-#    return Nu[keep]
-# end
 
 
-# general tuple filter: !(abs(j1-j2) <= j3 <= j1 + j2)
-#   for all (j1, j2, j3) ⊂ (l1, ..., ln)
-
-function generate_LK_tuples(deg, wY::Real, bo; filter=true)
+function generate_LK_tuples(deg, wY::Real, bo, cg; filter=true)
    # all possible (k, l) pairs
    allKL, degs = generate_LK(deg, wY)
 
@@ -126,7 +124,7 @@ function generate_LK_tuples(deg, wY::Real, bo; filter=true)
          lastidx -= 1
       end
    end
-   if filter; Nu = filter_tuples(allKL, Nu, Val(bo)); end
+   if filter; Nu = filter_tuples(allKL, Nu, Val(bo), cg); end
    return allKL, [ν for ν in Nu]
 end
 
@@ -194,16 +192,16 @@ function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru; filter
    # R̂ - basis
    maxL = floor(Int, deg / wY)
    SH = SHBasis(maxL)
+   # precompute the Clebsch-Gordan coefficients
+   cg = ClebschGordan(maxL)
    # get the basis specification
-   allKL, Nu = generate_LK_tuples(deg, wY, bo; filter=filter)
+   allKL, Nu = generate_LK_tuples(deg, wY, bo, cg; filter=filter)
    # allocate space for the A array
    A = alloc_A(deg, wY)
    dA = alloc_dA(deg, wY)
    # compute the (l,k) -> indexing into A information
    firstA = _firstA(allKL)
    @assert firstA[end] == length(A)+1
-   # precompute the Clebsch-Gordan coefficients
-   cg = ClebschGordan(maxL)
    # putting it all together ...
    return SHIPBasis(deg, wY, J, SH, allKL, Nu, A, dA,
                     alloc_B(J), alloc_dB(J), alloc_B(SH), alloc_dB(SH),
@@ -250,6 +248,9 @@ end
 #       Evaluate the actual basis functions
 # -------------------------------------------------------------
 
+_mrange(ll::SVector{BO}) where {BO} =
+   CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
+
 """
 return kk, ll, mrange
 where kk, ll is BO-tuples of k and l indices, while mrange is a
@@ -286,15 +287,17 @@ end
 
 function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
    @assert(sum(mm) == 0)
-   M = mm[1]+mm[2] # == -(mm[3]+mm[4])
+   M = mm[1]+mm[2] # == -(mm[3]+mm[4]) <=> ∑mm = 0
    c = 0.0
    for J = max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])):min(ll[1]+ll[2],ll[3]+ll[4])
-      @assert abs(M) <= J
-      c += cg(ll[1], mm[1], ll[2], mm[2], J, M) *
+      # @assert abs(M) <= J  # TODO: revisit this issue?
+      if abs(M) > J; continue; end
+      c += (-1)^M * cg(ll[1], mm[1], ll[2], mm[2], J, M) *
                     cg(ll[3], mm[3], ll[4], mm[4], J, -M)
    end
-   return (-1)^M * c
+   return c
 end
+
 
 function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    precompute_A!(ship, Rs)

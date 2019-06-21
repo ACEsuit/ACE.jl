@@ -40,7 +40,7 @@ for p in 2:4
             push!(errs, norm(dPh - dP, Inf))
             verbose && @printf(" %.2e | %2e \n", h, errs[end])
          end
-         print(@test (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10) )
+         print_tf(@test (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10) )
       end
       println()
    end

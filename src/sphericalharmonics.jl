@@ -431,7 +431,8 @@ end
 
 clebschgordan = cg1
 
-
+# TODO: reduce dimensionality of the storage tensor
+#       to numY x numY x maxL (or possibly less?) 
 struct ClebschGordan{T}
 	maxL::Int
 	cg::Array{T, 3}

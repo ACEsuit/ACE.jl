@@ -10,7 +10,7 @@
 
 using PyCall, Test, SHIPs.SphericalHarmonics
 using SHIPs: eval_basis
-using SHIPs.SphericalHarmonics: index_y
+using SHIPs.SphericalHarmonics: index_y, ClebschGordan
 
 sympy = pyimport("sympy")
 spin = pyimport("sympy.physics.quantum.spin")
@@ -19,20 +19,27 @@ spin = pyimport("sympy.physics.quantum.spin")
 pycg(j1, m1, j2, m2, j3, m3, T=Float64) =
       spin.CG(j1, m1, j2, m2, j3, m3).doit().evalf().__float__()
 
-@info("Testing cg1 implementation against sympy ... ")
-for j1 = 0:2, j2=0:2, j3=0:4
-   for m1 = -j1:j1, m2=-j2:j2, m3=-j3:j3
-      @test cg1(j1,m1,j2,m2,j3,m3) ≈ pycg(j1,m1, j2,m2, j3,m3)
+print_tf(::Test.Pass) = printstyled("✓", bold=true, color=:green)
+print_tf(::Test.Fail) = printstyled("x", bold=true, color=:red)
+
+cg = ClebschGordan(10)
+
+ntest = 0
+while ntest <= 200
+   j1 = rand(0:10)
+   j2 = rand(0:10)
+   J = rand(abs(j1-j2):min(10,(j1+j2)))
+   m1 = rand(-j1:j1)
+   for m2 = -j2:j2
+      M = m1+m2
+      if abs(M) <= J
+         global ntest += 1
+         print_tf(@test cg1(j1,m1,j2,m2,J, M) ≈ pycg(j1,m1, j2,m2, J, M))
+         print_tf(@test cg1(j1,m1,j2,m2,J, M) ≈ cg(j1,m1, j2,m2, J, M))
+      end
    end
 end
-
-@info("Check CG Coefficients for some higher quantum numbers...")
-j1 = 8
-j2 = 11
-j3 = j1+j2
-for m1 = -j1:j1, m2=-j2:j2, m3=-j3:j3
-   @test cg1(j1,m1,j2,m2,j3,m3) ≈ pycg(j1,m1, j2,m2, j3,m3)
-end
+println()
 
 
 @info("Checking the SphH expansion in terms of CG coeffs")
@@ -40,7 +47,7 @@ end
 # single spherical harmonic
 # see e.g. https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients
 # this is the magic formula that we need
-for ntest = 1:10
+for ntest = 1:100
    # two random Ylm  ...
    l1, l2 = rand(1:10), rand(1:10)
    m1, m2 = rand(-l1:l1), rand(-l2:l2)
@@ -62,7 +69,7 @@ for ntest = 1:10
             cg1(l1, m1, l2, m2, L, M) *
             Ylm[index_y(L, M)]
    end
-   print((@test (p ≈ p2) || (abs(p-p2) < 1e-15)), " ")
+   print_tf((@test (p ≈ p2) || (abs(p-p2) < 1e-15)))
 end
 println()
 
