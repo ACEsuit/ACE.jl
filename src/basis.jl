@@ -382,9 +382,6 @@ function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
    KL = ship.KL
    for (idx, ν) in enumerate(ship.Nu)
       kk, ll, mrange = _klm(ν, KL)
-      # b will eventually become B[idx], but we keep it Complex for now
-      # so we can do a sanity check that it is in fact real.
-      b = zero(ComplexF64)
       for mpre in mrange    # this is a cartesian loop over BO-1 indices
          mm = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
          # skip any m-tuples that aren't admissible
@@ -393,41 +390,46 @@ function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
          # compute the symmetry prefactor from the CG-coefficients
          C = _Bcoeff(ll, mm, ship.cg)
          if C != 0
-
-            # [1] The basis function B_{k}{l} itself
+            # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
+            # [1] The basis function B_𝐤𝐥 itself
+            #     B_𝐤𝐥 = ∑_𝐦 C_{𝐤𝐥𝐦} ∏_a A_{kₐlₐmₐ}
+            #     the ∑_𝐦 is the `for mpre in mrange` loop
             CxA = ComplexF64(C)
             for α = 1:length(ν)
-               lα, mα = ll[α], mm[α]
                i0 = ship.firstA[ν[α]]
-               CxA *= store.A[i0 + lα + mα] # the k-info is contained in ν[α]
+               CxA *= store.A[i0 + ll[α] + mm[α]] # the k-info is contained in ν[α]
             end
-            b += CxA
+            B[idx] += real(CxA)
+            # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
 
+            # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
             # [2]  The gradients ∂B_{k}{l} / ∂Rⱼ
+            #      ∑_a [ ∏_{b ≠ a} A_{kᵦlᵦmᵦ} ] ∂ϕ_{kₐlₐmₐ} / ∂Rⱼ
             for α = 1:length(ν)
                # CxA_α =  CxA / A_α   (but need it numerically stable)
-               kα, lα, mα = kk[α], ll[α], mm[α]
                CxA_α = ComplexF64(C)
                for β = 1:length(ν)
                   if β != α
-                     lβ, mβ = kk[β], ll[β], mm[β]
                      i0 = ship.firstA[ν[β]]
-                     CxA_α *= store.A[i0 + lβ + mβ]
+                     CxA_α *= store.A[i0 + ll[β] + mm[β]]
                   end
                end
+
                # now compute and write gradients
-               iy = index_y(lα, mα)
+               ik = kk[α] + 1
+               iy = index_y(ll[α], mm[α])
                for j = 1:length(Rs)
                   R = Rs[j]
-                  ∇ϕ_klm = (store.dP[j, kα+1] *  store.Y[j, iy] * (R/norm(R))
-                           + store.P[j, kα+1] * store.dY[j, iy] )
-                  dB[j, idx] += real(∇ϕ_klm)
+                  ∇ϕ_klm = (store.dJ[j, ik] *  store.Y[j, iy] * (R/norm(R))
+                           + store.J[j, ik] * store.dY[j, iy] )
+                  dB[j, idx] += real(CxA_α * ∇ϕ_klm)
                end
             end
+            # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
+
          end
          # ------------------------------------------------------------------
       end
-      B[idx] = real(b)
    end
-   return B, dB
+   # return B, dB
 end

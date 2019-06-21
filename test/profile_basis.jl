@@ -8,6 +8,7 @@
 
 using SHIPs, JuLIP, BenchmarkTools
 
+
 trans = PolyTransform(2, 1.0)
 ships = [SHIPBasis(n, 15, 2.0, trans, 2, 0.5, 3.0) for n = 2:4]
 
@@ -22,21 +23,12 @@ for n = 2:4
    @info("  body-order $(n+1):")
    🚢 = ships[n-1]
    B = SHIPs.alloc_B(🚢)
+   @info("     eval_basis:")
    @btime SHIPs.eval_basis!($B, $🚢, $Rs)
    @btime SHIPs.eval_basis!($B, $🚢, $Rs)
+   @info("     eval_basis_d:")
+   dB = SHIPs.alloc_dB(🚢, Rs)
+   store = SHIPs.alloc_temp_d(🚢, Rs)
+   @btime SHIPs.eval_basis_d!($B, $dB, $🚢, $Rs, $store)
+   @btime SHIPs.eval_basis_d!($B, $dB, $🚢, $Rs, $store)
 end
-
-
-
-# using Profile
-# ##
-# function runn(ship, Rs, N)
-#    for n = 1:N
-#       SHIPs.precompute_A!(ship, Rs)
-#    end
-#    return ship
-# end
-# Profile.clear()
-# runn(ship, Rs, 10)
-# @profile runn(ship, Rs, 10_000)
-# Profile.print()

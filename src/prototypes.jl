@@ -20,7 +20,7 @@ eval_basis_d(B, args...) =
 function alloc_B end
 function alloc_dB end
 
-function alloc_temp_d end 
+function alloc_temp_d end
 
 function transform end
 function transform_d end

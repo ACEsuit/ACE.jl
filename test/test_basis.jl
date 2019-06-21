@@ -48,15 +48,32 @@ for ntest = 1:20
 end
 println()
 
-
+##
 @info("Test gradients for 3B, 4B and 5B 🚢 s")
-
-Rs = randR(20)
-🚢 = ships[1]
-store = SHIPs.alloc_temp_d(🚢, Rs)
-SHIPs.precompute_grads!(store, 🚢, Rs)
-B1 = eval_basis(🚢, Rs)
-B, dB = SHIPs.alloc_dB(🚢, Rs)
-SHIPs.eval_basis_d!(B, dB, 🚢, Rs, store)
-
+for 🚢 in ships
+   @info("  body-order = $(SHIPs.bodyorder(🚢)+1):")
+   Rs = randR(20)
+   store = SHIPs.alloc_temp_d(🚢, Rs)
+   SHIPs.precompute_grads!(store, 🚢, Rs)
+   B1 = eval_basis(🚢, Rs)
+   B = SHIPs.alloc_B(🚢)
+   dB = SHIPs.alloc_dB(🚢, Rs)
+   SHIPs.eval_basis_d!(B, dB, 🚢, Rs, store)
+   @info("      check the basis and basis_d co-incide exactly")
+   println(@test B == B1)
+   @info("      finite-difference test into random directions")
+   for ndirections = 1:20
+      Us = randR(length(Rs))
+      errs = Float64[]
+      for p = 2:10
+         h = 0.1^p
+         Bh = eval_basis(🚢, Rs+h*Us)
+         dBh = (Bh - B) / h
+         dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
+         push!(errs, norm(dBh - dBxU, Inf))
+      end
+      success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+      print_tf(@test success)
+   end
+   println()
 end
