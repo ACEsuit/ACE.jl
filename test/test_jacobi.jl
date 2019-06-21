@@ -54,8 +54,8 @@ for ntest = 1:30
    P1, dP = eval_basis_d(Jacobi(α, β, N), x)
    Ptest = [ jacobi(x, n, α, β) for n = 0:N ]
    dPtest = [ djacobi(x, n, α, β) for n = 0:N ]
-   print_tf((@test P ≈ P1 ≈ Ptest), " ")
-   print_tf((@test dP ≈ dPtest), " ")
+   print_tf((@test P ≈ P1 ≈ Ptest))
+   print_tf((@test dP ≈ dPtest))
 end
 println()
 

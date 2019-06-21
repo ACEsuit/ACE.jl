@@ -48,7 +48,7 @@ for n = 1:nsamples
    SH = SHBasis(3)
    Y = eval_basis(SH, R)
    Yex = explicit_shs(θ, φ)
-   print_tf((@test Y ≈ Yex), " ")
+   print_tf((@test Y ≈ Yex))
 end
 println()
 
@@ -77,7 +77,7 @@ println()
 @info("Test : spher-cart conversion")
 for nsamples = 1:10
    R = (rand(3) .- 0.5) * (1+rand())
-   print_tf((@test R ≈ spher2cart(cart2spher(R))), " ")
+   print_tf((@test R ≈ spher2cart(cart2spher(R))))
 end
 println()
 
@@ -93,7 +93,7 @@ for nsamples = 1:10
    dR_dS_h = hcat( (φθ(R+h*EE[1])-φθ(R-h*EE[1])) / (2*h),
                    (φθ(R+h*EE[2])-φθ(R-h*EE[2])) / (2*h),
                    (φθ(R+h*EE[3])-φθ(R-h*EE[3])) / (2*h) )'
-   print_tf((@test norm(dR_dS - dR_dS_h, Inf) < 1e-6), " ")
+   print_tf((@test norm(dR_dS - dR_dS_h, Inf) < 1e-5))
 end
 println()
 

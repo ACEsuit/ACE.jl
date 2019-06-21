@@ -307,30 +307,30 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF})
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
       b = zero(ComplexF64)
-      for m1 in mrange    # this is a cartesian loop over BO-1 indices
-         mN = -sum(Tuple(m1))   # the last m-index is such that \sum mm = 0 (see paper!)
-         if abs(mN) > ll[end]    # skip any m-tuples that aren't admissible
-            continue
-         end
+      @assert mrange == _mrange(ll)
+      for mpre in mrange    # this is a cartesian loop over BO-1 indices
+         mm = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+         # skip any m-tuples that aren't admissible
+         if abs(mm[end]) > ll[end]; continue; end
          # compute the symmetry prefactor from the CG-coefficients
-         mm = SVector(Tuple(m1)..., mN)
-         C = _Bcoeff(ll, mm, ship.cg)
-         bm = one(ComplexF64) * C
-         for (i, (k, l, m)) in enumerate(zip(kk, ll, mm))
-            # this is the indexing convention used to construct A
-            #    (feels brittle - maybe rethink it and write a function for it)
-            i0 = ship.firstA[ν[i]]
-            bm *= ship.A[i0 + l + m]
+         bm = ComplexF64(_Bcoeff(ll, mm, ship.cg))
+         if bm != 0
+            for (i, (k, l, m)) in enumerate(zip(kk, ll, mm))
+               # this is the indexing convention used to construct A
+               #  (feels brittle - maybe rethink it and write a function for it)
+               i0 = ship.firstA[ν[i]]
+               bm *= ship.A[i0 + l + m]
+            end
+            b += bm
          end
-         b += bm
       end
       # two little sanity checks
-      # if b == 0.0
-      #    @warn("B[idx] == 0!")
-      # end
-      # if abs(imag(b) / abs(b)) > 1e-10
-      #    @warn("b/|b| == $(b/abs(b))")
-      # end
+      if b == 0.0
+         @warn("B[idx] == 0!")
+      end
+      if abs(imag(b) / abs(b)) > 1e-10
+         @warn("b/|b| == $(b/abs(b))")
+      end
       B[idx] = real(b)
    end
    return B

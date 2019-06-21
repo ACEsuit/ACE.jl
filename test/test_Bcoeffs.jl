@@ -6,6 +6,8 @@
 # --------------------------------------------------------------------------
 
 
+@testset "B-coefficients" begin
+
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
 using SHIPs: generate_LK, generate_LK_tuples
@@ -69,7 +71,7 @@ Izero = Int[]
 Iodd = Int[]
 @info("Testing the RI coefficients for deg = $deg, 4B")
 for (i, ν) in enumerate(Nu)
-   global Izero, Iodd
+   # global Izero, Iodd
    ll = SVector([KL[ν[i]].l for i = 1:length(ν)]...)
    pass, isz = check_Bcoeffs(ll, cg)
    if isz; push!(Izero, i); end
@@ -91,7 +93,7 @@ Izero = Int[]
 Iodd = Int[]
 @info("Testing the RI coefficients for deg = $deg, 5B")
 for (i, ν) in enumerate(Nu)
-   global Izero, Iodd
+   # global Izero, Iodd
    ll = SVector([KL[ν[i]].l for i = 1:length(ν)]...)
    pass, isz = check_Bcoeffs(ll, cg)
    if isz; push!(Izero, i); end
@@ -102,3 +104,6 @@ println()
 Izodd = union(Izero, Iodd)
 @info("""   #Nu = $(length(Nu)), #Nu_filt = $(length(Nu_filter)), #(zero or odd) = $(length(Izodd)) """)
 println(@test (length(Nu) == length(Nu_filter) + length(Izodd)))
+
+
+end

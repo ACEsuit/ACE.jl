@@ -19,9 +19,6 @@ spin = pyimport("sympy.physics.quantum.spin")
 pycg(j1, m1, j2, m2, j3, m3, T=Float64) =
       spin.CG(j1, m1, j2, m2, j3, m3).doit().evalf().__float__()
 
-print_tf(::Test.Pass) = printstyled("✓", bold=true, color=:green)
-print_tf(::Test.Fail) = printstyled("x", bold=true, color=:red)
-
 cg = ClebschGordan(10)
 
 ntest = 0
@@ -33,7 +30,7 @@ while ntest <= 200
    for m2 = -j2:j2
       M = m1+m2
       if abs(M) <= J
-         global ntest += 1
+         ntest += 1
          print_tf(@test cg1(j1,m1,j2,m2,J, M) ≈ pycg(j1,m1, j2,m2, J, M))
          print_tf(@test cg1(j1,m1,j2,m2,J, M) ≈ cg(j1,m1, j2,m2, J, M))
       end
