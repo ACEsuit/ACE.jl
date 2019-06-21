@@ -353,7 +353,8 @@ SHIPs.alloc_B( S::SHBasis{T}) where {T} =
 SHIPs.alloc_dB(S::SHBasis{T}) where {T} =
 		Vector{SVec3{Complex{T}}}(undef, length(S))
 
-function SHIPs.eval_basis!(Y, SH::SHBasis, R::SVec3, L=SH.maxL)
+function SHIPs.eval_basis!(Y, SH::SHBasis, R::SVec3, _)
+	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
 	S = cart2spher(R)
@@ -363,7 +364,8 @@ function SHIPs.eval_basis!(Y, SH::SHBasis, R::SVec3, L=SH.maxL)
 end
 
 
-function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, L=SH.maxL)
+function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, _)
+	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
 	S = cart2spher(R)
