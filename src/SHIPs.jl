@@ -14,6 +14,8 @@ include("sphericalharmonics.jl")
 include("transforms.jl")
 include("basis.jl")
 include("fast.jl")
-include("calculators.jl")
+include("pair.jl")
+
+include("lsq.jl")
 
 end # module

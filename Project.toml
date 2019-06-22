@@ -5,8 +5,10 @@ version = "0.1.0"
 [deps]
 JuLIP = "945c410c-986d-556a-acb1-167a618e0462"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+NeighbourLists = "2fcf5ba9-9ed4-57cf-b73f-ff513e316b9c"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+# IPFitting = "3002bd4c-79e4-52ce-b924-91256dde4e52"
 
 [compat]
 julia = "1"

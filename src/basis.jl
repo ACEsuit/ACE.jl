@@ -5,8 +5,9 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using JuLIP, StaticArrays, LinearAlgebra
-
+using StaticArrays, LinearAlgebra
+using JuLIP: JVecF, JVec
+using JuLIP.MLIPs: IPBasis
 
 # TODO: Idea => replace (deg, wY) by a "Degree" type and dispatch a lot of
 #       functionality on that => e.g. we can then try hyperbolic cross, etc.
@@ -33,6 +34,7 @@ function generate_LK(deg, wY::Real)
    I = sortperm(degs)
    return allKL[I], degs[I]
 end
+
 
 # keep this for the sake of a record and comparison with the general case
 function filter_tuples(KL, Nu, ::Val{2}, cg)  # 3B version
@@ -148,7 +150,7 @@ it implements a permutation and rotation invariant basis.
 * `A, dA` : buffers for precomputing the `A_klm` functions
 * `firstA` : same length as `KL`; each `(k,l) = KL[i]` has `2l+1` A_klm-functions associated which will be stored in the `A` buffer, the first of these is stored as `A[firstA[i]]`.
 """
-struct SHIPBasis{BO, T, TJ}
+struct SHIPBasis{BO, T, TJ} <: IPBasis
    deg::Int
    wY::T
    J::TJ
@@ -208,7 +210,6 @@ function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru; filter
                     cg,  firstA, Val(bo))
 end
 
-
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO
 
 Base.length(ship::SHIPBasis) = length_B(ship)
@@ -241,14 +242,15 @@ function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
    return nothing
 end
 
-function alloc_temp_d(ship::SHIPBasis, Rs::AbstractVector{JVecF})
-   N = length(Rs)
-   return ( A = zeros(ComplexF64, length(ship.A)),
+alloc_temp_d(shipB::SHIPBasis, Rs::AbstractVector{JVecF}) =
+      alloc_temp_d(shipB, length(Rs))
+
+alloc_temp_d(ship::SHIPBasis, N::Integer) =
+          ( A = zeros(ComplexF64, length(ship.A)),
             J = zeros(N, length(ship.J)),
             dJ = zeros(N, length(ship.J)),
             Y = zeros(ComplexF64, N, length(ship.SH)),
             dY = zeros(JVec{ComplexF64}, N, length(ship.SH)) )
-end
 
 function precompute_grads!(store, ship::SHIPBasis, Rs::AbstractVector{JVecF})
    fill!(store.A, 0.0)
@@ -432,4 +434,49 @@ function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
       end
    end
    # return B, dB
+end
+
+
+
+
+# -------------------------------------------------------------
+#       JuLIP Calculators: energies and forces
+# -------------------------------------------------------------
+
+using NeighbourLists: max_neigs
+using JuLIP: Atoms, sites, neighbourlist
+import JuLIP: energy, forces, virial, cutoff
+
+cutoff(shipB::SHIPBasis) = cutoff(shipB.J)
+
+
+function energy(at::Atoms, shipB::SHIPBasis)
+   E = zeros(length(shipB))
+   B = alloc_B(shipB)
+   for (i, j, r, R) in sites(at, cutoff(shipB))
+      eval_basis!(B, shipB, R, nothing)
+      E[:] .+= B[:]
+   end
+   return E
+end
+
+
+function forces(at::Atoms, shipB::SHIPBasis)
+   # precompute the neighbourlist to count the number of neighbours
+   nlist = neighbourlist(at, cutoff(shipB))
+   maxR = max_neigs(nlist)
+   # allocate space accordingly
+   F = zeros(JVecF, length(at), length(shipB))
+   B = alloc_B(shipB)
+   dB = alloc_dB(shipB, maxR)
+   tmp = alloc_temp_d(shipB, maxR)
+   # assemble site gradients and write into F
+   for (i, j, r, R) in sites(nlist)
+      eval_basis_d!(B, dB, shipB, R, tmp)
+      for a = 1:length(R)
+         F[j[a], :] .-= dB[a, :]
+         F[i, :] .+= dB[a, :]
+      end
+   end
+   return [ F[:, iB] for iB = 1:length(shipB) ]
 end

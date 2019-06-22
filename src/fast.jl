@@ -8,7 +8,7 @@
 
 using SHIPs.SphericalHarmonics: SHBasis, index_y
 using StaticArrays
-using JuLIP: AbstractCalculator, Atoms, JVec
+using JuLIP: AbstractCalculator, Atoms, JVec, SitePotential
 
 export SHIP
 
@@ -145,3 +145,11 @@ function evaluate_d!(dEs, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
 
    return Es
 end
+
+
+# ------------ JuLIP Calculators ------------------
+#  * forces and virials should just follow from JuLIP.
+
+function energy(at::Atoms, ship::SHIP)
+
+end 
