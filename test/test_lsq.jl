@@ -9,6 +9,7 @@
 using JuLIP, SHIPs, Test, IPFitting, DataFrames
 using IPFitting: Dat
 using JuLIP.MLIPs
+using Printf
 
 # generate random data
 function generate_data(species, L, rmax, N, calc)
@@ -25,7 +26,7 @@ end
 
 r0 = rnn(:Si)
 calc = StillingerWeber()
-train = generate_data(:Si, 2, 0.2*r0, 1000, calc)
+train = generate_data(:Si, 2, 0.2*r0, 300, calc)
 
 
 # 2 stands for 2 neighbours i.e. body-order 3
@@ -35,27 +36,16 @@ basis(deg) = IPSuperBasis(
    )
 
 ##
-err_erms = Float64[]
-err_frms = Float64[]
+err_rms = Float64[]
 degrees = [4, 8, 12, 16, 20]
 
+@printf(" degree | #basis  RMSE \n")
 for deg in degrees
    shipB = basis(deg)
-   @show length(shipB)
    err = SHIPs.Lsq.lsqfit(train, shipB;
                            configweights = Dict("rand" => 1.0),
                            obsweights   = Dict("E" => 1.0, "F" => 1.0),
-                           verbose=true)
-   @show err
+                           verbose=false)
+   @printf("    %2d  |  %4d   %.2e \n", deg, length(shipB), err)
+   push!(err_rms, err)
 end
-
-
-# ##
-# df = DataFrame( :degrees => degrees,
-#                 :relrms_E => err_erms,
-#                 :relrms_F => err_frms )
-# display(df)
-#
-# (@test minimum(err_erms) < 0.001) |> println
-# (@test minimum(err_frms) < 0.05) |> println
-#

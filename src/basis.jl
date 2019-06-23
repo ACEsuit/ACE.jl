@@ -450,7 +450,7 @@ import JuLIP: energy, forces, virial, cutoff
 cutoff(shipB::SHIPBasis) = cutoff(shipB.J)
 
 
-function energy(at::Atoms, shipB::SHIPBasis)
+function energy(shipB::SHIPBasis, at::Atoms)
    E = zeros(length(shipB))
    B = alloc_B(shipB)
    for (i, j, r, R) in sites(at, cutoff(shipB))
@@ -461,7 +461,7 @@ function energy(at::Atoms, shipB::SHIPBasis)
 end
 
 
-function forces(at::Atoms, shipB::SHIPBasis)
+function forces(shipB::SHIPBasis, at::Atoms)
    # precompute the neighbourlist to count the number of neighbours
    nlist = neighbourlist(at, cutoff(shipB))
    maxR = max_neigs(nlist)
