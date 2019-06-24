@@ -9,7 +9,7 @@
 @testset "Ylm" begin
 
 import SHIPs
-using LinearAlgebra, StaticArrays, BenchmarkTools, Test
+using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
 using SHIPs.SphericalHarmonics
 using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart
@@ -52,12 +52,24 @@ for n = 1:nsamples
 end
 println()
 
+##
+@info("      ... same near pole")
+nsamples = 10
+for n = 1:nsamples
+   θ = rand() * 1e-7
+   φ = (rand()-0.5) * 2*π
+   r = 0.1+rand()
+   R = SVector(r*sin(θ)*cos(φ), r*sin(θ)*sin(φ), r*cos(θ))
+   SH = SHBasis(3)
+   Y = eval_basis(SH, R)
+   Yex = explicit_shs(θ, φ)
+   print_tf((@test Y ≈ Yex || norm(Y - Yes, Inf) < 1e-12))
+end
+println()
+##
 
 @info("Test: check derivatives of associated legendre polynomials")
-
-using Printf
-
-for nsamples = 1:10
+for nsamples = 1:30
    θ = 0.1+0.4 * pi * rand()
    L = 5
    P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
@@ -74,19 +86,40 @@ for nsamples = 1:10
 end
 println()
 
+
+@info("      ... same near pole")
+for nsamples = 1:30
+   θ = rand() * 1e-7
+   L = 5
+   P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
+   errs = []
+   verbose && @printf("     h    | error \n")
+   for p = 2:10
+      h = 0.1^p
+      dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+      push!(errs, norm(dP - dPh, Inf))
+      verbose && @printf(" %.2e | %.2e \n", h, errs[end])
+   end
+   success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+   print_tf(@test success)
+end
+println()
+
+
 @info("Test : spher-cart conversion")
-for nsamples = 1:10
+for nsamples = 1:30
    R = (rand(3) .- 0.5) * (1+rand())
    print_tf((@test R ≈ spher2cart(cart2spher(R))))
 end
 println()
+
 
 @info("Test : spher-cart jacobian")
 φθ(S::PseudoSpherical) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
 φθ(R::AbstractVector) = φθ(cart2spher(R))
 EE = [ [1,0,0], [0,1,0], [0,0,1] ]
 h = 1e-5
-for nsamples = 1:10
+for nsamples = 1:30
    R = rand(3)
    S = cart2spher(R)
    dR_dS = [ dspher_to_dcart(S, 1.0, 0.0) dspher_to_dcart(S, 0.0, 1.0) ]
@@ -96,6 +129,28 @@ for nsamples = 1:10
    print_tf((@test norm(dR_dS - dR_dS_h, Inf) < 1e-5))
 end
 println()
+
+#   => THIS TEST MAKES NO SENSE, NEED TO RETHINK IT!!!
+# ##
+# @info("Test : spher-cart jacobian near cosθ = 1")
+# φθ(S::PseudoSpherical) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
+# φθ(R::AbstractVector) = φθ(cart2spher(R))
+# EE = [ [1,0,0], [0,1,0], [0,0,1] ]
+# # h1 = 1e-10
+# h1 = 1e-5
+# for nsamples = 1:2
+#    R = [0.0,0.0,1.0] + (1e-8) * (rand(3).-0.5)
+#    S = cart2spher(R)
+#    dR_dS = [ dspher_to_dcart(S, 1.0, 0.0) dspher_to_dcart(S, 0.0, 1.0) ]
+#    dR_dS_h = hcat( (φθ(R+h1*EE[1])-φθ(R-h1*EE[1])) / (2*h1),
+#                    (φθ(R+h1*EE[2])-φθ(R-h1*EE[2])) / (2*h1),
+#                    (φθ(R+h1*EE[3])-φθ(R-h1*EE[3])) / (2*h1) )'
+#     [dR_dS dR_dS_h] |> display; println()
+#    @show dR_dS ≈ dR_dS_h
+#    # print_tf((@test norm(dR_dS - dR_dS_h, Inf) < 1e-5))
+# end
+# println()
+# ##
 
 @info("Test: check derivatives of complex spherical harmonics")
 for nsamples = 1:10

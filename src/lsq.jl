@@ -58,11 +58,27 @@ function lsq_system(configs::Vector{Dat},
                     shipB::IPBasis, cfgweights, obsweights)
    A = _alloc_lsq_matrix(configs, shipB)
    Y = zeros(Float64, size(A, 1))
-   for (okey, d, _) in observations(configs)
+   for (okey, d, icfg) in observations(configs)
+      if !haskey(obsweights, okey); continue; end
+      if !haskey(cfgweights, d.configtype); continue; end
+      print(".")
       w = obsweights[okey] * cfgweights[d.configtype]
       irows = matrows(d, okey)
       Y[irows] = w * observation(d, okey)
       A[irows, :] = w * eval_obs(okey, shipB, d.at)
+      if any(isnan, Y[irows])
+         @show icfg, okey
+         @error("found NaNs in Y")
+         throw(nothing)
+      end
+      if any(isnan, A[irows, :])
+         @show icfg, okey
+         @show eval_obs(okey, shipB, d.at)
+         @show cell(d.at)
+         @show positions(d.at)
+         @error("found NaNs in A")
+         throw(nothing)
+      end
    end
    return A, Y
 end
@@ -78,7 +94,7 @@ function lsqfit(configs::Vector{Dat},
    if verbose; (@show size(A)); end
    coeffs = qr(A) \ Y
 
-   # return SHIP(shipB, coeffs), 
+   # return SHIP(shipB, coeffs),
    return norm(A * coeffs - Y) / norm(Y)
 end
 

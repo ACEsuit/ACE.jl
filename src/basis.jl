@@ -362,12 +362,12 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF}, _)
          end
       end
       # two little sanity checks
-      if b == 0.0
-         @warn("B[idx] == 0!")
-      end
-      if abs(imag(b) / abs(b)) > 1e-10
-         @warn("b/|b| == $(b/abs(b))")
-      end
+      # if b == 0.0
+      #    @warn("B[idx] == 0!")
+      # end
+      # if abs(imag(b) / abs(b)) > 1e-10
+      #    @warn("b/|b| == $(b/abs(b))")
+      # end
       B[idx] = real(b)
    end
    return B
@@ -473,6 +473,7 @@ function forces(shipB::SHIPBasis, at::Atoms)
    # assemble site gradients and write into F
    for (i, j, r, R) in sites(nlist)
       eval_basis_d!(B, dB, shipB, R, tmp)
+      # @show dB
       for a = 1:length(R)
          F[j[a], :] .-= dB[a, :]
          F[i, :] .+= dB[a, :]

@@ -20,8 +20,8 @@ X = copy(positions(at))
 
 trans = PolyTransform(2, 1.3)
 pB = PairBasis(10, trans, 2, 2.1*r0)
-E = energy(at, pB)
-DE = - forces(at, pB)
+E = energy(pB, at)
+DE = - forces(pB, at)
 
 @info("Finite-difference test on PairBasis forces")
 for ntest = 1:20
@@ -30,7 +30,7 @@ for ntest = 1:20
    errs = Float64[]
    for p = 2:10
       h = 0.1^p
-      Eh = energy(set_positions!(at, X+h*U), pB)
+      Eh = energy(pB, set_positions!(at, X+h*U))
       DEhxU = (Eh-E) / h
       push!(errs, norm(DExU - DEhxU, Inf))
    end

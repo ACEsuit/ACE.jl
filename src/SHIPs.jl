@@ -16,6 +16,6 @@ include("basis.jl")
 include("fast.jl")
 include("pair.jl")
 
-include("lsq.jl")
+# include("lsq.jl")
 
 end # module

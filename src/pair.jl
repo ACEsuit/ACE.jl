@@ -34,7 +34,7 @@ alloc_temp(pB::PairBasis) = (J = alloc_B(pB.J),)
 alloc_temp_d(pB::PairBasis, args...) = ( J = alloc_B( pB.J),
                                         dJ = alloc_dB(pB.J) )
 
-function energy(at::Atoms, pB::PairBasis)
+function energy(pB::PairBasis, at::Atoms)
    E = alloc_B(pB)
    stor = alloc_temp(pB)
    for (i, j, r, R) in pairs(at, cutoff(pB))
@@ -44,7 +44,7 @@ function energy(at::Atoms, pB::PairBasis)
    return E
 end
 
-function forces(at::Atoms, pB::PairBasis)
+function forces(pB::PairBasis, at::Atoms)
    F = zeros(JVecF, length(at), length(pB))
    stor = alloc_temp_d(pB)
    for (i, j, r, R) in pairs(at, cutoff(pB))

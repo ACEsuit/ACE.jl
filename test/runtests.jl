@@ -19,5 +19,5 @@ print_tf(::Test.Fail) = printstyled("-", bold=true, color=:red)
     include("test_Bcoeffs.jl")
     include("test_basis.jl")
     include("test_fast.jl")
-    include("test_pair.jl") 
+    include("test_pair.jl")
 end

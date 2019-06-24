@@ -78,4 +78,36 @@ for 🚢 in ships
    println()
 end
 
+
+##
+verbose=false
+@info("Test gradients for 3B with and R near the pole")
+🚢 = ship2 = SHIPBasis(2, 15, 2.0, PolyTransform(2, 1.3), 2, 0.5, 3.0)
+@info("  body-order = $(SHIPs.bodyorder(🚢)+1):")
+# Rs = [ randR(5); [SVector(1e-14*rand(), 1e-14*rand(), 1.1+1e-6*rand())] ]
+Rs = [ randR(5); [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
+store = SHIPs.alloc_temp_d(🚢, Rs)
+SHIPs.precompute_grads!(store, 🚢, Rs)
+B1 = eval_basis(🚢, Rs)
+B = SHIPs.alloc_B(🚢)
+dB = SHIPs.alloc_dB(🚢, Rs)
+SHIPs.eval_basis_d!(B, dB, 🚢, Rs, store)
+@info("      finite-difference test into random directions")
+for ndirections = 1:30
+   Us = randR(length(Rs))
+   errs = Float64[]
+   for p = 2:10
+      h = 0.1^p
+      Bh = eval_basis(🚢, Rs+h*Us)
+      dBh = (Bh - B) / h
+      dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
+      push!(errs, norm(dBh - dBxU, Inf))
+      verbose && (@printf("  %2d | %.2e \n", p, errs[end]))
+   end
+   success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+   print_tf(@test success)
+end
+println()
+
+
 end

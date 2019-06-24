@@ -32,7 +32,7 @@ function cart2spher(R::AbstractVector)
 	φ = atan(R[2], R[1])
 	sinφ, cosφ = sincos(φ)
 	cosθ = R[3] / r
-	sinθ = sqrt(1-cosθ^2)
+	sinθ = sqrt(R[1]^2+R[2]^2) / r
 	return PseudoSpherical(r, cosφ, sinφ, cosθ, sinθ)
 end
 
@@ -42,10 +42,37 @@ PseudoSpherical(φ, θ) = PseudoSpherical(1.0, cos(φ), sin(φ), cos(θ), sin(θ
 convert a gradient with respect to spherical coordinates to a gradient
 with respect to cartesian coordinates
 """
-dspher_to_dcart(S, f_φ, f_θ) =
-	SVector( - ((S.sinφ * f_φ) / S.r) / S.sinθ + (S.cosφ * S.cosθ * f_θ) / S.r,
-	           ((S.cosφ * f_φ) / S.r) / S.sinθ + (S.sinφ * S.cosθ * f_θ) / S.r,
-				                                  - (         S.sinθ * f_θ) / S.r )
+function dspher_to_dcart(S, f_φ, f_θ)
+	r = S.r + eps()
+   return SVector( - (S.sinφ * f_φ) / S.sinθ + (S.cosφ * S.cosθ * f_θ),
+			            (S.cosφ * f_φ) / S.sinθ + (S.sinφ * S.cosθ * f_θ),
+			 			                                   - (   S.sinθ * f_θ) ) / r
+	# if abs(S.sinθ) > 1e-8
+	# else
+	#    # f1 = SVector( - (S.sinφ * f_φ) / S.sinθ + (S.cosφ * S.cosθ * f_θ),
+	# 	# 		            (S.cosφ * f_φ) / S.sinθ + (S.sinφ * S.cosθ * f_θ),
+	# 	# 		 			                                   - (   S.sinθ * f_θ) ) / r
+	#
+	# 	gy = f_θ / r / S.cosθ
+   #    if S.sinθ == 0
+	# 		@error("sinθ must not be zero! I don't know what to do?!")
+	# 	else
+	# 		gx = f_φ / r / S.sinθ
+	# 	end
+	# 	fx = - S.sinφ * gx + S.cosφ * gy
+	# 	fy =   S.cosφ * gx + S.sinφ * gy
+	# 	fz = - gy * S.sinθ / S.cosθ
+	# 	fnew = SVector(fx, fy, fz)
+	# 	# @show S.sinφ
+	# 	# @show norm(f1 - fnew)
+	# 	# if norm(f1 - fnew) > 1e-4
+	# 	# 	@show f_φ/f_θ
+	# 	# 	@show gx / gy
+	# 	# end
+	#
+	# 	return fnew
+	# end
+end
 
 
 # --------------------------------------------------------
@@ -290,7 +317,8 @@ function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
 	@assert length(dY) >= sizeY(L)
-   @assert abs(S.cosθ) <= 1.0
+   # @assert abs(S.cosθ) < 1.0
+
 	ep = 1 / sqrt(2)
 	for l = 0:L
 		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
@@ -375,6 +403,9 @@ function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, _)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
+	if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
+		R = SVec3(R[1]+1e-9, R[2], R[3])
+	end
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, SH.P, SH.dP)
 	cYlm_d!(Y, dY, L, S, SH.P, SH.dP)
