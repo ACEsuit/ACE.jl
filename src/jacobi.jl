@@ -8,6 +8,7 @@ import SHIPs: eval_basis,
               alloc_B,
               alloc_dB
 
+import Base.==
 export Jacobi
 
 """
@@ -46,6 +47,10 @@ struct Jacobi{T}
    B::Vector{T}
    C::Vector{T}
 end
+
+==(J1::Jacobi, J2::Jacobi) = (
+      (J1.α == J2.α) && (J1.β == J2.β) && (length(J1) == length(J2))
+   )
 
 
 function Jacobi(α, β, N, T=Float64)
