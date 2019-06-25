@@ -148,12 +148,12 @@ end
 
 
 function virial(V::PolyPairPot{T}, at::Atoms) where {T}
-   V = JMat{T}
+   Vr = zero(JMat{T})
    stor = alloc_temp_d(V)
    for (i, j, r, R) in pairs(at, cutoff(V))
       eval_basis_d!(stor.J, stor.dJ, V.J, r, nothing)
       dJ = dot(V.coeffs, stor.dJ)
-      V -= dJ/r * R * R'
+      Vr -= dJ/r * R * R'
    end
-   return V
+   return Vr
 end
