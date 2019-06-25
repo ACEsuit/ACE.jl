@@ -18,16 +18,16 @@ eval_basis(B, args...) =
 function eval_basis_d(B, args...)
    b = alloc_B(B)
    db = alloc_dB(B)
-   store = alloc_temp_d(B, args[end])
-   eval_basis_d!(b, db, B, args..., store)
+   tmp = alloc_temp_d(B, args[end])
+   eval_basis_d!(b, db, B, args..., tmp)
    return b, db
 end
 
 function alloc_B end
 function alloc_dB end
 
-function alloc_temp(B, args...); return nothing; end
-function alloc_temp_d(B, args...); return nothing;  end
+function alloc_temp(args...); return nothing; end
+function alloc_temp_d(args...); return nothing;  end
 
 function transform end
 function transform_d end

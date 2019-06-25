@@ -8,9 +8,12 @@
 
 module SphericalHarmonics
 
+using StaticArrays, LinearAlgebra
 
 import SHIPs
-using StaticArrays, LinearAlgebra
+
+import SHIPs: alloc_B, alloc_dB, alloc_temp, alloc_temp_d,
+              eval_basis!, eval_basis_d!
 
 const SVec3 = SVector{3}
 
@@ -371,8 +374,6 @@ end
 
 struct SHBasis{T}
 	maxL::Int
-	P::Vector{T}
-	dP::Vector{T}
 	coeff::ALPCoefficients{T}
 end
 
@@ -380,30 +381,37 @@ import Base.==
 ==(B1::SHBasis, B2::SHBasis) = (B1.maxL == B1.maxL)
 
 SHBasis(maxL::Integer, T=Float64) =
-		SHBasis(maxL, Vector{T}(undef, sizeP(maxL)),
-					     Vector{T}(undef, sizeP(maxL)),
-						  compute_coefficients(maxL))
+		SHBasis(maxL, compute_coefficients(maxL))
 
 Base.eltype(SH::SHBasis{T}) where {T} = T
 Base.length(S::SHBasis) = sizeY(S.maxL)
 
-SHIPs.alloc_B( S::SHBasis{T}) where {T} =
+alloc_B( S::SHBasis{T}) where {T} =
 		Vector{Complex{T}}(undef, length(S))
-SHIPs.alloc_dB(S::SHBasis{T}) where {T} =
+
+alloc_dB(S::SHBasis{T}) where {T} =
 		Vector{SVec3{Complex{T}}}(undef, length(S))
 
-function SHIPs.eval_basis!(Y, SH::SHBasis, R::SVec3, _)
+alloc_temp(SH::SHBasis{T}, args...) where {T} = (
+		P = Vector{T}(undef, sizeP(SH.maxL)), )
+
+alloc_temp_d(SH::SHBasis{T}, args...) where {T} = (
+		 P = Vector{T}(undef, sizeP(SH.maxL)),
+		dP = Vector{T}(undef, sizeP(SH.maxL)) )
+
+
+function eval_basis!(Y, SH::SHBasis, R::SVec3, tmp)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
 	S = cart2spher(R)
-	compute_p!(L, S, SH.coeff, SH.P)
-	cYlm!(Y, L, S, SH.P)
+	compute_p!(L, S, SH.coeff, tmp.P)
+	cYlm!(Y, L, S, tmp.P)
 	return Y
 end
 
 
-function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, _)
+function eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, tmp)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
@@ -411,8 +419,8 @@ function SHIPs.eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, _)
 		R = SVec3(R[1]+1e-9, R[2], R[3])
 	end
 	S = cart2spher(R)
-	compute_dp!(L, S, SH.coeff, SH.P, SH.dP)
-	cYlm_d!(Y, dY, L, S, SH.P, SH.dP)
+	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
+	cYlm_d!(Y, dY, L, S, tmp.P, tmp.dP)
 	# return Y, dY
 end
 

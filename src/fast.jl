@@ -99,9 +99,11 @@ end
 
 
 alloc_temp(ship::SHIP{BO,T}) where {BO, T} =
-   (  J = alloc_B(ship.J),
-      Y = alloc_B(ship.SH),
-      A = zeros(Complex{T}, length_A(ship))
+   (     J = alloc_B(ship.J),
+         Y = alloc_B(ship.SH),
+         A = zeros(Complex{T}, length_A(ship)),
+      tmpJ = alloc_temp(ship.J),
+      tmpY = alloc_temp(ship.SH)
    )
 
 
@@ -109,8 +111,8 @@ function precompute!(store, ship::SHIP, Rs)
    fill!(store.A, 0.0)
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(store.J, ship.J, norm(R), nothing)
-      eval_basis!(store.Y, ship.SH, R, nothing)
+      eval_basis!(store.J, ship.J, norm(R), store.tmpJ)
+      eval_basis!(store.Y, ship.SH, R, store.tmpY)
       # add the contributions to the A_klm; the indexing into the
       # A array is determined by `ship.firstA` which was precomputed
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
@@ -143,7 +145,9 @@ alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
         Y = alloc_B(ship.SH),
        dY = alloc_dB(ship.SH),
         A = zeros(Complex{T}, length_A(ship)),
-     dAco = zeros(Complex{T}, length_A(ship))
+     dAco = zeros(Complex{T}, length_A(ship)),
+     tmpJ = alloc_temp_d(ship.J),
+     tmpY = alloc_temp_d(ship.SH)
       )
 
 # compute one site energy
@@ -176,8 +180,8 @@ function evaluate_d!(dEs, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
    fill!(dEs, zero(JVec{T}))
 
    for (iR, R) in enumerate(Rs)
-      eval_basis_d!(store.J, store.dJ, ship.J, norm(R), nothing)
-      eval_basis_d!(store.Y, store.dY, ship.SH, R, nothing)
+      eval_basis_d!(store.J, store.dJ, ship.J, norm(R), store.tmpJ)
+      eval_basis_d!(store.Y, store.dY, ship.SH, R, store.tmpY)
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
             @inbounds aaa = store.J[k+1] * store.dY[index_y(l, m)]

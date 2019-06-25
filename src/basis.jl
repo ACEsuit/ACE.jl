@@ -160,15 +160,7 @@ struct SHIPBasis{BO, T, TJ} <: IPBasis
    SH::SHBasis{T}
    KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}}
    Nu::Vector{SVector{BO, Int}}
-   # ------ temporary storage arrays | TODO: create a `temp` function?
-   A::Vector{Complex{T}}
-   dA::Vector{JVec{Complex{T}}}
-   BJ::Vector{T}
-   dBJ::Vector{T}
-   BSH::Vector{Complex{T}}
-   dBSH::Vector{JVec{Complex{T}}}
    cg::ClebschGordan{T}
-   # --------
    firstA::Vector{Int}   # indexing into A
    valBO::Val{BO}
 end
@@ -226,16 +218,10 @@ function SHIPBasis(bo::Integer, deg::Integer, wY::Real, J::TransformedJacobi;
    cg = ClebschGordan(maxL)
    # get the basis specification
    allKL, Nu = generate_LK_tuples(deg, wY, bo, cg; filter=filter)
-   # allocate space for the A array
-   A = alloc_A(deg, wY)
-   dA = alloc_dA(deg, wY)
    # compute the (l,k) -> indexing into A information
    firstA = _firstA(allKL)
-   @assert firstA[end] == length(A)+1
    # putting it all together ...
-   return SHIPBasis(deg, wY, J, SH, allKL, Nu, A, dA,
-                    alloc_B(J), alloc_dB(J), alloc_B(SH), alloc_dB(SH),
-                    cg,  firstA, Val(bo))
+   return SHIPBasis(deg, wY, J, SH, allKL, Nu, cg,  firstA, Val(bo))
 end
 
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO
@@ -247,65 +233,81 @@ alloc_B(ship::SHIPBasis) = zeros(Float64, length_B(ship))
 alloc_dB(ship::SHIPBasis, N::Integer) = zeros(SVec3{Float64}, N, length_B(ship))
 alloc_dB(ship::SHIPBasis, Rs::AbstractVector) = alloc_dB(ship, length(Rs))
 
+alloc_temp(ship::SHIPBasis) = (
+      A = alloc_A(ship.deg, ship.wY),
+      J = alloc_B(ship.J),
+      Y = alloc_B(ship.SH),
+      tmpJ = alloc_temp(ship.J),
+      tmpY = alloc_temp(ship.SH)
+   )
 
+alloc_temp_d(shipB::SHIPBasis, Rs::AbstractVector{JVecF}) =
+      alloc_temp_d(shipB, length(Rs))
+
+function alloc_temp_d(ship::SHIPBasis, N::Integer)
+   J1 = alloc_B(ship.J)
+   dJ1 = alloc_dB(ship.J)
+   Y1 = alloc_B(ship.SH)
+   dY1 = alloc_dB(ship.SH)
+   return (
+         A = alloc_A(ship.deg, ship.wY),
+         J = zeros(eltype(J1), N, length(J1)),
+        dJ = zeros(eltype(dJ1), N, length(dJ1)),
+         Y = zeros(eltype(Y1), N, length(Y1)),
+        dY = zeros(eltype(dY1), N, length(dY1)),
+        J1 = J1,
+       dJ1 = dJ1,
+        Y1 = Y1,
+       dY1 = dY1,
+      tmpJ = alloc_temp_d(ship.J, N),
+      tmpY = alloc_temp_d(ship.SH, N)
+   )
+end 
 
 # -------------------------------------------------------------
 #       precompute the A arrays
 # -------------------------------------------------------------
 
-function precompute_A!(ship::SHIPBasis, Rs::AbstractVector{JVecF})
-   fill!(ship.A, 0.0)
+function precompute_A!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVecF})
+   fill!(tmp.A, 0.0)
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(ship.BJ, ship.J, norm(R), nothing)
-      eval_basis!(ship.BSH, ship.SH, R, nothing)
+      eval_basis!(tmp.J, ship.J, norm(R), tmp.tmpJ)
+      eval_basis!(tmp.Y, ship.SH, R, tmp.tmpY)
       # add the contributions to the A_klm; the indexing into the
       # A array is determined by `ship.firstA` which was precomputed
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
-            @inbounds ship.A[iA+l+m] += ship.BJ[k+1] * ship.BSH[index_y(l, m)]
+            @inbounds tmp.A[iA+l+m] += tmp.J[k+1] * tmp.Y[index_y(l, m)]
          end
       end
    end
    return nothing
 end
 
-alloc_temp_d(shipB::SHIPBasis, Rs::AbstractVector{JVecF}) =
-      alloc_temp_d(shipB, length(Rs))
 
-alloc_temp_d(ship::SHIPBasis, N::Integer) =
-          ( A = zeros(ComplexF64, length(ship.A)),
-            J = zeros(N, length(ship.J)),
-            dJ = zeros(N, length(ship.J)),
-            Y = zeros(ComplexF64, N, length(ship.SH)),
-            dY = zeros(JVec{ComplexF64}, N, length(ship.SH)) )
-
-function precompute_grads!(store, ship::SHIPBasis, Rs::AbstractVector{JVecF})
-   fill!(store.A, 0.0)
+function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVecF})
+   fill!(tmp.A, 0.0)
    # TODO: re-order these loops => cf. Issue #2
    #        => then can SIMD them and avoid all copying!
    for (iR, R) in enumerate(Rs)
       # ---------- precompute the derivatives of the Jacobi polynomials
-      eval_basis_d!(ship.BJ, ship.dBJ, ship.J, norm(R), nothing)
-      # copy into the store array
-      for i = 1:length(ship.BJ)
-         store.J[iR, i] = ship.BJ[i]
-         store.dJ[iR, i] = ship.dBJ[i]
-      end
+      #            and copy into the tmp array
+      eval_basis_d!(tmp.J1, tmp.dJ1, ship.J, norm(R), tmp.tmpJ)
+      tmp.J[iR,:] .= tmp.J1[:]
+      tmp.dJ[iR,:] .= tmp.dJ1[:]
       # ----------- precompute the Ylm derivatives
-      eval_basis_d!(ship.BSH, ship.dBSH, ship.SH, R, nothing)
-      for i = 1:length(ship.SH)
-         store.Y[iR, i] = ship.BSH[i]
-         store.dY[iR, i] = ship.dBSH[i]
-      end
+      eval_basis_d!(tmp.Y1, tmp.dY1, ship.SH, R, tmp.tmpY)
+      tmp.Y[iR,:] .= tmp.Y1[:]
+      tmp.dY[iR,:] .= tmp.dY1[:]
       # ----------- precompute the A values
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
-            store.A[iA+l+m] += store.J[iR, k+1] * store.Y[iR, index_y(l, m)]
+            tmp.A[iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
          end
       end
    end
-   return store
+   return tmp
 end
 
 
@@ -364,8 +366,8 @@ function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
 end
 
 
-function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF}, _)
-   precompute_A!(ship, Rs)
+function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF}, tmp)
+   precompute_A!(tmp, ship, Rs)
    KL = ship.KL
    for (idx, ν) in enumerate(ship.Nu)
       kk, ll, mrange = _klm(ν, KL)
@@ -384,7 +386,7 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF}, _)
                # this is the indexing convention used to construct A
                #  (feels brittle - maybe rethink it and write a function for it)
                i0 = ship.firstA[ν[i]]
-               bm *= ship.A[i0 + l + m]
+               bm *= tmp.A[i0 + l + m]
             end
             b += bm
          end
@@ -404,11 +406,11 @@ end
 
 
 
-function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
+function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, tmp)
    fill!(B, 0.0)
    fill!(dB, zero(JVecF))
    # all precomputations of "local" gradients
-   precompute_grads!(store, ship, Rs)
+   precompute_grads!(tmp, ship, Rs)
    KL = ship.KL
    for (idx, ν) in enumerate(ship.Nu)
       kk, ll, mrange = _klm(ν, KL)
@@ -427,7 +429,7 @@ function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
             CxA = ComplexF64(C)
             for α = 1:length(ν)
                i0 = ship.firstA[ν[α]]
-               CxA *= store.A[i0 + ll[α] + mm[α]] # the k-info is contained in ν[α]
+               CxA *= tmp.A[i0 + ll[α] + mm[α]] # the k-info is contained in ν[α]
             end
             B[idx] += real(CxA)
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
@@ -441,7 +443,7 @@ function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
                for β = 1:length(ν)
                   if β != α
                      i0 = ship.firstA[ν[β]]
-                     CxA_α *= store.A[i0 + ll[β] + mm[β]]
+                     CxA_α *= tmp.A[i0 + ll[β] + mm[β]]
                   end
                end
 
@@ -450,8 +452,8 @@ function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, store)
                iy = index_y(ll[α], mm[α])
                for j = 1:length(Rs)
                   R = Rs[j]
-                  ∇ϕ_klm = (store.dJ[j, ik] *  store.Y[j, iy] * (R/norm(R))
-                           + store.J[j, ik] * store.dY[j, iy] )
+                  ∇ϕ_klm = (tmp.dJ[j, ik] *  tmp.Y[j, iy] * (R/norm(R))
+                           + tmp.J[j, ik] * tmp.dY[j, iy] )
                   dB[j, idx] += real(CxA_α * ∇ϕ_klm)
                end
             end
@@ -481,8 +483,9 @@ cutoff(shipB::SHIPBasis) = cutoff(shipB.J)
 function energy(shipB::SHIPBasis, at::Atoms)
    E = zeros(length(shipB))
    B = alloc_B(shipB)
+   tmp = alloc_temp(shipB)
    for (i, j, r, R) in sites(at, cutoff(shipB))
-      eval_basis!(B, shipB, R, nothing)
+      eval_basis!(B, shipB, R, tmp)
       E[:] .+= B[:]
    end
    return E
