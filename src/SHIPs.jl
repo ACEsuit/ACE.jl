@@ -8,7 +8,7 @@
 module SHIPs
 
 using Reexport
-@reexport using JuLIP 
+@reexport using JuLIP
 
 include("aux.jl")
 include("prototypes.jl")

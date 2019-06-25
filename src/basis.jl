@@ -509,3 +509,23 @@ function forces(shipB::SHIPBasis, at::Atoms)
    end
    return [ F[:, iB] for iB = 1:length(shipB) ]
 end
+
+
+function virial(shipB::SHIPBasis, at::Atoms)
+   # precompute the neighbourlist to count the number of neighbours
+   nlist = neighbourlist(at, cutoff(shipB))
+   maxR = max_neigs(nlist)
+   # allocate space accordingly
+   V = zeros(JMatF, length(shipB))
+   B = alloc_B(shipB)
+   dB = alloc_dB(shipB, maxR)
+   tmp = alloc_temp_d(shipB, maxR)
+   # assemble site gradients and write into F
+   for (i, j, r, R) in sites(nlist)
+      eval_basis_d!(B, dB, shipB, R, tmp)
+      for iB = 1:length(shipB)
+         V[iB] += JuLIP.Potentials.site_virial(dB[:, iB], R)
+      end
+   end
+   return V
+end

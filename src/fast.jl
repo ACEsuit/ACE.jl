@@ -9,8 +9,10 @@
 using SHIPs.SphericalHarmonics: SHBasis, index_y
 using StaticArrays
 using JuLIP: AbstractCalculator, Atoms, JVec, SitePotential
+using NeighbourLists: max_neigs
 
 import JuLIP, JuLIP.MLIPs
+import JuLIP: cutoff, energy, forces, virial
 import Base: Dict, convert, ==
 
 export SHIP
@@ -194,6 +196,42 @@ end
 # ------------ JuLIP Calculators ------------------
 #  * forces and virials should just follow from JuLIP.
 
-function energy(at::Atoms, ship::SHIP)
+cutoff(ship::SHIP) = cutoff(ship.J)
 
+function energy(ship::SHIP, at::Atoms)
+   E = 0.0
+   tmp = alloc_temp(ship)
+   for (i, j, r, R) in sites(at, cutoff(ship))
+      E += evaluate!(ship, R, tmp)
+   end
+   return E
+end
+
+
+function forces(ship::SHIP, at::Atoms)
+   F = zeros(JVecF, length(at))
+   nlist = neighbourlist(at, cutoff(ship))
+   tmp = alloc_temp_d(ship, max_neigs(nlist))
+   dEs = zeros(JVecF, max_neigs(nlist))
+   for (i, j, r, R) in sites(at, cutoff(ship))
+      evaluate_d!(dEs, ship, R, tmp)
+      for n = 1:length(j)
+         F[i] += dEs[n]
+         F[j[n]] -= dEs[n]
+      end
+   end
+   return F
+end
+
+
+function virial(ship::SHIP, at::Atoms)
+   V = zero(JMatF)
+   nlist = neighbourlist(at, cutoff(ship))
+   tmp = alloc_temp_d(ship, max_neigs(nlist))
+   dEs = zeros(JVecF, max_neigs(nlist))
+   for (i, j, r, R) in sites(at, cutoff(ship))
+      evaluate_d!(dEs, ship, R, tmp)
+      V += JuLIP.Potentials.site_virial(dEs, R)
+   end
+   return V
 end

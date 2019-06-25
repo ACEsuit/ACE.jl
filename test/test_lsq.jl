@@ -19,7 +19,8 @@ function generate_data(species, L, rmax, N, calc)
       rattle!(at, rand() * rmax)
       E = energy(calc, at)
       F = forces(calc, at)
-      push!(data, Dat(at, "rand"; E = E, F = F))
+      V = virial(calc, at)
+      push!(data, Dat(at, "rand"; E = E, F = F, V = V))
    end
    return data
 end
@@ -35,6 +36,9 @@ basis(deg) = IPSuperBasis(
       SHIPBasis(2, deg, 2.0, PolyTransform(3, r0), 2, 0.5*r0, cutoff(calc))
    )
 
+# basis(deg) = SHIPBasis(2, deg, 2.0, PolyTransform(3, r0), 2, 0.5*r0, cutoff(calc))
+
+
 ##
 err_rms = Float64[]
 degrees = [4, 8, 12, 16, 20]
@@ -43,9 +47,9 @@ degrees = [4, 8, 12, 16, 20]
 for deg in degrees
    shipB = basis(deg)
    err = SHIPs.Lsq.lsqfit(train, shipB;
-                           configweights = Dict("rand" => 1.0),
-                           obsweights   = Dict("E" => 1.0, "F" => 1.0),
-                           verbose=false)
+                          configweights = Dict("rand" => 1.0),
+                          obsweights   = Dict("E" => 1.0, "F" => 1.0, "V" => 1.0),
+                          verbose=false)
    @printf("    %2d  |  %4d   %.2e \n", deg, length(shipB), err)
    push!(err_rms, err)
 end

@@ -10,7 +10,8 @@ import JuLIP
 using JuLIP: JVec, Atoms
 using JuLIP.MLIPs: IPBasis
 
-import JuLIP: energy, forces
+import JuLIP:             energy, forces, virial
+import JuLIP.Potentials:  evaluate, evaluate_d
 import Base: Dict, convert, ==
 
 export PairBasis
@@ -69,6 +70,18 @@ function forces(pB::PairBasis, at::Atoms)
    return [ F[:, iB] for iB = 1:length(pB) ]
 end
 
+function virial(pB::PairBasis, at::Atoms)
+   V = zeros(JMatF, length(pB))
+   stor = alloc_temp_d(pB)
+   for (i, j, r, R) in pairs(at, cutoff(pB))
+      eval_basis_d!(stor.J, stor.dJ, pB.J, r, nothing)
+      for iB = 1:length(pB)
+         V[iB] -= stor.dJ[iB]/r * R * R'
+      end
+   end
+   return V
+end
+
 
 # ----------------------------------------------------
 
@@ -76,6 +89,8 @@ struct PolyPairPot{T,TJ} <: AbstractCalculator
    J::TJ
    coeffs::Vector{T}
 end
+
+@pot PolyPairPot
 
 PolyPairPot(pB::PairBasis, coeffs::Vector) = PolyPairPot(pB.J, coeffs)
 JuLIP.MLIPs.combine(pB::PairBasis, coeffs::AbstractVector) = PolyPairPot(pB, coeffs)
@@ -102,6 +117,12 @@ alloc_temp(V::PolyPairPot) = (J = alloc_B(V.J),)
 alloc_temp_d(V::PolyPairPot, args...) = ( J = alloc_B( V.J),
                                            dJ = alloc_dB(V.J) )
 
+evaluate(V::PolyPairPot, r) =
+      dot(V.coeffs, eval_basis(V.J, r))
+evaluate_d(V::PolyPairPot, r) =
+      dot(V.coeffs, eval_basis_d(V.J, r)[2])
+
+
 function energy(V::PolyPairPot{T}, at::Atoms) where {T}
    E = zero(T)
    stor = alloc_temp(V)
@@ -123,4 +144,16 @@ function forces(V::PolyPairPot{T}, at::Atoms) where {T}
       F[j] -= dJ * (R/r)
    end
    return F
+end
+
+
+function virial(V::PolyPairPot{T}, at::Atoms) where {T}
+   V = JMat{T}
+   stor = alloc_temp_d(V)
+   for (i, j, r, R) in pairs(at, cutoff(V))
+      eval_basis_d!(stor.J, stor.dJ, V.J, r, nothing)
+      dJ = dot(V.coeffs, stor.dJ)
+      V -= dJ/r * R * R'
+   end
+   return V
 end

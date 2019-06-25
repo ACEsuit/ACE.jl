@@ -25,14 +25,11 @@ using IPFitting.DB: set_matrows!, matrows
 using SHIPs: SHIPBasis, SHIP
 using JuLIP.MLIPs: IPBasis
 
-import IPFitting: eval_obs
-
 
 
 function _alloc_lsq_matrix(configs, basis)
    nrows = 0
    for (okey, d, _) in observations(configs)
-      if okey == "V"; continue; end  # skip the virials for now
       len = length(observation(d, okey))
       set_matrows!(d, okey, collect(nrows .+ (1:len)))
       nrows += len
@@ -41,17 +38,17 @@ function _alloc_lsq_matrix(configs, basis)
    return zeros(Float64, nrows, length(basis))
 end
 
-eval_obs(::Val{:E}, shipB::IPBasis, at::Atoms) =
-         reshape(energy(shipB, at), (1, length(shipB)))
+# eval_obs(::Val{:E}, shipB::IPBasis, at::Atoms) =
+#          reshape(energy(shipB, at), (1, length(shipB)))
 
-function eval_obs(::Val{:F}, shipB::IPBasis, at::Atoms)
-   Fs = forces(shipB, at)
-   vecFs = zeros(3*length(at), length(shipB))
-   for iB = 1:length(shipB)
-      vecFs[:, iB] = vec_obs(Val{:F}(), Fs[iB])
-   end
-   return vecFs
-end
+# function eval_obs(::Val{:F}, shipB::IPBasis, at::Atoms)
+#    Fs = forces(shipB, at)
+#    vecFs = zeros(3*length(at), length(shipB))
+#    for iB = 1:length(shipB)
+#       vecFs[:, iB] = vec_obs(Val{:F}(), Fs[iB])
+#    end
+#    return vecFs
+# end
 
 # TODO: rewrite with tfor loop
 function lsq_system(configs::Vector{Dat},
@@ -61,11 +58,11 @@ function lsq_system(configs::Vector{Dat},
    for (okey, d, icfg) in observations(configs)
       if !haskey(obsweights, okey); continue; end
       if !haskey(cfgweights, d.configtype); continue; end
-      print(".")
+      # print(".")
       w = obsweights[okey] * cfgweights[d.configtype]
       irows = matrows(d, okey)
       Y[irows] = w * observation(d, okey)
-      A[irows, :] = w * eval_obs(okey, shipB, d.at)
+      A[irows, :] = w * vec_obs(okey, eval_obs(okey, shipB, d.at))
       if any(isnan, Y[irows])
          @show icfg, okey
          @error("found NaNs in Y")
