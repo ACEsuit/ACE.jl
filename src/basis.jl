@@ -7,6 +7,7 @@
 
 using StaticArrays, LinearAlgebra
 using JuLIP: JVecF, JVec
+import JuLIP
 using JuLIP.MLIPs: IPBasis
 
 # TODO: Idea => replace (deg, wY) by a "Degree" type and dispatch a lot of
@@ -14,6 +15,8 @@ using JuLIP.MLIPs: IPBasis
 
 using SHIPs.SphericalHarmonics: SHBasis, sizeY, SVec3, cart2spher, index_y,
          ClebschGordan
+
+import Base: Dict, convert, ==
 
 export SHIPBasis
 
@@ -170,6 +173,27 @@ struct SHIPBasis{BO, T, TJ} <: IPBasis
    valBO::Val{BO}
 end
 
+Dict(shipB::SHIPBasis) = Dict(
+      "__id__" => "SHIPs_SHIPBasis",
+      "bodyorder" => bodyorder(shipB),
+      "deg" => shipB.deg,
+      "wY" => shipB.wY,
+      "J" => Dict(shipB.J) )
+
+SHIPBasis(D::Dict) = SHIPBasis(
+      D["bodyorder"],
+      D["deg"],
+      D["wY"],
+      TransformedJacobi(D["J"]) )
+
+convert(::Val{:SHIPs_SHIPBasis}, D::Dict) = SHIPBasis(D)
+
+==(B1::SHIPBasis, B2::SHIPBasis) = (
+      (bodyorder(B1) == bodyorder(B2)) &&
+      (B1.deg == B2.deg) && (B1.wY == B2.wY) &&
+      (B1.J == B2.J) )
+
+
 length_A(deg, wY) = sum( sizeY( floor(Int, (deg - k)/wY) ) for k = 0:deg )
 
 # this could become and allox_temp
@@ -189,8 +213,12 @@ end
 
 function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru; filter=true)
    # r - basis
-   maxP = deg
-   J = rbasis(maxP, trans, p, rl, ru)
+   J = rbasis(deg, trans, p, rl, ru)
+   return SHIPBasis(bo, deg, wY, J; filter=filter)
+end
+
+function SHIPBasis(bo::Integer, deg::Integer, wY::Real, J::TransformedJacobi;
+                   filter=true)
    # R̂ - basis
    maxL = floor(Int, deg / wY)
    SH = SHBasis(maxL)

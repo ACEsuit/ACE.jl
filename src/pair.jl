@@ -11,6 +11,7 @@ using JuLIP: JVec, Atoms
 using JuLIP.MLIPs: IPBasis
 
 import JuLIP: energy, forces
+import Base: Dict, convert, ==
 
 export PairBasis
 
@@ -21,10 +22,21 @@ end
 PairBasis(deg, trans, p, rcut) =
    PairBasis(rbasis(deg, trans, p, rcut))
 
+==(B1::PairBasis, B2::PairBasis) = (B1.J == B2.J)
+
 bodyorder(pB::PairBasis) = 2
 Base.length(pB::PairBasis) = length(pB.J)
 
 JuLIP.cutoff(pB::PairBasis) = cutoff(pB.J)
+
+Dict(pB::PairBasis) = Dict(
+      "__id__" => "SHIPs_PairBasis",
+      "J" => Dict(pB.J) )
+
+PairBasis(D::Dict) = PairBasis(TransformedJacobi(D["J"]))
+
+convert(::Val{:SHIPs_PairBasis}, D::Dict) = PairBasis(D)
+
 
 alloc_B(pB::PairBasis) = zeros(Float64, length(pB))
 alloc_dB(pB::PairBasis, N::Integer) = zeros(SVec3{Float64}, N, length_B(pB))
@@ -55,4 +67,60 @@ function forces(pB::PairBasis, at::Atoms)
       end
    end
    return [ F[:, iB] for iB = 1:length(pB) ]
+end
+
+
+# ----------------------------------------------------
+
+struct PolyPairPot{T,TJ} <: AbstractCalculator
+   J::TJ
+   coeffs::Vector{T}
+end
+
+PolyPairPot(pB::PairBasis, coeffs::Vector) = PolyPairPot(pB.J, coeffs)
+JuLIP.MLIPs.combine(pB::PairBasis, coeffs::AbstractVector) = PolyPairPot(pB, coeffs)
+
+JuLIP.cutoff(V::PolyPairPot) = cutoff(V.J)
+bodyorder(V::PolyPairPot) = 2
+
+==(V1::PolyPairPot, V2::PolyPairPot) = (
+      (V1.J == V2.J) && (V1.coeffs == V2.coeffs) )
+
+Dict(V::PolyPairPot) = Dict(
+      "__id__" => "SHIPs_PolyPairPot",
+      "J" => Dict(V.J),
+      "coeffs" => V.coeffs)
+
+PolyPairPot(D::Dict) = PolyPairPot(
+      TransformedJacobi(D["J"]),
+      Vector{Float64}(D["coeffs"]))
+
+convert(::Val{:SHIPs_PolyPairPot}, D::Dict) = PolyPairPot(D)
+
+
+alloc_temp(V::PolyPairPot) = (J = alloc_B(V.J),)
+alloc_temp_d(V::PolyPairPot, args...) = ( J = alloc_B( V.J),
+                                           dJ = alloc_dB(V.J) )
+
+function energy(V::PolyPairPot{T}, at::Atoms) where {T}
+   E = zero(T)
+   stor = alloc_temp(V)
+   for (i, j, r, R) in pairs(at, cutoff(V))
+      eval_basis!(stor.J, V.J, r, nothing)
+      E += dot(V.coeffs, stor.J)
+   end
+   return E
+end
+
+
+function forces(V::PolyPairPot{T}, at::Atoms) where {T}
+   F = zeros(JVec{T}, length(at))
+   stor = alloc_temp_d(V)
+   for (i, j, r, R) in pairs(at, cutoff(V))
+      eval_basis_d!(stor.J, stor.dJ, V.J, r, nothing)
+      dJ = dot(V.coeffs, stor.dJ)
+      F[i] += dJ * (R/r)
+      F[j] -= dJ * (R/r)
+   end
+   return F
 end

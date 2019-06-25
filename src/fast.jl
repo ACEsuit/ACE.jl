@@ -10,6 +10,9 @@ using SHIPs.SphericalHarmonics: SHBasis, index_y
 using StaticArrays
 using JuLIP: AbstractCalculator, Atoms, JVec, SitePotential
 
+import JuLIP, JuLIP.MLIPs
+import Base: Dict, convert, ==
+
 export SHIP
 
 struct SHIP{BO, T, TJ} <: SitePotential
@@ -22,12 +25,53 @@ struct SHIP{BO, T, TJ} <: SitePotential
    C::Vector{T}
 end
 
+
+==(S1::SHIP, S2::SHIP) = (
+      (bodyorder(S1) == bodyorder(S2)) &&
+      (S1.J == S2.J) &&
+      (S1.SH == S2.SH) &&
+      (S1.KL == S2.KL) &&
+      (S1.firstA == S2.firstA) &&
+      (S1.IA == S2.IA) &&
+      (S1.C == S2.C) )
+
+Dict(ship::SHIP) = Dict(
+      "__id__" => "SHIPs_SHIP",
+      "bodyorder" => bodyorder(ship),
+      "J" => Dict(ship.J),
+      "SH_maxL" => ship.SH.maxL,
+      "T" => string(eltype(ship.SH)),
+      "K" => [kl.k for kl in ship.KL],
+      "L" => [kl.l for kl in ship.KL],
+      "KLD" => [kl.deg for kl in ship.KL],
+      "firstA" => ship.firstA,
+      "IA" => ship.IA,
+      "C" => ship.C
+   )
+
+SHIP(D::Dict) = _SHIP(D, Val(Int(D["bodyorder"]-1)),
+                         Meta.eval(Meta.parse(D["T"])))
+
+_SHIP(D::Dict, ::Val{BO}, T) where {BO} = SHIP(
+      TransformedJacobi(D["J"]),
+      SHBasis(D["SH_maxL"], T),
+      [ (k = k, l = l, deg = T(deg)) for (k, l, deg) in zip(D["K"], D["L"], D["KLD"]) ],
+      Vector{Int}(D["firstA"]),
+      Vector{SVector{BO,Int}}(D["IA"]),
+      Vector{T}(D["C"])
+   )
+
+convert(::Val{:SHIPs_SHIP}, D::Dict) = SHIP(D)
+
 Base.length(ship::SHIP) = length(ship.C)
+
+bodyorder(ship::SHIP{BO}) where {BO} = BO + 1
 
 length_A(ship::SHIP) = ship.firstA[end]
 
+JuLIP.MLIPs.combine(basis::SHIPBasis, coeffs) = SHIP(basis, coeffs)
 
-function SHIP(basis::SHIPBasis{BO, T}, coeffs::Vector{T}) where {BO, T}
+function SHIP(basis::SHIPBasis{BO, T}, coeffs::AbstractVector{T}) where {BO, T}
    IA = SVector{BO,Int}[]
    C = T[]
    ia = zero(MVector{BO, Int})
@@ -152,4 +196,4 @@ end
 
 function energy(at::Atoms, ship::SHIP)
 
-end 
+end

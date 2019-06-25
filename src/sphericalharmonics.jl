@@ -376,11 +376,15 @@ struct SHBasis{T}
 	coeff::ALPCoefficients{T}
 end
 
+import Base.==
+==(B1::SHBasis, B2::SHBasis) = (B1.maxL == B1.maxL)
+
 SHBasis(maxL::Integer, T=Float64) =
 		SHBasis(maxL, Vector{T}(undef, sizeP(maxL)),
 					     Vector{T}(undef, sizeP(maxL)),
 						  compute_coefficients(maxL))
 
+Base.eltype(SH::SHBasis{T}) where {T} = T
 Base.length(S::SHBasis) = sizeY(S.maxL)
 
 SHIPs.alloc_B( S::SHBasis{T}) where {T} =

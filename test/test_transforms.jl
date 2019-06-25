@@ -25,6 +25,8 @@ verbose = false
 for p in 2:4
    @info("p = $p, random transform")
    trans = PolyTransform(1+rand(), 1+rand())
+   @info("      test (de-)dictionisation")
+   println(@test decode_dict(Dict(trans)) == trans)
    B1 = rbasis(10, trans, 2, 3.0)
    B2 = rbasis(10, trans, 2, 0.5, 3.0)
    for B in [B1, B2]

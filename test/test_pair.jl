@@ -20,6 +20,10 @@ X = copy(positions(at))
 
 trans = PolyTransform(2, 1.3)
 pB = PairBasis(10, trans, 2, 2.1*r0)
+
+@info("test (de-)dictionisation of PairBasis")
+println(@test decode_dict(Dict(pB)) == pB)
+
 E = energy(pB, at)
 DE = - forces(pB, at)
 

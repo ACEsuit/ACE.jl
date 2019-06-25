@@ -36,6 +36,8 @@ for B in BB
    @info("   bodyorder = $(SHIPs.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
+   @info("   test (de-)dictionisation")
+   println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
    store = SHIPs.alloc_temp(ship)
    @info("      check that SHIPBasis ≈ SHIP")
