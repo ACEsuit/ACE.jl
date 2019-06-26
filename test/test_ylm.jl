@@ -54,9 +54,12 @@ println()
 
 ##
 @info("      ... same near pole")
-nsamples = 10
+nsamples = 30
 for n = 1:nsamples
-   θ = rand() * 1e-7
+   θ = rand() * 1e-9
+   if θ < 1e-10
+      θ = 0.0
+   end
    φ = (rand()-0.5) * 2*π
    r = 0.1+rand()
    R = SVector(r*sin(θ)*cos(φ), r*sin(θ)*sin(φ), r*cos(θ))
@@ -68,11 +71,23 @@ end
 println()
 ##
 
+verbose=false
 @info("Test: check derivatives of associated legendre polynomials")
 for nsamples = 1:30
    θ = 0.1+0.4 * pi * rand()
    L = 5
-   P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
+   P = SHIPs.SphericalHarmonics.compute_p(L, θ)
+   P1, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
+   # -------------
+   P_eq_P1 = true
+   for l = 0:L, m = 0:l
+      i = SHIPs.SphericalHarmonics.index_p(l, m)
+      if ((m == 0) && !(P[i] ≈ P1[i])) || ((m > 0) && !(P[i] ≈ P1[i] * sin(θ)))
+         P_eq_P1 = false; break;
+      end
+   end
+   print_tf(@test P_eq_P1)
+   # -------------
    errs = []
    verbose && @printf("     h    | error \n")
    for p = 2:10
@@ -86,12 +101,14 @@ for nsamples = 1:30
 end
 println()
 
+##
 
 @info("      ... same near pole")
 for nsamples = 1:30
-   θ = rand() * 1e-7
+   θ = rand() * 1e-8
    L = 5
-   P, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
+   P = SHIPs.SphericalHarmonics.compute_p(L, θ)
+   _, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
    errs = []
    verbose && @printf("     h    | error \n")
    for p = 2:10
@@ -105,6 +122,7 @@ for nsamples = 1:30
 end
 println()
 
+##
 
 @info("Test : spher-cart conversion")
 for nsamples = 1:30
@@ -113,6 +131,7 @@ for nsamples = 1:30
 end
 println()
 
+##
 
 @info("Test : spher-cart jacobian")
 φθ(S::PseudoSpherical) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
@@ -122,13 +141,15 @@ h = 1e-5
 for nsamples = 1:30
    R = rand(3)
    S = cart2spher(R)
-   dR_dS = [ dspher_to_dcart(S, 1.0, 0.0) dspher_to_dcart(S, 0.0, 1.0) ]
+   dR_dS = [ dspher_to_dcart(S, 1.0/S.sinθ, 0.0) dspher_to_dcart(S, 0.0, 1.0) ]
    dR_dS_h = hcat( (φθ(R+h*EE[1])-φθ(R-h*EE[1])) / (2*h),
                    (φθ(R+h*EE[2])-φθ(R-h*EE[2])) / (2*h),
                    (φθ(R+h*EE[3])-φθ(R-h*EE[3])) / (2*h) )'
    print_tf((@test norm(dR_dS - dR_dS_h, Inf) < 1e-5))
 end
 println()
+
+##
 
 #   => THIS TEST MAKES NO SENSE, NEED TO RETHINK IT!!!
 # ##
@@ -150,10 +171,11 @@ println()
 #    # print_tf((@test norm(dR_dS - dR_dS_h, Inf) < 1e-5))
 # end
 # println()
-# ##
+
+##
 
 @info("Test: check derivatives of complex spherical harmonics")
-for nsamples = 1:10
+for nsamples = 1:30
    R = @SVector rand(3)
    SH = SHBasis(5)
    Y, dY = eval_basis_d(SH, R)
@@ -176,5 +198,8 @@ for nsamples = 1:10
    print_tf(@test success)
 end
 println()
+
+##
+
 
 end # @testset

@@ -71,7 +71,7 @@ for 🚢 in ships
    dB = SHIPs.alloc_dB(🚢, Rs)
    SHIPs.eval_basis_d!(B, dB, 🚢, Rs, tmp)
    @info("      check the basis and basis_d co-incide exactly")
-   println(@test B == B1)
+   println(@test B ≈ B1)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us = randR(length(Rs))

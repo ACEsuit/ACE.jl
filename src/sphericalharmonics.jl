@@ -45,37 +45,18 @@ PseudoSpherical(φ, θ) = PseudoSpherical(1.0, cos(φ), sin(φ), cos(θ), sin(θ
 convert a gradient with respect to spherical coordinates to a gradient
 with respect to cartesian coordinates
 """
-function dspher_to_dcart(S, f_φ, f_θ)
+function dspher_to_dcart(S, f_φ_div_sinθ, f_θ)
 	r = S.r + eps()
-   return SVector( - (S.sinφ * f_φ) / S.sinθ + (S.cosφ * S.cosθ * f_θ),
-			            (S.cosφ * f_φ) / S.sinθ + (S.sinφ * S.cosθ * f_θ),
-			 			                                   - (   S.sinθ * f_θ) ) / r
-	# if abs(S.sinθ) > 1e-8
-	# else
-	#    # f1 = SVector( - (S.sinφ * f_φ) / S.sinθ + (S.cosφ * S.cosθ * f_θ),
-	# 	# 		            (S.cosφ * f_φ) / S.sinθ + (S.sinφ * S.cosθ * f_θ),
-	# 	# 		 			                                   - (   S.sinθ * f_θ) ) / r
-	#
-	# 	gy = f_θ / r / S.cosθ
-   #    if S.sinθ == 0
-	# 		@error("sinθ must not be zero! I don't know what to do?!")
-	# 	else
-	# 		gx = f_φ / r / S.sinθ
-	# 	end
-	# 	fx = - S.sinφ * gx + S.cosφ * gy
-	# 	fy =   S.cosφ * gx + S.sinφ * gy
-	# 	fz = - gy * S.sinθ / S.cosθ
-	# 	fnew = SVector(fx, fy, fz)
-	# 	# @show S.sinφ
-	# 	# @show norm(f1 - fnew)
-	# 	# if norm(f1 - fnew) > 1e-4
-	# 	# 	@show f_φ/f_θ
-	# 	# 	@show gx / gy
-	# 	# end
-	#
-	# 	return fnew
-	# end
+   return SVector( - (S.sinφ * f_φ_div_sinθ) + (S.cosφ * S.cosθ * f_θ),
+			            (S.cosφ * f_φ_div_sinθ) + (S.sinφ * S.cosθ * f_θ),
+			 			                                 - (   S.sinθ * f_θ) ) / r
 end
+
+# function dspher_to_dcart_m0(S, f_θ)
+# 	r = S.r + eps()
+#    return SVector(S.cosφ * S.cosθ, S.sinφ * S.cosθ, S.sinθ) * (f_θ / r)
+# end
+
 
 
 # --------------------------------------------------------
@@ -205,9 +186,65 @@ function compute_p!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T}
 	return P
 end
 
-"""
-dP = dP / dθ (and not dP / dx!!!)
-"""
+# """
+# dP = dP / dθ (and not dP / dx!!!)
+# """
+# function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
+# 					     P::Array{T,1}, dP::Array{T,1}) where T
+#    @assert L > 0
+# 	@assert length(coeff.A) >= sizeP(L)
+# 	@assert length(coeff.B) >= sizeP(L)
+# 	@assert length(P) >= sizeP(L)
+#
+# 	temp = sqrt(0.5/π)
+# 	P[index_p(0, 0)] = temp
+# 	temp_d = 0.0
+# 	dP[index_p(0, 0)] = temp_d
+#
+# 	if (L > 0)
+# 		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
+# 		dP[index_p(1, 0)] = -S.sinθ * sqrt(3) * temp + S.cosθ * sqrt(3) * temp_d
+#
+# 		# Note: here we don't compute P_1^1 but rather P_1^1 / sinθ
+# 		#       this helps with numerical stability for gradient calculations
+# 		#       but one needs to be very careful therefore in interpreting what
+# 		#       is stored in the P array!
+# 		# temp, temp_d = ( - sqrt(1.5) * S.sinθ * temp,
+# 		# 				     - sqrt(1.5) * (S.cosθ * temp + S.sinθ * temp_d) )
+# 		temp1  = - sqrt(1.5) * temp
+# 		temp   = - sqrt(1.5) * S.sinθ * temp
+# 		@assert temp ≈ temp1 * S.sinθ
+# 		temp_d = - sqrt(1.5) * (S.cosθ * temp + S.sinθ * temp_d)
+# 		P[index_p(1, 1)] = temp1
+# 		dP[index_p(1, 1)] = temp_d
+#
+# 		for l in 2:L
+# 			for m in 0:(l-2)
+# 				P[index_p(l, m)] =
+# 						coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
+# 						             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
+# 				dP[index_p(l, m)] =
+# 					coeff.A[index_p(l, m)] * (
+# 									- S.sinθ^2 * P[index_p(l - 1, m)]
+# 									+ S.cosθ * dP[index_p(l - 1, m)]
+# 					             + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)] )
+# 			end
+# 			P[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * S.cosθ * temp1
+# 			dP[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * (
+# 										        -S.sinθ * temp + S.cosθ * temp_d )
+#
+#          temp1  = -sqrt(1.0+0.5/l) * S.sinθ * temp1
+# 			temp   = -sqrt(1.0+0.5/l) * S.sinθ * temp
+# 			@assert temp ≈ temp1 * S.sinθ
+# 			temp_d = -sqrt(1.0+0.5/l) * (S.cosθ * temp + S.sinθ * temp_d)
+# 			P[index_p(l, l)] = temp1
+# 			dP[index_p(l, l)] = temp_d
+# 		end
+# 	end
+# 	# return P, dP
+# end
+
+
 function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
 					     P::Array{T,1}, dP::Array{T,1}) where T
    @assert L > 0
@@ -224,34 +261,51 @@ function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T
 		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
 		dP[index_p(1, 0)] = -S.sinθ * sqrt(3) * temp + S.cosθ * sqrt(3) * temp_d
 
-		temp, temp_d = ( - sqrt(1.5) * S.sinθ * temp,
-						     - sqrt(1.5) * (S.cosθ * temp + S.sinθ * temp_d) )
-		P[index_p(1, 1)] = temp
+		temp, temp1, temp_d = ( - sqrt(1.5) * S.sinθ * temp,
+							         - sqrt(1.5) * temp,
+						            - sqrt(1.5) * (S.cosθ * temp + S.sinθ * temp_d) )
+      @assert temp1 * S.sinθ ≈ temp
+		P[index_p(1, 1)] = temp1
 		dP[index_p(1, 1)] = temp_d
 
 		for l in 2:L
-			for m in 0:(l-2)
+			m = 0
+			P[index_p(l, m)] =
+					coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
+					             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
+			dP[index_p(l, m)] =
+				coeff.A[index_p(l, m)] * (
+								- S.sinθ * P[index_p(l - 1, m)]
+								+ S.cosθ * dP[index_p(l - 1, m)]
+				             + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)] )
+
+			for m in 1:(l-2)
 				P[index_p(l, m)] =
 						coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
 						             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
 				dP[index_p(l, m)] =
 					coeff.A[index_p(l, m)] * (
-									- S.sinθ * P[index_p(l - 1, m)]
+									- S.sinθ^2 * P[index_p(l - 1, m)]
 									+ S.cosθ * dP[index_p(l - 1, m)]
 					             + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)] )
 			end
-			P[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * S.cosθ * temp
+			P[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * S.cosθ * temp1
 			dP[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * (
 										        -S.sinθ * temp + S.cosθ * temp_d )
 
-         (temp, temp_d) = (-sqrt(1.0+0.5/l) * S.sinθ * temp,
-						         -sqrt(1.0+0.5/l) * (S.cosθ * temp + S.sinθ * temp_d) )
-			P[index_p(l, l)] = temp
+         (temp, temp1, temp_d) = (
+						-sqrt(1.0+0.5/l) * S.sinθ * temp,
+						-sqrt(1.0+0.5/l) * S.sinθ * temp1,
+			         -sqrt(1.0+0.5/l) * (S.cosθ * temp + S.sinθ * temp_d) )
+         @assert temp1 * S.sinθ ≈ temp
+			P[index_p(l, l)] = temp1
 			dP[index_p(l, l)] = temp_d
 		end
 	end
 	# return P, dP
 end
+
+
 
 
 
@@ -322,14 +376,17 @@ function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 	@assert length(dY) >= sizeY(L)
    # @assert abs(S.cosθ) < 1.0
 
+	# m = 0 case
 	ep = 1 / sqrt(2)
 	for l = 0:L
 		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
+		# dY[index_y(l, 0)] = dspher_to_dcart_m0(S, dP[index_p(l, 0)] * ep)
 		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * ep)
 	end
 
    sig = 1
    ep_fact = S.cosφ + im * S.sinφ
+
 	for m in 1:L
 		sig *= -1
 		ep *= ep_fact            # ep =   exp(i *   m  * φ)
@@ -337,13 +394,13 @@ function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 		dep_dφ = im *   m  * ep
 		dem_dφ = im * (-m) * em
 		for l in m:L
-			p = P[index_p(l,m)]
-			Y[index_y(l, -m)] = em * p   # (-1)^m * p * exp(-im*m*phi) / sqrt(2)
-			Y[index_y(l,  m)] = ep * p   #          p * exp( im*m*phi) / sqrt(2)
+			p_div_sinθ = P[index_p(l,m)]
+			Y[index_y(l, -m)] = em * p_div_sinθ * S.sinθ
+			Y[index_y(l,  m)] = ep * p_div_sinθ * S.sinθ
 
 			dp_dθ = dP[index_p(l,m)]
-			dY[index_y(l, -m)] = dspher_to_dcart(S, dem_dφ * p, em * dp_dθ)
-			dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p, ep * dp_dθ)
+			dY[index_y(l, -m)] = dspher_to_dcart(S, dem_dφ * p_div_sinθ, em * dp_dθ)
+			dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p_div_sinθ, ep * dp_dθ)
 		end
 	end
 	# return Y, dY
@@ -415,9 +472,9 @@ function eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, tmp)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
-	if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
-		R = SVec3(R[1]+1e-9, R[2], R[3])
-	end
+	# if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
+	# 	R = SVec3(R[1]+1e-9, R[2], R[3])
+	# end
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
 	cYlm_d!(Y, dY, L, S, tmp.P, tmp.dP)
