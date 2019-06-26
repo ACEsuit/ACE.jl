@@ -151,29 +151,6 @@ println()
 
 ##
 
-#   => THIS TEST MAKES NO SENSE, NEED TO RETHINK IT!!!
-# ##
-# @info("Test : spher-cart jacobian near cosθ = 1")
-# φθ(S::PseudoSpherical) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
-# φθ(R::AbstractVector) = φθ(cart2spher(R))
-# EE = [ [1,0,0], [0,1,0], [0,0,1] ]
-# # h1 = 1e-10
-# h1 = 1e-5
-# for nsamples = 1:2
-#    R = [0.0,0.0,1.0] + (1e-8) * (rand(3).-0.5)
-#    S = cart2spher(R)
-#    dR_dS = [ dspher_to_dcart(S, 1.0, 0.0) dspher_to_dcart(S, 0.0, 1.0) ]
-#    dR_dS_h = hcat( (φθ(R+h1*EE[1])-φθ(R-h1*EE[1])) / (2*h1),
-#                    (φθ(R+h1*EE[2])-φθ(R-h1*EE[2])) / (2*h1),
-#                    (φθ(R+h1*EE[3])-φθ(R-h1*EE[3])) / (2*h1) )'
-#     [dR_dS dR_dS_h] |> display; println()
-#    @show dR_dS ≈ dR_dS_h
-#    # print_tf((@test norm(dR_dS - dR_dS_h, Inf) < 1e-5))
-# end
-# println()
-
-##
-
 @info("Test: check derivatives of complex spherical harmonics")
 for nsamples = 1:30
    R = @SVector rand(3)
