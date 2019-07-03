@@ -17,7 +17,7 @@ eval_basis(B, args...) =
 
 function eval_basis_d(B, args...)
    b = alloc_B(B)
-   db = alloc_dB(B)
+   db = alloc_dB(B, args[end])
    tmp = alloc_temp_d(B, args[end])
    eval_basis_d!(b, db, B, args..., tmp)
    return b, db
