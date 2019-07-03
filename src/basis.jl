@@ -262,7 +262,7 @@ function alloc_temp_d(ship::SHIPBasis, N::Integer)
       tmpJ = alloc_temp_d(ship.J, N),
       tmpY = alloc_temp_d(ship.SH, N)
    )
-end 
+end
 
 # -------------------------------------------------------------
 #       precompute the A arrays
@@ -473,9 +473,9 @@ end
 #       JuLIP Calculators: energies and forces
 # -------------------------------------------------------------
 
-using NeighbourLists: max_neigs
+using NeighbourLists: max_neigs, neigs
 using JuLIP: Atoms, sites, neighbourlist
-import JuLIP: energy, forces, virial, cutoff
+import JuLIP: energy, forces, virial, cutoff, site_energy, site_energy_d
 
 cutoff(shipB::SHIPBasis) = cutoff(shipB.J)
 
@@ -531,4 +531,29 @@ function virial(shipB::SHIPBasis, at::Atoms)
       end
    end
    return V
+end
+
+
+function _get_neigs(at::Atoms, i0::Integer, rcut)
+   nlist = neighbourlist(at, rcut)
+   j, r, R = neigs(nlist, i0)
+   return R, j
+end
+
+function site_energy(basis::SHIPBasis, at::Atoms, i0::Integer)
+   Rs, _ = _get_neigs(at, i0, cutoff(basis))
+   return eval_basis(basis, Rs)
+end
+
+
+function site_energy_d(basis::SHIPBasis, at::Atoms, i0::Integer)
+   Rs, Ineigs = _get_neigs(at, i0, cutoff(basis))
+   dEs = [ zeros(JVecF, length(at)) for _=1:length(basis) ]
+   _, dB = eval_basis_d(basis, Rs)
+   @assert dB isa Matrix{JVecF}
+   @assert size(dB) == (length(Rs), length(basis))
+   for iB = 1:length(basis), n = 1:length(Ineigs)
+      dEs[iB][Ineigs[n]] = dB[n, iB]
+   end
+   return dEs
 end
