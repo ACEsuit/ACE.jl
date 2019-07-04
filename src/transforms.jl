@@ -154,7 +154,7 @@ fcut(J::TransformedJacobi, r) = fcut(J.mult, r)
 fcut_d(J::TransformedJacobi, r) = fcut_d(J.mult, r)
 
 SHIPs.alloc_B( J::TransformedJacobi{T}) where {T} = Vector{T}(undef, length(J.J))
-SHIPs.alloc_dB(J::TransformedJacobi{T}) where {T} = Vector{T}(undef, length(J.J))
+SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} = Vector{T}(undef, length(J.J))
 
 function eval_basis!(P, J::TransformedJacobi, r, _)
    N = length(J)-1

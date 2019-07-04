@@ -13,6 +13,7 @@ using NeighbourLists: max_neigs, neigs
 
 import JuLIP, JuLIP.MLIPs
 import JuLIP: cutoff, energy, forces, virial, site_energy, site_energy_d
+import JuLIP.Potentials: evaluate, evaluate_d
 import Base: Dict, convert, ==
 
 export SHIP
@@ -124,6 +125,7 @@ function precompute!(store, ship::SHIP, Rs)
    return nothing
 end
 
+evaluate(ship::SHIP, Rs::AbstractVector{JVecF}) = evaluate!(ship, Rs, alloc_temp(ship))
 
 # compute one site energy
 function evaluate!(ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}}, store) where {BO, T}
@@ -135,6 +137,7 @@ function evaluate!(ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}}, store) where 
    end
    return Es
 end
+
 
 alloc_temp_d(ship::SHIP{BO, T}, Rs::AbstractVector{<:SVector}) where {BO, T} =
       alloc_temp_d(ship, length(Rs))
@@ -149,6 +152,13 @@ alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
      tmpJ = alloc_temp_d(ship.J),
      tmpY = alloc_temp_d(ship.SH)
       )
+
+
+function evaluate_d(ship::SHIP, Rs::AbstractVector{JVecF})
+   dV = zeros(JVecF, length(Rs))
+   evaluate_d!(dV, ship, Rs, alloc_temp_d(ship, Rs))
+   return dV
+end
 
 # compute one site energy
 function evaluate_d!(dEs, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
@@ -258,6 +268,7 @@ function site_energy_d(ship::SHIP, at::Atoms, i0::Int)
    dEs = zeros(JVecF, length(at))
    for i = 1:length(R)
       dEs[j[i]] += dV[i]
+      dEs[i0] -= dV[i]
    end
    return dEs
 end

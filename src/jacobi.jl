@@ -79,7 +79,7 @@ end
 Base.length(J::Jacobi) = maxdegree(J) + 1
 maxdegree(J::Jacobi) = length(J.A)
 alloc_B(J::Jacobi{T}) where {T} = zeros(T, length(J))
-alloc_dB(J::Jacobi{T}) where {T} = zeros(T, length(J))
+alloc_dB(J::Jacobi{T}, args...) where {T} = zeros(T, length(J))
 
 function eval_basis!(P::AbstractVector, J::Jacobi, x, _)
    N = maxdegree(J) #::Integer = length(P)-1

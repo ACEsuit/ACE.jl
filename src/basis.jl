@@ -548,12 +548,13 @@ end
 
 function site_energy_d(basis::SHIPBasis, at::Atoms, i0::Integer)
    Rs, Ineigs = _get_neigs(at, i0, cutoff(basis))
-   dEs = [ zeros(JVecF, length(at)) for _=1:length(basis) ]
+   dEs = [ zeros(JVecF, length(at)) for _ = 1:length(basis) ]
    _, dB = eval_basis_d(basis, Rs)
    @assert dB isa Matrix{JVecF}
    @assert size(dB) == (length(Rs), length(basis))
    for iB = 1:length(basis), n = 1:length(Ineigs)
-      dEs[iB][Ineigs[n]] = dB[n, iB]
+      dEs[iB][Ineigs[n]] += dB[n, iB]
+      dEs[iB][i0] -= dB[n, iB]
    end
    return dEs
 end

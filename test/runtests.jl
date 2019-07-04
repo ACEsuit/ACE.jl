@@ -7,6 +7,8 @@
 
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
+using JuLIP
+using JuLIP.Potentials: evaluate, evaluate_d
 
 print_tf(::Test.Pass) = printstyled("+", bold=true, color=:green)
 print_tf(::Test.Fail) = printstyled("-", bold=true, color=:red)

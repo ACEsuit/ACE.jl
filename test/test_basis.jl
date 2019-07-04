@@ -121,4 +121,37 @@ end
 println()
 
 
+##
+@info("Check Correctness of SHIPBasis calculators")
+
+randcoeffs(B) = 2 * (rand(length(B)) .- 0.5) .* (1:length(B)).^(-2)
+
+naive_energy(basis::SHIPBasis, at) = sum( eval_basis(basis, R)
+                              for (i, j, r, R) in sites(at, cutoff(basis)) )
+
+for basis in ships
+   @info("   body-order = $(SHIPs.bodyorder(basis))")
+   at = bulk(:Si) * 3
+   set_constraint!(at, FixedCell(at))
+   rattle!(at, 0.1)
+   print("     energy: ")
+   println(@test energy(basis, at) ≈ naive_energy(basis, at) )
+   print("site-energy: ")
+   println(@test energy(basis, at) ≈ sum( site_energy(basis, at, n)
+                                         for n = 1:length(at) ) )
+   # we can test consistency of forces, site energy etc by taking
+   # random inner products with coefficients
+   @info("     a few random combinations")
+   for n = 1:10
+      c = randcoeffs(basis)
+      sh = JuLIP.MLIPs.combine(basis, c)
+      print_tf(@test energy(sh, at) ≈ dot(c, energy(basis, at)))
+      print_tf(@test forces(sh, at) ≈ sum(c*f for (c, f) in zip(c, forces(basis, at))) )
+      print_tf(@test site_energy(sh, at, 5) ≈ dot(c, site_energy(basis, at, 5)))
+      print_tf(@test site_energy_d(sh, at, 5) ≈ sum(c*f for (c, f) in zip(c, site_energy_d(basis, at, 5))) )
+   end
+end
+
+
+
 end

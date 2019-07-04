@@ -384,7 +384,7 @@ Base.length(S::SHBasis) = sizeY(S.maxL)
 alloc_B( S::SHBasis{T}) where {T} =
 		Vector{Complex{T}}(undef, length(S))
 
-alloc_dB(S::SHBasis{T}) where {T} =
+alloc_dB(S::SHBasis{T}, args...) where {T} =
 		Vector{SVec3{Complex{T}}}(undef, length(S))
 
 alloc_temp(SH::SHBasis{T}, args...) where {T} = (

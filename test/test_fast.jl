@@ -8,8 +8,11 @@
 
 @testset "Fast SHIP Implementation" begin
 
+##
 using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using SHIPs: eval_basis!, eval_basis
+using JuLIP
+using JuLIP.Potentials: evaluate, evaluate_d
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -68,6 +71,8 @@ for B in BB
    dEs = zeros(JVecF, length(Rs))
    Es = SHIPs.evaluate_d!(dEs, ship, Rs, store)
    Esb = SHIPs.evaluate!(ship, Rs, store)
+   println(@test Es ≈ evaluate(ship, Rs))
+   println(@test dEs ≈ evaluate_d(ship, Rs))
    @info("      Correctness of Es from evaluate_d!")
    println(@test Es ≈ Esb)
    @info("      Correctness of directional derivatives")
@@ -89,6 +94,29 @@ end
 
 ##
 @info("Check Correctness of SHIP calculators")
-@warn("    [TODO]")
+
+naive_energy(ship::SHIP, at) = sum( SHIPs.evaluate(ship, R)
+                              for (i, j, r, R) in sites(at, cutoff(ship)) )
+
+for B in BB
+   @info("   body-order = $(SHIPs.bodyorder(B))")
+   coeffs = randcoeffs(B)
+   ship = SHIP(B, coeffs)
+   at = bulk(:Si) * 3
+   set_constraint!(at, FixedCell(at))
+   rattle!(at, 0.1)
+   print("     energy: ")
+   println(@test energy(ship, at) ≈ naive_energy(ship, at) )
+   print("site-energy: ")
+   println(@test energy(ship, at) ≈ sum( site_energy(ship, at, n)
+                                         for n = 1:length(at) ) )
+   println("forces: ")
+   println(@test JuLIP.Testing.fdtest(ship, at))
+   println("site-forces: ")
+   println(@test JuLIP.Testing.fdtest( x -> site_energy(ship, set_dofs!(at, x), 3),
+                                       x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
+                                       dofs(at) ) )
+end
+
 
 end
