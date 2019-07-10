@@ -7,7 +7,7 @@
 
 using SHIPs, BenchmarkTools
 using SHIPs.JacobiPolys: Jacobi
-using SHIPs: eval_basis, eval_grad
+using SHIPs: eval_basis
 
 
 

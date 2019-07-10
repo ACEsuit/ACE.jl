@@ -9,7 +9,6 @@ NeighbourLists = "2fcf5ba9-9ed4-57cf-b73f-ff513e316b9c"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-# IPFitting = "3002bd4c-79e4-52ce-b924-91256dde4e52"
 
 [compat]
 julia = "1"

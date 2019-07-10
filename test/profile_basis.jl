@@ -10,7 +10,7 @@ using SHIPs, JuLIP, BenchmarkTools
 
 
 trans = PolyTransform(2, 1.0)
-ships = [SHIPBasis(n, 15, 2.0, trans, 2, 0.5, 3.0) for n = 2:4]
+ships = [SHIPBasis(TotalDegree(15, 2.0), n, trans, 2, 0.5, 3.0) for n = 2:4]
 
 Rs = 1.0 .+ rand(JVecF, 50)
 

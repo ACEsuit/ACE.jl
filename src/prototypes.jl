@@ -6,10 +6,11 @@
 # --------------------------------------------------------------------------
 
 
+import JuLIP: energy!, forces!, virial!, alloc_temp, alloc_temp_d
+import JuLIP.Potentials: evaluate!, evaluate_d!
 
-function eval_basis end
+
 function eval_basis! end
-function eval_grad end
 function eval_basis_d! end
 
 eval_basis(B, args...) =
@@ -25,9 +26,6 @@ end
 
 function alloc_B end
 function alloc_dB end
-
-function alloc_temp(args...); return nothing; end
-function alloc_temp_d(args...); return nothing;  end
 
 function transform end
 function transform_d end

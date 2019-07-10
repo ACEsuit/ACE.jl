@@ -10,10 +10,12 @@
 using JuLIP:               decode_dict
 using SHIPs.JacobiPolys:   Jacobi
 
-export PolyTransform
-
 import Base:   Dict, convert, ==
 import JuLIP:  cutoff
+
+export PolyTransform, rbasis
+
+
 
 abstract type DistanceTransform end
 

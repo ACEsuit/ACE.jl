@@ -13,7 +13,6 @@ using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using SHIPs: eval_basis!, eval_basis, PairBasis
 
 at = bulk(:W, cubic=true) * 3
-set_constraint!(at, FixedCell(at))
 rattle!(at, 0.03)
 r0 = rnn(:W)
 X = copy(positions(at))

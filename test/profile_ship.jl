@@ -16,9 +16,9 @@ randR(N) = [ randR() for n=1:N ]
 randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 trans = PolyTransform(2, 1.0)
-BB = [ SHIPBasis(2, 20, 1.0, trans, 2, 0.5, 3.0),
-       SHIPBasis(3, 20, 1.5, trans, 2, 0.5, 3.0),
-       SHIPBasis(4, 15, 1.5, trans, 2, 0.5, 3.0) ]
+BB = [ SHIPBasis(TotalDegree(20, 1.0), 2, trans, 2, 0.5, 3.0),
+       SHIPBasis(TotalDegree(20, 1.5), 3, trans, 2, 0.5, 3.0),
+       SHIPBasis(TotalDegree(15, 1.5), 4, trans, 2, 0.5, 3.0) ]
 
 Nat = 50
 Rs = randR(Nat)

@@ -15,7 +15,7 @@ import SHIPs
 import SHIPs: alloc_B, alloc_dB, alloc_temp, alloc_temp_d,
               eval_basis!, eval_basis_d!
 
-const SVec3 = SVector{3}
+const JVec = SVector{3}
 
 export SHBasis, ClebschGordan
 
@@ -28,7 +28,7 @@ struct PseudoSpherical{T}
 	sinθ::T
 end
 
-spher2cart(S::PseudoSpherical) = S.r * SVec3(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
+spher2cart(S::PseudoSpherical) = S.r * JVec(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
 
 function cart2spher(R::AbstractVector)
 	r = norm(R)
@@ -353,7 +353,7 @@ end
 # Compute an entire set of real spherical harmonics ``Y_{l,m}(θ, φ)`` for
 # ``x = cos θ, z = sin φ`` where ``0 ≤ l ≤ L`` and ``-l ≤ m ≤ l``.
 # """
-# function cYlm_from_cart(L::Integer, R::SVec3{T}) where {T}
+# function cYlm_from_cart(L::Integer, R::JVec{T}) where {T}
 # 	S = cart2spher(R)
 # 	P = Vector{T}(undef, sizeP(L))
 # 	coeff = compute_coefficients(L)
@@ -385,7 +385,7 @@ alloc_B( S::SHBasis{T}) where {T} =
 		Vector{Complex{T}}(undef, length(S))
 
 alloc_dB(S::SHBasis{T}, args...) where {T} =
-		Vector{SVec3{Complex{T}}}(undef, length(S))
+		Vector{JVec{Complex{T}}}(undef, length(S))
 
 alloc_temp(SH::SHBasis{T}, args...) where {T} = (
 		P = Vector{T}(undef, sizeP(SH.maxL)), )
@@ -395,7 +395,7 @@ alloc_temp_d(SH::SHBasis{T}, args...) where {T} = (
 		dP = Vector{T}(undef, sizeP(SH.maxL)) )
 
 
-function eval_basis!(Y, SH::SHBasis, R::SVec3, tmp)
+function eval_basis!(Y, SH::SHBasis, R::JVec, tmp)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
@@ -406,12 +406,12 @@ function eval_basis!(Y, SH::SHBasis, R::SVec3, tmp)
 end
 
 
-function eval_basis_d!(Y, dY, SH::SHBasis, R::SVec3, tmp)
+function eval_basis_d!(Y, dY, SH::SHBasis, R::JVec, tmp)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
 	# if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
-	# 	R = SVec3(R[1]+1e-9, R[2], R[3])
+	# 	R = JVec(R[1]+1e-9, R[2], R[3])
 	# end
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)

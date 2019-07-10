@@ -10,7 +10,7 @@
 
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
-using SHIPs: generate_LK, generate_LK_tuples
+using SHIPs: generate_KL, generate_KL_tuples, TotalDegree, maxL 
 using SHIPs.SphericalHarmonics: ClebschGordan, cg1
 
 printred(s) = printstyled(s, bold=true, color=:red)
@@ -63,13 +63,13 @@ mrange3 = SHIPs._mrange(ll)
 println(@test mrange3 == CartesianIndices( (-4:4, -2:2, -5:5) ))
 
 ##
-deg, wY = 5, 1.0
-cg = ClebschGordan(deg)
-KL, Nu =  generate_LK_tuples(deg, wY, 3, cg; filter=false)
+Deg = TotalDegree(5, 1.0)
+cg = ClebschGordan(maxL(Deg))
+KL, Nu =  generate_KL_tuples(Deg, 3, cg; filter=false)
 Nu_filter = SHIPs.filter_tuples(KL, Nu, Val(3), cg)
 Izero = Int[]
 Iodd = Int[]
-@info("Testing the RI coefficients for deg = $deg, 4B")
+@info("Testing the RI coefficients for Deg = $Deg, 4B")
 for (i, ν) in enumerate(Nu)
    # global Izero, Iodd
    ll = SVector([KL[ν[i]].l for i = 1:length(ν)]...)
@@ -85,13 +85,13 @@ println(@test (length(Nu) == length(Nu_filter) + length(Izodd)))
 
 
 ##
-deg, wY = 10, 2.0
-cg = ClebschGordan(deg)
-KL, Nu =  generate_LK_tuples(deg, wY, 4, cg; filter=false)
+Deg = TotalDegree(10, 2.0)
+cg = ClebschGordan(maxL(Deg))
+KL, Nu =  generate_KL_tuples(Deg, 4, cg; filter=false)
 Nu_filter = SHIPs.filter_tuples(KL, Nu, Val(4), cg)
 Izero = Int[]
 Iodd = Int[]
-@info("Testing the RI coefficients for deg = $deg, 5B")
+@info("Testing the RI coefficients for Deg = $Deg, 5B")
 for (i, ν) in enumerate(Nu)
    # global Izero, Iodd
    ll = SVector([KL[ν[i]].l for i = 1:length(ν)]...)

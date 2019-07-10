@@ -125,12 +125,12 @@ function precompute!(store, ship::SHIP, Rs)
    return nothing
 end
 
-evaluate(ship::SHIP, Rs::AbstractVector{JVecF}) = evaluate!(ship, Rs, alloc_temp(ship))
+evaluate(ship::SHIP, Rs::AbstractVector{JVecF}) = evaluate!(alloc_temp(ship), ship, Rs)
 
 # compute one site energy
-function evaluate!(ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}}, store) where {BO, T}
+function evaluate!(store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}}) where {BO, T}
    precompute!(store, ship, Rs)
-   Es = 0.0
+   Es = T(0.0)
    for (iA, c) in zip(ship.IA, ship.C)
       @inbounds Es_ν = Complex{T}(c) * prod(store.A[iA])
       Es += real(Es_ν)
@@ -154,23 +154,22 @@ alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
       )
 
 
-function evaluate_d(ship::SHIP, Rs::AbstractVector{JVecF})
-   dV = zeros(JVecF, length(Rs))
-   evaluate_d!(dV, ship, Rs, alloc_temp_d(ship, Rs))
-   return dV
-end
+evaluate_d(ship::SHIP, Rs::AbstractVector{JVecF}) =
+      evaluate_d!(zeros(JVecF, length(Rs)),
+                  alloc_temp_d(ship, Rs),
+                  ship, Rs)
 
 # compute one site energy
-function evaluate_d!(dEs, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
-                     store) where {BO, T}
+function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
+                     ) where {BO, T}
 
    # stage 1: precompute all the A values
    precompute!(store, ship, Rs)
 
    # stage 2: compute the coefficients for the ∇A_{klm}
    #          (and also Es while we are at it)
-   fill!(store.dAco, 0.0)
-   Es = 0.0
+   fill!(store.dAco, T(0))
+   Es = T(0)
    for (iA, c) in zip(ship.IA, ship.C)
       @inbounds Es_ν = Complex{T}(c) * prod(store.A[iA])
       Es += real(Es_ν)
@@ -203,12 +202,13 @@ function evaluate_d!(dEs, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
       end
    end
 
-   return Es
+   return dEs
 end
 
 
 # ------------ JuLIP Calculators ------------------
 #  * forces and virials should just follow from JuLIP.
+#    actually most of this is boiler-plate and should move into JuLIP!
 
 cutoff(ship::SHIP) = cutoff(ship.J)
 
@@ -216,7 +216,7 @@ function energy(ship::SHIP, at::Atoms)
    E = 0.0
    tmp = alloc_temp(ship)
    for (i, j, r, R) in sites(at, cutoff(ship))
-      E += evaluate!(ship, R, tmp)
+      E += evaluate!(tmp, ship, R)
    end
    return E
 end
@@ -228,7 +228,7 @@ function forces(ship::SHIP, at::Atoms)
    tmp = alloc_temp_d(ship, max_neigs(nlist))
    dEs = zeros(JVecF, max_neigs(nlist))
    for (i, j, r, R) in sites(at, cutoff(ship))
-      evaluate_d!(dEs, ship, R, tmp)
+      evaluate_d!(dEs, tmp, ship, R)
       for n = 1:length(j)
          F[i] += dEs[n]
          F[j[n]] -= dEs[n]
@@ -244,7 +244,7 @@ function virial(ship::SHIP, at::Atoms)
    tmp = alloc_temp_d(ship, max_neigs(nlist))
    dEs = zeros(JVecF, max_neigs(nlist))
    for (i, j, r, R) in sites(at, cutoff(ship))
-      evaluate_d!(dEs, ship, R, tmp)
+      evaluate_d!(dEs, tmp, ship, R)
       V += JuLIP.Potentials.site_virial(dEs, R)
    end
    return V
@@ -255,7 +255,7 @@ function site_energy(ship::SHIP, at::Atoms, i0::Int)
    nlist = neighbourlist(at, cutoff(ship))
    j, r, R = neigs(nlist, i0)
    tmp = alloc_temp(ship)
-   return evaluate!(ship, R, tmp)
+   return evaluate!(tmp, ship, R)
 end
 
 
@@ -264,7 +264,7 @@ function site_energy_d(ship::SHIP, at::Atoms, i0::Int)
    j, r, R = neigs(nlist, i0)
    tmp = alloc_temp_d(ship, length(R))
    dV = zeros(JVecF, length(R))
-   evaluate_d!(dV, ship, R, tmp)
+   evaluate_d!(dV, tmp, ship, R)
    dEs = zeros(JVecF, length(at))
    for i = 1:length(R)
       dEs[j[i]] += dV[i]

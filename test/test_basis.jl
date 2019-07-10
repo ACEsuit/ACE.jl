@@ -33,10 +33,10 @@ end
 ##
 
 trans3 = PolyTransform(3, 1.0)
-ship3 = SHIPBasis(3, 13, 2.0, trans3, 2, 0.5, 3.0)
+ship3 = SHIPBasis(TotalDegree(13, 2.0), 3, trans3, 2, 0.5, 3.0)
 trans2 = PolyTransform(2, 1.3)
-ship2 = SHIPBasis(2, 15, 2.0, trans2, 2, 0.5, 3.0)
-ship4 = SHIPBasis(4, 11, 1.0, trans3, 2, 0.5, 3.0)
+ship2 = SHIPBasis(TotalDegree(15, 2.0), 2, trans2, 2, 0.5, 3.0)
+ship4 = SHIPBasis(TotalDegree(11, 1.0), 4, trans3, 2, 0.5, 3.0)
 ships = [ship2, ship3, ship4]
 
 @info("Test (de-)dictionisation of basis sets")
@@ -93,7 +93,7 @@ end
 ##
 verbose=false
 @info("Test gradients for 3B with and R near the pole")
-🚢 = ship2 = SHIPBasis(2, 15, 2.0, PolyTransform(2, 1.3), 2, 0.5, 3.0)
+🚢 = ship2 = SHIPBasis(TotalDegree(15, 2.0), 2, PolyTransform(2, 1.3), 2, 0.5, 3.0)
 @info("  body-order = $(SHIPs.bodyorder(🚢)+1):")
 # Rs = [ randR(5); [SVector(1e-14*rand(), 1e-14*rand(), 1.1+1e-6*rand())] ]
 Rs = [ randR(5); [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
@@ -132,7 +132,6 @@ naive_energy(basis::SHIPBasis, at) = sum( eval_basis(basis, R)
 for basis in ships
    @info("   body-order = $(SHIPs.bodyorder(basis))")
    at = bulk(:Si) * 3
-   set_constraint!(at, FixedCell(at))
    rattle!(at, 0.1)
    print("     energy: ")
    println(@test energy(basis, at) ≈ naive_energy(basis, at) )
@@ -151,6 +150,7 @@ for basis in ships
       print_tf(@test site_energy_d(sh, at, 5) ≈ sum(c*f for (c, f) in zip(c, site_energy_d(basis, at, 5))) )
    end
 end
+println()
 
 
 

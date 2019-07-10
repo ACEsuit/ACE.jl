@@ -24,10 +24,10 @@ randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 ##
 
 trans3 = PolyTransform(3, 1.0)
-B3 = SHIPBasis(3, 13, 2.0, trans3, 2, 0.5, 3.0)
+B3 = SHIPBasis(TotalDegree(13, 2.0), 3, trans3, 2, 0.5, 3.0)
 trans2 = PolyTransform(2, 1.3)
-B2 = SHIPBasis(2, 15, 2.0, trans2, 2, 0.5, 3.0)
-B4 = SHIPBasis(4, 12, 2.0, trans3, 2, 0.5, 3.0)
+B2 = SHIPBasis(TotalDegree(15, 2.0), 2, trans2, 2, 0.5, 3.0)
+B4 = SHIPBasis(TotalDegree(12, 2.0), 4, trans3, 2, 0.5, 3.0)
 BB = [B2, B3, B4]
 
 ##
@@ -46,7 +46,7 @@ for B in BB
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
       Rs = randR(20)
-      Es = SHIPs.evaluate!(ship, Rs, store)
+      Es = SHIPs.evaluate!(store, ship, Rs)
       Bs = dot(coeffs, SHIPs.eval_basis(B, Rs))
       print_tf(@test Es ≈ Bs)
    end
@@ -55,7 +55,7 @@ for B in BB
    # Rs = randR(50)
    # Btmp = SHIPs.alloc_B(B)
    # print("       SHIPBasis : "); @btime SHIPs.eval_basis!($Btmp, $B, $Rs)
-   # print("            SHIP : "); @btime SHIPs.evaluate!($ship, $Rs, $store)
+   # print("            SHIP : "); @btime SHIPs.evaluate!(@store, $ship, $Rs)
    # println()
 end
 
@@ -69,12 +69,10 @@ for B in BB
    Rs = randR(20)
    store = SHIPs.alloc_temp_d(ship, Rs)
    dEs = zeros(JVecF, length(Rs))
-   Es = SHIPs.evaluate_d!(dEs, ship, Rs, store)
-   Esb = SHIPs.evaluate!(ship, Rs, store)
+   SHIPs.evaluate_d!(dEs, store, ship, Rs)
+   Es = SHIPs.evaluate!(store, ship, Rs)
    println(@test Es ≈ evaluate(ship, Rs))
    println(@test dEs ≈ evaluate_d(ship, Rs))
-   @info("      Correctness of Es from evaluate_d!")
-   println(@test Es ≈ Esb)
    @info("      Correctness of directional derivatives")
    for ndir = 1:20
       U = [rand(JVecF) .- 0.5 for _=1:length(Rs)]
@@ -82,7 +80,7 @@ for B in BB
       for p = 2:10
          h = 0.1^p
          dEs_U = dot(dEs, U)
-         dEs_h = (SHIPs.evaluate!(ship, Rs + h * U, store) - Es) / h
+         dEs_h = (SHIPs.evaluate!(store, ship, Rs + h * U) - Es) / h
          push!(errs, abs(dEs_h - dEs_U))
       end
       success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
@@ -103,7 +101,6 @@ for B in BB
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    at = bulk(:Si) * 3
-   set_constraint!(at, FixedCell(at))
    rattle!(at, 0.1)
    print("     energy: ")
    println(@test energy(ship, at) ≈ naive_energy(ship, at) )

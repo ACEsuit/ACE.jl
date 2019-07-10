@@ -6,114 +6,58 @@
 # --------------------------------------------------------------------------
 
 using StaticArrays, LinearAlgebra
-using JuLIP: JVecF, JVec
+using JuLIP: JVec
 import JuLIP
 using JuLIP.MLIPs: IPBasis
 
-# TODO: Idea => replace (deg, wY) by a "Degree" type and dispatch a lot of
-#       functionality on that => e.g. we can then try hyperbolic cross, etc.
 
-using SHIPs.SphericalHarmonics: SHBasis, sizeY, SVec3, cart2spher, index_y,
+using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y,
          ClebschGordan
 
 import Base: Dict, convert, ==
 
 export SHIPBasis
 
-
-# -------------------------------------------------------------
-#       construct l,k tuples that specify basis functions
-# -------------------------------------------------------------
-
-function generate_LK(deg, wY::Real)
-   allKL = NamedTuple{(:k, :l, :deg),Tuple{Int,Int,Float64}}[]
-   degs = Float64[]
-   # k + wY * l <= deg
-   for k = 0:deg, l = 0:floor(Int, (deg-k)/wY)
-      push!(allKL, (k=k, l=l, deg=(k+wY*l)))
-      push!(degs, (k+wY*l))
-   end
-   # sort allKL according to total degree
-   I = sortperm(degs)
-   return allKL[I], degs[I]
-end
+# in here we specify body-order specific code so that it doesn't pollute
+# the main codebase
+#  * filter_tuples
+#  *
+include("bodyorders.jl")
 
 
-# keep this for the sake of a record and comparison with the general case
-function filter_tuples(KL, Nu, ::Val{2}, cg)  # 3B version
-   keep = fill(true, length(Nu))
-   for (i, ν) in enumerate(Nu)
-      kl1, kl2 = KL[ν[1]], KL[ν[2]]
-      if kl1.l != kl2.l
-         keep[i] = false
-      end
-   end
-   return Nu[keep]
-end
-
-# keep this for the sake of a record and comparison with the general case
-function filter_tuples(KL, Nu, ::Val{3}, cg)  # 4B version
-   keep = fill(true, length(Nu))
-   for (i, ν) in enumerate(Nu)
-      l1, l2, l3 = KL[ν[1]].l, KL[ν[2]].l, KL[ν[3]].l
-      if !( (abs(l1-l2) <= l3 <= l1+l2) && iseven(l1+l2+l3) )
-         keep[i] = false
-      end
-   end
-   return Nu[keep]
-end
-
-function filter_tuples(KL, Nu, ::Val{4}, cg)
-   keep = fill(true, length(Nu))
-   for (i, ν) in enumerate(Nu)
-      ll = SVector(ntuple(i -> KL[ν[i]].l, 4))
-      # invariance under reflections
-      if !iseven(sum(ll))
-         keep[i] = false
-         continue
-      end
-      # requirement to define the CG coefficients
-      if max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])) > min(ll[1]+ll[2], ll[3]+ll[4])
-         keep[i] = false
-         continue
-      end
-
-      # The next part is purely a health-check, that should not be necessary!
-      # basically we are checking that all basis functions that we are
-      # retaining are really non-zero!
-      foundnz = false
-      for mpre in _mrange(ll)
-         mm = SVector(Tuple(mpre)..., -sum(Tuple(mpre)))
-         if abs(mm[end]) > ll[4]; continue; end
-         if _Bcoeff(ll, mm, cg) != 0.0
-            foundnz = true
-         end
-      end
-      @assert foundnz
-   end
-   return Nu[keep]
-end
-
-
-
-function generate_LK_tuples(deg, wY::Real, bo, cg; filter=true)
+function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
    # all possible (k, l) pairs
-   allKL, degs = generate_LK(deg, wY)
+   allKL, degs = generate_KL(Deg)
 
    # the first iterm is just (0, ..., 0)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
    Nu = []
-   _deg(ν) = maximum(ν) <= length(allKL) ? sum( allKL[n].deg for n in ν ) : Inf
    # Now we start incrementing until we hit the maximum degree
    # while retaining the ordering ν₁ ≤ ν₂ ≤ …
    lastidx = 0
    ν = MVector(ones(Int, bo)...)
+   kk = zero(typeof(ν))
+   ll = zero(typeof(ν))
    while true
+      # check whether the current ν tuple is admissible
+      # the first condition is that its max index is small enough
+      isadmissible = maximum(ν) <= length(allKL)
+      if isadmissible
+         # the second condition is that the multivariate degree it defines
+         # is small enough => for that we first have to compute the corresponding
+         # k and l vectors
+         for i = 1:length(ν)
+            kk[i] = allKL[ν[i]].k
+            ll[i] = allKL[ν[i]].l
+         end
+         isadmissible = admissible(Deg, kk, ll)
+      end
+
       # we want to increment `curindex`, but if we've reach the maximum degree
       # then we need to move to the next index down
 
       # if the current tuple ν has admissible degree ...
-      if _deg(ν) <= deg
+      if isadmissible
          # ... then we add it to the stack  ...
          push!(Nu, SVector(ν))
          # ... and increment it
@@ -137,6 +81,9 @@ end
 # -------------------------------------------------------------
 #       define the basis itself
 # -------------------------------------------------------------
+# THOUGHTS
+#  - technically we don't have to store Deg in the basis, but only
+#    to generate it?
 
 """
 `struct SHIPBasis` : the main type around eveything in `SHIPs.jl` revolves;
@@ -144,8 +91,7 @@ it implements a permutation and rotation invariant basis.
 
 ### Developer Docs
 
-* `deg` : total degree (to be generalised)
-* `wY` : relative weighting of total degree definition; a (k,l) pair has total degree `deg(k,l) = k + wY * l`
+* `Deg` : degree type specifying which tuples to keep
 * `J` : `TransformedJacobi` basis set for the `r`-component
 * `SH` : spherical harmonics basis set for the `R̂`-component
 * `KL` : list of all admissible `(k,l)` tuples
@@ -153,9 +99,8 @@ it implements a permutation and rotation invariant basis.
 * `A, dA` : buffers for precomputing the `A_klm` functions
 * `firstA` : same length as `KL`; each `(k,l) = KL[i]` has `2l+1` A_klm-functions associated which will be stored in the `A` buffer, the first of these is stored as `A[firstA[i]]`.
 """
-struct SHIPBasis{BO, T, TJ} <: IPBasis
-   deg::Int
-   wY::T
+struct SHIPBasis{BO, T, TJ, TDEG} <: IPBasis
+   Deg::TDEG
    J::TJ
    SH::SHBasis{T}
    KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}}
@@ -167,30 +112,27 @@ end
 
 Dict(shipB::SHIPBasis) = Dict(
       "__id__" => "SHIPs_SHIPBasis",
+      "Deg" => Dict(shipB.Deg),
       "bodyorder" => bodyorder(shipB),
-      "deg" => shipB.deg,
-      "wY" => shipB.wY,
       "J" => Dict(shipB.J) )
 
 SHIPBasis(D::Dict) = SHIPBasis(
+      decode_dict(D["Deg"]),
       D["bodyorder"],
-      D["deg"],
-      D["wY"],
       TransformedJacobi(D["J"]) )
 
 convert(::Val{:SHIPs_SHIPBasis}, D::Dict) = SHIPBasis(D)
 
 ==(B1::SHIPBasis, B2::SHIPBasis) = (
+      (B1.Deg == B2.Deg) &&
       (bodyorder(B1) == bodyorder(B2)) &&
-      (B1.deg == B2.deg) && (B1.wY == B2.wY) &&
       (B1.J == B2.J) )
 
 
-length_A(deg, wY) = sum( sizeY( floor(Int, (deg - k)/wY) ) for k = 0:deg )
+length_A(Deg::AbstractDegree) = sum( sizeY(maxL(Deg, k)) for k = 0:maxK(Deg) )
 
-# this could become and allox_temp
-alloc_A(deg, wY) = zeros(ComplexF64, length_A(deg, wY))
-alloc_dA(deg, wY) = zeros(SVec3{ComplexF64}, length_A(deg, wY))
+alloc_A(Deg::AbstractDegree) = zeros(ComplexF64, length_A(Deg))
+alloc_dA(Deg::AbstractDegree) = zeros(JVec{ComplexF64}, length_A(Deg))
 
 function _firstA(KL)
    idx = 1
@@ -203,25 +145,25 @@ function _firstA(KL)
    return firstA
 end
 
-function SHIPBasis(bo::Integer, deg::Integer, wY::Real, trans, p, rl, ru; filter=true)
+function SHIPBasis(Deg::AbstractDegree, bo::Integer, trans, p, rl, ru; filter=true)
    # r - basis
-   J = rbasis(deg, trans, p, rl, ru)
-   return SHIPBasis(bo, deg, wY, J; filter=filter)
+   J = rbasis(maxK(Deg), trans, p, rl, ru)
+   return SHIPBasis(Deg, bo, J; filter=filter)
 end
 
-function SHIPBasis(bo::Integer, deg::Integer, wY::Real, J::TransformedJacobi;
+
+function SHIPBasis(Deg::AbstractDegree, bo::Integer, J::TransformedJacobi;
                    filter=true)
    # R̂ - basis
-   maxL = floor(Int, deg / wY)
-   SH = SHBasis(maxL)
+   SH = SHBasis(maxL(Deg))
    # precompute the Clebsch-Gordan coefficients
-   cg = ClebschGordan(maxL)
+   cg = ClebschGordan(maxL(Deg))
    # get the basis specification
-   allKL, Nu = generate_LK_tuples(deg, wY, bo, cg; filter=filter)
+   allKL, Nu = generate_KL_tuples(Deg, bo, cg; filter=filter)
    # compute the (l,k) -> indexing into A information
    firstA = _firstA(allKL)
    # putting it all together ...
-   return SHIPBasis(deg, wY, J, SH, allKL, Nu, cg,  firstA, Val(bo))
+   return SHIPBasis(Deg, J, SH, allKL, Nu, cg, firstA, Val(bo))
 end
 
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO
@@ -230,18 +172,18 @@ Base.length(ship::SHIPBasis) = length_B(ship)
 length_B(ship::SHIPBasis{BO}) where {BO} = length(ship.Nu)
 
 alloc_B(ship::SHIPBasis) = zeros(Float64, length_B(ship))
-alloc_dB(ship::SHIPBasis, N::Integer) = zeros(SVec3{Float64}, N, length_B(ship))
+alloc_dB(ship::SHIPBasis, N::Integer) = zeros(JVec{Float64}, N, length_B(ship))
 alloc_dB(ship::SHIPBasis, Rs::AbstractVector) = alloc_dB(ship, length(Rs))
 
 alloc_temp(ship::SHIPBasis) = (
-      A = alloc_A(ship.deg, ship.wY),
+      A = alloc_A(ship.Deg),
       J = alloc_B(ship.J),
       Y = alloc_B(ship.SH),
       tmpJ = alloc_temp(ship.J),
       tmpY = alloc_temp(ship.SH)
    )
 
-alloc_temp_d(shipB::SHIPBasis, Rs::AbstractVector{JVecF}) =
+alloc_temp_d(shipB::SHIPBasis, Rs::AbstractVector{<:JVec}) =
       alloc_temp_d(shipB, length(Rs))
 
 function alloc_temp_d(ship::SHIPBasis, N::Integer)
@@ -250,7 +192,7 @@ function alloc_temp_d(ship::SHIPBasis, N::Integer)
    Y1 = alloc_B(ship.SH)
    dY1 = alloc_dB(ship.SH)
    return (
-         A = alloc_A(ship.deg, ship.wY),
+         A = alloc_A(ship.Deg),
          J = zeros(eltype(J1), N, length(J1)),
         dJ = zeros(eltype(dJ1), N, length(dJ1)),
          Y = zeros(eltype(Y1), N, length(Y1)),
@@ -268,8 +210,8 @@ end
 #       precompute the A arrays
 # -------------------------------------------------------------
 
-function precompute_A!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVecF})
-   fill!(tmp.A, 0.0)
+function precompute_A!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where {T}
+   fill!(tmp.A, T(0.0))
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
       eval_basis!(tmp.J, ship.J, norm(R), tmp.tmpJ)
@@ -286,8 +228,8 @@ function precompute_A!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVecF})
 end
 
 
-function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVecF})
-   fill!(tmp.A, 0.0)
+function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where {T}
+   fill!(tmp.A, T(0.0))
    # TODO: re-order these loops => cf. Issue #2
    #        => then can SIMD them and avoid all copying!
    for (iR, R) in enumerate(Rs)
@@ -366,7 +308,7 @@ function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
 end
 
 
-function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF}, tmp)
+function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{<:JVec}, tmp)
    precompute_A!(tmp, ship, Rs)
    KL = ship.KL
    for (idx, ν) in enumerate(ship.Nu)
@@ -391,7 +333,7 @@ function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{JVecF}, tmp)
             b += bm
          end
       end
-      # two little sanity checks
+      # two little sanity checks which we could run in a debug mode
       # if b == 0.0
       #    @warn("B[idx] == 0!")
       # end
@@ -406,9 +348,9 @@ end
 
 
 
-function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVecF}, tmp)
-   fill!(B, 0.0)
-   fill!(dB, zero(JVecF))
+function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}, tmp) where {T}
+   fill!(B, T(0.0))
+   fill!(dB, zero(JVec{T}))
    # all precomputations of "local" gradients
    precompute_grads!(tmp, ship, Rs)
    KL = ship.KL
@@ -492,12 +434,12 @@ function energy(shipB::SHIPBasis, at::Atoms)
 end
 
 
-function forces(shipB::SHIPBasis, at::Atoms)
+function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
    # precompute the neighbourlist to count the number of neighbours
    nlist = neighbourlist(at, cutoff(shipB))
    maxR = max_neigs(nlist)
    # allocate space accordingly
-   F = zeros(JVecF, length(at), length(shipB))
+   F = zeros(JVec{T}, length(at), length(shipB))
    B = alloc_B(shipB)
    dB = alloc_dB(shipB, maxR)
    tmp = alloc_temp_d(shipB, maxR)
@@ -546,11 +488,11 @@ function site_energy(basis::SHIPBasis, at::Atoms, i0::Integer)
 end
 
 
-function site_energy_d(basis::SHIPBasis, at::Atoms, i0::Integer)
+function site_energy_d(basis::SHIPBasis, at::Atoms{T}, i0::Integer) where {T}
    Rs, Ineigs = _get_neigs(at, i0, cutoff(basis))
-   dEs = [ zeros(JVecF, length(at)) for _ = 1:length(basis) ]
+   dEs = [ zeros(JVec{T}, length(at)) for _ = 1:length(basis) ]
    _, dB = eval_basis_d(basis, Rs)
-   @assert dB isa Matrix{JVecF}
+   @assert dB isa Matrix{JVec{T}}
    @assert size(dB) == (length(Rs), length(basis))
    for iB = 1:length(basis), n = 1:length(Ineigs)
       dEs[iB][Ineigs[n]] += dB[n, iB]
