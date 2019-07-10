@@ -45,7 +45,8 @@ B_kl = ∑_m C_lm ∏_a A_kₐlₐmₐ   # k, l, m :: Tuple{Int} or Vector{Int}
 ```
 The klm values are restriced as follows:
 * For every k,l, the m values range through -l:l.
-* k + wY l <= D  where D is a prescribe total degree.
+* deg(k, l) <= maxdeg  where maxdeg is a prescribe degree. In practise this
+is usually k + wY l <= maxdeg
 
 For more information  on how a `SHIPBasis` is constructed and stored, see
 `?SHIPBasis`.
@@ -70,5 +71,5 @@ follows (pseudo-code)
 (1) Precompute {A_k}
 (2) Precompute ∇_Rj ϕ_{klm}
     (precomputing ∇_rj J_k and ∇_Rj Y_lm is in fact enough)
-(3) 
+(3)
 ```

@@ -3,7 +3,6 @@ module JacobiPolys
 
 import SHIPs: eval_basis,
               eval_basis!,
-              eval_grad,
               eval_basis_d!,
               alloc_B,
               alloc_dB
