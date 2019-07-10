@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+export TotalDegree, HyperbolicCross
 
 abstract type AbstractDegree end
 

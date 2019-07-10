@@ -25,6 +25,24 @@ export SHIPBasis
 include("bodyorders.jl")
 
 
+_mrange(ll::SVector{BO}) where {BO} =
+   CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
+
+"""
+return kk, ll, mrange
+where kk, ll is BO-tuples of k and l indices, while mrange is a
+cartesian range over which to iterate to construct the basis functions
+
+(note: this is tested for correcteness and speed)
+"""
+function _klm(ν::StaticVector{BO, T}, KL) where {BO, T}
+   kk = SVector( ntuple(i -> KL[ν[i]].k, BO) )
+   ll = SVector( ntuple(i -> KL[ν[i]].l, BO) )
+   mrange = CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
+   return kk, ll, mrange
+end
+
+
 function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
    # all possible (k, l) pairs
    allKL, degs = generate_KL(Deg)
@@ -36,8 +54,6 @@ function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
    # while retaining the ordering ν₁ ≤ ν₂ ≤ …
    lastidx = 0
    ν = MVector(ones(Int, bo)...)
-   kk = zero(typeof(ν))
-   ll = zero(typeof(ν))
    while true
       # check whether the current ν tuple is admissible
       # the first condition is that its max index is small enough
@@ -46,10 +62,7 @@ function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
          # the second condition is that the multivariate degree it defines
          # is small enough => for that we first have to compute the corresponding
          # k and l vectors
-         for i = 1:length(ν)
-            kk[i] = allKL[ν[i]].k
-            ll[i] = allKL[ν[i]].l
-         end
+         kk, ll, _ = _klm(ν, allKL)
          isadmissible = admissible(Deg, kk, ll)
       end
 
@@ -257,56 +270,6 @@ end
 #       Evaluate the actual basis functions
 # -------------------------------------------------------------
 
-_mrange(ll::SVector{BO}) where {BO} =
-   CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
-
-"""
-return kk, ll, mrange
-where kk, ll is BO-tuples of k and l indices, while mrange is a
-cartesian range over which to iterate to construct the basis functions
-
-(note: this is tested for correcteness and speed)
-"""
-function _klm(ν::SVector{BO, T}, KL) where {BO, T}
-   kk = SVector( ntuple(i -> KL[ν[i]].k, BO) )
-   ll = SVector( ntuple(i -> KL[ν[i]].l, BO) )
-   mrange = CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
-   return kk, ll, mrange
-end
-
-
-"""
-return the coefficients derived from the Clebsch-Gordan coefficients
-that guarantee rotational invariance of the B functions
-"""
-function _Bcoeff(ll::SVector{BO, Int}, mm::SVector{BO, Int}) where {BO}
-   @error("general case of B-coefficients has not yet been implemented")
-end
-
-function _Bcoeff(ll::SVector{2, Int}, mm::SVector{2, Int}, cg)
-   @assert(mm[1] + mm[2] == 0)
-   return (-1)^(mm[1])
-end
-
-function _Bcoeff(ll::SVector{3, Int}, mm::SVector{3, Int}, cg)
-   @assert(mm[1] + mm[2] + mm[3] == 0)
-   c = cg(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3])
-   return (-1)^(mm[3]) * c
-end
-
-function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
-   @assert(sum(mm) == 0)
-   M = mm[1]+mm[2] # == -(mm[3]+mm[4]) <=> ∑mm = 0
-   c = 0.0
-   for J = max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])):min(ll[1]+ll[2],ll[3]+ll[4])
-      # @assert abs(M) <= J  # TODO: revisit this issue?
-      if abs(M) > J; continue; end
-      c += (-1)^M * cg(ll[1], mm[1], ll[2], mm[2], J, M) *
-                    cg(ll[3], mm[3], ll[4], mm[4], J, -M)
-   end
-   return c
-end
-
 
 function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{<:JVec}, tmp)
    precompute_A!(tmp, ship, Rs)
@@ -380,7 +343,7 @@ function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}, tmp)
             # [2]  The gradients ∂B_{k}{l} / ∂Rⱼ
             #      ∑_a [ ∏_{b ≠ a} A_{kᵦlᵦmᵦ} ] ∂ϕ_{kₐlₐmₐ} / ∂Rⱼ
             for α = 1:length(ν)
-               # CxA_α =  CxA / A_α   (but need it numerically stable)
+               # CxA_α =  CxA / A_α   (we could replace this with _dprodA_dAi!)
                CxA_α = ComplexF64(C)
                for β = 1:length(ν)
                   if β != α

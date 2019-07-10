@@ -65,3 +65,52 @@ function filter_tuples(KL, Nu, ::Val{4}, cg)
    end
    return Nu[keep]
 end
+
+
+
+"""
+return the coefficients derived from the Clebsch-Gordan coefficients
+that guarantee rotational invariance of the B functions
+"""
+function _Bcoeff(ll::SVector{BO, Int}, mm::SVector{BO, Int}) where {BO}
+   @error("general case of B-coefficients has not yet been implemented")
+end
+
+function _Bcoeff(ll::SVector{2, Int}, mm::SVector{2, Int}, cg)
+   @assert(mm[1] + mm[2] == 0)
+   return (-1)^(mm[1])
+end
+
+function _Bcoeff(ll::SVector{3, Int}, mm::SVector{3, Int}, cg)
+   @assert(mm[1] + mm[2] + mm[3] == 0)
+   c = cg(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3])
+   return (-1)^(mm[3]) * c
+end
+
+function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
+   @assert(sum(mm) == 0)
+   M = mm[1]+mm[2] # == -(mm[3]+mm[4]) <=> ∑mm = 0
+   c = 0.0
+   for J = max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])):min(ll[1]+ll[2],ll[3]+ll[4])
+      # @assert abs(M) <= J  # TODO: revisit this issue?
+      if abs(M) > J; continue; end
+      c += (-1)^M * cg(ll[1], mm[1], ll[2], mm[2], J, M) *
+                    cg(ll[3], mm[3], ll[4], mm[4], J, -M)
+   end
+   return c
+end
+
+function _Bcoeff(ll::SVector{5, Int}, mm::SVector{5, Int}, cg)
+   @assert(sum(mm) == 0)
+   c = 0.0
+   M1 = mm[1] + mm[2]
+   M2 = mm[1] + mm[2] + mm[3]
+   for J1 = abs(ll[1] - ll[1]):(ll[1]+ll[2])
+       for J2 = max(abs(J1 - ll[3]), abs(ll[4]-ll[5])):min(J1+ll[3], ll[4]+ll[5])
+          c += (-1)^M2 * cg(ll[1], mm[1], ll[2], mm[2], J1,  M1) *
+                         cg(J1,    M1,    ll[3], mm[3], J2,  M2) *
+                         cg(ll[4], mm[4], ll[5], mm[5], J2, -M2)
+       end
+    end
+    return c
+end

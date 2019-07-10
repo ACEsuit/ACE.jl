@@ -171,8 +171,6 @@ function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
    fill!(store.dAco, T(0))
    Es = T(0)
    for (iA, c) in zip(ship.IA, ship.C)
-      @inbounds Es_ν = Complex{T}(c) * prod(store.A[iA])
-      Es += real(Es_ν)
       # compute the coefficients
       for α = 1:BO
          CxA_α = Complex{T}(c)
@@ -272,3 +270,28 @@ function site_energy_d(ship::SHIP, at::Atoms, i0::Int)
    end
    return dEs
 end
+
+
+
+# [ Info: profile basis and ship computation
+# [ Info:   body-order 3:
+# [ Info:      evaluate a site energy:
+#          SHIPBasis:   189.277 μs (0 allocations: 0 bytes)
+#          SHIP     :   310.281 μs (0 allocations: 0 bytes)
+# [ Info:      site energy gradient:
+#          SHIPBasis:   4.055 ms (450 allocations: 1.39 MiB)
+#          SHIP     :   1.223 ms (0 allocations: 0 bytes)
+# [ Info:   body-order 4:
+# [ Info:      evaluate a site energy:
+#          SHIPBasis:   599.627 μs (0 allocations: 0 bytes)
+#          SHIP     :   262.199 μs (0 allocations: 0 bytes)
+# [ Info:      site energy gradient:
+#          SHIPBasis:   57.463 ms (400 allocations: 659.38 KiB)
+#          SHIP     :   768.099 μs (0 allocations: 0 bytes)
+# [ Info:   body-order 5:
+# [ Info:      evaluate a site energy:
+#          SHIPBasis:   1.006 ms (0 allocations: 0 bytes)
+#          SHIP     :   185.435 μs (0 allocations: 0 bytes)
+# [ Info:      site energy gradient:
+#          SHIPBasis:   56.504 ms (400 allocations: 419.53 KiB)
+#          SHIP     :   623.716 μs (0 allocations: 0 bytes)

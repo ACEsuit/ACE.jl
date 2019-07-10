@@ -39,7 +39,7 @@ for n = 2:4
    tmp = SHIPs.alloc_temp(🚢)
    @info("     evaluate a site energy:")
    print("         SHIPBasis: "); @btime SHIPs.eval_basis!($b, $B, $Rs, $tmp)
-   print("         SHIP     : "); @btime SHIPs.evaluate!($🚢, $Rs, $tmp)
+   print("         SHIP     : "); @btime SHIPs.evaluate!($tmp, $🚢, $Rs)
 
    tmp = SHIPs.alloc_temp_d(🚢, Rs)
    dEs = zeros(JVecF, length(Rs))
@@ -49,7 +49,7 @@ for n = 2:4
    @info("     site energy gradient:")
    store = SHIPs.alloc_temp_d(🚢, Rs)
    print("         SHIPBasis: "); @btime SHIPs.eval_basis_d!($b, $db, $B, $Rs, $dbtmp)
-   print("         SHIP     : "); @btime SHIPs.evaluate_d!($dEs, $🚢, $Rs, $store)
+   print("         SHIP     : "); @btime SHIPs.evaluate_d!($dEs, $store, $🚢, $Rs)
 end
 
 
