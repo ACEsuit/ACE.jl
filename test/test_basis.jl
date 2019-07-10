@@ -14,6 +14,7 @@
 using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using SHIPs: eval_basis!, eval_basis
 using JuLIP.MLIPs: IPSuperBasis
+using JuLIP.Testing: print_tf
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -37,17 +38,18 @@ ship3 = SHIPBasis(TotalDegree(13, 2.0), 3, trans3, 2, 0.5, 3.0)
 trans2 = PolyTransform(2, 1.3)
 ship2 = SHIPBasis(TotalDegree(15, 2.0), 2, trans2, 2, 0.5, 3.0)
 ship4 = SHIPBasis(TotalDegree(11, 1.0), 4, trans3, 2, 0.5, 3.0)
-ships = [ship2, ship3, ship4]
+ship5 = SHIPBasis(TotalDegree(8, 1.0), 5, trans3, 2, 0.5, 3.0)
+ships = [ship2, ship3, ship4, ship5]
 
 @info("Test (de-)dictionisation of basis sets")
-println(@test (decode_dict(Dict(ship2)) == ship2))
-println(@test (decode_dict(Dict(ship3)) == ship3))
-println(@test (decode_dict(Dict(ship4)) == ship4))
+for ship in ships
+   println(@test (decode_dict(Dict(ship)) == ship))
+end
 @info("Test (de-)dictionisation of SuperBasis")
 super = IPSuperBasis(ship2, ship3, ship4)
 println(@test (decode_dict(Dict(super)) == super))
 
-@info("Test isometry invariance for 3B, 4B and 5B 🚢 s")
+@info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:20
    Rs = randR(20)
    BB = [ eval_basis(🚢, Rs) for 🚢 in ships ]

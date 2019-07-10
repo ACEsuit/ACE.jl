@@ -28,7 +28,8 @@ B3 = SHIPBasis(TotalDegree(13, 2.0), 3, trans3, 2, 0.5, 3.0)
 trans2 = PolyTransform(2, 1.3)
 B2 = SHIPBasis(TotalDegree(15, 2.0), 2, trans2, 2, 0.5, 3.0)
 B4 = SHIPBasis(TotalDegree(12, 2.0), 4, trans3, 2, 0.5, 3.0)
-BB = [B2, B3, B4]
+B5 = SHIPBasis(TotalDegree(8, 2.0), 5, trans3, 2, 0.5, 3.0)
+BB = [B2, B3, B4, B5]
 
 ##
 
@@ -36,7 +37,7 @@ BB = [B2, B3, B4]
 
 @info("Testing correctness of `SHIP` against `SHIPBasis`")
 for B in BB
-   @info("   bodyorder = $(SHIPs.bodyorder(B))")
+   @info("   bodyorder = $(SHIPs.bodyorder(B))+1")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   test (de-)dictionisation")

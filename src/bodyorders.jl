@@ -67,6 +67,34 @@ function filter_tuples(KL, Nu, ::Val{4}, cg)
 end
 
 
+function filter_tuples(KL, Nu, ::Val{N}, cg) where {N}
+   keep = fill(true, length(Nu))
+   for (i, ν) in enumerate(Nu)
+      ll = SVector(ntuple(i -> KL[ν[i]].l, N))
+      # invariance under reflections
+      if !iseven(sum(ll))
+         keep[i] = false
+         continue
+      end
+      # replace a "clever" computation with just checking that the CG
+      # coefficients are non-zero.
+      foundnz = false
+      for mpre in _mrange(ll)
+         mm = SVector(Tuple(mpre)..., -sum(Tuple(mpre)))
+         if abs(mm[end]) > ll[end]; continue; end
+         if _Bcoeff(ll, mm, cg) != 0.0
+            foundnz = true
+            break
+         end
+      end
+      if !foundnz
+         keep[i] = false
+      end
+   end
+   return Nu[keep]
+end
+
+
 
 """
 return the coefficients derived from the Clebsch-Gordan coefficients
@@ -105,8 +133,11 @@ function _Bcoeff(ll::SVector{5, Int}, mm::SVector{5, Int}, cg)
    c = 0.0
    M1 = mm[1] + mm[2]
    M2 = mm[1] + mm[2] + mm[3]
-   for J1 = abs(ll[1] - ll[1]):(ll[1]+ll[2])
+   for J1 = abs(ll[1] - ll[2]):(ll[1]+ll[2])
        for J2 = max(abs(J1 - ll[3]), abs(ll[4]-ll[5])):min(J1+ll[3], ll[4]+ll[5])
+          if abs(M2) > J2 || abs(M1) > J1
+             continue
+          end
           c += (-1)^M2 * cg(ll[1], mm[1], ll[2], mm[2], J1,  M1) *
                          cg(J1,    M1,    ll[3], mm[3], J2,  M2) *
                          cg(ll[4], mm[4], ll[5], mm[5], J2, -M2)
