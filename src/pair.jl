@@ -113,47 +113,14 @@ PolyPairPot(D::Dict) = PolyPairPot(
 convert(::Val{:SHIPs_PolyPairPot}, D::Dict) = PolyPairPot(D)
 
 
-alloc_temp(V::PolyPairPot) = (J = alloc_B(V.J),)
-alloc_temp_d(V::PolyPairPot, args...) = ( J = alloc_B( V.J),
-                                           dJ = alloc_dB(V.J) )
+alloc_temp(V::PolyPairPot, ::Integer) =
+      ( J = alloc_B(V.J), )
 
-evaluate(V::PolyPairPot, r) =
-      dot(V.coeffs, eval_basis(V.J, r))
-evaluate_d(V::PolyPairPot, r) =
-      dot(V.coeffs, eval_basis_d(V.J, r)[2])
+alloc_temp_d(V::PolyPairPot{T}, N::Integer) where {T} =
+      ( J = alloc_B(V.J), dJ = alloc_dB(V.J), dV = zeros(JVec{T}, N)  )
 
+evaluate!(tmp, V::PolyPairPot, r::Number) =
+      dot(V.coeffs, eval_basis!(tmp.J, V.J, r, nothing))
 
-function energy(V::PolyPairPot{T}, at::Atoms) where {T}
-   E = zero(T)
-   stor = alloc_temp(V)
-   for (i, j, r, R) in pairs(at, cutoff(V))
-      eval_basis!(stor.J, V.J, r, nothing)
-      E += dot(V.coeffs, stor.J)
-   end
-   return E
-end
-
-
-function forces(V::PolyPairPot{T}, at::Atoms) where {T}
-   F = zeros(JVec{T}, length(at))
-   stor = alloc_temp_d(V)
-   for (i, j, r, R) in pairs(at, cutoff(V))
-      eval_basis_d!(stor.J, stor.dJ, V.J, r, nothing)
-      dJ = dot(V.coeffs, stor.dJ)
-      F[i] += dJ * (R/r)
-      F[j] -= dJ * (R/r)
-   end
-   return F
-end
-
-
-function virial(V::PolyPairPot{T}, at::Atoms) where {T}
-   Vr = zero(JMat{T})
-   stor = alloc_temp_d(V)
-   for (i, j, r, R) in pairs(at, cutoff(V))
-      eval_basis_d!(stor.J, stor.dJ, V.J, r, nothing)
-      dJ = dot(V.coeffs, stor.dJ)
-      Vr -= dJ/r * R * R'
-   end
-   return Vr
-end
+evaluate_d!(tmp, V::PolyPairPot, r::Number) =
+      dot(V.coeffs, eval_basis_d!(tmp.J, tmp.dJ, V.J, r, nothing))

@@ -12,8 +12,9 @@ using JuLIP: AbstractCalculator, Atoms, JVec, SitePotential
 using NeighbourLists: max_neigs, neigs
 
 import JuLIP, JuLIP.MLIPs
-import JuLIP: cutoff, energy, forces, virial, site_energy, site_energy_d
-import JuLIP.Potentials: evaluate, evaluate_d
+import JuLIP: cutoff, alloc_temp, alloc_temp_d
+import JuLIP.Potentials: evaluate!, evaluate_d!
+import JuLIP.MLIPs: combine
 import Base: Dict, convert, ==
 
 export SHIP
@@ -28,6 +29,7 @@ struct SHIP{BO, T, TJ} <: SitePotential
    C::Vector{T}
 end
 
+cutoff(ship::SHIP) = cutoff(ship.J)
 
 ==(S1::SHIP, S2::SHIP) = (
       (bodyorder(S1) == bodyorder(S2)) &&
@@ -72,7 +74,7 @@ bodyorder(ship::SHIP{BO}) where {BO} = BO + 1
 
 length_A(ship::SHIP) = ship.firstA[end]
 
-JuLIP.MLIPs.combine(basis::SHIPBasis, coeffs) = SHIP(basis, coeffs)
+combine(basis::SHIPBasis, coeffs) = SHIP(basis, coeffs)
 
 function SHIP(basis::SHIPBasis{BO, T}, coeffs::AbstractVector{T}) where {BO, T}
    IA = SVector{BO,Int}[]
@@ -99,7 +101,7 @@ end
 
 
 
-alloc_temp(ship::SHIP{BO,T}) where {BO, T} =
+alloc_temp(ship::SHIP{BO,T}, ::Integer) where {BO, T} =
    (     J = alloc_B(ship.J),
          Y = alloc_B(ship.SH),
          A = zeros(Complex{T}, length_A(ship)),
@@ -125,8 +127,6 @@ function precompute!(store, ship::SHIP, Rs)
    return nothing
 end
 
-evaluate(ship::SHIP, Rs::AbstractVector{JVecF}) = evaluate!(alloc_temp(ship), ship, Rs)
-
 # compute one site energy
 function evaluate!(store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}}) where {BO, T}
    precompute!(store, ship, Rs)
@@ -138,10 +138,6 @@ function evaluate!(store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}}) where 
    return Es
 end
 
-
-alloc_temp_d(ship::SHIP{BO, T}, Rs::AbstractVector{<:SVector}) where {BO, T} =
-      alloc_temp_d(ship, length(Rs))
-
 alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
       ( J = alloc_B(ship.J),
        dJ = alloc_dB(ship.J),
@@ -150,14 +146,9 @@ alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
         A = zeros(Complex{T}, length_A(ship)),
      dAco = zeros(Complex{T}, length_A(ship)),
      tmpJ = alloc_temp_d(ship.J),
-     tmpY = alloc_temp_d(ship.SH)
+     tmpY = alloc_temp_d(ship.SH),
+       dV = zeros(JVec{T}, N)
       )
-
-
-evaluate_d(ship::SHIP, Rs::AbstractVector{JVecF}) =
-      evaluate_d!(zeros(JVecF, length(Rs)),
-                  alloc_temp_d(ship, Rs),
-                  ship, Rs)
 
 # compute one site energy
 function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
@@ -204,72 +195,6 @@ function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
 end
 
 
-# ------------ JuLIP Calculators ------------------
-#  * forces and virials should just follow from JuLIP.
-#    actually most of this is boiler-plate and should move into JuLIP!
-
-cutoff(ship::SHIP) = cutoff(ship.J)
-
-function energy(ship::SHIP, at::Atoms)
-   E = 0.0
-   tmp = alloc_temp(ship)
-   for (i, j, r, R) in sites(at, cutoff(ship))
-      E += evaluate!(tmp, ship, R)
-   end
-   return E
-end
-
-
-function forces(ship::SHIP, at::Atoms)
-   F = zeros(JVecF, length(at))
-   nlist = neighbourlist(at, cutoff(ship))
-   tmp = alloc_temp_d(ship, max_neigs(nlist))
-   dEs = zeros(JVecF, max_neigs(nlist))
-   for (i, j, r, R) in sites(at, cutoff(ship))
-      evaluate_d!(dEs, tmp, ship, R)
-      for n = 1:length(j)
-         F[i] += dEs[n]
-         F[j[n]] -= dEs[n]
-      end
-   end
-   return F
-end
-
-
-function virial(ship::SHIP, at::Atoms)
-   V = zero(JMatF)
-   nlist = neighbourlist(at, cutoff(ship))
-   tmp = alloc_temp_d(ship, max_neigs(nlist))
-   dEs = zeros(JVecF, max_neigs(nlist))
-   for (i, j, r, R) in sites(at, cutoff(ship))
-      evaluate_d!(dEs, tmp, ship, R)
-      V += JuLIP.Potentials.site_virial(dEs, R)
-   end
-   return V
-end
-
-
-function site_energy(ship::SHIP, at::Atoms, i0::Int)
-   nlist = neighbourlist(at, cutoff(ship))
-   j, r, R = neigs(nlist, i0)
-   tmp = alloc_temp(ship)
-   return evaluate!(tmp, ship, R)
-end
-
-
-function site_energy_d(ship::SHIP, at::Atoms, i0::Int)
-   nlist = neighbourlist(at, cutoff(ship))
-   j, r, R = neigs(nlist, i0)
-   tmp = alloc_temp_d(ship, length(R))
-   dV = zeros(JVecF, length(R))
-   evaluate_d!(dV, tmp, ship, R)
-   dEs = zeros(JVecF, length(at))
-   for i = 1:length(R)
-      dEs[j[i]] += dV[i]
-      dEs[i0] -= dV[i]
-   end
-   return dEs
-end
 
 
 

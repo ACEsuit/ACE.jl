@@ -151,8 +151,8 @@ for basis in ships
       print_tf(@test site_energy(sh, at, 5) ≈ dot(c, site_energy(basis, at, 5)))
       print_tf(@test site_energy_d(sh, at, 5) ≈ sum(c*f for (c, f) in zip(c, site_energy_d(basis, at, 5))) )
    end
+   println()
 end
-println()
 
 
 

@@ -43,7 +43,7 @@ for B in BB
    @info("   test (de-)dictionisation")
    println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
-   store = SHIPs.alloc_temp(ship)
+   store = SHIPs.alloc_temp(ship, 0)
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
       Rs = randR(20)
@@ -68,7 +68,7 @@ for B in BB
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    Rs = randR(20)
-   store = SHIPs.alloc_temp_d(ship, Rs)
+   store = SHIPs.alloc_temp_d(ship, length(Rs))
    dEs = zeros(JVecF, length(Rs))
    SHIPs.evaluate_d!(dEs, store, ship, Rs)
    Es = SHIPs.evaluate!(store, ship, Rs)

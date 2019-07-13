@@ -203,7 +203,7 @@ function eval_basis_d!(P, dP, J::TransformedJacobi, r, _)
       @inbounds P[n] = p * fc
       @inbounds dP[n] = (dp * fc + p * fc_d) * dx
    end
-   # return P, dP
+   return dP
 end
 
 

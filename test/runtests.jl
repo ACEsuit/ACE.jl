@@ -8,7 +8,7 @@
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
 using JuLIP, JuLIP.Testing
-using JuLIP.Potentials: evaluate, evaluate_d
+using JuLIP.Potentials: evaluate!, evaluate_d!, evaluate, evaluate_d
 
 @testset "SHIPs.jl" begin
     include("test_jacobi.jl")
