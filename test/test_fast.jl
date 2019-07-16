@@ -95,7 +95,7 @@ end
 @info("Check Correctness of SHIP calculators")
 
 naive_energy(ship::SHIP, at) = sum( SHIPs.evaluate(ship, R)
-                              for (i, j, r, R) in sites(at, cutoff(ship)) )
+                              for (i, j, R) in sites(at, cutoff(ship)) )
 
 for B in BB
    @info("   body-order = $(SHIPs.bodyorder(B))")

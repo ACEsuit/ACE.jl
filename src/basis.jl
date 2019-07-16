@@ -9,7 +9,7 @@ using StaticArrays, LinearAlgebra
 using JuLIP: JVec
 import JuLIP
 using JuLIP.MLIPs: IPBasis
-import JuLIP: alloc_temp, alloc_temp_d 
+import JuLIP: alloc_temp, alloc_temp_d
 
 using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y,
          ClebschGordan
@@ -389,7 +389,7 @@ function energy(shipB::SHIPBasis, at::Atoms)
    E = zeros(length(shipB))
    B = alloc_B(shipB)
    tmp = alloc_temp(shipB)
-   for (i, j, r, R) in sites(at, cutoff(shipB))
+   for (i, j, R) in sites(at, cutoff(shipB))
       eval_basis!(B, shipB, R, tmp)
       E[:] .+= B[:]
    end
@@ -407,7 +407,7 @@ function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
    dB = alloc_dB(shipB, maxR)
    tmp = alloc_temp_d(shipB, maxR)
    # assemble site gradients and write into F
-   for (i, j, r, R) in sites(nlist)
+   for (i, j, R) in sites(nlist)
       eval_basis_d!(B, dB, shipB, R, tmp)
       # @show dB
       for a = 1:length(R)
@@ -429,7 +429,7 @@ function virial(shipB::SHIPBasis, at::Atoms)
    dB = alloc_dB(shipB, maxR)
    tmp = alloc_temp_d(shipB, maxR)
    # assemble site gradients and write into F
-   for (i, j, r, R) in sites(nlist)
+   for (i, j, R) in sites(nlist)
       eval_basis_d!(B, dB, shipB, R, tmp)
       for iB = 1:length(shipB)
          V[iB] += JuLIP.Potentials.site_virial(dB[:, iB], R)
@@ -441,7 +441,7 @@ end
 
 function _get_neigs(at::Atoms, i0::Integer, rcut)
    nlist = neighbourlist(at, rcut)
-   j, r, R = neigs(nlist, i0)
+   j, R = neigs(nlist, i0)
    return R, j
 end
 

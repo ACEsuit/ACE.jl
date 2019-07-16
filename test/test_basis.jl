@@ -129,7 +129,7 @@ println()
 randcoeffs(B) = 2 * (rand(length(B)) .- 0.5) .* (1:length(B)).^(-2)
 
 naive_energy(basis::SHIPBasis, at) = sum( eval_basis(basis, R)
-                              for (i, j, r, R) in sites(at, cutoff(basis)) )
+                              for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships
    @info("   body-order = $(SHIPs.bodyorder(basis))")

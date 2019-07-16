@@ -50,7 +50,8 @@ alloc_temp_d(pB::PairBasis, args...) = ( J = alloc_B( pB.J),
 function energy(pB::PairBasis, at::Atoms)
    E = alloc_B(pB)
    stor = alloc_temp(pB)
-   for (i, j, r, R) in pairs(at, cutoff(pB))
+   for (i, j, R) in pairs(at, cutoff(pB))
+      r = norm(R)
       eval_basis!(stor.J, pB.J, r, nothing)
       E[:] .+= stor.J[:]
    end
@@ -60,7 +61,8 @@ end
 function forces(pB::PairBasis, at::Atoms)
    F = zeros(JVecF, length(at), length(pB))
    stor = alloc_temp_d(pB)
-   for (i, j, r, R) in pairs(at, cutoff(pB))
+   for (i, j, R) in pairs(at, cutoff(pB))
+      r = norm(R)
       eval_basis_d!(stor.J, stor.dJ, pB.J, r, nothing)
       for iB = 1:length(pB)
          F[i, iB] += stor.dJ[iB] * (R/r)
@@ -73,10 +75,11 @@ end
 function virial(pB::PairBasis, at::Atoms)
    V = zeros(JMatF, length(pB))
    stor = alloc_temp_d(pB)
-   for (i, j, r, R) in pairs(at, cutoff(pB))
+   for (i, j, R) in pairs(at, cutoff(pB))
+      r = norm(R)
       eval_basis_d!(stor.J, stor.dJ, pB.J, r, nothing)
       for iB = 1:length(pB)
-         V[iB] -= stor.dJ[iB]/r * R * R'
+         V[iB] -= (stor.dJ[iB]/r) * R * R'
       end
    end
    return V
