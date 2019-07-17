@@ -37,7 +37,7 @@ BB = [B2, B3, B4, B5]
 
 @info("Testing correctness of `SHIP` against `SHIPBasis`")
 for B in BB
-   @info("   bodyorder = $(SHIPs.bodyorder(B))+1")
+   @info("   bodyorder = $(SHIPs.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   test (de-)dictionisation")

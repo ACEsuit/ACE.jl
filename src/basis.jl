@@ -131,7 +131,7 @@ Dict(shipB::SHIPBasis) = Dict(
 
 SHIPBasis(D::Dict) = SHIPBasis(
       decode_dict(D["Deg"]),
-      D["bodyorder"],
+      D["bodyorder"] - 1,
       TransformedJacobi(D["J"]) )
 
 convert(::Val{:SHIPs_SHIPBasis}, D::Dict) = SHIPBasis(D)
@@ -179,7 +179,7 @@ function SHIPBasis(Deg::AbstractDegree, bo::Integer, J::TransformedJacobi;
    return SHIPBasis(Deg, J, SH, allKL, Nu, cg, firstA, Val(bo))
 end
 
-bodyorder(ship::SHIPBasis{BO}) where {BO} = BO
+bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
 Base.length(ship::SHIPBasis) = length_B(ship)
 length_B(ship::SHIPBasis{BO}) where {BO} = length(ship.Nu)

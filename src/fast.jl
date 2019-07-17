@@ -54,6 +54,8 @@ Dict(ship::SHIP) = Dict(
       "C" => ship.C
    )
 
+# bodyorder - 1 is because BO is the number of neighbours
+# not the actual body-order
 SHIP(D::Dict) = _SHIP(D, Val(Int(D["bodyorder"]-1)),
                          Meta.eval(Meta.parse(D["T"])))
 
@@ -70,6 +72,7 @@ convert(::Val{:SHIPs_SHIP}, D::Dict) = SHIP(D)
 
 Base.length(ship::SHIP) = length(ship.C)
 
+# BO + 1 because BO is the number of neighbours not the actual body-order
 bodyorder(ship::SHIP{BO}) where {BO} = BO + 1
 
 length_A(ship::SHIP) = ship.firstA[end]

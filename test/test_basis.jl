@@ -64,7 +64,7 @@ println()
 ##
 @info("Test gradients for 3B, 4B and 5B 🚢 s")
 for 🚢 in ships
-   @info("  body-order = $(SHIPs.bodyorder(🚢)+1):")
+   @info("  body-order = $(SHIPs.bodyorder(🚢)):")
    Rs = randR(20)
    tmp = SHIPs.alloc_temp_d(🚢, Rs)
    SHIPs.precompute_grads!(tmp, 🚢, Rs)
@@ -96,7 +96,7 @@ end
 verbose=false
 @info("Test gradients for 3B with and R near the pole")
 🚢 = ship2 = SHIPBasis(TotalDegree(15, 2.0), 2, PolyTransform(2, 1.3), 2, 0.5, 3.0)
-@info("  body-order = $(SHIPs.bodyorder(🚢)+1):")
+@info("  body-order = $(SHIPs.bodyorder(🚢)):")
 # Rs = [ randR(5); [SVector(1e-14*rand(), 1e-14*rand(), 1.1+1e-6*rand())] ]
 Rs = [ randR(5); [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
 tmp = SHIPs.alloc_temp_d(🚢, Rs)
