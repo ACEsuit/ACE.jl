@@ -9,7 +9,6 @@ using SHIPs.JacobiPolys: Jacobi
 using SHIPs.SphericalHarmonics
 using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart
-using SHIPs: eval_basis, eval_basis_d
 
 
 
