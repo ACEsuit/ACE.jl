@@ -117,8 +117,8 @@ function precompute!(store, ship::SHIP, Rs)
    fill!(store.A, 0.0)
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(store.J, ship.J, norm(R), store.tmpJ)
-      eval_basis!(store.Y, ship.SH, R, store.tmpY)
+      eval_basis!(store.J, store.tmpJ, ship.J, norm(R))
+      eval_basis!(store.Y, store.tmpY, ship.SH, R)
       # add the contributions to the A_klm; the indexing into the
       # A array is determined by `ship.firstA` which was precomputed
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
@@ -181,8 +181,8 @@ function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
    fill!(dEs, zero(JVec{T}))
 
    for (iR, R) in enumerate(Rs)
-      eval_basis_d!(store.J, store.dJ, ship.J, norm(R), store.tmpJ)
-      eval_basis_d!(store.Y, store.dY, ship.SH, R, store.tmpY)
+      eval_basis_d!(store.J, store.dJ, store.tmpJ, ship.J, norm(R))
+      eval_basis_d!(store.Y, store.dY, store.tmpY, ship.SH, R)
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
             @inbounds aaa = store.J[k+1] * store.dY[index_y(l, m)]

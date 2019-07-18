@@ -10,7 +10,7 @@
 
 @info("-------- TEST PAIR  BASIS ---------")
 using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using SHIPs: eval_basis!, eval_basis, PairBasis
+using SHIPs: PairBasis
 
 at = bulk(:W, cubic=true) * 3
 rattle!(at, 0.03)

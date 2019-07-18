@@ -184,7 +184,7 @@ bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 Base.length(ship::SHIPBasis) = length_B(ship)
 length_B(ship::SHIPBasis{BO}) where {BO} = length(ship.Nu)
 
-alloc_B(ship::SHIPBasis) = zeros(Float64, length_B(ship))
+alloc_B(ship::SHIPBasis, args...) = zeros(Float64, length_B(ship))
 alloc_dB(ship::SHIPBasis, N::Integer) = zeros(JVec{Float64}, N, length_B(ship))
 alloc_dB(ship::SHIPBasis, Rs::AbstractVector) = alloc_dB(ship, length(Rs))
 
@@ -227,8 +227,8 @@ function precompute_A!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where 
    fill!(tmp.A, T(0.0))
    for (iR, R) in enumerate(Rs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(tmp.J, ship.J, norm(R), tmp.tmpJ)
-      eval_basis!(tmp.Y, ship.SH, R, tmp.tmpY)
+      eval_basis!(tmp.J, tmp.tmpJ, ship.J, norm(R))
+      eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
       # add the contributions to the A_klm; the indexing into the
       # A array is determined by `ship.firstA` which was precomputed
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
@@ -248,11 +248,11 @@ function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) wh
    for (iR, R) in enumerate(Rs)
       # ---------- precompute the derivatives of the Jacobi polynomials
       #            and copy into the tmp array
-      eval_basis_d!(tmp.J1, tmp.dJ1, ship.J, norm(R), tmp.tmpJ)
+      eval_basis_d!(tmp.J1, tmp.dJ1, tmp.tmpJ, ship.J, norm(R))
       tmp.J[iR,:] .= tmp.J1[:]
       tmp.dJ[iR,:] .= tmp.dJ1[:]
       # ----------- precompute the Ylm derivatives
-      eval_basis_d!(tmp.Y1, tmp.dY1, ship.SH, R, tmp.tmpY)
+      eval_basis_d!(tmp.Y1, tmp.dY1, tmp.tmpY, ship.SH, R)
       tmp.Y[iR,:] .= tmp.Y1[:]
       tmp.dY[iR,:] .= tmp.dY1[:]
       # ----------- precompute the A values
@@ -271,7 +271,7 @@ end
 # -------------------------------------------------------------
 
 
-function eval_basis!(B, ship::SHIPBasis, Rs::AbstractVector{<:JVec}, tmp)
+function eval_basis!(B, tmp, ship::SHIPBasis, Rs::AbstractVector{<:JVec})
    precompute_A!(tmp, ship, Rs)
    KL = ship.KL
    for (idx, ν) in enumerate(ship.Nu)
@@ -311,7 +311,7 @@ end
 
 
 
-function eval_basis_d!(B, dB, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}, tmp) where {T}
+function eval_basis_d!(B, dB, tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where {T}
    fill!(B, T(0.0))
    fill!(dB, zero(JVec{T}))
    # all precomputations of "local" gradients
@@ -390,7 +390,7 @@ function energy(shipB::SHIPBasis, at::Atoms)
    B = alloc_B(shipB)
    tmp = alloc_temp(shipB)
    for (i, j, R) in sites(at, cutoff(shipB))
-      eval_basis!(B, shipB, R, tmp)
+      eval_basis!(B, tmp, shipB, R)
       E[:] .+= B[:]
    end
    return E
@@ -408,7 +408,7 @@ function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
    tmp = alloc_temp_d(shipB, maxR)
    # assemble site gradients and write into F
    for (i, j, R) in sites(nlist)
-      eval_basis_d!(B, dB, shipB, R, tmp)
+      eval_basis_d!(B, dB, tmp, shipB, R)
       # @show dB
       for a = 1:length(R)
          F[j[a], :] .-= dB[a, :]
@@ -430,7 +430,7 @@ function virial(shipB::SHIPBasis, at::Atoms)
    tmp = alloc_temp_d(shipB, maxR)
    # assemble site gradients and write into F
    for (i, j, R) in sites(nlist)
-      eval_basis_d!(B, dB, shipB, R, tmp)
+      eval_basis_d!(B, dB, tmp, shipB, R)
       for iB = 1:length(shipB)
          V[iB] += JuLIP.Potentials.site_virial(dB[:, iB], R)
       end

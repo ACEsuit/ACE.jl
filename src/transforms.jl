@@ -155,10 +155,12 @@ transform_d(J::TransformedJacobi, r) = transform_d(J.trans, r)
 fcut(J::TransformedJacobi, r) = fcut(J.mult, r)
 fcut_d(J::TransformedJacobi, r) = fcut_d(J.mult, r)
 
-SHIPs.alloc_B( J::TransformedJacobi{T}) where {T} = Vector{T}(undef, length(J.J))
-SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} = Vector{T}(undef, length(J.J))
+SHIPs.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
+      Vector{T}(undef, length(J.J))
+SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
+      Vector{T}(undef, length(J.J))
 
-function eval_basis!(P, J::TransformedJacobi, r, _)
+function eval_basis!(P, tmp, J::TransformedJacobi, r)
    N = length(J)-1
    @assert length(P) >= N+1
    # apply the cutoff
@@ -170,7 +172,7 @@ function eval_basis!(P, J::TransformedJacobi, r, _)
    t = transform(J.trans, r)
    x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
    # evaluate the actual Jacobi polynomials
-   eval_basis!(P, J.J, x, N)
+   eval_basis!(P, nothing, J.J, x)
    # apply the cutoff multiplier
    fc = fcut(J, x)
    for n = 1:N+1
@@ -179,7 +181,7 @@ function eval_basis!(P, J::TransformedJacobi, r, _)
    return P
 end
 
-function eval_basis_d!(P, dP, J::TransformedJacobi, r, _)
+function eval_basis_d!(P, dP, tmp, J::TransformedJacobi, r)
    N = length(J)-1
    @assert length(P) >= N+1
    # apply the cutoff
@@ -193,7 +195,7 @@ function eval_basis_d!(P, dP, J::TransformedJacobi, r, _)
    x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
    dx = (2/(J.tu-J.tl)) * transform_d(J.trans, r)
    # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-   eval_basis_d!(P, dP, J.J, x, N)
+   eval_basis_d!(P, dP, nothing, J.J, x)
    # apply the cutoff multiplier and chain rule
    fc = fcut(J, x)
    fc_d = fcut_d(J, x)

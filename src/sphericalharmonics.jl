@@ -381,7 +381,7 @@ SHBasis(maxL::Integer, T=Float64) =
 Base.eltype(SH::SHBasis{T}) where {T} = T
 Base.length(S::SHBasis) = sizeY(S.maxL)
 
-alloc_B( S::SHBasis{T}) where {T} =
+alloc_B( S::SHBasis{T}, args...) where {T} =
 		Vector{Complex{T}}(undef, length(S))
 
 alloc_dB(S::SHBasis{T}, args...) where {T} =
@@ -395,7 +395,7 @@ alloc_temp_d(SH::SHBasis{T}, args...) where {T} = (
 		dP = Vector{T}(undef, sizeP(SH.maxL)) )
 
 
-function eval_basis!(Y, SH::SHBasis, R::JVec, tmp)
+function eval_basis!(Y, tmp, SH::SHBasis, R::JVec)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
@@ -406,7 +406,7 @@ function eval_basis!(Y, SH::SHBasis, R::JVec, tmp)
 end
 
 
-function eval_basis_d!(Y, dY, SH::SHBasis, R::JVec, tmp)
+function eval_basis_d!(Y, dY, tmp, SH::SHBasis, R::JVec)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
