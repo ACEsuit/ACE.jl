@@ -11,7 +11,7 @@
 @testset "Transforms" begin
 
 using SHIPs, Printf, Test, LinearAlgebra
-using SHIPs: PolyTransform, rbasis, eval_basis, eval_basis_d
+using SHIPs: PolyTransform, rbasis, eval_basis, eval_basis_d, TransformedJacobi
 using SHIPs.JacobiPolys: Jacobi
 using SHIPs.SphericalHarmonics
 using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
@@ -26,8 +26,8 @@ for p in 2:4
    trans = PolyTransform(1+rand(), 1+rand())
    @info("      test (de-)dictionisation")
    println(@test decode_dict(Dict(trans)) == trans)
-   B1 = rbasis(10, trans, 2, 3.0)
-   B2 = rbasis(10, trans, 2, 0.5, 3.0)
+   B1 = TransformedJacobi(10, trans, PolyCutoff1s(2, 3.0))
+   B2 = TransformedJacobi(10, trans, PolyCutoff2s(2, 0.5, 3.0))
    for B in [B1, B2]
       B == B1 && @info("basis = 1s")
       B == B2 && @info("basis = 2s")

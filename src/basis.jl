@@ -379,17 +379,18 @@ end
 
 
 
-function eval_basis_d!(B, dB, tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where {T}
+function eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO},
+                       Rs::AbstractVector{JVec{T}}) where {BO, T}
    fill!(B, T(0.0))
    fill!(dB, zero(JVec{T}))
    # all precomputations of "local" gradients
    precompute_grads!(tmp, ship, Rs)
-   nfcalls(Val(BO), N -> _eval_basis_d!(B, dB, tmp, ship, Val(N)))
+   nfcalls(Val(BO), valN -> _eval_basis_d!(B, dB, tmp, ship, Rs, valN))
    return nothing
 end
 
-function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, ::Val{N}
-                        ) where {BO, T, N}
+function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs,
+                         ::Val{N}) where {BO, T, N}
    @assert N <= BO
    Nu_N = ship.Nu[N]::Vector{SVector{N, Int16}}
    KL = ship.KL
@@ -399,7 +400,7 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, ::Val{N}
       idxB = idx0+idx
       kk, ll, mrange = _klm(ν, KL)
       for mpre in mrange    # this is a cartesian loop over BO-1 indices
-         mm = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+         mm = _mvec(mpre)
          # skip any m-tuples that aren't admissible
          if abs(mm[end]) > ll[end]; continue; end
          # ------------------------------------------------------------------

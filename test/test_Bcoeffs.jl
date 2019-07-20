@@ -10,12 +10,10 @@
 
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
-using SHIPs: generate_KL, generate_KL_tuples, TotalDegree, maxL 
+using SHIPs: generate_KL, generate_KL_tuples, TotalDegree, maxL
 using SHIPs.SphericalHarmonics: ClebschGordan, cg1
+using JuLIP.Testing
 
-printred(s) = printstyled(s, bold=true, color=:red)
-print_tf(::Test.Pass) = printstyled("+", bold=true, color=:green)
-print_tf(::Test.Fail) = printstyled("-", bold=true, color=:red)
 
 function naive_Bcoeff(ll::SVector{4}, mm, cg)
    coeff = 0.0
@@ -66,11 +64,15 @@ println(@test mrange3 == CartesianIndices( (-4:4, -2:2, -5:5) ))
 Deg = TotalDegree(5, 1.0)
 cg = ClebschGordan(maxL(Deg))
 KL, Nu =  generate_KL_tuples(Deg, 3, cg; filter=false)
-Nu_filter = SHIPs.filter_tuples(KL, Nu, Val(3), cg)
+_, Nu_filter = generate_KL_tuples(Deg, 3, cg; filter=true) #SHIPs.filter_tuples(KL, Nu, Val(3), cg)
 Izero = Int[]
 Iodd = Int[]
+
+Nu3 = Nu[3]
+Nu3_filter = Nu_filter[3]
+
 @info("Testing the RI coefficients for Deg = $Deg, 4B")
-for (i, ν) in enumerate(Nu)
+for (i, ν) in enumerate(Nu3)
    # global Izero, Iodd
    ll = SVector([KL[ν[i]].l for i = 1:length(ν)]...)
    pass, isz = check_Bcoeffs(ll, cg)
@@ -80,19 +82,21 @@ for (i, ν) in enumerate(Nu)
 end
 println()
 Izodd = union(Izero, Iodd)
-@info("""   #Nu = $(length(Nu)), #Nu_filt = $(length(Nu_filter)), #(zero or odd) = $(length(Izodd)) """)
-println(@test (length(Nu) == length(Nu_filter) + length(Izodd)))
+@info("""   #Nu = $(length(Nu3)), #Nu_filt = $(length(Nu3_filter)), #(zero or odd) = $(length(Izodd)) """)
+println(@test (length(Nu3) == length(Nu3_filter) + length(Izodd)))
 
 
 ##
 Deg = TotalDegree(10, 2.0)
 cg = ClebschGordan(maxL(Deg))
 KL, Nu =  generate_KL_tuples(Deg, 4, cg; filter=false)
-Nu_filter = SHIPs.filter_tuples(KL, Nu, Val(4), cg)
+_, Nu_filter = generate_KL_tuples(Deg, 4, cg; filter=true) # SHIPs.filter_tuples(KL, Nu, Val(4), cg)
+Nu4 = Nu[4]
+Nu4_filter = Nu_filter[4]
 Izero = Int[]
 Iodd = Int[]
 @info("Testing the RI coefficients for Deg = $Deg, 5B")
-for (i, ν) in enumerate(Nu)
+for (i, ν) in enumerate(Nu4)
    # global Izero, Iodd
    ll = SVector([KL[ν[i]].l for i = 1:length(ν)]...)
    pass, isz = check_Bcoeffs(ll, cg)
@@ -102,8 +106,8 @@ for (i, ν) in enumerate(Nu)
 end
 println()
 Izodd = union(Izero, Iodd)
-@info("""   #Nu = $(length(Nu)), #Nu_filt = $(length(Nu_filter)), #(zero or odd) = $(length(Izodd)) """)
-println(@test (length(Nu) == length(Nu_filter) + length(Izodd)))
+@info("""   #Nu = $(length(Nu4)), #Nu_filt = $(length(Nu4_filter)), #(zero or odd) = $(length(Izodd)) """)
+println(@test (length(Nu4) == length(Nu4_filter) + length(Izodd)))
 
 
 end
