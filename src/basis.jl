@@ -14,7 +14,7 @@ export SHIPBasis
 # in here we specify body-order specific code so that it doesn't pollute
 # the main codebase
 #  * filter_tuples
-#  *
+#  * _Bcoeff
 include("bodyorders.jl")
 
 
@@ -35,6 +35,10 @@ function _klm(ν::StaticVector{BO, T}, KL) where {BO, T}
    return kk, ll, mrange
 end
 
+
+# TODO [tuples] generate basis functions UP TO A BODY-ORDER
+#      we need to have 0 stand for a 1 (i.e. body-order)
+#      => decide whether to drop T0.
 
 function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
    # all possible (k, l) pairs
@@ -91,6 +95,12 @@ end
 #  - technically we don't have to store Deg in the basis, but only
 #    to generate it?
 
+# TODO [tuples]
+# for now ignore 1-body and 2-body, and leave the indexing into
+# Nu to mean the number of neighbours. But after this runs, we
+# should rewrite this as Nu[1] -> 1-body, Nu[2] -> 2-body, etc.
+# so the meaning of BO will return to what it should be.
+
 """
 `struct SHIPBasis` : the main type around eveything in `SHIPs.jl` revolves;
 it implements a permutation and rotation invariant basis.
@@ -101,20 +111,25 @@ it implements a permutation and rotation invariant basis.
 * `J` : `TransformedJacobi` basis set for the `r`-component
 * `SH` : spherical harmonics basis set for the `R̂`-component
 * `KL` : list of all admissible `(k,l)` tuples
-* `Nu` : a ν ∈ `Nu` specifies a basis function B_ν = ∑_m ∏_i A_νᵢm (details see `README.md`)
-* `A, dA` : buffers for precomputing the `A_klm` functions
-* `firstA` : same length as `KL`; each `(k,l) = KL[i]` has `2l+1` A_klm-functions associated which will be stored in the `A` buffer, the first of these is stored as `A[firstA[i]]`.
+* `Nu` : a ν ∈ `Nu[n]` specifies an n-body basis function B_ν = ∑_m ∏_i A_νᵢm
+(details see `README.md`)
+* `firstA` : same length as `KL`; each `(k,l) = KL[i]` has `2l+1`
+A_klm-functions associated which will be stored in the `A` buffer, the first of
+these is stored as `A[firstA[i]]`.
+* `cg` : precomputed Clebsch Gordan coefficients
 """
 struct SHIPBasis{BO, T, TJ, TDEG} <: IPBasis
    Deg::TDEG
    J::TJ
    SH::SHBasis{T}
    KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}}
-   Nu::Vector{SVector{BO, Int}}
+   Nu::SVector{BO, Vector{SVector}}
    cg::ClebschGordan{T}
    firstA::Vector{Int}   # indexing into A
-   valBO::Val{BO}
 end
+
+# TODO: Move to precomputed ∏A coefficients instead of Clebsch-Gordan
+#       coefficients to speed up LSQ assembly.
 
 Dict(shipB::SHIPBasis) = Dict(
       "__id__" => "SHIPs_SHIPBasis",
@@ -251,7 +266,7 @@ function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) wh
       # ----------- precompute the A values
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
-            tmp.A[iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
+            @inbounds tmp.A[iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
          end
       end
    end
@@ -263,11 +278,25 @@ end
 #       Evaluate the actual basis functions
 # -------------------------------------------------------------
 
+# TODO [tuple]; switch Nu[N]::Vector{SVector{N, Int}} to ::Vector{SVector{N, Int16}}
 
-function eval_basis!(B, tmp, ship::SHIPBasis, Rs::AbstractVector{<:JVec})
-   precompute_A!(tmp, ship, Rs)
+function _first_B_idx(ship, N)
+   # compute the first index into the basis
+   idx0 = 0
+   for n = 1:N-1
+      idx0 += length(ship.Nu[n])
+   end
+   return idx0
+end
+
+function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
+   @assert N <= BO
+   Nu_N = ship.Nu[N]::Vector{SVector{N, Int}}
    KL = ship.KL
-   for (idx, ν) in enumerate(ship.Nu)
+   idx0 = _first_B_idx(ship, N)
+   # loop over N-body basis functions
+   # A has already been filled in the outer eval_basis!
+   for (idx, ν) in enumerate(Nu_N)
       kk, ll, mrange = _klm(ν, KL)
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
@@ -296,8 +325,15 @@ function eval_basis!(B, tmp, ship::SHIPBasis, Rs::AbstractVector{<:JVec})
       # if abs(imag(b) / abs(b)) > 1e-10
       #    @warn("b/|b| == $(b/abs(b))")
       # end
-      B[idx] = real(b)
+      B[idx0+idx] = real(b)
    end
+   return nothing
+end
+
+function eval_basis!(B, tmp, ship::SHIPBasis{BO}, Rs::AbstractVector{<:JVec}
+                     ) where {BO}
+   precompute_A!(tmp, ship, Rs)
+   nfcalls(Val(BO), N -> _eval_basis!(B, tmp, ship, Val(N)))
    return B
 end
 
@@ -309,8 +345,19 @@ function eval_basis_d!(B, dB, tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}})
    fill!(dB, zero(JVec{T}))
    # all precomputations of "local" gradients
    precompute_grads!(tmp, ship, Rs)
+   nfcalls(Val(BO), N -> _eval_basis_d!(B, dB, tmp, ship, Val(N)))
+   return nothing
+end
+
+function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, ::Val{N}
+                        ) where {BO, T, N}
+   @assert N <= BO
+   Nu_N = ship.Nu[N]::Vector{SVector{N, Int}}
    KL = ship.KL
-   for (idx, ν) in enumerate(ship.Nu)
+   idx0 = _first_B_idx(ship, N)
+   # loop over N-body basis functions
+   for (idx, ν) in enumerate(Nu_N)
+      idxB = idx0+idx
       kk, ll, mrange = _klm(ν, KL)
       for mpre in mrange    # this is a cartesian loop over BO-1 indices
          mm = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
@@ -329,7 +376,7 @@ function eval_basis_d!(B, dB, tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}})
                i0 = ship.firstA[ν[α]]
                CxA *= tmp.A[i0 + ll[α] + mm[α]] # the k-info is contained in ν[α]
             end
-            B[idx] += real(CxA)
+            B[idxB] += real(CxA)
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
 
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
@@ -352,7 +399,7 @@ function eval_basis_d!(B, dB, tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}})
                   R = Rs[j]
                   ∇ϕ_klm = (tmp.dJ[j, ik] *  tmp.Y[j, iy] * (R/norm(R))
                            + tmp.J[j, ik] * tmp.dY[j, iy] )
-                  dB[j, idx] += real(CxA_α * ∇ϕ_klm)
+                  dB[j, idxB] += real(CxA_α * ∇ϕ_klm)
                end
             end
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
@@ -370,6 +417,8 @@ end
 # -------------------------------------------------------------
 #       JuLIP Calculators: energies and forces
 # -------------------------------------------------------------
+
+# TODO: move all of this into JuLIP.MLIPs
 
 using NeighbourLists: max_neigs, neigs
 using JuLIP: Atoms, sites, neighbourlist
