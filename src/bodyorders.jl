@@ -120,7 +120,8 @@ function _Bcoeff(ll::SVector{4, Int}, mm::SVector{4, Int}, cg)
    M = mm[1]+mm[2] # == -(mm[3]+mm[4]) <=> ∑mm = 0
    c = 0.0
    for J = max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])):min(ll[1]+ll[2],ll[3]+ll[4])
-      # @assert abs(M) <= J  # TODO: revisit this issue?
+      # @assert abs(M) <= J
+      # TODO: revisit this issue?
       if abs(M) > J; continue; end
       c += (-1)^M * cg(ll[1], mm[1], ll[2], mm[2], J, M) *
                     cg(ll[3], mm[3], ll[4], mm[4], J, -M)

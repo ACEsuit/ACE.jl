@@ -107,7 +107,9 @@ Base.@pure index_y(l,m) = m + l + (l*l) + 1
 # --------------------------------------------------------
 
 """
-TODO: documentation
+`ALPCoefficients` : an auxiliary datastructure for
+evaluating the associated lagrange functions
+used for the spherical harmonics
 """
 struct ALPCoefficients{T}
 	A::Vector{T}

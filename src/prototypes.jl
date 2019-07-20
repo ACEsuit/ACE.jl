@@ -31,3 +31,16 @@ function transform end
 function transform_d end
 function fcut end
 function fcut_d end
+
+
+# auxiliary stuff
+@generated function nfcalls(::Val{N}, f) where {N}
+   code = Expr[]
+   for n = 1:N
+      push!(code, :(f(Val($n))))
+   end
+   quote
+      $(Expr(:block, code...))
+      return nothing
+   end
+end
