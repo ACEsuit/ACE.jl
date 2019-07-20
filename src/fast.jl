@@ -22,11 +22,11 @@ export SHIP
 struct SHIP{BO, T, TJ} <: SitePotential
    J::TJ
    SH::SHBasis{T}
-   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}}
-   firstA::Vector{Int}      # indexing into A
+   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{IntS,IntS,T}}}
+   firstA::Vector{IntS}      # indexing into A
    # --------------
-   IA::Vector{SVector{BO,Int}}
-   C::Vector{T}
+   IA::SVector{BO, Vector{T1} where T1}  # IA[n]::Vector{SVector{N, IntS}}
+   C::SVector{BO, Vector{T}}             # sub-coefficients
 end
 
 cutoff(ship::SHIP) = cutoff(ship.J)
@@ -59,18 +59,23 @@ Dict(ship::SHIP) = Dict(
 SHIP(D::Dict) = _SHIP(D, Val(Int(D["bodyorder"]-1)),
                          Meta.eval(Meta.parse(D["T"])))
 
-_SHIP(D::Dict, ::Val{BO}, T) where {BO} = SHIP(
+function _SHIP(D::Dict, ::Val{BO}, T) where {BO}
+   C = [ Vector{T}(D["C"][n]) for n = 1:BO ]
+   IA = Vector{Vector}[]
+   for n = 1:BO
+      push!( IA, [ SVector( IntS.(iA)... ) for iA in D["IA"][n] ]  )
+   end
+   return  SHIP(
       TransformedJacobi(D["J"]),
       SHBasis(D["SH_maxL"], T),
       [ (k = k, l = l, deg = T(deg)) for (k, l, deg) in zip(D["K"], D["L"], D["KLD"]) ],
-      Vector{Int}(D["firstA"]),
-      Vector{SVector{BO,Int}}(D["IA"]),
-      Vector{T}(D["C"])
-   )
+      Vector{IntS}(D["firstA"]),
+      SVector(IA...), SVector(C...) )
+end
 
 convert(::Val{:SHIPs_SHIP}, D::Dict) = SHIP(D)
 
-Base.length(ship::SHIP) = length(ship.C)
+Base.length(ship::SHIP) = sum(length.(ship.C))
 
 # BO + 1 because BO is the number of neighbours not the actual body-order
 bodyorder(ship::SHIP{BO}) where {BO} = BO + 1
@@ -80,26 +85,37 @@ length_A(ship::SHIP) = ship.firstA[end]
 combine(basis::SHIPBasis, coeffs) = SHIP(basis, coeffs)
 
 function SHIP(basis::SHIPBasis{BO, T}, coeffs::AbstractVector{T}) where {BO, T}
-   IA = SVector{BO,Int}[]
-   C = T[]
-   ia = zero(MVector{BO, Int})
-   for (idx, ν) in enumerate(basis.Nu)
+   IA = _generate_Nu(BO)
+   C = SVector( [T[] for _=1:BO]... )
+   idx0 = 0
+   for N = 1:BO
+      _get_C_IA!(C[N], IA[N], basis, coeffs, Val(N), idx0)
+      idx0 += length(basis.Nu[N])
+   end
+   return SHIP( basis.J, basis.SH, copy(basis.KL), copy(basis.firstA), IA, C)
+end
+
+function _get_C_IA!(C, IA, basis, coeffs, ::Val{N}, idx0) where {N}
+   ia = zero(MVector{N, IntS})
+   Nu_N = basis.Nu[N]::Vector{SVector{N, IntS}}
+   for (idx, ν) in enumerate(Nu_N)
+      idxB = idx0 + idx
       kk, ll, mrange = _klm(ν, basis.KL)
       for mpre in mrange
-         mm = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+         mm = _mvec(mpre)
          # skip any m-tuples that aren't admissible
          if abs(mm[end]) > ll[end]; continue; end
          # compute the coefficient of a ∏ Aⱼ term
-         c = _Bcoeff(ll, mm, basis.cg) * coeffs[idx]
+         c = _Bcoeff(ll, mm, basis.cg) * coeffs[idxB]
          push!(C, c)
          # compute the indices of Aⱼ in the store.A array
-         for i = 1:BO
+         for i = 1:N
             ia[i] = basis.firstA[ν[i]] + ll[i] + mm[i]
          end
          push!(IA, SVector(ia))
       end
    end
-   return SHIP( basis.J, basis.SH, copy(basis.KL), copy(basis.firstA), IA, C)
+   return nothing
 end
 
 
@@ -133,13 +149,21 @@ end
 # compute one site energy
 function evaluate!(store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}}) where {BO, T}
    precompute!(store, ship, Rs)
+   return valnmapreduce(Val(BO), T(0.0),
+                        valN -> _evaluate!(store, ship, valN))
+end
+
+function _evaluate!(store, ship::SHIP{BO, T}, ::Val{N}) where {BO, T, N}
    Es = T(0.0)
-   for (iA, c) in zip(ship.IA, ship.C)
-      @inbounds Es_ν = Complex{T}(c) * prod(store.A[iA])
+   IA_N = ship.IA[N]::Vector{SVector{N, IntS}}
+   C_N = ship.C[N]::Vector{T}
+   for (iA, c) in zip(IA_N, C_N)
+      @inbounds Es_ν = c * prod(store.A[iA])
       Es += real(Es_ν)
    end
    return Es
 end
+
 
 alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
       ( J = alloc_B(ship.J),

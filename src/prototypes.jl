@@ -7,7 +7,7 @@
 
 
 # TODO [tuples]
-# - get rid of `length_B` 
+# - get rid of `length_B`
 
 import JuLIP: energy!, forces!, virial!, alloc_temp, alloc_temp_d
 import JuLIP.Potentials: evaluate!, evaluate_d!
@@ -45,5 +45,18 @@ function fcut_d end
    quote
       $(Expr(:block, code...))
       return nothing
+   end
+end
+
+
+# auxiliary stuff
+@generated function valnmapreduce(::Val{N}, v, f) where {N}
+   code = Expr[]
+   for n = 1:N
+      push!(code, :(v += f(Val($n))))
+   end
+   quote
+      $(Expr(:block, code...))
+      return v
    end
 end

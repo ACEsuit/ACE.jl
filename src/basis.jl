@@ -51,7 +51,7 @@ end
 create a vector of Nu arrays with the right type information
 for each body-order
 """
-function _generate_Nu(bo::Integer, T=Int16)
+function _generate_Nu(bo::Integer, T=IntS)
    Nu = []
    for n = 1:bo
       push!(Nu, SVector{n, T}[])
@@ -78,7 +78,7 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}}, Deg::AbstractDegree,
    # then we start incrementing until we hit the maximum degree
    # while retaining the ordering ν₁ ≤ ν₂ ≤ …
    lastidx = 0
-   ν = @MVector ones(Int16, BO)   # (ones(Int16, bo)...)
+   ν = @MVector ones(IntS, BO)   # (ones(IntS, bo)...)
    while true
       # check whether the current ν tuple is admissible
       # the first condition is that its max index is small enough
@@ -153,10 +153,10 @@ struct SHIPBasis{BO, T, TJ, TDEG} <: IPBasis
    Deg::TDEG
    J::TJ
    SH::SHBasis{T}
-   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int16,Int16,T}}}
+   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{IntS,IntS,T}}}
    Nu::SVector{BO, Vector{T1} where T1}
    cg::ClebschGordan{T}
-   firstA::Vector{Int16}   # indexing into A
+   firstA::Vector{IntS}   # indexing into A
 end
 
 # TODO: Move to precomputed ∏A coefficients instead of Clebsch-Gordan
@@ -189,7 +189,7 @@ alloc_dA(Deg::AbstractDegree) = zeros(JVec{ComplexF64}, length_A(Deg))
 
 function _firstA(KL)
    idx = 1
-   firstA = zeros(Int16, length(KL) + 1)
+   firstA = zeros(IntS, length(KL) + 1)
    for i = 1:length(KL)
       firstA[i] = idx
       idx += 2 * KL[i].l + 1
@@ -324,13 +324,13 @@ function _first_B_idx(ship, N)
    return idx0
 end
 
-_mvec(::CartesianIndex{0}) = SVector(Int16(0))
+_mvec(::CartesianIndex{0}) = SVector(IntS(0))
 _mvec(mpre::CartesianIndex{N}) where {N} =
       SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
 
 function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
    @assert N <= BO
-   Nu_N = ship.Nu[N]::Vector{SVector{N, Int16}}
+   Nu_N = ship.Nu[N]::Vector{SVector{N, IntS}}
    KL = ship.KL
    idx0 = _first_B_idx(ship, N)
    # loop over N-body basis functions
@@ -392,7 +392,7 @@ end
 function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs,
                          ::Val{N}) where {BO, T, N}
    @assert N <= BO
-   Nu_N = ship.Nu[N]::Vector{SVector{N, Int16}}
+   Nu_N = ship.Nu[N]::Vector{SVector{N, IntS}}
    KL = ship.KL
    idx0 = _first_B_idx(ship, N)
    # loop over N-body basis functions

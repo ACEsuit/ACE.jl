@@ -13,6 +13,7 @@ using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using SHIPs: eval_basis!, eval_basis
 using JuLIP
 using JuLIP.Potentials: evaluate, evaluate_d
+using JuLIP.Testing
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -23,12 +24,12 @@ randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 ##
 
-trans3 = PolyTransform(3, 1.0)
-B3 = SHIPBasis(TotalDegree(13, 2.0), 3, trans3, 2, 0.5, 3.0)
-trans2 = PolyTransform(2, 1.3)
-B2 = SHIPBasis(TotalDegree(15, 2.0), 2, trans2, 2, 0.5, 3.0)
-B4 = SHIPBasis(TotalDegree(12, 2.0), 4, trans3, 2, 0.5, 3.0)
-B5 = SHIPBasis(TotalDegree(8, 2.0), 5, trans3, 2, 0.5, 3.0)
+trans = PolyTransform(3, 1.0)
+fcut = PolyCutoff2s(2, 0.5, 3.0)
+B2 = SHIPBasis(TotalDegree(15, 2.0), 2, trans, fcut)
+B3 = SHIPBasis(TotalDegree(13, 2.0), 3, trans, fcut)
+B4 = SHIPBasis(TotalDegree(12, 2.0), 4, trans, fcut)
+B5 = SHIPBasis(TotalDegree(8, 2.0), 5, trans, fcut)
 BB = [B2, B3, B4, B5]
 
 ##
