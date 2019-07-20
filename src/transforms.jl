@@ -13,7 +13,7 @@ using SHIPs.JacobiPolys:   Jacobi
 import Base:   Dict, convert, ==
 import JuLIP:  cutoff
 
-export PolyTransform, rbasis
+export PolyTransform, rbasis, PolyCutoff1s, PolyCutoff2s
 
 
 
@@ -60,19 +60,20 @@ r -> (x - xu)^p
 ```
 Constructor:
 ```
-PolyCutoff1s(p)
+PolyCutoff1s(p, rcut)
 ```
 """
 struct PolyCutoff1s{P} <: PolyCutoff
    valP::Val{P}
+   ru::Float64
 end
 
 Dict(C::PolyCutoff1s{P}) where {P} =
-   Dict("__id__" => "SHIPs_PolyCutoff1s", "P" => P)
-PolyCutoff1s(D::Dict) = PolyCutoff1s(D["P"])
+   Dict("__id__" => "SHIPs_PolyCutoff1s", "P" => P, "ru" => C.ru)
+PolyCutoff1s(D::Dict) = PolyCutoff1s(D["P"], D["ru"])
 convert(::Val{:SHIPs_PolyCutoff1s}, D::Dict) = PolyCutoff1s(D)
 
-PolyCutoff1s(p) = PolyCutoff1s(Val(Int(p)))
+PolyCutoff1s(p, ru) = PolyCutoff1s(Val(Int(p)), ru)
 
 # what happened to @pure ??? => not exported anymore
 fcut(::PolyCutoff1s{P}, x) where {P} = @fastmath( (1 - x)^P )
@@ -85,19 +86,23 @@ r -> (x - xu)^p (x-xl)^p
 ```
 Constructor:
 ```
-PolyCutoff1s(p)
+PolyCutoff2s(p, rl, ru)
 ```
+where `rl` is the inner cutoff and `ru` the outer cutoff.
 """
 struct PolyCutoff2s{P} <: PolyCutoff
    valP::Val{P}
+   rl::Float64
+   ru::Float64
 end
 
 Dict(C::PolyCutoff2s{P}) where {P} =
-   Dict("__id__" => "SHIPs_PolyCutoff2s", "P" => P)
-PolyCutoff2s(D::Dict) = PolyCutoff2s(D["P"])
+   Dict("__id__" => "SHIPs_PolyCutoff2s", "P" => P,
+        "rl" => C.rl, "ru" => C.ru)
+PolyCutoff2s(D::Dict) = PolyCutoff2s(D["P"], D["rl"], D["ru"])
 convert(::Val{:SHIPs_PolyCutoff2s}, D::Dict) = PolyCutoff2s(D)
 
-PolyCutoff2s(p) = PolyCutoff2s(Val(Int(p)))
+PolyCutoff2s(p, rl, ru) = PolyCutoff2s(Val(Int(p)), rl, ru)
 
 fcut(::PolyCutoff2s{P}, x) where {P} = @fastmath( (1 - x^2)^P )
 fcut_d(::PolyCutoff2s{P}, x) where {P} = @fastmath( -2*P * x * (1 - x^2)^(P-1) )
@@ -221,3 +226,11 @@ rbasis(maxdeg, trans, p, ru) =
 
 rbasis(maxdeg, trans, p, rl, ru) =
    TransformedJacobi( Jacobi(p, p, maxdeg), trans, PolyCutoff2s(p), rl, ru )
+
+TransformedJacobi(maxdeg::Integer, trans::DistanceTransform,
+                  cut::PolyCutoff1s{P}) where {P} =
+      TransformedJacobi( Jacobi(P, 0, maxdeg), trans, cut, 0.0, cut.ru)
+
+TransformedJacobi(maxdeg::Integer, trans::DistanceTransform,
+                  cut::PolyCutoff2s{P}) where {P} =
+      TransformedJacobi( Jacobi(P, P, maxdeg), trans, cut, cut.rl, cut.ru)

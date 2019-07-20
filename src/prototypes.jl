@@ -6,6 +6,9 @@
 # --------------------------------------------------------------------------
 
 
+# TODO [tuples]
+# - get rid of `length_B` 
+
 import JuLIP: energy!, forces!, virial!, alloc_temp, alloc_temp_d
 import JuLIP.Potentials: evaluate!, evaluate_d!
 

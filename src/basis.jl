@@ -47,17 +47,38 @@ end
 #      we need to have 0 stand for a 1 (i.e. body-order)
 #      => decide whether to drop T0.
 
-function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
+"""
+create a vector of Nu arrays with the right type information
+for each body-order
+"""
+function _generate_Nu(bo::Integer, T=Int16)
+   Nu = []
+   for n = 1:bo
+      push!(Nu, SVector{n, T}[])
+   end
+   # convert into an SVector to make the length a type parameters
+   return SVector(Nu...)
+end
+
+function generate_KL_tuples(Deg::AbstractDegree, maxbo::Integer, cg; filter=true)
    # all possible (k, l) pairs
    allKL, degs = generate_KL(Deg)
+   # sepatare arrays for all body-orders
+   Nu = _generate_Nu(maxbo)
+   for N = 1:maxbo
+      _generate_KL_tuples!(Nu[N], Deg, cg, allKL, degs; filter=filter)
+   end
+   return allKL, Nu
+end
 
+function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}}, Deg::AbstractDegree,
+                             cg, allKL, degs; filter=true) where {BO}
    # the first iterm is just (0, ..., 0)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
-   Nu = []
-   # Now we start incrementing until we hit the maximum degree
+   # then we start incrementing until we hit the maximum degree
    # while retaining the ordering ν₁ ≤ ν₂ ≤ …
    lastidx = 0
-   ν = MVector(ones(Int, bo)...)
+   ν = @MVector ones(Int16, BO)   # (ones(Int16, bo)...)
    while true
       # check whether the current ν tuple is admissible
       # the first condition is that its max index is small enough
@@ -76,9 +97,13 @@ function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
       # if the current tuple ν has admissible degree ...
       if isadmissible
          # ... then we add it to the stack  ...
-         push!(Nu, SVector(ν))
+         #     (at least if it is an admissible basis function respecting
+         #      all the symmetries - this is checked by filter_tuples)
+         if !filter || filter_tuples(allKL, ν, cg)
+            push!(Nu, SVector(ν))
+         end
          # ... and increment it
-         lastidx = bo
+         lastidx = BO
          ν[lastidx] += 1
       else
          # we have overshot, _deg(ν) > deg; we must go back down, by
@@ -90,8 +115,7 @@ function generate_KL_tuples(Deg::AbstractDegree, bo::Integer, cg; filter=true)
          lastidx -= 1
       end
    end
-   if filter; Nu = filter_tuples(allKL, Nu, Val(bo), cg); end
-   return allKL, [ν for ν in Nu]
+   return allKL, Nu
 end
 
 
@@ -129,14 +153,15 @@ struct SHIPBasis{BO, T, TJ, TDEG} <: IPBasis
    Deg::TDEG
    J::TJ
    SH::SHBasis{T}
-   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int,Int,T}}}
-   Nu::SVector{BO, Vector{SVector}}
+   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{Int16,Int16,T}}}
+   Nu::SVector{BO, Vector{T1} where T1}
    cg::ClebschGordan{T}
-   firstA::Vector{Int}   # indexing into A
+   firstA::Vector{Int16}   # indexing into A
 end
 
 # TODO: Move to precomputed ∏A coefficients instead of Clebsch-Gordan
 #       coefficients to speed up LSQ assembly.
+
 
 Dict(shipB::SHIPBasis) = Dict(
       "__id__" => "SHIPs_SHIPBasis",
@@ -164,7 +189,7 @@ alloc_dA(Deg::AbstractDegree) = zeros(JVec{ComplexF64}, length_A(Deg))
 
 function _firstA(KL)
    idx = 1
-   firstA = zeros(Int, length(KL) + 1)
+   firstA = zeros(Int16, length(KL) + 1)
    for i = 1:length(KL)
       firstA[i] = idx
       idx += 2 * KL[i].l + 1
@@ -173,12 +198,12 @@ function _firstA(KL)
    return firstA
 end
 
-function SHIPBasis(Deg::AbstractDegree, bo::Integer, trans, p, rl, ru; filter=true)
-   # r - basis
-   J = rbasis(maxK(Deg), trans, p, rl, ru)
+function SHIPBasis(Deg::AbstractDegree, bo::Integer,
+                   trans::DistanceTransform, fcut::PolyCutoff;
+                   filter=true)
+   J = TransformedJacobi(maxK(Deg), trans, fcut)
    return SHIPBasis(Deg, bo, J; filter=filter)
 end
-
 
 function SHIPBasis(Deg::AbstractDegree, bo::Integer, J::TransformedJacobi;
                    filter=true)
@@ -191,13 +216,14 @@ function SHIPBasis(Deg::AbstractDegree, bo::Integer, J::TransformedJacobi;
    # compute the (l,k) -> indexing into A information
    firstA = _firstA(allKL)
    # putting it all together ...
-   return SHIPBasis(Deg, J, SH, allKL, Nu, cg, firstA, Val(bo))
+   return SHIPBasis(Deg, J, SH, allKL, Nu, cg, firstA)
 end
+
 
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
 Base.length(ship::SHIPBasis) = length_B(ship)
-length_B(ship::SHIPBasis{BO}) where {BO} = length(ship.Nu)
+length_B(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.Nu))
 
 alloc_B(ship::SHIPBasis, args...) = zeros(Float64, length_B(ship))
 alloc_dB(ship::SHIPBasis, N::Integer) = zeros(JVec{Float64}, N, length_B(ship))
@@ -285,8 +311,10 @@ end
 #       Evaluate the actual basis functions
 # -------------------------------------------------------------
 
-# TODO [tuple]; switch Nu[N]::Vector{SVector{N, Int}} to ::Vector{SVector{N, Int16}}
-
+"""
+compute the zeroth index in a B array (basis values) corresponding
+to the N-body subset of the SHIPBasis
+"""
 function _first_B_idx(ship, N)
    # compute the first index into the basis
    idx0 = 0
@@ -296,9 +324,13 @@ function _first_B_idx(ship, N)
    return idx0
 end
 
+_mvec(::CartesianIndex{0}) = SVector(Int16(0))
+_mvec(mpre::CartesianIndex{N}) where {N} =
+      SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+
 function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
    @assert N <= BO
-   Nu_N = ship.Nu[N]::Vector{SVector{N, Int}}
+   Nu_N = ship.Nu[N]::Vector{SVector{N, Int16}}
    KL = ship.KL
    idx0 = _first_B_idx(ship, N)
    # loop over N-body basis functions
@@ -310,7 +342,7 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
       b = zero(ComplexF64)
       @assert mrange == _mrange(ll)
       for mpre in mrange    # this is a cartesian loop over BO-1 indices
-         mm = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+         mm = _mvec(mpre)
          # skip any m-tuples that aren't admissible
          if abs(mm[end]) > ll[end]; continue; end
          # compute the symmetry prefactor from the CG-coefficients
@@ -320,7 +352,7 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
                # this is the indexing convention used to construct A
                #  (feels brittle - maybe rethink it and write a function for it)
                i0 = ship.firstA[ν[i]]
-               bm *= tmp.A[i0 + l + m]
+                bm *= tmp.A[i0 + l + m]
             end
             b += bm
          end
@@ -340,7 +372,7 @@ end
 function eval_basis!(B, tmp, ship::SHIPBasis{BO}, Rs::AbstractVector{<:JVec}
                      ) where {BO}
    precompute_A!(tmp, ship, Rs)
-   nfcalls(Val(BO), N -> _eval_basis!(B, tmp, ship, Val(N)))
+   nfcalls(Val(BO), valN -> _eval_basis!(B, tmp, ship, valN))
    return B
 end
 
@@ -359,7 +391,7 @@ end
 function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, ::Val{N}
                         ) where {BO, T, N}
    @assert N <= BO
-   Nu_N = ship.Nu[N]::Vector{SVector{N, Int}}
+   Nu_N = ship.Nu[N]::Vector{SVector{N, Int16}}
    KL = ship.KL
    idx0 = _first_B_idx(ship, N)
    # loop over N-body basis functions
@@ -458,7 +490,6 @@ function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
    # assemble site gradients and write into F
    for (i, j, R) in sites(nlist)
       eval_basis_d!(B, dB, tmp, shipB, R)
-      # @show dB
       for a = 1:length(R)
          F[j[a], :] .-= dB[a, :]
          F[i, :] .+= dB[a, :]

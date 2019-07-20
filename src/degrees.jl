@@ -65,9 +65,9 @@ convert(::Val{:SHIPs_HyperbolicCross}, D::Dict) =
 
 
 
-function generate_KL(D::AbstractDegree)
-   allKL = NamedTuple{(:k, :l, :deg),Tuple{Int,Int,Float64}}[]
-   degs = Float64[]
+function generate_KL(D::AbstractDegree, TI = Int16, TF=Float64)
+   allKL = NamedTuple{(:k, :l, :deg), Tuple{TI,TI,TF}}[]
+   degs = TF[]
    # morally "k + wL * l <= deg"
    for k = 0:maxK(D), l = 0:maxL(D, k)
       push!(allKL, (k=k, l=l, deg=deg(D, k, l)))
