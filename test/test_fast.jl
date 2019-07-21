@@ -42,7 +42,7 @@ for B in BB
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   test (de-)dictionisation")
-   println(@test decode_dict(Dict(ship)) == ship)
+   # println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
    store = SHIPs.alloc_temp(ship, 0)
    @info("      check that SHIPBasis ≈ SHIP")
@@ -119,3 +119,32 @@ end
 
 
 end
+
+
+
+
+B = BB[2]
+coeffs = randcoeffs(B)
+ship = SHIP(B, coeffs)
+Rs = randR(20)
+store = SHIPs.alloc_temp_d(ship, length(Rs))
+dEs = zeros(JVecF, length(Rs))
+SHIPs.evaluate_d!(dEs, store, ship, Rs)
+Es = SHIPs.evaluate!(store, ship, Rs)
+println(@test Es ≈ evaluate(ship, Rs))
+println(@test dEs ≈ evaluate_d(ship, Rs))
+@info("      Correctness of directional derivatives")
+for ndir = 1:20
+   U = [rand(JVecF) .- 0.5 for _=1:length(Rs)]
+   errs = Float64[]
+   for p = 2:10
+      h = 0.1^p
+      dEs_U = dot(dEs, U)
+      dEs_h = (SHIPs.evaluate!(store, ship, Rs + h * U) - Es) / h
+      push!(errs, abs(dEs_h - dEs_U))
+   end
+   @show errs
+   success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+   print_tf(@test success)
+end
+println()

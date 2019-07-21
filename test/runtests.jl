@@ -18,6 +18,6 @@ using SHIPs: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
     include("test_cg.jl")
     include("test_Bcoeffs.jl")
     include("test_basis.jl")
-    # include("test_fast.jl")
+    include("test_fast.jl")
     # include("test_pair.jl")
 end
