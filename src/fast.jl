@@ -177,46 +177,44 @@ alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
        dV = zeros(JVec{T}, N)
       )
 
-
+# compute one site energy
 function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
                      ) where {BO, T}
+
    # stage 1: precompute all the A values
    precompute!(store, ship, Rs)
 
    # stage 2: compute the coefficients for the ∇A_{klm}
-   #          (and also Es while we are at it)
    fill!(store.dAco, T(0))
    nfcalls(Val(BO), valN -> _evaluate_d_stage2!(store, ship, valN))
 
-   # stage 3: get the gradients; this is now body-order independent
+   # stage 3: get the gradients
    fill!(dEs, zero(JVec{T}))
+
    for (iR, R) in enumerate(Rs)
       eval_basis_d!(store.J, store.dJ, store.tmpJ, ship.J, norm(R))
       eval_basis_d!(store.Y, store.dY, store.tmpY, ship.SH, R)
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
-            @inbounds aaa = store.J[k+1] * store.dY[index_y(l, m)]
-            @inbounds bbb = (store.dJ[k+1] * store.Y[index_y(l, m)]) * (R/norm(R))
             @inbounds dEs[iR] += real( store.dAco[iA+l+m] * (
                   store.J[k+1] * store.dY[index_y(l, m)] +
                   (store.dJ[k+1] * store.Y[index_y(l, m)]) * (R/norm(R)) ) )
          end
       end
    end
+
    return dEs
 end
 
-
-# compute one site energy
 function _evaluate_d_stage2!(store, ship::SHIP{BO, T}, ::Val{N}) where {BO, T, N}
    IA_N = ship.IA[N]::Vector{SVector{N, IntS}}
    C_N = ship.C[N]::Vector{T}
-
+   # i0 = N == 1 ? 0 : sum( length(ship.IA[n]) for n = 1:N-1 )
    for (iA, c) in zip(IA_N, C_N)
       # compute the coefficients
       for α = 1:N
          CxA_α = Complex{T}(c)
-         for β = 1:BO
+         for β = 1:N
             if β != α
                @inbounds CxA_α *= store.A[iA[β]]
             end
@@ -224,8 +222,59 @@ function _evaluate_d_stage2!(store, ship::SHIP{BO, T}, ::Val{N}) where {BO, T, N
          @inbounds store.dAco[iA[α]] += CxA_α
       end
    end
-   return nothing
 end
+
+
+
+# function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
+#                      ) where {BO, T}
+#    # stage 1: precompute all the A values
+#    precompute!(store, ship, Rs)
+#
+#    # stage 2: compute the coefficients for the ∇A_{klm}
+#    #          (and also Es while we are at it)
+#    fill!(store.dAco, T(0))
+#    nfcalls(Val(BO), valN -> _evaluate_d_stage2!(store, ship, valN))
+#
+#    # stage 3: get the gradients; this is now body-order independent
+#    #          we are just using  ∂(∏A) / ∂A_n * ∂A_n / ∂R_j
+#    fill!(dEs, zero(JVec{T}))
+#    for (iR, R) in enumerate(Rs)
+#       eval_basis_d!(store.J, store.dJ, store.tmpJ, ship.J, norm(R))
+#       eval_basis_d!(store.Y, store.dY, store.tmpY, ship.SH, R)
+#       for ((k, l), iA) in zip(ship.KL, ship.firstA)
+#          for m = -l:l
+#             @inbounds aaa = store.J[k+1] * store.dY[index_y(l, m)]
+#             @inbounds bbb = (store.dJ[k+1] * store.Y[index_y(l, m)]) * (R/norm(R))
+#             @inbounds dEs[iR] += real( store.dAco[iA+l+m] * (
+#                   store.J[k+1] * store.dY[index_y(l, m)] +
+#                   (store.dJ[k+1] * store.Y[index_y(l, m)]) * (R/norm(R)) ) )
+#          end
+#       end
+#    end
+#    return dEs
+# end
+#
+#
+# # compute one site energy
+# function _evaluate_d_stage2!(store, ship::SHIP{BO, T}, ::Val{N}) where {BO, T, N}
+#    IA_N = ship.IA[N]::Vector{SVector{N, IntS}}
+#    C_N = ship.C[N]::Vector{T}
+#
+#    for (iA, c) in zip(IA_N, C_N)
+#       # compute the coefficients
+#       for α = 1:N
+#          CxA_α = Complex{T}(c)
+#          for β = 1:BO
+#             if β != α
+#                @inbounds CxA_α *= store.A[iA[β]]
+#             end
+#          end
+#          @inbounds store.dAco[iA[α]] += CxA_α
+#       end
+#    end
+#    return nothing
+# end
 
 
 
