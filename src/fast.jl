@@ -113,13 +113,14 @@ end
 
 
 
-alloc_temp(ship::SHIP{BO,T}, ::Integer) where {BO, T} =
+alloc_temp(ship::SHIP{BO,T}, N::Integer) where {BO, T} =
    (     J = alloc_B(ship.J),
          Y = alloc_B(ship.SH),
          A = zeros(Complex{T}, length_A(ship)),
       tmpJ = alloc_temp(ship.J),
-      tmpY = alloc_temp(ship.SH)
-   )
+      tmpY = alloc_temp(ship.SH),
+         R = zeros(JVec{T}, N)
+           )
 
 
 function precompute!(store, ship::SHIP, Rs)
@@ -167,7 +168,8 @@ alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
      dAco = zeros(Complex{T}, length_A(ship)),
      tmpJ = alloc_temp_d(ship.J),
      tmpY = alloc_temp_d(ship.SH),
-       dV = zeros(JVec{T}, N)
+       dV = zeros(JVec{T}, N),
+        R = zeros(JVec{T}, N)
       )
 
 # compute one site energy
