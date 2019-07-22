@@ -16,19 +16,20 @@ randR(N) = [ randR() for n=1:N ]
 randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 trans = PolyTransform(2, 1.0)
-BB = [ SHIPBasis(TotalDegree(20, 1.0), 2, trans, 2, 0.5, 3.0),
-       SHIPBasis(TotalDegree(20, 1.5), 3, trans, 2, 0.5, 3.0),
-       SHIPBasis(TotalDegree(15, 1.5), 4, trans, 2, 0.5, 3.0) ]
+fcut = PolyCutoff2s(2, 0.5, 3.0)
+BB = [ SHIPBasis(TotalDegree(20, 1.0), 2, trans, fcut),
+       SHIPBasis(TotalDegree(16, 1.5), 3, trans, fcut),
+       SHIPBasis(TotalDegree(12, 1.5), 4, trans, fcut),
+       SHIPBasis(TotalDegree(10, 1.5), 5, trans, fcut) ]
 
-Nat = 50
+Nat = 30
 Rs = randR(Nat)
 btmp = SHIPs.alloc_temp(BB[1])
 @info("profile precomputation of A")
 @btime SHIPs.precompute_A!($btmp, $(BB[1]), $Rs)
-# @btime SHIPs.precompute_A!($(BB[1]), $Rs, $btmp)
 
 @info("profile ship-basis and fast-ship site energies")
-for n = 2:4
+for n = 2:5
    @info("  body-order $(n+1):")
    Rs = randR(Nat)
    B = BB[n-1]
