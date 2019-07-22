@@ -1,6 +1,6 @@
 module SHIPs
 
-const IntS = Int32 
+const IntS = Int32
 
 using Reexport
 @reexport using JuLIP
