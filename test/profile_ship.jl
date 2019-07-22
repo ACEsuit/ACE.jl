@@ -27,7 +27,7 @@ btmp = SHIPs.alloc_temp(BB[1])
 @btime SHIPs.precompute_A!($btmp, $(BB[1]), $Rs)
 # @btime SHIPs.precompute_A!($(BB[1]), $Rs, $btmp)
 
-@info("profile basis and ship computation")
+@info("profile ship-basis and fast-ship site energies")
 for n = 2:4
    @info("  body-order $(n+1):")
    Rs = randR(Nat)
@@ -53,24 +53,5 @@ for n = 2:4
 end
 
 
-
-# ##
-# Nat = 50
-# Rs = randR(Nat)
-# B = SHIPBasis(4, 15, 1.5, trans, 2, 0.5, 3.0)
-# coeffs = randcoeffs(B)
-# 🚢 = SHIP(B, coeffs)
-# tmp = SHIPs.alloc_temp(🚢)
-# tmp_d = SHIPs.alloc_temp_d(🚢, Rs)
-# dEs = zeros(JVecF, length(Rs))
-# SHIPs.evaluate_d!(dEs, 🚢, Rs, tmp_d)
-#
-# using Profile, ProfileView
-# Profile.clear()
-# @profile begin
-#    for n = 1:1000
-#       SHIPs.evaluate_d!(dEs, 🚢, Rs, tmp_d)
-#    end
-# end
-# Profile.print()
-# ProfileView.view()
+for n = 2:4
+end
