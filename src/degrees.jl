@@ -6,6 +6,9 @@
 # --------------------------------------------------------------------------
 
 
+# This file implements different ways to specify a degree
+
+
 export TotalDegree, HyperbolicCross
 
 abstract type AbstractDegree end
@@ -76,4 +79,14 @@ function generate_KL(D::AbstractDegree, TI = IntS, TF=Float64)
    # sort allKL according to total degree
    I = sortperm(degs)
    return allKL[I], degs[I]
+end
+
+# NOTE: this is a very rudimentary generate_ZKL that could be
+#       overloaded and so that different `allKL` collections are
+#       created for each species.
+
+function generate_ZKL(z2i, D::AbstractDegree, TI = IntS, TF=Float64)
+   allKL, degs = generate_KL(D, TI, TF)
+   allZKL = [ allKL for _=1:length(z2i) ]
+   return allZKL
 end
