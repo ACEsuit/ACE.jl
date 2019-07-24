@@ -15,18 +15,18 @@ work in progress
 
 ---
 
-## Developer Documentation
+## Temporary Documentation of Internals
 
 ### Transformed Jacobi Polynomials
 
-We start from completely standard Jacobi polynomials Jn(x); our implementation simply follows the description on [Wikipedia](https://en.wikipedia.org/wiki/Jacobi_polynomials). The recursion coefficients are generated using `big` (`BigFloat` and `BigInt`). This may be unnecessary and should be investigated at some point.
+We start from standard Jacobi polynomials `Jn(x)`; our implementation simply follows the description on [Wikipedia](https://en.wikipedia.org/wiki/Jacobi_polynomials). The recursion coefficients are generated using `big` (`BigFloat` and `BigInt`). This may be unnecessary and should be investigated at some point. We plan to move to an arbitrary basis of orthogonal polynomials, which should in fact simplify the code.
 
-However, the `Jn(x)` only form the starting point. To construct the `r`-basis, we transform them as follows:
+The `Jn(x)` only form the starting point. To construct the `r`-basis, we transform them as follows:
 
 - transform a distance r to a transformed distance `t(r)`; this is the "distance-transform" and stored in `TransformedJacobi.trans`
 - Then we set `x = -1 + 2*(t-tl)/(tu-tl)` which linearly transforms `t` to `[-1,1]` with 1 always corresponding to the cut-off radius `ru`.
 - Then we evaluate the Jacobi-polynomials Jn(x) taken w.r.t to an inner product C(x) = (1-x)^a (1+x)^b.
-- This C(x) also acts as a cut-off! That, Pn(x) = C(x) Jn(x) are orthogonal w.r.t. the L2-inner product and for a, b > 0 are zero at the end-points. (Ack: this is an idea due to Markus Bachmayr.)
+- This C(x) also acts as a cut-off! That, Pn(x) = sqrt(C(x)) Jn(x) are orthogonal w.r.t. the L2-inner product and for a, b > 0 are zero at the end-points. (Ack: this is an idea due to Markus Bachmayr.)
 - Finally, these transformed and cut-off-multiplied polynomials Pn(x) form our basis functions in the `r` variable.
 
 ### Spherical Harmonics
@@ -39,25 +39,31 @@ There is another spherical harmonics package which we did not know about when st
 
 The basis functions are defined as follows:
 ```
-Z_klm(R) = P_k(r) Y_lm(R̂)      # k, l, m :: Int
-A_klm = ∑_j Z_klm(R_j)         # k, l, m :: Int
-B_kl = ∑_m C_lm ∏_a A_kₐlₐmₐ   # k, l, m :: Tuple{Int} or Vector{Int}
+ϕ_klm(R) = P_k(r) Y_lm(R̂)          #    k, l, m :: Int
+A_zklm = ∑_{zj = z} ϕ_klm(R_j)     # z, k, l, m :: Int
+Bˢ_zkl = ∑_m C_lm ∏_a A_zₐkₐlₐmₐ   # k, l, m :: Tuple{Int} or Vector{Int}
 ```
+The s-superscript denotes the species of the center-atom. It is only implicit
+in that the basis functions are the same for each species, but the coefficents
+are of course species-dependent.
+
 The klm values are restriced as follows:
 * For every k,l, the m values range through -l:l.
 * deg(k, l) <= maxdeg  where maxdeg is a prescribe degree. In practise this
-is usually k + wY l <= maxdeg
+is usually k + wY l <= maxdeg, but a more general form may be implemented
+by specifying an `AbstractDegree` degree type. See, e.g.,
+* `TotalDegree`
+* `HyperbolicCross`
 
 For more information  on how a `SHIPBasis` is constructed and stored, see
 `?SHIPBasis`.
-
 
 ### `SHIP` : the fast implementation of a SHIP calculator
 
 While, for training, we use the `SHIPBasis` type, for simulation we convert
 this to the `SHIP` type. The idea is to rewrite the site energy as
 ```
-E = ∑_𝐤𝐥𝐦 c_𝐤𝐥𝐦 ∏_a A_kₐlₐkₐ
+E = ∑_𝐳𝐤𝐥𝐦 c_𝐳𝐤𝐥𝐦 ∏_a A_zₐkₐlₐkₐ
 ```
 and avoid the inner loop over `m` (for given 𝐤,𝐥). The coefficients
 `c_𝐤𝐥𝐦` are precomputed in the construction of the `SHIP` type, in particular
@@ -68,8 +74,9 @@ much more expensive than computing the gradient of a site energy using the above
 identity. Gradients based on the `SHIP` type are very efficient to compute as
 follows (pseudo-code)
 ```
-(1) Precompute {A_k}
-(2) Precompute ∇_Rj ϕ_{klm}
+(1) Compute {A_k}, A_𝐳𝐤𝐥𝐦 = ∏ A_zklm
+(2) Compute ∂A_𝐳𝐤𝐥𝐦 / ∂A_{zₐkₐlₐmₐ}
+(3) For all j: compute ∇_Rj ϕ_{klm}
     (precomputing ∇_rj J_k and ∇_Rj Y_lm is in fact enough)
-(3)
+(4)     Compute ∂A_𝐳𝐤𝐥𝐦 / ∂A_{zₐkₐlₐmₐ} * ∇_Rj ϕ_{kₐlₐmₐ} for zj = zₐ
 ```
