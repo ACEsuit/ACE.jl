@@ -1,10 +1,11 @@
 
+using StaticArrays
 
 # -------------------------------------------------------------
 #       construct l,k tuples that specify basis functions
 # -------------------------------------------------------------
 
-function filter_tuples(KL, ν::StaticVector{1}, cg)
+function filter_tuple(KL, ν::StaticVector{1}, cg)
    if KL[ν[1]].l != 0
       return false
    else
@@ -13,7 +14,7 @@ function filter_tuples(KL, ν::StaticVector{1}, cg)
 end
 
 # keep this for the sake of a record and comparison with the general case
-function filter_tuples(KL, ν::StaticVector{2}, cg)  # 3B version
+function filter_tuple(KL, ν::StaticVector{2}, cg)  # 3B version
    kl1, kl2 = KL[ν[1]], KL[ν[2]]
    if kl1.l != kl2.l
       return false
@@ -23,7 +24,7 @@ function filter_tuples(KL, ν::StaticVector{2}, cg)  # 3B version
 end
 
 # keep this for the sake of a record and comparison with the general case
-function filter_tuples(KL, ν::StaticVector{3}, cg)  # 4B version
+function filter_tuple(KL, ν::StaticVector{3}, cg)  # 4B version
    l1, l2, l3 = KL[ν[1]].l, KL[ν[2]].l, KL[ν[3]].l
    if !( (abs(l1-l2) <= l3 <= l1+l2) && iseven(l1+l2+l3) )
       return false
@@ -32,7 +33,7 @@ function filter_tuples(KL, ν::StaticVector{3}, cg)  # 4B version
    end
 end
 
-function filter_tuples(KL, ν::StaticVector{4}, cg)
+function filter_tuple(KL, ν::StaticVector{4}, cg)
    ll = SVector(ntuple(i -> KL[ν[i]].l, 4))
    # invariance under reflections
    if !iseven(sum(ll))
@@ -47,8 +48,7 @@ function filter_tuples(KL, ν::StaticVector{4}, cg)
    # basically we are checking that all basis functions that we are
    # retaining are really non-zero!
    foundnz = false
-   for mpre in _mrange(ll)
-      mm = SVector(Tuple(mpre)..., -sum(Tuple(mpre)))
+   for mm in _mrange(ll)
       if abs(mm[end]) > ll[4]; continue; end
       if _Bcoeff(ll, mm, cg) != 0.0
          foundnz = true
@@ -60,7 +60,7 @@ function filter_tuples(KL, ν::StaticVector{4}, cg)
 end
 
 
-function filter_tuples(KL, ν::StaticVector{N}, cg) where {N}
+function filter_tuple(KL, ν::StaticVector{N}, cg) where {N}
    ll = SVector(ntuple(i -> KL[ν[i]].l, N))
    # invariance under reflections
    if !iseven(sum(ll))
@@ -69,8 +69,7 @@ function filter_tuples(KL, ν::StaticVector{N}, cg) where {N}
    # replace a "clever" computation with just checking that the CG
    # coefficients are non-zero.
    foundnz = false
-   for mpre in _mrange(ll)
-      mm = _mvec(mpre)
+   for mm in _mrange(ll)
       if abs(mm[end]) > ll[end]; continue; end
       if _Bcoeff(ll, mm, cg) != 0.0
          foundnz = true
