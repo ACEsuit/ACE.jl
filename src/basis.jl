@@ -18,27 +18,23 @@ import Base: Dict, convert, ==
 
 export SHIPBasis
 
-# in here we specify body-order specific code so that it doesn't pollute
-# the main codebase
-#  * filter_tuples
-#  * _Bcoeff
-include("bodyorders.jl")
-
-include("generatebasis.jl")
-
 
 # -------------------------------------------------------------
 #       define the basis itself
 # -------------------------------------------------------------
 # THOUGHTS
 #  - technically we don't have to store Deg in the basis, but only
-#    to generate it?
+#    to generate it? Maybe it should be stored in the `spec` field
 
 # TODO [tuples]
 # for now ignore 1-body and 2-body, and leave the indexing into
 # Nu to mean the number of neighbours. But after this runs, we
 # should rewrite this as Nu[1] -> 1-body, Nu[2] -> 2-body, etc.
 # so the meaning of BO will return to what it should be.
+
+# TODO: Move to precomputed ∏A coefficients instead of Clebsch-Gordan
+#       coefficients to speed up LSQ assembly.
+
 
 """
 `struct SHIPBasis` : the main type around eveything in `SHIPs.jl` revolves;
@@ -57,43 +53,74 @@ A_klm-functions associated which will be stored in the `A` buffer, the first of
 these is stored as `A[firstA[i]]`.
 * `cg` : precomputed Clebsch Gordan coefficients
 """
-struct SHIPBasis{BO, T, TJ, TDEG} <: IPBasis
-   Deg::TDEG
-   J::TJ
-   SH::SHBasis{T}
-   KL::Vector{NamedTuple{(:k, :l, :deg),Tuple{IntS,IntS,T}}}
-   Nu::SVector{BO, Vector{T1} where T1}
-   cg::ClebschGordan{T}
-   firstA::Vector{IntS}   # indexing into A
+struct SHIPBasis{BO, T, TJ, NZ,
+                 TSPEC <: BasisSpec{BO, NZ}} <: IPBasis
+   spec::TSPEC         # specify which tensor products to keep  in the basis
+   J::TJ               # specifies the radial basis
+   SH::SHBasis{T}      # specifies the angular basis
+   # ------------------------------------------------------------------------
+   KL::Vector{NamedTuple{(:k, :l),Tuple{IntS,IntS}}}    # 1-particle indexing
+   Nu::NTuple{BO, Vector}                               # N-particle indexing
+   cg::ClebschGordan{T}     # precomputed CG coefficients
+   firstA::Vector{IntS}     # indexing into A-basis vectors
 end
 
-# TODO: Move to precomputed ∏A coefficients instead of Clebsch-Gordan
-#       coefficients to speed up LSQ assembly.
+function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
+   J = TransformedJacobi(maxK(spec), trans, fcut)
+   return SHIPBasis(spec, J)
+end
 
+function SHIPBasis(spec::BasisSpec, J::TransformedJacobi)
+   # R̂ - basis
+   SH = SHBasis(maxL(spec))
+   # precompute the Clebsch-Gordan coefficients
+   cg = ClebschGordan(maxL(spec))
+   # instantiate the basis specification
+   allKL, Nu = generate_KL_tuples(spec, cg)
+   # compute the (l,k) -> indexing into A[(k,l,m)] information
+   firstA = _firstA(allKL)
+   # putting it all together ...
+   return SHIPBasis(spec, J, SH, allKL, Nu, cg, firstA)
+end
 
 Dict(shipB::SHIPBasis) = Dict(
       "__id__" => "SHIPs_SHIPBasis",
-      "Deg" => Dict(shipB.Deg),
-      "bodyorder" => bodyorder(shipB),
+      "spec" => Dict(shipB.spec),
       "J" => Dict(shipB.J) )
 
 SHIPBasis(D::Dict) = SHIPBasis(
-      decode_dict(D["Deg"]),
-      D["bodyorder"] - 1,
+      decode_dict(D["spec"]),
       TransformedJacobi(D["J"]) )
 
 convert(::Val{:SHIPs_SHIPBasis}, D::Dict) = SHIPBasis(D)
 
-==(B1::SHIPBasis, B2::SHIPBasis) = (
-      (B1.Deg == B2.Deg) &&
-      (bodyorder(B1) == bodyorder(B2)) &&
-      (B1.J == B2.J) )
+==(B1::SHIPBasis, B2::SHIPBasis) =
+      (B1.spec == B2.spec) && (B1.J == B2.J)
+
+z2i(B::SHIPBasis, z::Integer) = z2i(B.spec, z)
+i2z(B::SHIPBasis, i::Integer) = i2z(B.spec, i)
 
 
-length_A(Deg::AbstractDegree) = sum( sizeY(maxL(Deg, k)) for k = 0:maxK(Deg) )
+bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
-alloc_A(Deg::AbstractDegree) = zeros(ComplexF64, length_A(Deg))
-alloc_dA(Deg::AbstractDegree) = zeros(JVec{ComplexF64}, length_A(Deg))
+Base.length(ship::SHIPBasis) = length_B(ship)
+length_B(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.Nu))
+
+
+# ----------------------------------------------
+#      Computation of the A-basis
+# ----------------------------------------------
+
+# TODO: rewrite this without reference maxL, maxK!
+# TODO: this is written to later allow non-trivial length_A variation
+#       across different species
+length_A(spec::BasisSpec) =
+   [ sum( sizeY(maxL(spec, k)) for k = 0:maxK(spec) )
+     for iz = 1:numspecies(spec) ]
+
+alloc_A(spec::BasisSpec) = zeros.(Ref(ComplexF64), length_A(spec))
+
+alloc_dA(spec::BasisSpec) = zeros.(Ref(JVec{ComplexF64}), length_A(spec))
 
 function _firstA(KL)
    idx = 1
@@ -106,39 +133,78 @@ function _firstA(KL)
    return firstA
 end
 
-function SHIPBasis(Deg::AbstractDegree, bo::Integer,
-                   trans::DistanceTransform, fcut::PolyCutoff;
-                   filter=true)
-   J = TransformedJacobi(maxK(Deg), trans, fcut)
-   return SHIPBasis(Deg, bo, J; filter=filter)
-end
-
-function SHIPBasis(Deg::AbstractDegree, bo::Integer, J::TransformedJacobi;
-                   filter=true)
-   # R̂ - basis
-   SH = SHBasis(maxL(Deg))
-   # precompute the Clebsch-Gordan coefficients
-   cg = ClebschGordan(maxL(Deg))
-   # get the basis specification
-   allKL, Nu = generate_KL_tuples(Deg, bo, cg; filter=filter)
-   # compute the (l,k) -> indexing into A information
-   firstA = _firstA(allKL)
-   # putting it all together ...
-   return SHIPBasis(Deg, J, SH, allKL, Nu, cg, firstA)
+"""
+clear out the A-basis storage
+"""
+function _zero_A!(A::Vector{Vector{T}}) where {T}
+   for iz = 1:length(A)
+      fill!(A[iz], zero(T))
+   end
+   return nothing
 end
 
 
-bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
+function precompute_A!(tmp,
+                       ship::SHIPBasis,
+                         Rs::AbstractVector{JVec{T}},
+                         Zs::AbstractVector{TI},
+                      ) where {T, TI <: Integer}
+   _zero_A!(tmp.A)
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      iz = z2i(ship, Z)
+      # evaluate the r-basis and the R̂-basis for the current neighbour at R
+      eval_basis!(tmp.J, tmp.tmpJ, ship.J, norm(R))
+      eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
+      # add the contributions to the A_zklm; the indexing into the
+      # A array is determined by `ship.firstA` which was precomputed
+      for ((k, l), iA) in zip(ship.KL, ship.firstA)
+         for m = -l:l
+            # @inbounds
+            tmp.A[iz][iA+l+m] += tmp.J[k+1] * tmp.Y[index_y(l, m)]
+         end
+      end
+   end
+   return nothing
+end
 
-Base.length(ship::SHIPBasis) = length_B(ship)
-length_B(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.Nu))
+
+function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where {T}
+   _zero_A!(tmp.A)
+   # TODO: re-order these loops => cf. Issue #2
+   #        => then can SIMD them and avoid all copying!
+   for (iR, (R, Z)) in enumerate(Rs, Zs)
+      iz = z2i(Z)
+      # ---------- precompute the derivatives of the Jacobi polynomials
+      #            and copy into the tmp array
+      eval_basis_d!(tmp.J1, tmp.dJ1, tmp.tmpJ, ship.J, norm(R))
+      tmp.J[iR,:] .= tmp.J1[:]
+      tmp.dJ[iR,:] .= tmp.dJ1[:]
+      # ----------- precompute the Ylm derivatives
+      eval_basis_d!(tmp.Y1, tmp.dY1, tmp.tmpY, ship.SH, R)
+      tmp.Y[iR,:] .= tmp.Y1[:]
+      tmp.dY[iR,:] .= tmp.dY1[:]
+      # ----------- precompute the A values
+      for ((k, l), iA) in zip(ship.KL, ship.firstA)
+         for m = -l:l
+            # @inbounds
+            tmp.A[z2i][iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
+         end
+      end
+   end
+   return tmp
+end
+
+
+# ----------------------------------------------
+#      Computation of the B-basis
+# ----------------------------------------------
 
 alloc_B(ship::SHIPBasis, args...) = zeros(Float64, length_B(ship))
 alloc_dB(ship::SHIPBasis, N::Integer) = zeros(JVec{Float64}, N, length_B(ship))
 alloc_dB(ship::SHIPBasis, Rs::AbstractVector) = alloc_dB(ship, length(Rs))
 
 alloc_temp(ship::SHIPBasis) = (
-      A = alloc_A(ship.Deg),
+      A = alloc_A(ship.spec),
       J = alloc_B(ship.J),
       Y = alloc_B(ship.SH),
       tmpJ = alloc_temp(ship.J),
@@ -168,56 +234,6 @@ function alloc_temp_d(ship::SHIPBasis, N::Integer)
    )
 end
 
-# -------------------------------------------------------------
-#       precompute the A arrays
-# -------------------------------------------------------------
-
-function precompute_A!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where {T}
-   fill!(tmp.A, T(0.0))
-   for (iR, R) in enumerate(Rs)
-      # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(tmp.J, tmp.tmpJ, ship.J, norm(R))
-      eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
-      # add the contributions to the A_klm; the indexing into the
-      # A array is determined by `ship.firstA` which was precomputed
-      for ((k, l), iA) in zip(ship.KL, ship.firstA)
-         for m = -l:l
-            @inbounds tmp.A[iA+l+m] += tmp.J[k+1] * tmp.Y[index_y(l, m)]
-         end
-      end
-   end
-   return nothing
-end
-
-
-function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) where {T}
-   fill!(tmp.A, T(0.0))
-   # TODO: re-order these loops => cf. Issue #2
-   #        => then can SIMD them and avoid all copying!
-   for (iR, R) in enumerate(Rs)
-      # ---------- precompute the derivatives of the Jacobi polynomials
-      #            and copy into the tmp array
-      eval_basis_d!(tmp.J1, tmp.dJ1, tmp.tmpJ, ship.J, norm(R))
-      tmp.J[iR,:] .= tmp.J1[:]
-      tmp.dJ[iR,:] .= tmp.dJ1[:]
-      # ----------- precompute the Ylm derivatives
-      eval_basis_d!(tmp.Y1, tmp.dY1, tmp.tmpY, ship.SH, R)
-      tmp.Y[iR,:] .= tmp.Y1[:]
-      tmp.dY[iR,:] .= tmp.dY1[:]
-      # ----------- precompute the A values
-      for ((k, l), iA) in zip(ship.KL, ship.firstA)
-         for m = -l:l
-            @inbounds tmp.A[iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
-         end
-      end
-   end
-   return tmp
-end
-
-
-# -------------------------------------------------------------
-#       Evaluate the actual basis functions
-# -------------------------------------------------------------
 
 """
 compute the zeroth index in a B array (basis values) corresponding
@@ -232,10 +248,6 @@ function _first_B_idx(ship, N)
    return idx0
 end
 
-_mvec(::CartesianIndex{0}) = SVector(IntS(0))
-_mvec(mpre::CartesianIndex{N}) where {N} =
-      SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
-
 function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
    @assert N <= BO
    Nu_N = ship.Nu[N]::Vector{SVector{N, IntS}}
@@ -248,9 +260,7 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
       b = zero(ComplexF64)
-      @assert mrange == _mrange(ll)
-      for mpre in mrange    # this is a cartesian loop over BO-1 indices
-         mm = _mvec(mpre)
+      for mm in mrange    # this is a cartesian loop over BO-1 indices
          # skip any m-tuples that aren't admissible
          if abs(mm[end]) > ll[end]; continue; end
          # compute the symmetry prefactor from the CG-coefficients
@@ -307,8 +317,7 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs,
    for (idx, ν) in enumerate(Nu_N)
       idxB = idx0+idx
       kk, ll, mrange = _klm(ν, KL)
-      for mpre in mrange    # this is a cartesian loop over BO-1 indices
-         mm = _mvec(mpre)
+      for mm in mrange    # this is a cartesian loop over BO-1 indices
          # skip any m-tuples that aren't admissible
          if abs(mm[end]) > ll[end]; continue; end
          # ------------------------------------------------------------------

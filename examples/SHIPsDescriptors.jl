@@ -30,7 +30,7 @@ tensor products `Pk * Ylm` such that `k + wY * l ≦ deg`.
 `Pk` are polynomials in `u` not in `r`. (e.g. p = 1 => Coulomb coordinates)
 """
 function SHIPDescriptor(; bodyorder=3, deg=nothing, wY=1.5, rcut=nothing, r0=2.5, p=2)
-   Deg = TotalDegree(deg, wY)
+   Deg = SparseSHIPBasis(deg, wY)
    trans = PolyTransform(p, r0)
    fcut = PolyCutoff1s(2, rcut)
    return SHIPBasis(Deg, bodyorder-1, trans, fcut)

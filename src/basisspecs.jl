@@ -17,6 +17,7 @@ export SparseSHIPBasis, HyperbolicCross
 
 
 abstract type BasisSpec{BO, NZ} end
+abstract type AnalyticBasisSpec{BO, NZ} <: BasisSpec{BO, NZ} end
 
 """
 `get_basisspec(<: BasisSpec) -> allKL, Nu`
@@ -33,8 +34,6 @@ _convert_Zs(Zs::NTuple{NZ, Symbol}) where {NZ} = atomic_number.(Zs)
 _convert_Zs(Zs::NTuple{NZ, <: Integer}) where {NZ} = Int16.(Zs)
 
 
-admissible(D::BasisSpec, k, l) = deg(D, k, l) <= D.deg
-
 
 """
 `SparseSHIPBasis` : a sparse-grid type degree definition,
@@ -42,7 +41,7 @@ admissible(D::BasisSpec, k, l) = deg(D, k, l) <= D.deg
 deg({k}, {l}) = ∑ (k + wL * l)
 ```
 """
-struct SparseSHIPBasis{BO, NZ} <: BasisSpec{BO, NZ}
+struct SparseSHIPBasis{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
    deg::IntS
    wL::Float64
    Zs::NTuple{NZ, Int16}
@@ -69,6 +68,7 @@ end
 z2i(spec::SparseSHIPBasis, z) = spec.z2i[z]
 i2z(spec::SparseSHIPBasis, z) = spec.Zs[i]
 
+numspecies(spec::SparseSHIPBasis) = length(spec.Zs) 
 
 deg(D::SparseSHIPBasis, k::Integer, l::Integer) =
       k + D.wL * l
@@ -76,7 +76,12 @@ deg(D::SparseSHIPBasis, k::Integer, l::Integer) =
 deg(D::SparseSHIPBasis, kk::VecOrTup, ll::VecOrTup) =
       sum( deg(D, k, l) for (k, l) in zip(kk, ll) )
 
+admissible(D::SparseSHIPBasis, k, l) = deg(D, k, l) <= D.deg
+
 maxK(D::SparseSHIPBasis) = D.deg
+
+# For a pure 2-body potential we don't need an angular component
+maxL(D::SparseSHIPBasis{1}, args...) = 0
 
 maxL(D::SparseSHIPBasis) = floor(Int, D.deg / D.wL)
 
@@ -117,13 +122,14 @@ convert(::Val{:SHIPs_SparseSHIPBasis}, D::Dict) =
 
 
 
-function generate_KL(D::BasisSpec, TI = IntS, TF=Float64)
-   allKL = NamedTuple{(:k, :l, :deg), Tuple{TI,TI,TF}}[]
+function generate_KL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
+   allKL = NamedTuple{(:k, :l), Tuple{TI,TI}}[]
    degs = TF[]
-   # morally "k + wL * l <= deg"
-   for k = 0:maxK(D), l = 0:maxL(D, k)
-      push!(allKL, (k=k, l=l, deg=deg(D, k, l)))
-      push!(degs, deg(D, k, l))
+   # find k, l such that deg(spec, k, l) ≦ deg
+   for k = 0:maxK(spec), l = 0:maxL(spec, k)
+      @assert admissible(spec, k, l)
+      push!(allKL, (k=k, l=l))
+      push!(degs, deg(spec, k, l))
    end
    # sort allKL according to total degree
    I = sortperm(degs)
@@ -134,19 +140,12 @@ end
 #       overloaded and so that different `allKL` collections are
 #       created for each species.
 
-function generate_ZKL(z2i, D::BasisSpec, TI = IntS, TF=Float64)
-   allKL, degs = generate_KL(D, TI, TF)
+function generate_ZKL(z2i, spec::BasisSpec, TI = IntS, TF=Float64)
+   allKL, degs = generate_KL(spec, TI, TF)
    allZKL = [ allKL for _=1:length(z2i) ]
    return allZKL
 end
 
-
-
-
-# TODO: rewrite this as an iterator that fills in the last coordinate
-
-_mrange(ll::SVector{BO}) where {BO} =
-   CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
 
 """
 return kk, ll, mrange
@@ -155,11 +154,10 @@ cartesian range over which to iterate to construct the basis functions
 
 (note: this is tested for correcteness and speed)
 """
-function _klm(ν::StaticVector{BO, T}, KL) where {BO, T}
+function _klm(ν::StaticVector{BO}, KL) where {BO}
    kk = SVector( ntuple(i -> KL[ν[i]].k, BO) )
    ll = SVector( ntuple(i -> KL[ν[i]].l, BO) )
-   mrange = CartesianIndices(ntuple( i -> -ll[i]:ll[i], (BO-1) ))
-   return kk, ll, mrange
+   return kk, ll, _mrange(ll)
 end
 
 
@@ -167,7 +165,7 @@ end
 create a vector of Nu arrays with the right type information
 for each body-order
 """
-function _generate_Nu(bo::Integer, TI=IntS)
+function _init_Nu(bo::Integer, TI=IntS)
    Nu = []
    for n = 1:bo
       push!(Nu, SVector{n, TI}[])
@@ -176,19 +174,21 @@ function _generate_Nu(bo::Integer, TI=IntS)
    return tuple(Nu...)
 end
 
-function generate_KLS_tuples(Deg::BasisSpec, maxbo::Integer, cg; filter=true)
+function generate_KL_tuples(spec::AnalyticBasisSpec{BO}, cg;
+                            filter=true) where {BO}
    # all possible (k, l) pairs
-   allKL, degs = generate_KL(Deg)
+   allKL, degs = generate_KL(spec)
    # sepatare arrays for all body-orders
-   Nu = _generate_Nu(maxbo)
-   for N = 1:maxbo
-      _generate_KL_tuples!(Nu[N], Deg, cg, allKL, degs; filter=filter)
+   Nu = _init_Nu(BO)
+   for N = 1:BO
+      _generate_KL_tuples!(Nu[N], spec, cg, allKL, degs; filter=filter)
    end
    return allKL, Nu
 end
 
 function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}}, Deg::BasisSpec,
-                             cg, allKL, degs; filter=true) where {BO}
+                             cg, allKL, degs;
+                             filter=true) where {BO}
    # the first iterm is just (0, ..., 0)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
    # then we start incrementing until we hit the maximum degree
@@ -198,7 +198,7 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}}, Deg::BasisSpec,
    while true
       # check whether the current ν tuple is admissible
       # the first condition is that its max index is small enough
-      isadmissible = maximum(ν) <= length(allKL)
+      isadmissible = (maximum(ν) <= length(allKL))
       if isadmissible
          # the second condition is that the multivariate degree it defines
          # is small enough => for that we first have to compute the corresponding

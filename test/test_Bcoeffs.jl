@@ -10,7 +10,7 @@
 
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
-using SHIPs: generate_KL, generate_KL_tuples, TotalDegree, maxL
+using SHIPs: generate_KL, generate_KL_tuples, SparseSHIPBasis, maxL
 using SHIPs.SphericalHarmonics: ClebschGordan, cg1
 using JuLIP.Testing
 
@@ -61,10 +61,10 @@ mrange3 = SHIPs._mrange(ll)
 println(@test mrange3 == CartesianIndices( (-4:4, -2:2, -5:5) ))
 
 ##
-Deg = TotalDegree(5, 1.0)
+Deg = SparseSHIPBasis(5, 1.0)
 cg = ClebschGordan(maxL(Deg))
 KL, Nu =  generate_KL_tuples(Deg, 3, cg; filter=false)
-_, Nu_filter = generate_KL_tuples(Deg, 3, cg; filter=true) #SHIPs.filter_tuples(KL, Nu, Val(3), cg)
+_, Nu_filter = generate_KL_tuples(Deg, 3, cg; filter=true) #SHIPs.filter_tuple(KL, Nu, Val(3), cg)
 Izero = Int[]
 Iodd = Int[]
 
@@ -87,10 +87,10 @@ println(@test (length(Nu3) == length(Nu3_filter) + length(Izodd)))
 
 
 ##
-Deg = TotalDegree(10, 2.0)
+Deg = SparseSHIPBasis(10, 2.0)
 cg = ClebschGordan(maxL(Deg))
 KL, Nu =  generate_KL_tuples(Deg, 4, cg; filter=false)
-_, Nu_filter = generate_KL_tuples(Deg, 4, cg; filter=true) # SHIPs.filter_tuples(KL, Nu, Val(4), cg)
+_, Nu_filter = generate_KL_tuples(Deg, 4, cg; filter=true) # SHIPs.filter_tuple(KL, Nu, Val(4), cg)
 Nu4 = Nu[4]
 Nu4_filter = Nu_filter[4]
 Izero = Int[]

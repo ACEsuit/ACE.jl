@@ -20,7 +20,7 @@ function randR()
    R = rand(JVecF) .- 0.5
    return (0.9 + 2 * rand()) * R/norm(R)
 end
-randR(N) = [ randR() for n=1:N ]
+randR(N) = [ randR() for n=1:N ], zeros(Int16, N)
 function randiso()
    K = @SMatrix rand(3,3)
    K = K - K'
@@ -33,21 +33,30 @@ end
 
 ##
 
+spec = SparseSHIPBasis(3, :X, 10, 1.5)
+println(@test spec == SparseSHIPBasis(3, 10, 1.5))
+println(@test decode_dict(Dict(spec)) == spec)
+
 trans = PolyTransform(2, 1.0)
 cutf = PolyCutoff2s(2, 0.5, 3.0)
-ship2 = SHIPBasis(TotalDegree(15, 2.0), 2, trans, cutf)
-ship3 = SHIPBasis(TotalDegree(13, 2.0), 3, trans, cutf)
-ship4 = SHIPBasis(TotalDegree(11, 1.0), 4, trans, cutf)
-ship5 = SHIPBasis(TotalDegree(8, 1.0),  5, trans, cutf)
+
+ship2 = SHIPBasis(SparseSHIPBasis(2, 15, 2.0), trans, cutf)
+ship3 = SHIPBasis(SparseSHIPBasis(3, 13, 2.0), trans, cutf)
+ship4 = SHIPBasis(SparseSHIPBasis(4, 11, 1.5), trans, cutf)
+ship5 = SHIPBasis(SparseSHIPBasis(5,  8, 1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5]
 
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships
    println(@test (decode_dict(Dict(ship)) == ship))
 end
-# @info("Test (de-)dictionisation of SuperBasis")
-# super = IPSuperBasis(ship2, ship3, ship4)
-# println(@test (decode_dict(Dict(super)) == super))
+
+Rs, Zs = randR(20)
+tmp = SHIPs.alloc_temp(ship3)
+
+SHIPs.precompute_A!(tmp, ship3, Rs, Zs)
+B = SHIPs.alloc_B(ship3)
+eval_basis!(B, tmp, ship3, Rs, Zs, 0) 
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:20
