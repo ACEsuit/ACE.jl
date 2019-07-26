@@ -116,12 +116,16 @@ length_B(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.Nu))
 #       across different species
 length_A(spec::BasisSpec) =
    [ sum( sizeY(maxL(spec, k)) for k = 0:maxK(spec) )
-     for iz = 1:numspecies(spec) ]
+     for iz = 1:nspecies(spec) ]
 
 alloc_A(spec::BasisSpec) = zeros.(Ref(ComplexF64), length_A(spec))
 
 alloc_dA(spec::BasisSpec) = zeros.(Ref(JVec{ComplexF64}), length_A(spec))
 
+"""
+Given a set of KL = { (k,l) } tuples, we would allocate memory for
+storing the 1-particle basis values `A[ (k,l,m) ]`.
+"""
 function _firstA(KL)
    idx = 1
    firstA = zeros(IntS, length(KL) + 1)
@@ -187,7 +191,7 @@ function precompute_grads!(tmp, ship::SHIPBasis, Rs::AbstractVector{JVec{T}}) wh
       for ((k, l), iA) in zip(ship.KL, ship.firstA)
          for m = -l:l
             # @inbounds
-            tmp.A[z2i][iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
+            tmp.A[iz][iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
          end
       end
    end
@@ -248,29 +252,32 @@ function _first_B_idx(ship, N)
    return idx0
 end
 
-function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
+function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, T, N}
    @assert N <= BO
-   Nu_N = ship.Nu[N]::Vector{SVector{N, IntS}}
+   NuZ_N = ship.Nu[N, iz0]::Vector{SVector{N, IntS}}
    KL = ship.KL
-   idx0 = _first_B_idx(ship, N)
+   # compute the zeroth (not first!) index of the N-body subset of the SHIPBasis
+   idx0 = _first_B_idx(ship, N, iz0)
    # loop over N-body basis functions
    # A has already been filled in the outer eval_basis!
-   for (idx, ν) in enumerate(Nu_N)
+   for (idx, νz) in enumerate(NuZ_N)
+      ν = νz.ν
+      izz = νz.izz
       kk, ll, mrange = _klm(ν, KL)
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
       b = zero(ComplexF64)
-      for mm in mrange    # this is a cartesian loop over BO-1 indices
-         # skip any m-tuples that aren't admissible
+      for mm in mrange # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
+         # skip any m-tuples that aren't admissible (incorporate into mrange?)
          if abs(mm[end]) > ll[end]; continue; end
          # compute the symmetry prefactor from the CG-coefficients
          bm = ComplexF64(_Bcoeff(ll, mm, ship.cg))
-         if bm != 0
-            for (i, (k, l, m)) in enumerate(zip(kk, ll, mm))
-               # this is the indexing convention used to construct A
-               #  (feels brittle - maybe rethink it and write a function for it)
+         if bm != 0  # TODO: if bm ≈ 0.0; continue; end
+            for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
+               # TODO: this is the indexing convention used to construct A
+               # (feels brittle - maybe rethink it and write a function for it)
                i0 = ship.firstA[ν[i]]
-                bm *= tmp.A[i0 + l + m]
+               bm *= tmp.A[iz][i0 + l + m]
             end
             b += bm
          end
@@ -287,10 +294,12 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}) where {BO, T, N}
    return nothing
 end
 
-function eval_basis!(B, tmp, ship::SHIPBasis{BO}, Rs::AbstractVector{<:JVec}
-                     ) where {BO}
-   precompute_A!(tmp, ship, Rs)
-   nfcalls(Val(BO), valN -> _eval_basis!(B, tmp, ship, valN))
+function eval_basis!(B, tmp, ship::SHIPBasis{BO},
+                     Rs::AbstractVector{<:JVec},
+                     Zs::AbstractVector{<: Integer},
+                     z0::Integer ) where {BO}
+   precompute_A!(tmp, ship, Rs, Zs)
+   nfcalls(Val(BO), valN -> _eval_basis!(B, tmp, ship, valN, z0))
    return B
 end
 

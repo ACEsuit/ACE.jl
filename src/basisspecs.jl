@@ -68,7 +68,7 @@ end
 z2i(spec::SparseSHIPBasis, z) = spec.z2i[z]
 i2z(spec::SparseSHIPBasis, z) = spec.Zs[i]
 
-numspecies(spec::SparseSHIPBasis) = length(spec.Zs) 
+nspecies(spec::SparseSHIPBasis) = length(spec.Zs)
 
 deg(D::SparseSHIPBasis, k::Integer, l::Integer) =
       k + D.wL * l
@@ -140,24 +140,31 @@ end
 #       overloaded and so that different `allKL` collections are
 #       created for each species.
 
-function generate_ZKL(z2i, spec::BasisSpec, TI = IntS, TF=Float64)
+function generate_ZKL(spec::BasisSpec, TI = IntS, TF=Float64)
    allKL, degs = generate_KL(spec, TI, TF)
-   allZKL = [ allKL for _=1:length(z2i) ]
+   allZKL = [ allKL for _=1:nspecies(spec) ]
    return allZKL
 end
 
 
+# TODO:  _klm -> _klvecs and mm in mrange(ll)
 """
 return kk, ll, mrange
 where kk, ll is BO-tuples of k and l indices, while mrange is a
 cartesian range over which to iterate to construct the basis functions
 
-(note: this is tested for correcteness and speed)
+(note: this is tested for correctness and speed)
 """
 function _klm(ν::StaticVector{BO}, KL) where {BO}
-   kk = SVector( ntuple(i -> KL[ν[i]].k, BO) )
-   ll = SVector( ntuple(i -> KL[ν[i]].l, BO) )
+   kk = SVector( ntuple(i -> KL[i][ν[i]].k, BO) )
+   ll = SVector( ntuple(i -> KL[i][ν[i]].l, BO) )
    return kk, ll, _mrange(ll)
+end
+
+function _kl(ν::StaticVector{BO}, KL) where {BO}
+   kk = SVector( ntuple(i -> KL[i][ν[i]].k, BO) )
+   ll = SVector( ntuple(i -> KL[i][ν[i]].l, BO) )
+   return kk, ll
 end
 
 
@@ -165,31 +172,120 @@ end
 create a vector of Nu arrays with the right type information
 for each body-order
 """
-function _init_Nu(bo::Integer, TI=IntS)
-   Nu = []
-   for n = 1:bo
-      push!(Nu, SVector{n, TI}[])
+function _init_Nu(bo::Integer, nz::Integer, TI=IntS)
+   Nu = Matrix{Vector}(undef, bo, nz)
+   for n = 1:bo, iz = 1:nz
+      Nu[n, iz] = SVector{n, TI}[]
    end
    # convert into an SVector to make the length a type parameters
-   return tuple(Nu...)
+   return SMatrix{bo,nz}(Nu)
 end
 
-function generate_KL_tuples(spec::AnalyticBasisSpec{BO}, cg;
+"""
+create a vector of Nu arrays with the right type information
+for each body-order
+"""
+function _init_NuZ(bo::Integer, nz::Integer, TI=IntS)
+   Nu = Matrix{Vector}(undef, bo, nz)
+   for n = 1:bo, iz = 1:nz
+      Nu[n, iz] = NamedTuple{ (:ν,                  :iz),
+                              Tuple{SVector{n, TI}, Int16} }[]
+   end
+   # convert into an SVector to make the length a type parameters
+   return SMatrix{bo,nz}(Nu)
+end
+
+
+function generate_ZKL_tuples(spec::AnalyticBasisSpec{BO}, cg;
                             filter=true) where {BO}
    # all possible (k, l) pairs
-   allKL, degs = generate_KL(spec)
-   # sepatare arrays for all body-orders
-   Nu = _init_Nu(BO)
+   allZKL = generate_ZKL(spec)
+   # separate arrays for all body-orders and species
+   NuZ = _init_NuZ(BO, nspecies(spec))
    for N = 1:BO
-      _generate_KL_tuples!(Nu[N], spec, cg, allKL, degs; filter=filter)
+      _generate_ZKL_tuples!(NuZ[N,1], spec, cg, allZKL; filter=filter)
+      for iz = 2:nspecies(spec)
+         NuZ[N, iz] = copy(NuZ[N, 1])
+      end
    end
-   return allKL, Nu
+   return allZKL, NuZ
 end
 
-function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}}, Deg::BasisSpec,
-                             cg, allKL, degs;
-                             filter=true) where {BO}
-   # the first iterm is just (0, ..., 0)
+
+"""
+takes two N-body basis functions each specified by a species vector `zzi` and
+an index vector `νi` into the A-basis and decides whether they define the
+same basis function. E.g.,
+```
+ν = SVector(1,2,2)
+z1 = SVector(1,1,2)
+z2 = SVector(1,2,1)
+z3 = SVector(2,1,1)
+@show _iseqB(z1, ν, z2, ν) # -> true
+@show _iseqB(z1, ν, z3, ν) # -> false
+```
+"""
+@generated function _iseqB(zz1::StaticVector{N}, ν1::StaticVector{N},
+                           zz2::StaticVector{N}, ν2::StaticVector{N}
+                           ) where {N}
+   ex1 = "a1 = SVector(" * prod("(zz1[$i], ν1[$i])," for i = 1:N)[1:end-1] * ")"
+   ex2 = "a2 = SVector(" * prod("(zz2[$i], ν2[$i])," for i = 1:N)[1:end-1] * ")"
+   quote
+      $(Meta.parse(ex1))
+      $(Meta.parse(ex2))
+      return sort(a1) == sort(a2)
+   end
+end
+
+
+function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL;
+                               filter=true)
+   BO = length(ZKL)
+   nz = nspecies(spec)
+   izz = @MVector ones(Int16, BO)
+   izz_tmp = MVector{BO, Int16}[]
+
+   # temporary storage for all ν-tuples for a given zz combination
+   Nu = SVector{BO, IntS}[]
+
+   for izz in CartesianIndices(ntuple(_->(1:nz), BO))
+      # don't use this zz unless it is sorted; we will look at all permutations
+      # of zz below; this means lots of skipping, but who cares, this part of
+      # the loop is cheap. All the cost comes later.
+      if !issorted(izz)
+         continue
+      end
+
+      # collect all possible ν tuples for the current species combination
+      # specified by `zz`.  A (zz, ν) combination specifies a basis function
+      #    ∏_a A[zₐ][νₐ]     (actually izₐ instead of zₐ and ignoring the m's)
+      _generate_KL_tuples!(Nu, spec, cg, ZKL[izz]; filter=filter)
+
+      # now loop through all the ν tuples we found to push them into NuZ
+      for ν in Nu
+         # for each such ν we also need to check whether any permutations
+         # of `izz` give a new basis function as well. E.g.,
+         #   A[1,n] A[1,m] == A[1,m] A[1,n]
+         #   A[1,n] A[2,n] == A[2,n] A[1,n]
+         # but
+         #   A[1,n] A[2,m] != A[2,n] A[1,m]
+         empty!(izz_tmp)
+         for izzp in unique(permutations(izz))
+            if all( _iseqB(izzp, izz1, ν)  for izz1 in izz_tmp )
+               push!(izz_tmp, izzp)
+               push!(NuZ, (izz = izzp, ν = ν))
+            end
+         end
+      end
+   end
+end
+
+
+function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
+                              spec::AnalyticBasisSpec,
+                              cg, KLs;
+                              filter=true) where {BO}
+   # the first item is just (1, ..., 1)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
    # then we start incrementing until we hit the maximum degree
    # while retaining the ordering ν₁ ≤ ν₂ ≤ …
@@ -198,13 +294,13 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}}, Deg::BasisSpec,
    while true
       # check whether the current ν tuple is admissible
       # the first condition is that its max index is small enough
-      isadmissible = (maximum(ν) <= length(allKL))
+      isadmissible = all(ν .<= length.(KLs))
       if isadmissible
          # the second condition is that the multivariate degree it defines
          # is small enough => for that we first have to compute the corresponding
          # k and l vectors
-         kk, ll, _ = _klm(ν, allKL)
-         isadmissible = admissible(Deg, kk, ll)
+         kk, ll = _kl(ν, KLs)
+         isadmissible = admissible(spec, kk, ll)
       end
 
       # we want to increment `curindex`, but if we've reach the maximum degree
@@ -215,7 +311,7 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}}, Deg::BasisSpec,
          # ... then we add it to the stack  ...
          #     (at least if it is an admissible basis function respecting
          #      all the symmetries - this is checked by filter_tuple)
-         if !filter || filter_tuple(allKL, ν, cg)
+         if !filter || filter_tuple(KLs, ν, cg)
             push!(Nu, SVector(ν))
          end
          # ... and increment it

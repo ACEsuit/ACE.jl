@@ -12,8 +12,8 @@ using StaticArrays
 #       construct l,k tuples that specify basis functions
 # -------------------------------------------------------------
 
-function filter_tuple(KL, ν::StaticVector{1}, cg)
-   if KL[ν[1]].l != 0
+function filter_tuple(ll::StaticVector{1}, cg)
+   if ll[1] != 0
       return false
    else
       return true
@@ -21,9 +21,8 @@ function filter_tuple(KL, ν::StaticVector{1}, cg)
 end
 
 # keep this for the sake of a record and comparison with the general case
-function filter_tuple(KL, ν::StaticVector{2}, cg)  # 3B version
-   kl1, kl2 = KL[ν[1]], KL[ν[2]]
-   if kl1.l != kl2.l
+function filter_tuple(ll::StaticVector{2}, cg)  # 3B version
+   if ll[1] != ll[2]
       return false
    else
       return true
@@ -31,17 +30,16 @@ function filter_tuple(KL, ν::StaticVector{2}, cg)  # 3B version
 end
 
 # keep this for the sake of a record and comparison with the general case
-function filter_tuple(KL, ν::StaticVector{3}, cg)  # 4B version
-   l1, l2, l3 = KL[ν[1]].l, KL[ν[2]].l, KL[ν[3]].l
-   if !( (abs(l1-l2) <= l3 <= l1+l2) && iseven(l1+l2+l3) )
+function filter_tuple(ll::StaticVector{3}, cg)  # 4B version
+   if !( (abs(ll[1]-ll[2]) <= ll[3] <= ll[1]+ll[2])
+         && iseven(ll[1]+ll[2]+ll[3]) )
       return false
    else
       return true
    end
 end
 
-function filter_tuple(KL, ν::StaticVector{4}, cg)
-   ll = SVector(ntuple(i -> KL[ν[i]].l, 4))
+function filter_tuple(ll::StaticVector{4}, cg)
    # invariance under reflections
    if !iseven(sum(ll))
       return false
@@ -67,8 +65,7 @@ function filter_tuple(KL, ν::StaticVector{4}, cg)
 end
 
 
-function filter_tuple(KL, ν::StaticVector{N}, cg) where {N}
-   ll = SVector(ntuple(i -> KL[ν[i]].l, N))
+function filter_tuple(ll::StaticVector{N}, cg) where {N}
    # invariance under reflections
    if !iseven(sum(ll))
       return false
