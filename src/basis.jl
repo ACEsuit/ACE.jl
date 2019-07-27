@@ -59,10 +59,10 @@ struct SHIPBasis{BO, T, TJ, NZ,
    J::TJ               # specifies the radial basis
    SH::SHBasis{T}      # specifies the angular basis
    # ------------------------------------------------------------------------
-   KL::Vector{NamedTuple{(:k, :l),Tuple{IntS,IntS}}}    # 1-particle indexing
-   Nu::NTuple{BO, Vector}                               # N-particle indexing
-   cg::ClebschGordan{T}     # precomputed CG coefficients
-   firstA::Vector{IntS}     # indexing into A-basis vectors
+   KL::NTuple{NZ, Vector{NamedTuple{(:k, :l),Tuple{IntS,IntS}}}}    # 1-particle indexing
+   NuZ::SMatrix{BO, NZ, Vector}                               # N-particle indexing
+   cg::ClebschGordan{T}               # precomputed CG coefficients
+   firstA::NTuple{NZ, Vector{IntS}}   # indexing into A-basis vectors
 end
 
 function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
@@ -76,11 +76,12 @@ function SHIPBasis(spec::BasisSpec, J::TransformedJacobi)
    # precompute the Clebsch-Gordan coefficients
    cg = ClebschGordan(maxL(spec))
    # instantiate the basis specification
-   allKL, Nu = generate_KL_tuples(spec, cg)
+   allKL, NuZ = generate_ZKL_tuples(spec, cg)
+   @show typeof(allKL)
    # compute the (l,k) -> indexing into A[(k,l,m)] information
-   firstA = _firstA(allKL)
+   firstA = _firstA.(allKL)
    # putting it all together ...
-   return SHIPBasis(spec, J, SH, allKL, Nu, cg, firstA)
+   return SHIPBasis(spec, J, SH, allKL, NuZ, cg, firstA)
 end
 
 Dict(shipB::SHIPBasis) = Dict(
@@ -104,7 +105,8 @@ i2z(B::SHIPBasis, i::Integer) = i2z(B.spec, i)
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
 Base.length(ship::SHIPBasis) = length_B(ship)
-length_B(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.Nu))
+
+length_B(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.NuZ))
 
 
 # ----------------------------------------------
@@ -243,7 +245,7 @@ end
 compute the zeroth index in a B array (basis values) corresponding
 to the N-body subset of the SHIPBasis
 """
-function _first_B_idx(ship, N)
+function _first_B_idx(ship, N, iz0)
    # compute the first index into the basis
    idx0 = 0
    for n = 1:N-1
@@ -255,7 +257,7 @@ end
 function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, T, N}
    @assert N <= BO
    NuZ_N = ship.Nu[N, iz0]::Vector{SVector{N, IntS}}
-   KL = ship.KL
+   ZKL = ship.KL
    # compute the zeroth (not first!) index of the N-body subset of the SHIPBasis
    idx0 = _first_B_idx(ship, N, iz0)
    # loop over N-body basis functions

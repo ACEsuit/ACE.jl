@@ -8,6 +8,7 @@
 
 # This file implements different ways to specify a degree
 
+using Combinatorics
 using JuLIP.Chemistry: atomic_number
 
 import Base: ==
@@ -140,10 +141,10 @@ end
 #       overloaded and so that different `allKL` collections are
 #       created for each species.
 
-function generate_ZKL(spec::BasisSpec, TI = IntS, TF=Float64)
+function generate_ZKL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
    allKL, degs = generate_KL(spec, TI, TF)
-   allZKL = [ allKL for _=1:nspecies(spec) ]
-   return allZKL
+   allZKL = ntuple( _->copy(allKL), nspecies(spec) )
+   return return allZKL
 end
 
 
@@ -161,9 +162,9 @@ function _klm(ν::StaticVector{BO}, KL) where {BO}
    return kk, ll, _mrange(ll)
 end
 
-function _kl(ν::StaticVector{BO}, KL) where {BO}
-   kk = SVector( ntuple(i -> KL[i][ν[i]].k, BO) )
-   ll = SVector( ntuple(i -> KL[i][ν[i]].l, BO) )
+function _kl(ν::StaticVector{N}, KL) where {N}
+   kk = SVector( ntuple(i -> KL[i][ν[i]].k, N) )
+   ll = SVector( ntuple(i -> KL[i][ν[i]].l, N) )
    return kk, ll
 end
 
@@ -188,8 +189,8 @@ for each body-order
 function _init_NuZ(bo::Integer, nz::Integer, TI=IntS)
    Nu = Matrix{Vector}(undef, bo, nz)
    for n = 1:bo, iz = 1:nz
-      Nu[n, iz] = NamedTuple{ (:ν,                  :iz),
-                              Tuple{SVector{n, TI}, Int16} }[]
+      Nu[n, iz] = NamedTuple{       (:izz,              :ν),
+                               Tuple{SVector{n, Int16}, SVector{n, TI}} }[]
    end
    # convert into an SVector to make the length a type parameters
    return SMatrix{bo,nz}(Nu)
@@ -203,9 +204,9 @@ function generate_ZKL_tuples(spec::AnalyticBasisSpec{BO}, cg;
    # separate arrays for all body-orders and species
    NuZ = _init_NuZ(BO, nspecies(spec))
    for N = 1:BO
-      _generate_ZKL_tuples!(NuZ[N,1], spec, cg, allZKL; filter=filter)
+      _generate_ZKL_tuples!(NuZ[N,1], spec, cg, allZKL, Val(N); filter=filter)
       for iz = 2:nspecies(spec)
-         NuZ[N, iz] = copy(NuZ[N, 1])
+         append!(NuZ[N, iz], NuZ[N, 1])
       end
    end
    return allZKL, NuZ
@@ -238,21 +239,22 @@ z3 = SVector(2,1,1)
 end
 
 
-function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL;
-                               filter=true)
-   BO = length(ZKL)
+function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL, ::Val{BO};
+                               filter=true) where {BO}
+
    nz = nspecies(spec)
    izz = @MVector ones(Int16, BO)
-   izz_tmp = MVector{BO, Int16}[]
+   izz_tmp = SVector{BO, Int16}[]
 
    # temporary storage for all ν-tuples for a given zz combination
    Nu = SVector{BO, IntS}[]
 
-   for izz in CartesianIndices(ntuple(_->(1:nz), BO))
+   for izz_ci in CartesianIndices(ntuple(_->(1:nz), BO))
+      izz = Int16.(SVector(Tuple(izz_ci)...))
       # don't use this zz unless it is sorted; we will look at all permutations
       # of zz below; this means lots of skipping, but who cares, this part of
       # the loop is cheap. All the cost comes later.
-      if !issorted(izz)
+      if !issorted(Tuple(izz))
          continue
       end
 
@@ -270,8 +272,10 @@ function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL;
          # but
          #   A[1,n] A[2,m] != A[2,n] A[1,m]
          empty!(izz_tmp)
+         push!(izz_tmp, izz)
+         push!(NuZ, (izz = izz, ν = ν))
          for izzp in unique(permutations(izz))
-            if all( _iseqB(izzp, izz1, ν)  for izz1 in izz_tmp )
+            if !any( _iseqB(SVector(izzp...), ν, izz1, ν)  for izz1 in izz_tmp )
                push!(izz_tmp, izzp)
                push!(NuZ, (izz = izzp, ν = ν))
             end
@@ -283,23 +287,23 @@ end
 
 function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
                               spec::AnalyticBasisSpec,
-                              cg, KLs;
+                              cg, ZKLs;
                               filter=true) where {BO}
    # the first item is just (1, ..., 1)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
    # then we start incrementing until we hit the maximum degree
    # while retaining the ordering ν₁ ≤ ν₂ ≤ …
    lastidx = 0
-   ν = @MVector ones(IntS, BO)   # (ones(IntS, bo)...)
+   ν = @MVector ones(IntS, BO)
    while true
       # check whether the current ν tuple is admissible
       # the first condition is that its max index is small enough
-      isadmissible = all(ν .<= length.(KLs))
+      isadmissible = all(ν[i] <= length(ZKLs[i]) for i = 1:BO)
       if isadmissible
          # the second condition is that the multivariate degree it defines
          # is small enough => for that we first have to compute the corresponding
          # k and l vectors
-         kk, ll = _kl(ν, KLs)
+         kk, ll = _kl(ν, ZKLs)
          isadmissible = admissible(spec, kk, ll)
       end
 
@@ -311,7 +315,7 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
          # ... then we add it to the stack  ...
          #     (at least if it is an admissible basis function respecting
          #      all the symmetries - this is checked by filter_tuple)
-         if !filter || filter_tuple(KLs, ν, cg)
+         if !filter || filter_tuple(ll, cg)
             push!(Nu, SVector(ν))
          end
          # ... and increment it
@@ -327,5 +331,5 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
          lastidx -= 1
       end
    end
-   return allKL, Nu
+   return nothing
 end

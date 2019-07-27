@@ -3,6 +3,7 @@ uuid = "07029e18-8f70-11e9-35ce-2d4df590abdc"
 version = "0.2.0"
 
 [deps]
+Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 JuLIP = "945c410c-986d-556a-acb1-167a618e0462"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NeighbourLists = "2fcf5ba9-9ed4-57cf-b73f-ff513e316b9c"
@@ -11,8 +12,8 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-julia = "1"
 JuLIP = "0.8"
+julia = "1"
 
 [extras]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"

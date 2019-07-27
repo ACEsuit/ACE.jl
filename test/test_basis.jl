@@ -33,30 +33,60 @@ end
 
 ##
 
-spec = SparseSHIPBasis(3, :X, 10, 1.5)
-println(@test spec == SparseSHIPBasis(3, 10, 1.5))
-println(@test decode_dict(Dict(spec)) == spec)
+spec = SparseSHIPBasis(3, 13, 1.5)
+cg = SHIPs.SphericalHarmonics.ClebschGordan(SHIPs.maxL(spec))
+ZKL =  SHIPs.generate_ZKL(spec)
+ZKL1, Nu = SHIPs.generate_ZKL_tuples(spec, cg)
+sum(length.(Nu))
+
+
+spec = SparseSHIPBasis(3, [:Si, :C], 10, 1.5)
+# println(@test spec == SparseSHIPBasis(3, 10, 1.5))
+# println(@test decode_dict(Dict(spec)) == spec)
+#
+# ZKL =  SHIPs.generate_ZKL(spec)
+#
+#
+# allKL, Nu = SHIPs.generate_ZKL_tuples(spec, cg)
+
+##
 
 trans = PolyTransform(2, 1.0)
 cutf = PolyCutoff2s(2, 0.5, 3.0)
 
 ship2 = SHIPBasis(SparseSHIPBasis(2, 15, 2.0), trans, cutf)
 ship3 = SHIPBasis(SparseSHIPBasis(3, 13, 2.0), trans, cutf)
-ship4 = SHIPBasis(SparseSHIPBasis(4, 11, 1.5), trans, cutf)
+ship4 = SHIPBasis(SparseSHIPBasis(4, 10, 1.5), trans, cutf)
 ship5 = SHIPBasis(SparseSHIPBasis(5,  8, 1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5]
+
+@show length.(ships)
+# length.(ships) = [156, 439, 1245, 845]
+
+## 
+ship41 = SHIPBasis(SparseSHIPBasis(4, :X,  8, 1.5), trans, cutf)
+ship42 = SHIPBasis(SparseSHIPBasis(4, [:Si, :C],  8, 1.5), trans, cutf)
+length(ship41), length(ship42)
+
+#
+# ship5 = SHIPBasis(SparseSHIPBasis(5, [:Si, :C],  8, 1.5), trans, cutf)
+# length(ship4)
 
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships
    println(@test (decode_dict(Dict(ship)) == ship))
 end
 
+##
+
 Rs, Zs = randR(20)
 tmp = SHIPs.alloc_temp(ship3)
 
 SHIPs.precompute_A!(tmp, ship3, Rs, Zs)
 B = SHIPs.alloc_B(ship3)
-eval_basis!(B, tmp, ship3, Rs, Zs, 0) 
+eval_basis!(B, tmp, ship3, Rs, Zs, 0)
+
+
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:20
