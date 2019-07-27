@@ -39,15 +39,9 @@ ZKL =  SHIPs.generate_ZKL(spec)
 ZKL1, Nu = SHIPs.generate_ZKL_tuples(spec, cg)
 sum(length.(Nu))
 
-
-spec = SparseSHIPBasis(3, [:Si, :C], 10, 1.5)
-# println(@test spec == SparseSHIPBasis(3, 10, 1.5))
-# println(@test decode_dict(Dict(spec)) == spec)
-#
-# ZKL =  SHIPs.generate_ZKL(spec)
-#
-#
-# allKL, Nu = SHIPs.generate_ZKL_tuples(spec, cg)
+spec = SparseSHIPBasis(3, :X, 10, 1.5)
+println(@test spec == SparseSHIPBasis(3, 10, 1.5))
+println(@test decode_dict(Dict(spec)) == spec)
 
 ##
 
@@ -59,18 +53,6 @@ ship3 = SHIPBasis(SparseSHIPBasis(3, 13, 2.0), trans, cutf)
 ship4 = SHIPBasis(SparseSHIPBasis(4, 10, 1.5), trans, cutf)
 ship5 = SHIPBasis(SparseSHIPBasis(5,  8, 1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5]
-
-@show length.(ships)
-# length.(ships) = [156, 439, 1245, 845]
-
-##
-ship41 = SHIPBasis(SparseSHIPBasis(4, :X,  8, 1.5), trans, cutf)
-ship42 = SHIPBasis(SparseSHIPBasis(4, [:Si, :C],  8, 1.5), trans, cutf)
-length(ship41), length(ship42)
-
-#
-# ship5 = SHIPBasis(SparseSHIPBasis(5, [:Si, :C],  8, 1.5), trans, cutf)
-# length(ship4)
 
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships

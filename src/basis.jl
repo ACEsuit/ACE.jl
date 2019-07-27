@@ -77,7 +77,6 @@ function SHIPBasis(spec::BasisSpec, J::TransformedJacobi)
    cg = ClebschGordan(maxL(spec))
    # instantiate the basis specification
    allKL, NuZ = generate_ZKL_tuples(spec, cg)
-   @show typeof(allKL)
    # compute the (l,k) -> indexing into A[(k,l,m)] information
    firstA = _firstA.(allKL)
    # putting it all together ...

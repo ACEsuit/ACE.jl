@@ -271,9 +271,6 @@ function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL, ::Val{BO};
       #    ∏_a A[zₐ][νₐ]     (actually izₐ instead of zₐ and ignoring the m's)
       empty!(Nu)
       _generate_KL_tuples!(Nu, spec, cg, ZKL[izz]; filter=filter)
-      empty!(Nu_old)
-      _generate_KL_tuples_old!(Nu_old, spec, cg, ZKL[1]; filter=filter)
-      @show length(Nu), length(Nu_old)
 
       # now loop through all the ν tuples we found to push them into NuZ
       for ν in Nu
@@ -345,53 +342,4 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
       end
    end
    return nothing
-end
-
-
-
-function _generate_KL_tuples_old!(Nu::Vector{<: SVector{BO}}, Deg::BasisSpec,
-                             cg, allKL; filter=true) where {BO}
-   # the first iterm is just (0, ..., 0)
-   # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
-   # then we start incrementing until we hit the maximum degree
-   # while retaining the ordering ν₁ ≤ ν₂ ≤ …
-   lastidx = 0
-   ν = @MVector ones(IntS, BO)   # (ones(IntS, bo)...)
-   while true
-      # check whether the current ν tuple is admissible
-      # the first condition is that its max index is small enough
-      isadmissible = maximum(ν) <= length(allKL)
-      if isadmissible
-         # the second condition is that the multivariate degree it defines
-         # is small enough => for that we first have to compute the corresponding
-         # k and l vectors
-         kk, ll, _ = _klm_old(ν, allKL)
-         isadmissible = admissible(Deg, kk, ll)
-      end
-
-      # we want to increment `curindex`, but if we've reach the maximum degree
-      # then we need to move to the next index down
-
-      # if the current tuple ν has admissible degree ...
-      if isadmissible
-         # ... then we add it to the stack  ...
-         #     (at least if it is an admissible basis function respecting
-         #      all the symmetries - this is checked by filter_tuples)
-         if !filter || filter_tuple(ll, cg)
-            push!(Nu, SVector(ν))
-         end
-         # ... and increment it
-         lastidx = BO
-         ν[lastidx] += 1
-      else
-         # we have overshot, _deg(ν) > deg; we must go back down, by
-         # decreasing the index at which we increment
-         if lastidx == 1
-            break
-         end
-         ν[lastidx-1:end] .= ν[lastidx-1] + 1
-         lastidx -= 1
-      end
-   end
-   return allKL, Nu
 end
