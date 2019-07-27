@@ -63,7 +63,7 @@ ships = [ship2, ship3, ship4, ship5]
 @show length.(ships)
 # length.(ships) = [156, 439, 1245, 845]
 
-## 
+##
 ship41 = SHIPBasis(SparseSHIPBasis(4, :X,  8, 1.5), trans, cutf)
 ship42 = SHIPBasis(SparseSHIPBasis(4, [:Si, :C],  8, 1.5), trans, cutf)
 length(ship41), length(ship42)
