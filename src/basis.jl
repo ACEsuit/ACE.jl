@@ -210,7 +210,7 @@ alloc_B(ship::SHIPBasis, args...) = zeros(Float64, length_B(ship))
 alloc_dB(ship::SHIPBasis, N::Integer) = zeros(JVec{Float64}, N, length_B(ship))
 alloc_dB(ship::SHIPBasis, Rs::AbstractVector) = alloc_dB(ship, length(Rs))
 
-alloc_temp(ship::SHIPBasis) = (
+alloc_temp(ship::SHIPBasis, args...) = (
       A = alloc_A(ship.spec),
       J = alloc_B(ship.J),
       Y = alloc_B(ship.SH),
@@ -218,7 +218,7 @@ alloc_temp(ship::SHIPBasis) = (
       tmpY = alloc_temp(ship.SH)
    )
 
-alloc_temp_d(shipB::SHIPBasis, Rs::AbstractVector{<:JVec}) =
+alloc_temp_d(shipB::SHIPBasis, Rs::AbstractVector{<:JVec}, args...) =
       alloc_temp_d(shipB, length(Rs))
 
 function alloc_temp_d(ship::SHIPBasis, N::Integer)
