@@ -12,13 +12,13 @@ using JuLIP.Potentials: evaluate!, evaluate_d!, evaluate, evaluate_d
 using SHIPs: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
 
 @testset "SHIPs.jl" begin
-    # include("test_jacobi.jl")
-    # include("test_transforms.jl")
-    # include("test_ylm.jl")
-    # include("test_cg.jl")
-    # include("test_Bcoeffs.jl")
+    include("test_jacobi.jl")
+    include("test_transforms.jl")
+    include("test_ylm.jl")
+    include("test_cg.jl")
+    include("test_Bcoeffs.jl")
     # include("test_basis.jl")
     # include("test_fast.jl")
     # include("test_pair.jl")
-    include("test_multispecies.jl")
+    # include("test_multispecies.jl")
 end

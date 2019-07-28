@@ -8,6 +8,7 @@
 
 # TODO [tuples]
 # - get rid of `length_B`
+# - document eval_basis and move it into JuLIP
 
 import JuLIP: energy!, forces!, virial!, alloc_temp, alloc_temp_d
 import JuLIP.Potentials: evaluate!, evaluate_d!
@@ -16,10 +17,10 @@ import JuLIP.Potentials: evaluate!, evaluate_d!
 function eval_basis! end
 function eval_basis_d! end
 
-eval_basis(B, args...) =
-   eval_basis!(alloc_B(B, args[1]), alloc_temp(B, args[1]), B, args...)
+eval_basis(B, x, args...) =
+   eval_basis!(alloc_B(B, x), alloc_temp(B, x), B, x, args...)
 
-function eval_basis_d(B, x)
+function eval_basis_d(B, x, args...)
    b = alloc_B(B, x)
    db = alloc_dB(B, x)
    tmp = alloc_temp_d(B, x)
@@ -34,29 +35,3 @@ function transform end
 function transform_d end
 function fcut end
 function fcut_d end
-
-
-# auxiliary stuff
-@generated function nfcalls(::Val{N}, f) where {N}
-   code = Expr[]
-   for n = 1:N
-      push!(code, :(f(Val($n))))
-   end
-   quote
-      $(Expr(:block, code...))
-      return nothing
-   end
-end
-
-
-# auxiliary stuff
-@generated function valnmapreduce(::Val{N}, v, f) where {N}
-   code = Expr[]
-   for n = 1:N
-      push!(code, :(v += f(Val($n))))
-   end
-   quote
-      $(Expr(:block, code...))
-      return v
-   end
-end
