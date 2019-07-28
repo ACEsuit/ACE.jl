@@ -16,8 +16,8 @@ import JuLIP.Potentials: evaluate!, evaluate_d!
 function eval_basis! end
 function eval_basis_d! end
 
-eval_basis(B, x) =
-   eval_basis!(alloc_B(B, x), alloc_temp(B), B, x)
+eval_basis(B, args...) =
+   eval_basis!(alloc_B(B, args[1]), alloc_temp(B, args[1]), B, args...)
 
 function eval_basis_d(B, x)
    b = alloc_B(B, x)

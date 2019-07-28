@@ -248,7 +248,6 @@ end
 
 function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL, ::Val{BO};
                                filter=true) where {BO}
-
    nz = nspecies(spec)
    izz = @MVector ones(Int16, BO)
    izz_tmp = SVector{BO, Int16}[]

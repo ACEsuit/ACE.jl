@@ -35,6 +35,8 @@ export SHIPBasis
 # TODO: Move to precomputed ∏A coefficients instead of Clebsch-Gordan
 #       coefficients to speed up LSQ assembly.
 
+const Tνz{N} = NamedTuple{  (:izz, :ν),
+                  Tuple{SVector{N, Int16}, SVector{N, IntS}} }
 
 """
 `struct SHIPBasis` : the main type around eveything in `SHIPs.jl` revolves;
@@ -162,7 +164,7 @@ function precompute_A!(tmp,
       eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
       # add the contributions to the A_zklm; the indexing into the
       # A array is determined by `ship.firstA` which was precomputed
-      for ((k, l), iA) in zip(ship.KL, ship.firstA)
+      for ((k, l), iA) in zip(ship.KL[iz], ship.firstA[iz])
          for m = -l:l
             # @inbounds
             tmp.A[iz][iA+l+m] += tmp.J[k+1] * tmp.Y[index_y(l, m)]
@@ -242,20 +244,36 @@ end
 
 """
 compute the zeroth index in a B array (basis values) corresponding
-to the N-body subset of the SHIPBasis
+to the N-body subset of the SHIPBasis. This function specifies the
+ordering of the basis set:
+```
+   iz    N
+------------
+   1     1
+   1     2
+   1     ...
+   1     BO
+   2     1
+   2     2
+   2     ...
+   ...   ...
+```
 """
-function _first_B_idx(ship, N, iz0)
+function _first_B_idx(ship::SHIPBasis{BO}, N, iz0) where {BO}
    # compute the first index into the basis
    idx0 = 0
+   for iz = 1:iz0-1, n = 1:BO
+      idx0 += length(ship.NuZ[n, iz])
+   end
    for n = 1:N-1
-      idx0 += length(ship.Nu[n])
+      idx0 += length(ship.NuZ[n, iz0])
    end
    return idx0
 end
 
 function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, T, N}
    @assert N <= BO
-   NuZ_N = ship.Nu[N, iz0]::Vector{SVector{N, IntS}}
+   NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
    ZKL = ship.KL
    # compute the zeroth (not first!) index of the N-body subset of the SHIPBasis
    idx0 = _first_B_idx(ship, N, iz0)
@@ -264,11 +282,11 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, 
    for (idx, νz) in enumerate(NuZ_N)
       ν = νz.ν
       izz = νz.izz
-      kk, ll, mrange = _klm(ν, KL)
+      kk, ll = _kl(ν, ZKL[izz])   # TODO: allocation -> fix this!
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
       b = zero(ComplexF64)
-      for mm in mrange # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
+      for mm in _mrange(ll)    # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
          # skip any m-tuples that aren't admissible (incorporate into mrange?)
          if abs(mm[end]) > ll[end]; continue; end
          # compute the symmetry prefactor from the CG-coefficients
@@ -277,7 +295,7 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, 
             for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
                # TODO: this is the indexing convention used to construct A
                # (feels brittle - maybe rethink it and write a function for it)
-               i0 = ship.firstA[ν[i]]
+               i0 = ship.firstA[iz][ν[i]]
                bm *= tmp.A[iz][i0 + l + m]
             end
             b += bm
@@ -295,12 +313,13 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, 
    return nothing
 end
 
-function eval_basis!(B, tmp, ship::SHIPBasis{BO},
+function eval_basis!(B, tmp, ship::SHIPBasis{BO, T},
                      Rs::AbstractVector{<:JVec},
                      Zs::AbstractVector{<: Integer},
-                     z0::Integer ) where {BO}
+                     z0::Integer ) where {BO, T}
    precompute_A!(tmp, ship, Rs, Zs)
-   nfcalls(Val(BO), valN -> _eval_basis!(B, tmp, ship, valN, z0))
+   fill!(B, zero(T))
+   nfcalls(Val(BO), valN -> _eval_basis!(B, tmp, ship, valN, z2i(ship, z0)))
    return B
 end
 

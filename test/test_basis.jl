@@ -21,6 +21,7 @@ function randR()
    return (0.9 + 2 * rand()) * R/norm(R)
 end
 randR(N) = [ randR() for n=1:N ], zeros(Int16, N)
+randR(N, syms) = randR(N)[1], rand( Int16.(atomic_number.(syms)), N )
 function randiso()
    K = @SMatrix rand(3,3)
    K = K - K'
@@ -33,15 +34,49 @@ end
 
 ##
 
-spec = SparseSHIPBasis(3, 13, 1.5)
-cg = SHIPs.SphericalHarmonics.ClebschGordan(SHIPs.maxL(spec))
-ZKL =  SHIPs.generate_ZKL(spec)
-ZKL1, Nu = SHIPs.generate_ZKL_tuples(spec, cg)
-sum(length.(Nu))
+# spec = SparseSHIPBasis(3, 13, 1.5)
+# cg = SHIPs.SphericalHarmonics.ClebschGordan(SHIPs.maxL(spec))
+# ZKL =  SHIPs.generate_ZKL(spec)
+# ZKL1, Nu = SHIPs.generate_ZKL_tuples(spec, cg)
+# sum(length.(Nu))
 
 spec = SparseSHIPBasis(3, :X, 10, 1.5)
 println(@test spec == SparseSHIPBasis(3, 10, 1.5))
 println(@test decode_dict(Dict(spec)) == spec)
+
+
+# ##
+# trans = PolyTransform(2, 1.0)
+# cutf = PolyCutoff2s(2, 0.5, 3.0)
+# ship41 = SHIPBasis(SparseSHIPBasis(3, :X,  11, 1.5), trans, cutf)
+# ship42 = SHIPBasis(SparseSHIPBasis(3, [:Si, :C],  11, 1.5), trans, cutf)
+# length(ship41), length(ship42)  # -> 587, 11208
+#
+# len = length.(ship41.NuZ)
+# (len[4] + len[1]*len[3] + len[2]*len[2] + len[1]*len[3] + len[4])
+#
+# length(ship42)
+#
+# ##
+#
+# Rs, Zs = randR(20)
+# tmp = SHIPs.alloc_temp(ship3)
+#
+# SHIPs.precompute_A!(tmp, ship3, Rs, Zs)
+# B = SHIPs.alloc_B(ship3, Rs)
+# eval_basis!(B, tmp, ship32, Rs, Zs, )
+#
+# ##
+#
+# Rs, Zs = randR(20, [:Si, :C])
+# ship32 = SHIPBasis(SparseSHIPBasis(3, [:Si, :C],  6, 1.5), trans, cutf)
+# length(ship32)
+# tmp = SHIPs.alloc_temp(ship32)
+# SHIPs.precompute_A!(tmp, ship32, Rs, Zs)
+# B = SHIPs.alloc_B(ship32, Rs)
+# eval_basis!(B, tmp, ship32, Rs, Zs, 6)
+
+# ----------------- OLD TESTS
 
 ##
 
@@ -59,23 +94,13 @@ for ship in ships
    println(@test (decode_dict(Dict(ship)) == ship))
 end
 
-##
-
-Rs, Zs = randR(20)
-tmp = SHIPs.alloc_temp(ship3)
-
-SHIPs.precompute_A!(tmp, ship3, Rs, Zs)
-B = SHIPs.alloc_B(ship3)
-eval_basis!(B, tmp, ship3, Rs, Zs, 0)
-
-
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:20
-   Rs = randR(20)
-   BB = [ eval_basis(🚢, Rs) for 🚢 in ships ]
+   Rs, Zs = randR(20)
+   BB = [ eval_basis(🚢, Rs, Zs, 0) for 🚢 in ships ]
    RsX = randiso(Rs)
-   BBX = [ eval_basis(🚢, RsX) for 🚢 in ships ]
+   BBX = [ eval_basis(🚢, RsX, Zs, 0) for 🚢 in ships ]
    for (B, BX) in zip(BB, BBX)
       print_tf(@test B ≈ BX)
    end
