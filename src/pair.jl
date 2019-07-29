@@ -40,7 +40,7 @@ convert(::Val{:SHIPs_PairBasis}, D::Dict) = PairBasis(D)
 
 
 alloc_B(pB::PairBasis, args...) = zeros(Float64, length(pB))
-alloc_dB(pB::PairBasis, N::Integer) = zeros(JVec{Float64}, N, length_B(pB))
+alloc_dB(pB::PairBasis, N::Integer) = zeros(JVec{Float64}, N, length(pB))
 alloc_dB(pB::PairBasis, Rs::AbstractVector) = alloc_dB(pB, length(Rs))
 
 alloc_temp(pB::PairBasis) = (J = alloc_B(pB.J),)

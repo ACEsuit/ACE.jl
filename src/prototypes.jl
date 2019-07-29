@@ -7,7 +7,6 @@
 
 
 # TODO [tuples]
-# - get rid of `length_B`
 # - document eval_basis and move it into JuLIP
 
 import JuLIP: energy!, forces!, virial!, alloc_temp, alloc_temp_d

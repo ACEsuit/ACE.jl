@@ -62,25 +62,30 @@ end
 println()
 
 ##
+
+Rs = randR(20)
+SHIPs.alloc_temp_d(ships[2], Rs[1])
+
+##
 @info("Test gradients for 3-6B 🚢-basis")
 for 🚢 in ships
    @info("  body-order = $(SHIPs.bodyorder(🚢)):")
-   Rs = randR(20)
+   Rs, Zs = randR(20)
    tmp = SHIPs.alloc_temp_d(🚢, Rs)
-   SHIPs.precompute_grads!(tmp, 🚢, Rs)
-   B1 = eval_basis(🚢, Rs)
+   SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
+   B1 = eval_basis(🚢, Rs, Zs, 0)
    B = SHIPs.alloc_B(🚢)
    dB = SHIPs.alloc_dB(🚢, Rs)
-   SHIPs.eval_basis_d!(B, dB, tmp, 🚢, Rs)
+   SHIPs.eval_basis_d!(B, dB, tmp, 🚢, Rs, Zs, 0)
    @info("      check the basis and basis_d co-incide exactly")
    println(@test B ≈ B1)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
-      Us = randR(length(Rs))
+      Us, Zs = randR(length(Rs))
       errs = Float64[]
       for p = 2:10
          h = 0.1^p
-         Bh = eval_basis(🚢, Rs+h*Us)
+         Bh = eval_basis(🚢, Rs+h*Us, Zs, 0)
          dBh = (Bh - B) / h
          dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
          push!(errs, norm(dBh - dBxU, Inf))
