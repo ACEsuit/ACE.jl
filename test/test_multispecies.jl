@@ -16,6 +16,7 @@ using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using SHIPs: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
+using JuLIP.Potentials: evaluate, evaluate_d
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -159,4 +160,102 @@ for basis in ships
 end
 
 
-end 
+# ----------------------------------------------------------------------
+#  Calculator Tests (everything above is a Basis test)
+# ----------------------------------------------------------------------
+
+shipsB = ships
+
+@info("--------------- Fast Multi-🚢 Implementation ---------------")
+
+@info("Testing correctness of `SHIP` against `SHIPBasis`")
+for B in shipsB
+   @info("   bodyorder = $(SHIPs.bodyorder(B))")
+   coeffs = randcoeffs(B)
+   ship = SHIP(B, coeffs)
+   @info("   test (de-)dictionisation")
+   println(@test decode_dict(Dict(ship)) == ship)
+   @show length(B), length(ship)
+   tmp = SHIPs.alloc_temp(ship, 0)
+   @info("      check that SHIPBasis ≈ SHIP")
+   for ntest = 1:30
+      Rs, Zs, z0 = randR(10, (1,2))
+      Es = SHIPs.evaluate!(tmp, ship, Rs, Zs, z0)
+      Bs = dot(coeffs, SHIPs.eval_basis(B, Rs, Zs, z0))
+      print_tf(@test Es ≈ Bs)
+   end
+   println()
+   # ------------------------------------------------------------
+   # @info("      Quick timing test")
+   # Nr = 30
+   # Rs, Zs, z0 = randR(Nr)
+   # b = SHIPs.alloc_B(B)
+   # tmp = SHIPs.alloc_temp(ship, Nr)
+   # tmpB = SHIPs.alloc_temp(B, Nr)
+   # print("       SHIPBasis : "); @btime SHIPs.eval_basis!($b, $tmpB, $B, $Rs, $Zs, $z0)
+   # print("            SHIP : "); @btime SHIPs.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
+   # println()
+end
+
+
+##
+@info("Check Correctness of SHIP gradients")
+for B in shipsB
+   @info("   body-order = $(SHIPs.bodyorder(B))")
+   coeffs = randcoeffs(B)
+   ship = SHIP(B, coeffs)
+   Rs, Zs, z0 = randR(10, (1,2))
+   tmp = SHIPs.alloc_temp_d(ship, length(Rs))
+   dEs = zeros(JVecF, length(Rs))
+   SHIPs.evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
+   Es = SHIPs.evaluate!(tmp, ship, Rs, Zs, z0)
+   println(@test Es ≈ evaluate(ship, Rs, Zs, z0))
+   println(@test dEs ≈ evaluate_d(ship, Rs, Zs, z0))
+   @info("      Correctness of directional derivatives")
+   for ndir = 1:20
+      U = [rand(JVecF) .- 0.5 for _=1:length(Rs)]
+      errs = Float64[]
+      for p = 2:10
+         h = 0.1^p
+         dEs_U = dot(dEs, U)
+         dEs_h = (SHIPs.evaluate!(tmp, ship, Rs + h * U, Zs, z0) - Es) / h
+         push!(errs, abs(dEs_h - dEs_U))
+      end
+      success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+      print_tf(@test success)
+   end
+   println()
+end
+
+
+##
+@info("Check Correctness of SHIP calculators")
+
+m_naive_energy(ship::SHIP, at) =
+      sum( evaluate(ship, R, at.Z[j], at.Z[i])
+            for (i, j, R) in sites(at, cutoff(ship)) )
+
+for B in shipsB
+   @info("   body-order = $(SHIPs.bodyorder(B))")
+   coeffs = randcoeffs(B)
+   ship = SHIP(B, coeffs)
+   at = bulk(:Si) * 3
+   at.Z[1:2:end] .= 1
+   at.Z[2:2:end] .= 2
+   rattle!(at, 0.1)
+   print("     energy: ")
+   println(@test energy(ship, at) ≈ m_naive_energy(ship, at) )
+   # TODO [multi] : implement site-energies in JuLIP and revive this test!
+   # print("site-energy: ")
+   # println(@test energy(ship, at) ≈ sum( site_energy(ship, at, n)
+   #                                       for n = 1:length(at) ) )
+   println("forces: ")
+   println(@test JuLIP.Testing.fdtest(ship, at))
+   # println("site-forces: ")
+   # println(@test JuLIP.Testing.fdtest( x -> site_energy(ship, set_dofs!(at, x), 3),
+   #                                     x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
+   #                                     dofs(at) ) )
+end
+
+
+end

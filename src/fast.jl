@@ -8,7 +8,8 @@
 
 using SHIPs.SphericalHarmonics: SHBasis, index_y
 using StaticArrays
-using JuLIP: AbstractCalculator, Atoms, JVec, SitePotential
+using JuLIP: AbstractCalculator, Atoms, JVec
+using JuLIP.Potentials: MSitePotential
 using NeighbourLists: max_neigs, neigs
 
 import JuLIP, JuLIP.MLIPs
@@ -19,7 +20,7 @@ import Base: Dict, convert, ==
 
 export SHIP
 
-struct SHIP{BO, T, NZ, TJ} <: SitePotential
+struct SHIP{BO, T, NZ, TJ} <: MSitePotential
    J::TJ
    SH::SHBasis{T}
    # -------------- 1-particle basis
@@ -240,64 +241,69 @@ function evaluate!(tmp, ship::SHIP{BO, T},
                    Rs::AbstractVector{JVec{T}},
                    Zs::AbstractVector{<:Integer},
                    z0::Integer) where {BO, T}
+   iz0 = z2i(ship, z0)
    precompute!(tmp, ship, Rs, Zs)
    return valnmapreduce(Val(BO), T(0.0),
-                        valN -> _evaluate!(tmp, ship, valN))
+                        valN -> _evaluate!(tmp, ship, iz0, valN))
 end
 
-function _evaluate!(tmp, ship::SHIP{BO, T, NZ}, ::Val{N}) where {BO, T, N, NZ}
+function _evaluate!(tmp, ship::SHIP{BO, T, NZ}, iz0, ::Val{N}) where {BO, T, N, NZ}
    Es = T(0.0)
-   for iz = 1:NZ
-      spec_N = ship.spec[N, iz]::Vector{Tspec{N, T, Int16, IntS}}
-      # IA_N = ship.IA[N, iz]::Vector{SVector{N, IntS}}
-      # C_N = ship.C[N]::Vector{T}
-      for s in spec_N  # (iA, c) in zip(IA_N, C_N)
-         Es_ν = s.c
-         for α = 1:length(s.iA)
-            Es_ν *= tmp.A[s.izz[α]][s.iA[α]]
-         end
-         Es += real(Es_ν)
+   spec_N = ship.spec[N, iz0]::Vector{Tspec{N, T, Int16, IntS}}
+   # IA_N = ship.IA[N, iz]::Vector{SVector{N, IntS}}
+   # C_N = ship.C[N]::Vector{T}
+   for s in spec_N  # (iA, c) in zip(IA_N, C_N)
+      Es_ν = s.c
+      for α = 1:length(s.iA)
+         Es_ν *= tmp.A[s.izz[α]][s.iA[α]]
       end
+      Es += real(Es_ν)
    end
    return Es
 end
 
 
-alloc_temp_d(ship::SHIP{BO, T}, N::Integer) where {BO, T} =
+alloc_temp_d(ship::SHIP{BO, T, NZ}, N::Integer) where {BO, T, NZ} =
       ( J = alloc_B(ship.J),
        dJ = alloc_dB(ship.J),
         Y = alloc_B(ship.SH),
        dY = alloc_dB(ship.SH),
-        A = zeros(Complex{T}, length_A(ship)),
-     dAco = zeros(Complex{T}, length_A(ship)),
+        A = [ zeros(Complex{T}, length_A(ship, iz)) for iz=1:NZ ],
+     dAco = [ zeros(Complex{T}, length_A(ship, iz)) for iz=1:NZ ],
      tmpJ = alloc_temp_d(ship.J),
      tmpY = alloc_temp_d(ship.SH),
        dV = zeros(JVec{T}, N),
-        R = zeros(JVec{T}, N)
+        R = zeros(JVec{T}, N),
+        Z = zeros(Int16, N)
       )
 
 # compute one site energy
-function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
+function evaluate_d!(dEs, tmp, ship::SHIP{BO, T},
+                     Rs::AbstractVector{JVec{T}},
+                     Zs::AbstractVector{<:Integer},
+                     z0::Integer
                      ) where {BO, T}
+   iz0 = z2i(ship, z0)
 
    # stage 1: precompute all the A values
-   precompute!(store, ship, Rs)
+   precompute!(tmp, ship, Rs, Zs)
 
    # stage 2: compute the coefficients for the ∇A_{klm}
-   fill!(store.dAco, T(0))
-   nfcalls(Val(BO), valN -> _evaluate_d_stage2!(store, ship, valN))
+   _zero_A!(tmp.dAco)
+   nfcalls(Val(BO), valN -> _evaluate_d_stage2!(tmp, ship, iz0, valN))
 
    # stage 3: get the gradients
    fill!(dEs, zero(JVec{T}))
 
-   for (iR, R) in enumerate(Rs)
-      eval_basis_d!(store.J, store.dJ, store.tmpJ, ship.J, norm(R))
-      eval_basis_d!(store.Y, store.dY, store.tmpY, ship.SH, R)
-      for ((k, l), iA) in zip(ship.KL, ship.firstA)
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      eval_basis_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
+      eval_basis_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
+      iz = z2i(ship, Z)
+      for ((k, l), iA) in zip(ship.KL[iz], ship.firstA[iz])
          for m = -l:l
-            @inbounds dEs[iR] += real( store.dAco[iA+l+m] * (
-                  store.J[k+1] * store.dY[index_y(l, m)] +
-                  (store.dJ[k+1] * store.Y[index_y(l, m)]) * (R/norm(R)) ) )
+            @inbounds dEs[iR] += real( tmp.dAco[iz][iA+l+m] * (
+                  tmp.J[k+1] * tmp.dY[index_y(l, m)] +
+                  (tmp.dJ[k+1] * tmp.Y[index_y(l, m)]) * (R/norm(R)) ) )
          end
       end
    end
@@ -305,99 +311,30 @@ function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
    return dEs
 end
 
-function _evaluate_d_stage2!(store, ship::SHIP{BO, T}, ::Val{N}) where {BO, T, N}
-   IA_N = ship.IA[N]::Vector{SVector{N, IntS}}
-   C_N = ship.C[N]::Vector{T}
-   # i0 = N == 1 ? 0 : sum( length(ship.IA[n]) for n = 1:N-1 )
-   for (iA, c) in zip(IA_N, C_N)
+function _evaluate_d_stage2!(tmp, ship::SHIP{BO, T, NZ}, iz0, ::Val{N}
+                             ) where {BO, T, N, NZ}
+   spec_N = ship.spec[N, iz0]::Vector{Tspec{N, T, Int16, IntS}}
+
+   # the site-energy assembly for comparison:
+   # for s in spec_N
+   #    Es_ν = s.c
+   #    for α = 1:length(s.iA)
+   #       Es_ν *= tmp.A[s.izz[α]][s.iA[α]]
+   #    end
+   #    Es += real(Es_ν)
+   # end
+
+   # for (iA, c) in zip(IA_N, C_N)
+   for s in spec_N
       # compute the coefficients
       for α = 1:N
-         CxA_α = Complex{T}(c)
+         CxA_α = Complex{T}(s.c)
          for β = 1:N
             if β != α
-               @inbounds CxA_α *= store.A[iA[β]]
+               @inbounds CxA_α *= tmp.A[s.izz[β]][s.iA[β]]
             end
          end
-         @inbounds store.dAco[iA[α]] += CxA_α
+         @inbounds tmp.dAco[s.izz[α]][s.iA[α]] += CxA_α
       end
    end
 end
-
-
-
-# function evaluate_d!(dEs, store, ship::SHIP{BO, T}, Rs::AbstractVector{JVec{T}},
-#                      ) where {BO, T}
-#    # stage 1: precompute all the A values
-#    precompute!(store, ship, Rs)
-#
-#    # stage 2: compute the coefficients for the ∇A_{klm}
-#    #          (and also Es while we are at it)
-#    fill!(store.dAco, T(0))
-#    nfcalls(Val(BO), valN -> _evaluate_d_stage2!(store, ship, valN))
-#
-#    # stage 3: get the gradients; this is now body-order independent
-#    #          we are just using  ∂(∏A) / ∂A_n * ∂A_n / ∂R_j
-#    fill!(dEs, zero(JVec{T}))
-#    for (iR, R) in enumerate(Rs)
-#       eval_basis_d!(store.J, store.dJ, store.tmpJ, ship.J, norm(R))
-#       eval_basis_d!(store.Y, store.dY, store.tmpY, ship.SH, R)
-#       for ((k, l), iA) in zip(ship.KL, ship.firstA)
-#          for m = -l:l
-#             @inbounds aaa = store.J[k+1] * store.dY[index_y(l, m)]
-#             @inbounds bbb = (store.dJ[k+1] * store.Y[index_y(l, m)]) * (R/norm(R))
-#             @inbounds dEs[iR] += real( store.dAco[iA+l+m] * (
-#                   store.J[k+1] * store.dY[index_y(l, m)] +
-#                   (store.dJ[k+1] * store.Y[index_y(l, m)]) * (R/norm(R)) ) )
-#          end
-#       end
-#    end
-#    return dEs
-# end
-#
-#
-# # compute one site energy
-# function _evaluate_d_stage2!(store, ship::SHIP{BO, T}, ::Val{N}) where {BO, T, N}
-#    IA_N = ship.IA[N]::Vector{SVector{N, IntS}}
-#    C_N = ship.C[N]::Vector{T}
-#
-#    for (iA, c) in zip(IA_N, C_N)
-#       # compute the coefficients
-#       for α = 1:N
-#          CxA_α = Complex{T}(c)
-#          for β = 1:BO
-#             if β != α
-#                @inbounds CxA_α *= store.A[iA[β]]
-#             end
-#          end
-#          @inbounds store.dAco[iA[α]] += CxA_α
-#       end
-#    end
-#    return nothing
-# end
-
-
-
-
-
-# [ Info: profile basis and ship computation
-# [ Info:   body-order 3:
-# [ Info:      evaluate a site energy:
-#          SHIPBasis:   189.277 μs (0 allocations: 0 bytes)
-#          SHIP     :   310.281 μs (0 allocations: 0 bytes)
-# [ Info:      site energy gradient:
-#          SHIPBasis:   4.055 ms (450 allocations: 1.39 MiB)
-#          SHIP     :   1.223 ms (0 allocations: 0 bytes)
-# [ Info:   body-order 4:
-# [ Info:      evaluate a site energy:
-#          SHIPBasis:   599.627 μs (0 allocations: 0 bytes)
-#          SHIP     :   262.199 μs (0 allocations: 0 bytes)
-# [ Info:      site energy gradient:
-#          SHIPBasis:   57.463 ms (400 allocations: 659.38 KiB)
-#          SHIP     :   768.099 μs (0 allocations: 0 bytes)
-# [ Info:   body-order 5:
-# [ Info:      evaluate a site energy:
-#          SHIPBasis:   1.006 ms (0 allocations: 0 bytes)
-#          SHIP     :   185.435 μs (0 allocations: 0 bytes)
-# [ Info:      site energy gradient:
-#          SHIPBasis:   56.504 ms (400 allocations: 419.53 KiB)
-#          SHIP     :   623.716 μs (0 allocations: 0 bytes)
