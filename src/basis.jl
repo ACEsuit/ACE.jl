@@ -417,17 +417,22 @@ end
 
 using NeighbourLists: max_neigs, neigs
 using JuLIP: Atoms, sites, neighbourlist
+using JuLIP.Potentials: neigsz!
 import JuLIP: energy, forces, virial, cutoff, site_energy, site_energy_d
 
 cutoff(shipB::SHIPBasis) = cutoff(shipB.J)
 
 
-function energy(shipB::SHIPBasis, at::Atoms)
+function energy(shipB::SHIPBasis, at::Atoms{T}) where {T}
    E = zeros(length(shipB))
    B = alloc_B(shipB)
-   tmp = alloc_temp(shipB)
-   for (i, j, R) in sites(at, cutoff(shipB))
-      eval_basis!(B, tmp, shipB, R)
+   nlist = neighbourlist(at, cutoff(shipB))
+   maxnR = maxneigs(nlist)
+   tmp = alloc_temp(shipB, maxnR)
+   tmpRZ = (R = zeros(JVec{T}, maxnR), Z = zeros(Int16, maxnR))
+   for i = 1:length(at)
+      j, R, Z = neigsz!(tmpRZ, nlist, at, i)
+      eval_basis!(B, tmp, shipB, R, Z, at.Z[i])
       E[:] .+= B[:]
    end
    return E
@@ -443,9 +448,11 @@ function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
    B = alloc_B(shipB)
    dB = alloc_dB(shipB, maxR)
    tmp = alloc_temp_d(shipB, maxR)
+   tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(Int16, maxR))
    # assemble site gradients and write into F
-   for (i, j, R) in sites(nlist)
-      eval_basis_d!(B, dB, tmp, shipB, R)
+   for i = 1:length(at)
+      j, R, Z = neigsz!(tmpRZ, nlist, at, i)
+      eval_basis_d!(B, dB, tmp, shipB, R, Z, at.Z[i])
       for a = 1:length(R)
          F[j[a], :] .-= dB[a, :]
          F[i, :] .+= dB[a, :]
@@ -460,13 +467,15 @@ function virial(shipB::SHIPBasis, at::Atoms)
    nlist = neighbourlist(at, cutoff(shipB))
    maxR = max_neigs(nlist)
    # allocate space accordingly
-   V = zeros(JMatF, length(shipB))
+   F = zeros(JVec{T}, length(at), length(shipB))
    B = alloc_B(shipB)
    dB = alloc_dB(shipB, maxR)
    tmp = alloc_temp_d(shipB, maxR)
+   tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(Int16, maxR))
    # assemble site gradients and write into F
-   for (i, j, R) in sites(nlist)
-      eval_basis_d!(B, dB, tmp, shipB, R)
+   for i = 1:length(at)
+      j, R, Z = neigsz!(tmpRZ, nlist, at, i)
+      eval_basis_d!(B, dB, tmp, shipB, R, Z, at.Z[i])
       for iB = 1:length(shipB)
          V[iB] += JuLIP.Potentials.site_virial(dB[:, iB], R)
       end
@@ -475,22 +484,24 @@ function virial(shipB::SHIPBasis, at::Atoms)
 end
 
 
-function _get_neigs(at::Atoms, i0::Integer, rcut)
+function _get_neigs(at::Atoms{T}, i0::Integer, rcut) where {T}
    nlist = neighbourlist(at, rcut)
-   j, R = neigs(nlist, i0)
-   return R, j
+   maxR = maxneigs(nlist)
+   tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(Int16, maxR))
+   j, R, Z = neigsz!(tmpRZ, nlist, at, i0)
+   return j, R, Z
 end
 
 function site_energy(basis::SHIPBasis, at::Atoms, i0::Integer)
-   Rs, _ = _get_neigs(at, i0, cutoff(basis))
-   return eval_basis(basis, Rs)
+   j, Rs, Zs = _get_neigs(at, i0, cutoff(basis))
+   return eval_basis(basis, Rs, Zs, at.Z[i0])
 end
 
 
 function site_energy_d(basis::SHIPBasis, at::Atoms{T}, i0::Integer) where {T}
-   Rs, Ineigs = _get_neigs(at, i0, cutoff(basis))
+   Ineigs, Rs, Zs = _get_neigs(at, i0, cutoff(basis))
    dEs = [ zeros(JVec{T}, length(at)) for _ = 1:length(basis) ]
-   _, dB = eval_basis_d(basis, Rs)
+   _, dB = eval_basis_d(basis, Rs, Zs, at.Z[i0])
    @assert dB isa Matrix{JVec{T}}
    @assert size(dB) == (length(Rs), length(basis))
    for iB = 1:length(basis), n = 1:length(Ineigs)

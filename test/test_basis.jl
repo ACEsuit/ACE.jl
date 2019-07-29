@@ -15,6 +15,7 @@ using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using SHIPs: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
+using Printf
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -62,11 +63,6 @@ end
 println()
 
 ##
-
-Rs = randR(20)
-SHIPs.alloc_temp_d(ships[2], Rs[1])
-
-##
 @info("Test gradients for 3-6B 🚢-basis")
 for 🚢 in ships
    @info("  body-order = $(SHIPs.bodyorder(🚢)):")
@@ -103,20 +99,21 @@ verbose=false
 🚢 = ship2
 @info("  body-order = $(SHIPs.bodyorder(🚢)):")
 # Rs = [ randR(5); [SVector(1e-14*rand(), 1e-14*rand(), 1.1+1e-6*rand())] ]
-Rs = [ randR(5); [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
+Rs = [ randR(5)[1]; [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
+_, Zs = randR(length(Rs))
 tmp = SHIPs.alloc_temp_d(🚢, Rs)
-SHIPs.precompute_grads!(tmp, 🚢, Rs)
-B1 = eval_basis(🚢, Rs)
+SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
+B1 = eval_basis(🚢, Rs, Zs, 0)
 B = SHIPs.alloc_B(🚢)
 dB = SHIPs.alloc_dB(🚢, Rs)
-SHIPs.eval_basis_d!(B, dB, tmp, 🚢, Rs)
+SHIPs.eval_basis_d!(B, dB, tmp, 🚢, Rs, Zs, 0)
 @info("      finite-difference test into random directions")
 for ndirections = 1:30
-   Us = randR(length(Rs))
+   Us, _ = randR(length(Rs))
    errs = Float64[]
    for p = 2:10
       h = 0.1^p
-      Bh = eval_basis(🚢, Rs+h*Us)
+      Bh = eval_basis(🚢, Rs+h*Us, Zs, 0)
       dBh = (Bh - B) / h
       dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
       push!(errs, norm(dBh - dBxU, Inf))
@@ -133,12 +130,14 @@ println()
 
 randcoeffs(B) = 2 * (rand(length(B)) .- 0.5) .* (1:length(B)).^(-2)
 
-naive_energy(basis::SHIPBasis, at) = sum( eval_basis(basis, R)
-                              for (i, j, R) in sites(at, cutoff(basis)) )
+naive_energy(basis::SHIPBasis, at) =
+      sum( eval_basis(basis, R, zeros(Int16, length(R)), 0)
+            for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships
    @info("   body-order = $(SHIPs.bodyorder(basis))")
    at = bulk(:Si) * 3
+   at.Z[:] .= 0   # this set of tests is species-agnostic!
    rattle!(at, 0.1)
    print("     energy: ")
    println(@test energy(basis, at) ≈ naive_energy(basis, at) )
