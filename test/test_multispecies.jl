@@ -5,6 +5,9 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
+
+@testset "SHIP Basis" begin
+
 ##
 
 
@@ -154,3 +157,6 @@ for basis in ships
    # end
    println()
 end
+
+
+end 
