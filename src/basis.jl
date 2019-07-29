@@ -183,7 +183,6 @@ function precompute_grads!(tmp,
    # TODO: re-order these loops => cf. Issue #2
    #        => then can SIMD them and avoid all copying!
    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-      iz = z2i(ship, Z)
       # ---------- precompute the derivatives of the Jacobi polynomials
       #            and copy into the tmp array
       eval_basis_d!(tmp.J1, tmp.dJ1, tmp.tmpJ, ship.J, norm(R))
@@ -194,10 +193,11 @@ function precompute_grads!(tmp,
       tmp.Y[iR,:] .= tmp.Y1
       tmp.dY[iR,:] .= tmp.dY1
       # ----------- precompute the A values
+      iz = z2i(ship, Z)
       for ((k, l), iA) in zip(ship.KL[iz], ship.firstA[iz])
          for m = -l:l
             # @inbounds
-            tmp.A[iz][iA+l+m] += tmp.J[iR, k+1] * tmp.Y[iR, index_y(l, m)]
+            tmp.A[iz][iA+l+m] += tmp.J1[k+1] * tmp.Y1[index_y(l, m)]
          end
       end
    end
@@ -337,12 +337,12 @@ function eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T},
    fill!(dB, zero(JVec{T}))
    # all precomputations of "local" gradients
    precompute_grads!(tmp, ship, Rs, Zs)
-   nfcalls(Val(BO), valN -> _eval_basis_d!(B, dB, tmp, ship, Rs, valN,
+   nfcalls(Val(BO), valN -> _eval_basis_d!(B, dB, tmp, ship, Rs, Zs, valN,
                                            z2i(ship, z0)))
    return nothing
 end
 
-function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs,
+function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
                          ::Val{N}, iz0) where {BO, T, N}
    @assert N <= BO
    NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
@@ -367,9 +367,9 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs,
             #     the ∑_𝐦 is the `for mm in _mrange` loop
             # TODO: drop this? only compute the gradients?
             CxA = Complex{T}(C)
-            for α = 1:length(ν)
-               i0 = ship.firstA[izz[α]][ν[α]]
-               CxA *= tmp.A[izz[α]][i0 + ll[α] + mm[α]] # the k-info is contained in ν[α]
+            for β = 1:length(ν)
+               i0 = ship.firstA[izz[β]][ν[β]]
+               CxA *= tmp.A[izz[β]][i0 + ll[β] + mm[β]] # the k-info is contained in ν[α]
             end
             B[idxB] += real(CxA)
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
@@ -382,8 +382,8 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs,
                CxA_α = Complex{T}(C)
                for β = 1:length(ν)
                   if β != α
-                     i0 = ship.firstA[izz[α]][ν[β]]
-                     CxA_α *= tmp.A[izz[α]][i0 + ll[β] + mm[β]]
+                     i0 = ship.firstA[izz[β]][ν[β]]
+                     CxA_α *= tmp.A[izz[β]][i0 + ll[β] + mm[β]]
                   end
                end
 
@@ -391,10 +391,13 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs,
                ik = kk[α] + 1
                iy = index_y(ll[α], mm[α])
                for j = 1:length(Rs)
-                  R = Rs[j]
-                  ∇ϕ_klm = (tmp.dJ[j, ik] *  tmp.Y[j, iy] * (R/norm(R))
-                           + tmp.J[j, ik] * tmp.dY[j, iy] )
-                  dB[j, idxB] += real(CxA_α * ∇ϕ_klm)
+                  # ∂ / ∂Rj only contributes if Rj contributed to A[zα]!!
+                  if z2i(ship, Zs[j]) == izz[α]
+                     R = Rs[j]
+                     ∇ϕ_klm = ( tmp.dJ[j, ik] *  tmp.Y[j, iy] * (R/norm(R))
+                               + tmp.J[j, ik] * tmp.dY[j, iy] )
+                     dB[j, idxB] += real(CxA_α * ∇ϕ_klm)
+                  end
                end
             end
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
