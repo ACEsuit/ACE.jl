@@ -38,10 +38,10 @@ end
 trans = PolyTransform(2, 1.0)
 cutf = PolyCutoff2s(2, 0.5, 3.0)
 
-ship2 = SHIPBasis(SparseSHIPBasis(2, 15, 2.0), trans, cutf)
-ship3 = SHIPBasis(SparseSHIPBasis(3, 13, 2.0), trans, cutf)
-ship4 = SHIPBasis(SparseSHIPBasis(4, 10, 1.5), trans, cutf)
-ship5 = SHIPBasis(SparseSHIPBasis(5,  8, 1.5), trans, cutf)
+ship2 = SHIPBasis(SparseSHIP(2, 15, 2.0), trans, cutf)
+ship3 = SHIPBasis(SparseSHIP(3, 13, 2.0), trans, cutf)
+ship4 = SHIPBasis(SparseSHIP(4, 10, 1.5), trans, cutf)
+ship5 = SHIPBasis(SparseSHIP(5,  8, 1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5]
 
 @info("Test (de-)dictionisation of basis sets")

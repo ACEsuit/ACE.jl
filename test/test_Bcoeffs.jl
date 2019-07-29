@@ -10,7 +10,7 @@
 
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
-using SHIPs: generate_ZKL, generate_ZKL_tuples, SparseSHIPBasis, maxL
+using SHIPs: generate_ZKL, generate_ZKL_tuples, SparseSHIP, maxL
 using SHIPs.SphericalHarmonics: ClebschGordan, cg1
 using JuLIP.Testing
 
@@ -63,7 +63,7 @@ println(@test all( (sum(mm) == 0) && (mm[1:3] == [Tuple(mpre)...])
                     for (mm, mpre) in zip(mrange3, testrg) ))
 
 ##
-Deg = SparseSHIPBasis(3, 5, 1.0)
+Deg = SparseSHIP(3, 5, 1.0)
 cg = ClebschGordan(maxL(Deg))
 KL, Nu =  generate_ZKL_tuples(Deg, cg; filter=false)
 KL = KL[1]
@@ -91,7 +91,7 @@ println(@test (length(Nu3) == length(Nu3_filter) + length(Izodd)))
 
 
 ##
-Deg = SparseSHIPBasis(4, 10, 2.0)
+Deg = SparseSHIP(4, 10, 2.0)
 cg = ClebschGordan(maxL(Deg))
 KL, Nu =  generate_ZKL_tuples(Deg, cg; filter=false)
 KL = KL[1]

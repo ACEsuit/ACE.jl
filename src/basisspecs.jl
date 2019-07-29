@@ -13,7 +13,7 @@ using JuLIP.Chemistry: atomic_number
 
 import Base: ==
 
-export SparseSHIPBasis, HyperbolicCross
+export SparseSHIP, HyperbolicCrossSHIP
 
 
 
@@ -35,14 +35,23 @@ _convert_Zs(Zs::NTuple{NZ, Symbol}) where {NZ} = atomic_number.(Zs)
 _convert_Zs(Zs::NTuple{NZ, <: Integer}) where {NZ} = Int16.(Zs)
 
 
+z2i(spec::AnalyticBasisSpec, z) = spec.z2i[z]
+
+i2z(spec::AnalyticBasisSpec, z) = spec.Zs[i]
+
+nspecies(spec::AnalyticBasisSpec) = length(spec.Zs)
+
+admissible(D::AnalyticBasisSpec, k, l) = deg(D, k, l) <= D.deg
+
+
 
 """
-`SparseSHIPBasis` : a sparse-grid type degree definition,
+`SparseSHIP` : a sparse-grid type degree definition,
 ```
 deg({k}, {l}) = ∑ (k + wL * l)
 ```
 """
-struct SparseSHIPBasis{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
+struct SparseSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
    deg::IntS
    wL::Float64
    Zs::NTuple{NZ, Int16}
@@ -50,77 +59,107 @@ struct SparseSHIPBasis{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
    z2i::Dict{Int16, Int16}
 end
 
-==(s1::SparseSHIPBasis, s2::SparseSHIPBasis) =
+==(s1::SparseSHIP, s2::SparseSHIP) =
       all( getfield(s1, i) == getfield(s2, i)
-           for i = 1:fieldcount(SparseSHIPBasis) )
+           for i = 1:fieldcount(SparseSHIP) )
 
-SparseSHIPBasis(bo::Integer, deg::Integer, wL::Real) =
-      SparseSHIPBasis(bo::Integer, :X, deg::Integer, wL::Real)
 
-function SparseSHIPBasis(bo::Integer, Zs, deg::Integer, wL::Real)
+SparseSHIP(bo::Integer, deg::Integer, wL::Real) =
+      SparseSHIP(bo::Integer, :X, deg::Integer, wL::Real)
+
+function SparseSHIP(bo::Integer, Zs, deg::Integer, wL::Real)
    @assert wL > 0
    @assert deg > 0
    @assert bo >= 0
    Zs = _convert_Zs(Zs)
    z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
-   return SparseSHIPBasis(IntS(deg), Float64(wL), Zs, Val(bo), z2i)
+   return SparseSHIP(IntS(deg), Float64(wL), Zs, Val(bo), z2i)
 end
 
-z2i(spec::SparseSHIPBasis, z) = spec.z2i[z]
-i2z(spec::SparseSHIPBasis, z) = spec.Zs[i]
 
-nspecies(spec::SparseSHIPBasis) = length(spec.Zs)
-
-deg(D::SparseSHIPBasis, k::Integer, l::Integer) =
+deg(D::SparseSHIP, k::Integer, l::Integer) =
       k + D.wL * l
 
-deg(D::SparseSHIPBasis, kk::VecOrTup, ll::VecOrTup) =
+deg(D::SparseSHIP, kk::VecOrTup, ll::VecOrTup) =
       sum( deg(D, k, l) for (k, l) in zip(kk, ll) )
 
-admissible(D::SparseSHIPBasis, k, l) = deg(D, k, l) <= D.deg
-
-maxK(D::SparseSHIPBasis) = D.deg
+maxK(D::SparseSHIP) = D.deg
 
 # For a pure 2-body potential we don't need an angular component
-maxL(D::SparseSHIPBasis{1}, args...) = 0
+maxL(D::SparseSHIP{1}, args...) = 0
 
-maxL(D::SparseSHIPBasis) = floor(Int, D.deg / D.wL)
+maxL(D::SparseSHIP) = floor(Int, D.deg / D.wL)
 
-maxL(D::SparseSHIPBasis, k::Integer) = floor(Int, (D.deg - k) / D.wL)
+maxL(D::SparseSHIP, k::Integer) = floor(Int, (D.deg - k) / D.wL)
 
-Dict(D::SparseSHIPBasis{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIPBasis",
+Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIP",
                                 "deg" => D.deg,
                                 "wL" => D.wL,
                                 "Zs" => D.Zs,
                                 "bo" => BO)
 
-convert(::Val{:SHIPs_SparseSHIPBasis}, D::Dict) =
-      SparseSHIPBasis(D["bo"], D["Zs"], D["deg"], D["wL"])
+convert(::Val{:SHIPs_SparseSHIP}, D::Dict) =
+      SparseSHIP(D["bo"], D["Zs"], D["deg"], D["wL"])
+
+# ---------------------------------------------------------------
 
 
-# """
-# `HyperbolicCross` : standard hyperbolic cross degree,
-# ```
-# deg({k}, {l}) = prod( max(1, k + wL * l) )
-# ```
-# """
-# struct HyperbolicCross <: BasisSpec
-#    deg::Int
-#    wL::Float64
-# end
-#
-# deg(D::HyperbolicCross, kk::VecOrTup, ll::VecOrTup) =
-#       prod( max(1, deg(D, k, l)) for (k, l) in zip(kk, ll) )
-# maxK(D::HyperbolicCross) = D.deg
-# maxL(D::HyperbolicCross) = floor(Int, D.deg / D.wL)
-# maxL(D::HyperbolicCross, k::Integer) = floor(Int, (D.deg - k) / D.wL)
-#
-# Dict(D::HyperbolicCross) = Dict("__id__" => "SHIPs_HyperbolicCross",
-#                             "deg" => D.deg, "wL" => D.wL)
-# convert(::Val{:SHIPs_HyperbolicCross}, D::Dict) =
-#       HyperbolicCross(D["deg"], D["wL"])
-#
+"""
+`HyperbolicCrossSHIP` : standard hyperbolic cross degree,
+```
+deg({k}, {l}) = prod( max(a, b + k + wL * l) )
+```
+default is `a = 1, b = 0`
+"""
+struct HyperbolicCrossSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
+   deg::IntS
+   wL::Float64
+   a::Float64
+   b::Float64
+   Zs::NTuple{NZ, Int16}
+   valbo::Val{BO}
+   z2i::Dict{Int16, Int16}
+end
 
+==(s1::HyperbolicCrossSHIP, s2::HyperbolicCrossSHIP) =
+      all( getfield(s1, i) == getfield(s2, i)
+           for i = 1:fieldcount(HyperbolicCrossSHIP) )
+
+HyperbolicCrossSHIP(bo::Integer, deg::Integer, wL::Real; kwargs...) =
+      HyperbolicCrossSHIP(bo::Integer, :X, deg::Integer, wL::Real; kwargs...)
+
+function HyperbolicCrossSHIP(bo::Integer, Zs, deg::Integer, wL::Real;
+                             a = 1.0, b = 0.0)
+   @assert wL > 0
+   @assert deg > 0
+   @assert bo >= 0
+   Zs = _convert_Zs(Zs)
+   z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
+   return HyperbolicCrossSHIP(IntS(deg), Float64(wL), Float64(a), Float64(b),
+                              Zs, Val(bo), z2i)
+end
+
+
+deg(spec::HyperbolicCrossSHIP, k::Integer, l::Integer) =
+      k + spec.wL * l
+
+deg(spec::HyperbolicCrossSHIP, kk::VecOrTup, ll::VecOrTup) =
+      prod( max(spec.a, spec.b + deg(spec, k, l)) for (k, l) in zip(kk, ll) )
+
+maxK(spec::HyperbolicCrossSHIP) = floor(Int, spec.deg - spec.b)
+
+maxL(spec::HyperbolicCrossSHIP) = floor(Int, (spec.deg - spec.b) / spec.wL)
+
+maxL(spec::HyperbolicCrossSHIP, k::Integer) = floor(Int, (spec.deg - spec.b - k) / spec.wL)
+
+Dict(D::HyperbolicCrossSHIP) = Dict("__id__" => "SHIPs_HyperbolicCrossSHIP",
+                            "deg" => D.deg, "wL" => D.wL)
+convert(::Val{:SHIPs_HyperbolicCrossSHIP}, D::Dict) =
+      HyperbolicCrossSHIP(D["deg"], D["wL"])
+
+
+
+# ---------------------------------------------------------------
 
 
 function generate_KL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
@@ -148,27 +187,10 @@ function generate_ZKL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
 end
 
 
-# TODO:  _klm -> _klvecs and mm in mrange(ll)
 """
-return kk, ll, mrange
-where kk, ll is BO-tuples of k and l indices, while mrange is a
-cartesian range over which to iterate to construct the basis functions
-
-(note: this is tested for correctness and speed)
+returns kk, ll
+where kk, ll is BO-tuples of k and l indices
 """
-function _klm(ν::StaticVector{BO}, KL) where {BO}
-   kk = SVector( ntuple(i -> KL[i][ν[i]].k, BO) )
-   ll = SVector( ntuple(i -> KL[i][ν[i]].l, BO) )
-   return kk, ll, _mrange(ll)
-end
-
-function _klm_old(ν::StaticVector{BO}, KL) where {BO}
-   kk = SVector( ntuple(i -> KL[ν[i]].k, BO) )
-   ll = SVector( ntuple(i -> KL[ν[i]].l, BO) )
-   return kk, ll, nothing
-end
-
-
 function _kl(ν::StaticVector{N}, KL) where {N}
    kk = SVector( ntuple(i -> KL[i][ν[i]].k, N) )
    ll = SVector( ntuple(i -> KL[i][ν[i]].l, N) )

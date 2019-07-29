@@ -52,7 +52,7 @@ The klm values are restriced as follows:
 * deg(k, l) <= maxdeg  where maxdeg is a prescribe degree. In practise this
 is usually k + wY l <= maxdeg, but a more general form may be implemented
 by specifying an `BasisSpec` degree type. See, e.g.,
-* `SparseSHIPBasis`
+* `SparseSHIP`
 * `HyperbolicCross`
 
 For more information  on how a `SHIPBasis` is constructed and stored, see

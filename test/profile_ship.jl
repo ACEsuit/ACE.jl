@@ -17,10 +17,10 @@ randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 trans = PolyTransform(2, 1.0)
 fcut = PolyCutoff2s(2, 0.5, 3.0)
-BB = [ SHIPBasis(SparseSHIPBasis(20, 1.0), 2, trans, fcut),
-       SHIPBasis(SparseSHIPBasis(16, 1.5), 3, trans, fcut),
-       SHIPBasis(SparseSHIPBasis(12, 1.5), 4, trans, fcut),
-       SHIPBasis(SparseSHIPBasis(10, 1.5), 5, trans, fcut) ]
+BB = [ SHIPBasis(SparseSHIP(20, 1.0), 2, trans, fcut),
+       SHIPBasis(SparseSHIP(16, 1.5), 3, trans, fcut),
+       SHIPBasis(SparseSHIP(12, 1.5), 4, trans, fcut),
+       SHIPBasis(SparseSHIP(10, 1.5), 5, trans, fcut) ]
 
 Nat = 30
 Rs = randR(Nat)

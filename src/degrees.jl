@@ -12,7 +12,7 @@ using JuLIP.Chemistry: atomic_number
 
 import Base: ==
 
-export SparseSHIPBasis, HyperbolicCross
+export SparseSHIP, HyperbolicCross
 
 
 
@@ -37,12 +37,12 @@ admissible(D::BasisSpec, k, l) = deg(D, k, l) <= D.deg
 
 
 """
-`SparseSHIPBasis` : a sparse-grid type degree definition,
+`SparseSHIP` : a sparse-grid type degree definition,
 ```
 deg({k}, {l}) = ∑ (k + wL * l)
 ```
 """
-struct SparseSHIPBasis{BO, NZ} <: BasisSpec{BO, NZ}
+struct SparseSHIP{BO, NZ} <: BasisSpec{BO, NZ}
    deg::IntS
    wL::Float64
    Zs::NTuple{NZ, Int16}
@@ -50,46 +50,46 @@ struct SparseSHIPBasis{BO, NZ} <: BasisSpec{BO, NZ}
    z2i::Dict{Int16, Int16}
 end
 
-==(s1::SparseSHIPBasis, s2::SparseSHIPBasis) =
+==(s1::SparseSHIP, s2::SparseSHIP) =
       all( getfield(s1, i) == getfield(s2, i)
-           for i = 1:fieldcount(SparseSHIPBasis) )
+           for i = 1:fieldcount(SparseSHIP) )
 
-SparseSHIPBasis(bo::Integer, deg::Integer, wL::Real) =
-      SparseSHIPBasis(bo::Integer, :X, deg::Integer, wL::Real)
+SparseSHIP(bo::Integer, deg::Integer, wL::Real) =
+      SparseSHIP(bo::Integer, :X, deg::Integer, wL::Real)
 
-function SparseSHIPBasis(bo::Integer, Zs, deg::Integer, wL::Real)
+function SparseSHIP(bo::Integer, Zs, deg::Integer, wL::Real)
    @assert wL > 0
    @assert deg > 0
    @assert bo >= 0
    Zs = _convert_Zs(Zs)
    z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
-   return SparseSHIPBasis(IntS(deg), Float64(wL), Zs, Val(bo), z2i)
+   return SparseSHIP(IntS(deg), Float64(wL), Zs, Val(bo), z2i)
 end
 
-z2i(spec::SparseSHIPBasis, z) = spec.z2i[z]
-i2z(spec::SparseSHIPBasis, z) = spec.Zs[i]
+z2i(spec::SparseSHIP, z) = spec.z2i[z]
+i2z(spec::SparseSHIP, z) = spec.Zs[i]
 
 
-deg(D::SparseSHIPBasis, k::Integer, l::Integer) =
+deg(D::SparseSHIP, k::Integer, l::Integer) =
       k + D.wL * l
 
-deg(D::SparseSHIPBasis, kk::VecOrTup, ll::VecOrTup) =
+deg(D::SparseSHIP, kk::VecOrTup, ll::VecOrTup) =
       sum( deg(D, k, l) for (k, l) in zip(kk, ll) )
 
-maxK(D::SparseSHIPBasis) = D.deg
+maxK(D::SparseSHIP) = D.deg
 
-maxL(D::SparseSHIPBasis) = floor(Int, D.deg / D.wL)
+maxL(D::SparseSHIP) = floor(Int, D.deg / D.wL)
 
-maxL(D::SparseSHIPBasis, k::Integer) = floor(Int, (D.deg - k) / D.wL)
+maxL(D::SparseSHIP, k::Integer) = floor(Int, (D.deg - k) / D.wL)
 
-Dict(D::SparseSHIPBasis{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIPBasis",
+Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIP",
                                 "deg" => D.deg,
                                 "wL" => D.wL,
                                 "Zs" => D.Zs,
                                 "bo" => BO)
 
-convert(::Val{:SHIPs_SparseSHIPBasis}, D::Dict) =
-      SparseSHIPBasis(D["bo"], D["Zs"], D["deg"], D["wL"])
+convert(::Val{:SHIPs_SparseSHIP}, D::Dict) =
+      SparseSHIP(D["bo"], D["Zs"], D["deg"], D["wL"])
 
 
 # """

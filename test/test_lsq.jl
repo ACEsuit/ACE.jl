@@ -33,7 +33,7 @@ train = generate_data(:Si, 2, 0.2*r0, 300, calc)
 # 2 stands for 2 neighbours i.e. body-order 3
 basis(deg) = IPSuperBasis(
       PairBasis(deg, PolyTransform(2, r0), 2, cutoff(calc)),
-      SHIPBasis(SparseSHIPBasis(deg, 2.0), 2, rbasis(PolyTransform(3, r0), 2, 0.5*r0, cutoff(calc)))
+      SHIPBasis(SparseSHIP(deg, 2.0), 2, rbasis(PolyTransform(3, r0), 2, 0.5*r0, cutoff(calc)))
    )
 
 # basis(deg) = SHIPBasis(2, deg, 2.0, PolyTransform(3, r0), 2, 0.5*r0, cutoff(calc))
