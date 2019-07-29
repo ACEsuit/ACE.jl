@@ -57,7 +57,7 @@ A_klm-functions associated which will be stored in the `A` buffer, the first of
 these is stored as `A[firstA[i]]`.
 * `cg` : precomputed Clebsch Gordan coefficients
 """
-struct SHIPBasis{BO, T, TJ, NZ,
+struct SHIPBasis{BO, T, NZ, TJ,
                  TSPEC <: BasisSpec{BO, NZ}} <: IPBasis
    spec::TSPEC         # specify which tensor products to keep  in the basis
    J::TJ               # specifies the radial basis

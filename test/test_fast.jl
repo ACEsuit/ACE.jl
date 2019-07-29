@@ -19,18 +19,19 @@ function randR()
    R = rand(JVecF) .- 0.5
    return (0.9 + 2 * rand()) * R/norm(R)
 end
-randR(N) = [ randR() for n=1:N ]
+randR(N) = [ randR() for n=1:N ], zeros(Int16, N), 0
 randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 ##
 
 trans = PolyTransform(3, 1.0)
 fcut = PolyCutoff2s(2, 0.5, 3.0)
-B2 = SHIPBasis(SparseSHIPBasis(10, 2.0), 2, trans, fcut)
-B3 = SHIPBasis(SparseSHIPBasis(8, 2.0), 3, trans, fcut)
-B4 = SHIPBasis(SparseSHIPBasis(7, 2.0), 4, trans, fcut)
-B5 = SHIPBasis(SparseSHIPBasis(6, 2.0), 5, trans, fcut)
+B2 = SHIPBasis(SparseSHIPBasis(2, 10, 2.0), trans, fcut)
+B3 = SHIPBasis(SparseSHIPBasis(3,  8, 2.0), trans, fcut)
+B4 = SHIPBasis(SparseSHIPBasis(4,  7, 2.0), trans, fcut)
+B5 = SHIPBasis(SparseSHIPBasis(5,  6, 2.0), trans, fcut)
 BB = [B2, B3, B4, B5]
+
 
 ##
 
@@ -42,22 +43,26 @@ for B in BB
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   test (de-)dictionisation")
-   # println(@test decode_dict(Dict(ship)) == ship)
+   println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
-   store = SHIPs.alloc_temp(ship, 0)
+   tmp = SHIPs.alloc_temp(ship, 0)
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
-      Rs = randR(20)
-      Es = SHIPs.evaluate!(store, ship, Rs)
-      Bs = dot(coeffs, SHIPs.eval_basis(B, Rs))
+      Rs, Zs, z0 = randR(10)
+      Es = SHIPs.evaluate!(tmp, ship, Rs, Zs, z0)
+      Bs = dot(coeffs, SHIPs.eval_basis(B, Rs, Zs, z0))
       print_tf(@test Es ≈ Bs)
    end
    println()
+   # ------------------------------------------------------------
    # @info("      Quick timing test")
-   # Rs = randR(50)
-   # Btmp = SHIPs.alloc_B(B)
-   # print("       SHIPBasis : "); @btime SHIPs.eval_basis!($Btmp, $B, $Rs)
-   # print("            SHIP : "); @btime SHIPs.evaluate!(@store, $ship, $Rs)
+   # Nr = 30
+   # Rs, Zs, z0 = randR(Nr)
+   # b = SHIPs.alloc_B(B)
+   # tmp = SHIPs.alloc_temp(ship, Nr)
+   # tmpB = SHIPs.alloc_temp(B, Nr)
+   # print("       SHIPBasis : "); @btime SHIPs.eval_basis!($b, $tmpB, $B, $Rs, $Zs, $z0)
+   # print("            SHIP : "); @btime SHIPs.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
    # println()
 end
 
