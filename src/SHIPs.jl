@@ -24,7 +24,7 @@ include("basisspecs.jl")
 # SHIPBasis definition
 include("basis.jl")
 
-# # SHIP interatomic potential definition
-# include("fast.jl")
+# SHIP interatomic potential definition
+include("fast.jl")
 
 end # module
