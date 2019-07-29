@@ -68,12 +68,12 @@ struct PolyCutoff1s{P} <: PolyCutoff
    ru::Float64
 end
 
+PolyCutoff1s(p, ru) = PolyCutoff1s(Val(Int(p)), ru)
+
 Dict(C::PolyCutoff1s{P}) where {P} =
    Dict("__id__" => "SHIPs_PolyCutoff1s", "P" => P, "ru" => C.ru)
 PolyCutoff1s(D::Dict) = PolyCutoff1s(D["P"], D["ru"])
 convert(::Val{:SHIPs_PolyCutoff1s}, D::Dict) = PolyCutoff1s(D)
-
-PolyCutoff1s(p, ru) = PolyCutoff1s(Val(Int(p)), ru)
 
 # what happened to @pure ??? => not exported anymore
 fcut(::PolyCutoff1s{P}, x) where {P} = @fastmath( (1 - x)^P )
@@ -96,13 +96,13 @@ struct PolyCutoff2s{P} <: PolyCutoff
    ru::Float64
 end
 
+PolyCutoff2s(p, rl, ru) = PolyCutoff2s(Val(Int(p)), rl, ru)
+
 Dict(C::PolyCutoff2s{P}) where {P} =
    Dict("__id__" => "SHIPs_PolyCutoff2s", "P" => P,
         "rl" => C.rl, "ru" => C.ru)
 PolyCutoff2s(D::Dict) = PolyCutoff2s(D["P"], D["rl"], D["ru"])
 convert(::Val{:SHIPs_PolyCutoff2s}, D::Dict) = PolyCutoff2s(D)
-
-PolyCutoff2s(p, rl, ru) = PolyCutoff2s(Val(Int(p)), rl, ru)
 
 fcut(::PolyCutoff2s{P}, x) where {P} = @fastmath( (1 - x^2)^P )
 fcut_d(::PolyCutoff2s{P}, x) where {P} = @fastmath( -2*P * x * (1 - x^2)^(P-1) )
