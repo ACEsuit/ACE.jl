@@ -113,7 +113,7 @@ function _get_C_IA!(spec, basis, coeffs, ::Val{N}, iz0) where {N}
       ν = νz.ν
       izz = νz.izz
       idxB = idx0 + idx
-      kk, ll = _kl(ν, basis.KL[izz])   # TODO: allocation -> fix this!
+      kk, ll = _kl(ν, izz, basis.KL)   # TODO: allocation -> fix this!
       for mm in _mrange(ll)
          # skip any m-tuples that aren't admissible:
          # TODO: incorporate this into _mrange
