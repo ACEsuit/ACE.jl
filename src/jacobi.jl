@@ -8,6 +8,14 @@
 
 module JacobiPolys
 
+# TODO: QuadGK is used to "hack" normalised Jacobi Polynomials.
+#       to make sure they are orthonormal, not just orthogonal,
+#       but this should be done properly...
+#       or - indeed - move all this to a more general Pair potential
+#       with arbitrary orthogonality - measure
+
+using QuadGK
+
 import SHIPs: eval_basis,
               eval_basis!,
               eval_basis_d!,
@@ -52,6 +60,7 @@ struct Jacobi{T}
    A::Vector{T}
    B::Vector{T}
    C::Vector{T}
+   nrm::Vector{T}
 end
 
 ==(J1::Jacobi, J2::Jacobi) = (
@@ -59,7 +68,7 @@ end
    )
 
 
-function Jacobi(α, β, N, T=Float64)
+function Jacobi(α, β, N, T=Float64; normalise=true)
    # precompute the recursion coefficients
    A = zeros(T, N)
    B = zeros(T, N)
@@ -71,7 +80,13 @@ function Jacobi(α, β, N, T=Float64)
       B[n] = T( big(α^2 - β^2) * c2 / c1 )
       C[n] = T( big(-2*(n+α-1)*(n+β-1)*(2n+α+β)) / c1 )
    end
-   return Jacobi(T(α), T(β), A, B, C)
+   J = Jacobi(T(α), T(β), A, B, C, T[])
+   if normalise
+      integrand = x -> eval_basis(J, x).^2 * ((1-x)^α * (1+x)^β)
+      nrm2 = quadgk(integrand, -1.0, 1.0)[1]
+      J = Jacobi(T(α), T(β), A, B, C, nrm2.^(-0.5) )
+   end
+   return J
 end
 
 
@@ -91,6 +106,9 @@ function eval_basis!(P::AbstractVector, tmp, J::Jacobi, x)
       for n = 2:N
          P[n+1] = (J.A[n] * x + J.B[n]) * P[n] + J.C[n] * P[n-1]
       end
+   end
+   if !isempty(J.nrm)  # if we want an orthonormal basis
+      P .= P .* J.nrm
    end
    return P
 end

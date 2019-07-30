@@ -37,18 +37,21 @@ end
 
 Dict(T::PolyTransform) =
    Dict("__id__" => "SHIPs_PolyTransform", "p" => T.p, "r0" => T.r0)
+
 PolyTransform(D::Dict) = PolyTransform(D["p"], D["r0"])
+
 convert(::Val{:SHIPs_PolyTransform}, D::Dict) = PolyTransform(D)
 
 
 transform(t::PolyTransform, r::Number) =
       @fastmath(((1+t.r0)/(1+r))^t.p)
+
 transform_d(t::PolyTransform, r::Number) =
       @fastmath((-t.p/(1+t.r0)) * ((1+t.r0)/(1+r))^(t.p+1))
 
-# x = (r0/r)^p
-# r x^{1/p} = r0
-inv_transform(t::PolyTransform, x::Number) = t.r0 / x^(1.0/t.p)
+# # x = (r0/r)^p
+# # r x^{1/p} = r0
+# inv_transform(t::PolyTransform, x::Number) = t.r0 / x^(1.0/t.p)
 
 
 abstract type PolyCutoff end
@@ -179,7 +182,9 @@ function eval_basis!(P, tmp, J::TransformedJacobi, r)
    # evaluate the actual Jacobi polynomials
    eval_basis!(P, nothing, J.J, x)
    # apply the cutoff multiplier
-   fc = fcut(J, x)
+   # the (J.tu-J.tl) / 2 factor makes the basis orthonormal
+   # (just for the kick of it...)
+   fc = fcut(J, x) * sqrt(abs(2 / (J.tu-J.tl)))
    for n = 1:N+1
       @inbounds P[n] *= fc
    end
@@ -215,22 +220,12 @@ end
 
 
 
-"""
-```
-rbasis(maxdeg, trans, p, ru)      # with 1-sided cutoff
-rbasis(maxdeg, trans, p, rl, ru)  # with 2-sided cutoff
-```
-"""
-rbasis(maxdeg, trans, p, ru) =
-   TransformedJacobi( Jacobi(p, 0, maxdeg), trans, PolyCutoff1s(p), 0.0, ru )
-
-rbasis(maxdeg, trans, p, rl, ru) =
-   TransformedJacobi( Jacobi(p, p, maxdeg), trans, PolyCutoff2s(p), rl, ru )
-
-TransformedJacobi(maxdeg::Integer, trans::DistanceTransform,
+TransformedJacobi(maxdeg::Integer,
+                  trans::DistanceTransform,
                   cut::PolyCutoff1s{P}) where {P} =
-      TransformedJacobi( Jacobi(P, 0, maxdeg), trans, cut, 0.0, cut.ru)
+      TransformedJacobi( Jacobi(2*P,   0, maxdeg), trans, cut, 0.0,    cut.ru)
 
-TransformedJacobi(maxdeg::Integer, trans::DistanceTransform,
+TransformedJacobi(maxdeg::Integer,
+                  trans::DistanceTransform,
                   cut::PolyCutoff2s{P}) where {P} =
-      TransformedJacobi( Jacobi(P, P, maxdeg), trans, cut, cut.rl, cut.ru)
+      TransformedJacobi( Jacobi(2*P, 2*P, maxdeg), trans, cut, cut.rl, cut.ru)
