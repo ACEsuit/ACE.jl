@@ -166,8 +166,7 @@ function precompute_A!(tmp,
       # A array is determined by `ship.firstA` which was precomputed
       for ((k, l), iA) in zip(ship.KL[iz], ship.firstA[iz])
          for m = -l:l
-            # @inbounds
-            tmp.A[iz][iA+l+m] += tmp.J[k+1] * tmp.Y[index_y(l, m)]
+            @inbounds tmp.A[iz][iA+l+m] += tmp.J[k+1] * tmp.Y[index_y(l, m)]
          end
       end
    end
@@ -186,18 +185,23 @@ function precompute_grads!(tmp,
       # ---------- precompute the derivatives of the Jacobi polynomials
       #            and copy into the tmp array
       eval_basis_d!(tmp.J1, tmp.dJ1, tmp.tmpJ, ship.J, norm(R))
-      tmp.J[iR,:] .= tmp.J1
-      tmp.dJ[iR,:] .= tmp.dJ1
+      @simd for a = 1:length(tmp.J1)
+         @inbounds tmp.J[iR, a] = tmp.J1[a]
+         @inbounds tmp.dJ[iR, a] = tmp.dJ1[a]
+      end
+      # tmp.J[iR,:] .= tmp.J1[:]
+      # tmp.dJ[iR,:] .= tmp.dJ1[:]
       # ----------- precompute the Ylm derivatives
       eval_basis_d!(tmp.Y1, tmp.dY1, tmp.tmpY, ship.SH, R)
-      tmp.Y[iR,:] .= tmp.Y1
-      tmp.dY[iR,:] .= tmp.dY1
+      @simd for a = 1:length(tmp.Y1)
+         @inbounds tmp.Y[iR,a] = tmp.Y1[a]
+         @inbounds tmp.dY[iR,a] = tmp.dY1[a]
+      end
       # ----------- precompute the A values
       iz = z2i(ship, Z)
       for ((k, l), iA) in zip(ship.KL[iz], ship.firstA[iz])
          for m = -l:l
-            # @inbounds
-            tmp.A[iz][iA+l+m] += tmp.J1[k+1] * tmp.Y1[index_y(l, m)]
+            @inbounds tmp.A[iz][iA+l+m] += tmp.J1[k+1] * tmp.Y1[index_y(l, m)]
          end
       end
    end
@@ -262,7 +266,7 @@ ordering of the basis set:
    ...   ...
 ```
 """
-function _first_B_idx(ship::SHIPBasis{BO}, N, iz0) where {BO}
+function _first_B_idx(ship::SHIPBasis{BO}, N, iz0)::Int where {BO}
    # compute the first index into the basis
    idx0 = 0
    for iz = 1:iz0-1, n = 1:BO
@@ -274,9 +278,10 @@ function _first_B_idx(ship::SHIPBasis{BO}, N, iz0) where {BO}
    return idx0
 end
 
-function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, T, N}
+function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
+                      NuZ_N::Vector{Tνz{N}}) where {BO, T, N}
    @assert N <= BO
-   NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
+   # NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
    ZKL = ship.KL
    # compute the zeroth (not first!) index of the N-body subset of the SHIPBasis
    idx0 = _first_B_idx(ship, N, iz0)
@@ -285,7 +290,7 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, 
    for (idx, νz) in enumerate(NuZ_N)
       ν = νz.ν
       izz = νz.izz
-      kk, ll = _kl(ν, ZKL[izz])   # TODO: allocation -> fix this!
+      kk, ll = _kl(ν, izz, ZKL)
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
       b = zero(ComplexF64)
@@ -295,11 +300,12 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, 
          # compute the symmetry prefactor from the CG-coefficients
          bm = ComplexF64(_Bcoeff(ll, mm, ship.cg))
          if bm != 0  # TODO: if bm ≈ 0.0; continue; end
-            for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
+            # for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
+            for α = 1:length(kk)
                # TODO: this is the indexing convention used to construct A
                # (feels brittle - maybe rethink it and write a function for it)
-               i0 = ship.firstA[iz][ν[i]]
-               bm *= tmp.A[iz][i0 + l + m]
+               i0 = ship.firstA[izz[α]][ν[α]]
+               bm *= tmp.A[izz[α]][i0 + ll[α] + mm[α]]
             end
             b += bm
          end
@@ -316,13 +322,17 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0) where {BO, 
    return nothing
 end
 
+_get_NuZ_N(shipB, ::Val{N}, iz) where {N} = shipB.NuZ[N, iz]::Vector{Tνz{N}}
+
 function eval_basis!(B, tmp, ship::SHIPBasis{BO, T},
                      Rs::AbstractVector{<:JVec},
                      Zs::AbstractVector{<: Integer},
                      z0::Integer ) where {BO, T}
    precompute_A!(tmp, ship, Rs, Zs)
    fill!(B, zero(T))
-   nfcalls(Val(BO), valN -> _eval_basis!(B, tmp, ship, valN, z2i(ship, z0)))
+   iz = z2i(ship, z0)
+   nfcalls(Val(BO), valN -> _eval_basis!(B, tmp, ship, valN, iz,
+                                         _get_NuZ_N(ship, valN, iz)))
    return B
 end
 
@@ -337,15 +347,17 @@ function eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T},
    fill!(dB, zero(JVec{T}))
    # all precomputations of "local" gradients
    precompute_grads!(tmp, ship, Rs, Zs)
-   nfcalls(Val(BO), valN -> _eval_basis_d!(B, dB, tmp, ship, Rs, Zs, valN,
-                                           z2i(ship, z0)))
+   iz = z2i(ship, z0)
+   nfcalls(Val(BO), valN -> _eval_basis_d!(B, dB, tmp, ship, Rs, Zs, valN, iz,
+                                           _get_NuZ_N(ship, valN, iz)))
    return nothing
 end
 
 function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
-                         ::Val{N}, iz0) where {BO, T, N}
+                         ::Val{N}, iz0,
+                         NuZ_N::Vector{Tνz{N}}) where {BO, T, N}
    @assert N <= BO
-   NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
+   # NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
    ZKL = ship.KL
    idx0 = _first_B_idx(ship, N, iz0)
    # loop over N-body basis functions
@@ -353,7 +365,7 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
       idxB = idx0+idx
       ν = νz.ν
       izz = νz.izz
-      kk, ll = _kl(ν, ZKL[izz])   # TODO: allocation -> fix this!
+      kk, ll = _kl(ν, izz, ZKL)
       for mm in _mrange(ll)       # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
          # skip any m-tuples that aren't admissible
          if abs(mm[end]) > ll[end]; continue; end

@@ -197,6 +197,12 @@ function _kl(ν::StaticVector{N}, KL) where {N}
    return kk, ll
 end
 
+function _kl(ν::StaticVector{N}, izz::StaticVector{N}, KLZ) where {N}
+   kk = SVector( ntuple(α -> KLZ[izz[α]][ν[α]].k, N) )
+   ll = SVector( ntuple(α -> KLZ[izz[α]][ν[α]].l, N) )
+   return kk, ll
+end
+
 
 # TODO: remove if not needed
 # """
