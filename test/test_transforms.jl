@@ -11,7 +11,7 @@
 @testset "Transforms" begin
 
 using SHIPs, Printf, Test, LinearAlgebra
-using SHIPs: PolyTransform, rbasis, eval_basis, eval_basis_d, TransformedJacobi
+using SHIPs: PolyTransform, eval_basis, eval_basis_d, TransformedJacobi
 using SHIPs.JacobiPolys: Jacobi
 using SHIPs.SphericalHarmonics
 using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,

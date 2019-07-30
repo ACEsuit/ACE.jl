@@ -86,7 +86,7 @@ deg(D::SparseSHIP, kk::VecOrTup, ll::VecOrTup) =
 maxK(D::SparseSHIP) = D.deg
 
 # For a pure 2-body potential we don't need an angular component
-maxL(D::SparseSHIP{1}, args...) = 0
+maxL(D::SparseSHIP{1}, k::Integer =  0) = 0
 
 maxL(D::SparseSHIP) = floor(Int, D.deg / D.wL)
 
@@ -198,18 +198,19 @@ function _kl(ν::StaticVector{N}, KL) where {N}
 end
 
 
-"""
-create a vector of Nu arrays with the right type information
-for each body-order
-"""
-function _init_Nu(bo::Integer, nz::Integer, TI=IntS)
-   Nu = Matrix{Vector}(undef, bo, nz)
-   for n = 1:bo, iz = 1:nz
-      Nu[n, iz] = SVector{n, TI}[]
-   end
-   # convert into an SVector to make the length a type parameters
-   return SMatrix{bo,nz}(Nu)
-end
+# TODO: remove if not needed
+# """
+# create a vector of Nu arrays with the right type information
+# for each body-order
+# """
+# function _init_Nu(bo::Integer, nz::Integer, TI=IntS)
+#    Nu = Matrix{Vector}(undef, bo, nz)
+#    for n = 1:bo, iz = 1:nz
+#       Nu[n, iz] = SVector{n, TI}[]
+#    end
+#    # convert into an SVector to make the length a type parameters
+#    return SMatrix{bo,nz}(Nu)
+# end
 
 """
 create a vector of Nu arrays with the right type information
@@ -222,7 +223,7 @@ function _init_NuZ(bo::Integer, nz::Integer, TI=IntS)
                                Tuple{SVector{n, Int16}, SVector{n, TI}} }[]
    end
    # convert into an SVector to make the length a type parameters
-   return SMatrix{bo,nz}(Nu)
+   return SMatrix{bo,nz,Vector}(Nu)
 end
 
 

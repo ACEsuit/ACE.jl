@@ -465,12 +465,12 @@ function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
 end
 
 
-function virial(shipB::SHIPBasis, at::Atoms)
+function virial(shipB::SHIPBasis, at::Atoms{T}) where {T}
    # precompute the neighbourlist to count the number of neighbours
    nlist = neighbourlist(at, cutoff(shipB))
    maxR = max_neigs(nlist)
    # allocate space accordingly
-   F = zeros(JVec{T}, length(at), length(shipB))
+   V = zeros(JMat{T}, length(shipB))
    B = alloc_B(shipB)
    dB = alloc_dB(shipB, maxR)
    tmp = alloc_temp_d(shipB, maxR)

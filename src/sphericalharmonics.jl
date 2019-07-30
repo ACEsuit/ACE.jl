@@ -155,43 +155,41 @@ using the given coefficients, and store in the array P.
 """
 function compute_p!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
 					     P::Array{T,1}) where {T}
-   @assert L > 0
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
 	@assert length(P) >= sizeP(L)
 
 	temp = sqrt(0.5/π)
 	P[index_p(0, 0)] = temp
+	if L == 0; return P; end
 
-	if (L > 0)
-		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
-		temp = - sqrt(1.5) * S.sinθ * temp
-		P[index_p(1, 1)] = temp
+	P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
+	temp = - sqrt(1.5) * S.sinθ * temp
+	P[index_p(1, 1)] = temp
 
-		for l in 2:L
-			il = ((l*(l+1)) ÷ 2) + 1
-			ilm1 = il - l
-			ilm2 = ilm1 - l + 1
-			for m in 0:(l-2)
-				# FOR DEBUGGING TURN ON THESE ASSERTS!
-				# @assert il+m == index_p(l, m)
-				# @assert ilm1+m == index_p(l-1,m)
-				# @assert ilm2+m == index_p(l-2,m)
-				@inbounds P[il+m] = coeff.A[il+m] * (     S.cosθ * P[ilm1+m]
-						                           + coeff.B[il+m] * P[ilm2+m] )
-			end
-			@inbounds P[il+l-1] = S.cosθ * sqrt(2 * (l - 1) + 3) * temp
-			temp = -sqrt(1.0 + 0.5 / l) * S.sinθ * temp
-			@inbounds P[il+l] = temp
+	for l in 2:L
+		il = ((l*(l+1)) ÷ 2) + 1
+		ilm1 = il - l
+		ilm2 = ilm1 - l + 1
+		for m in 0:(l-2)
+			# FOR DEBUGGING TURN ON THESE ASSERTS!
+			# @assert il+m == index_p(l, m)
+			# @assert ilm1+m == index_p(l-1,m)
+			# @assert ilm2+m == index_p(l-2,m)
+			@inbounds P[il+m] = coeff.A[il+m] * (     S.cosθ * P[ilm1+m]
+					                           + coeff.B[il+m] * P[ilm2+m] )
 		end
+		@inbounds P[il+l-1] = S.cosθ * sqrt(2 * (l - 1) + 3) * temp
+		temp = -sqrt(1.0 + 0.5 / l) * S.sinθ * temp
+		@inbounds P[il+l] = temp
 	end
+
 	return P
 end
 
 
 function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
 					     P::Array{T,1}, dP::Array{T,1}) where T
-   @assert L > 0
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
 	@assert length(P) >= sizeP(L)
@@ -200,49 +198,47 @@ function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T
 	P[index_p(0, 0)] = temp
 	temp_d = 0.0
 	dP[index_p(0, 0)] = temp_d
+	if L == 0; return nothing; end
 
-	if (L > 0)
-		P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
-		dP[index_p(1, 0)] = -S.sinθ * sqrt(3) * temp + S.cosθ * sqrt(3) * temp_d
+	P[index_p(1, 0)] = S.cosθ * sqrt(3) * temp
+	dP[index_p(1, 0)] = -S.sinθ * sqrt(3) * temp + S.cosθ * sqrt(3) * temp_d
+	temp1, temp_d = ( - sqrt(1.5) * temp,
+					      - sqrt(1.5) * (S.cosθ * temp + S.sinθ * temp_d) )
+	P[index_p(1, 1)] = temp1
+	dP[index_p(1, 1)] = temp_d
 
-		temp1, temp_d = ( - sqrt(1.5) * temp,
-						      - sqrt(1.5) * (S.cosθ * temp + S.sinθ * temp_d) )
-		P[index_p(1, 1)] = temp1
-		dP[index_p(1, 1)] = temp_d
+	for l in 2:L
+		m = 0
+		@inbounds P[index_p(l, m)] =
+				coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
+				             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
+		@inbounds dP[index_p(l, m)] =
+			coeff.A[index_p(l, m)] * (
+							- S.sinθ * P[index_p(l - 1, m)]
+							+ S.cosθ * dP[index_p(l - 1, m)]
+			             + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)] )
 
-		for l in 2:L
-			m = 0
+		for m in 1:(l-2)
 			@inbounds P[index_p(l, m)] =
 					coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
 					             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
 			@inbounds dP[index_p(l, m)] =
 				coeff.A[index_p(l, m)] * (
-								- S.sinθ * P[index_p(l - 1, m)]
+								- S.sinθ^2 * P[index_p(l - 1, m)]
 								+ S.cosθ * dP[index_p(l - 1, m)]
 				             + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)] )
-
-			for m in 1:(l-2)
-				@inbounds P[index_p(l, m)] =
-						coeff.A[index_p(l, m)] * (     S.cosθ * P[index_p(l - 1, m)]
-						             + coeff.B[index_p(l, m)] * P[index_p(l - 2, m)] )
-				@inbounds dP[index_p(l, m)] =
-					coeff.A[index_p(l, m)] * (
-									- S.sinθ^2 * P[index_p(l - 1, m)]
-									+ S.cosθ * dP[index_p(l - 1, m)]
-					             + coeff.B[index_p(l, m)] * dP[index_p(l - 2, m)] )
-			end
-			@inbounds P[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * S.cosθ * temp1
-			@inbounds dP[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * (
-										        -S.sinθ^2 * temp1 + S.cosθ * temp_d )
-
-         (temp1, temp_d) = (
-						-sqrt(1.0+0.5/l) * S.sinθ * temp1,
-			         -sqrt(1.0+0.5/l) * (S.cosθ * temp1 * S.sinθ + S.sinθ * temp_d) )
-			@inbounds P[index_p(l, l)] = temp1
-			@inbounds dP[index_p(l, l)] = temp_d
 		end
+		@inbounds P[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * S.cosθ * temp1
+		@inbounds dP[index_p(l, l - 1)] = sqrt(2 * (l - 1) + 3) * (
+									        -S.sinθ^2 * temp1 + S.cosθ * temp_d )
+
+      (temp1, temp_d) = (
+					-sqrt(1.0+0.5/l) * S.sinθ * temp1,
+		         -sqrt(1.0+0.5/l) * (S.cosθ * temp1 * S.sinθ + S.sinθ * temp_d) )
+		@inbounds P[index_p(l, l)] = temp1
+		@inbounds dP[index_p(l, l)] = temp_d
 	end
-	# return P, dP
+	return nothing
 end
 
 

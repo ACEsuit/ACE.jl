@@ -133,6 +133,10 @@ function eval_basis_d!(P::AbstractVector, dP::AbstractVector, tmp,
          dP[n+1] = J.A[n] * P[n] + c1 * dP[n] + J.C[n] * dP[n-1]
       end
    end # @inbounds
+   if !isempty(J.nrm)  # if we want an orthonormal basis
+      P .= P .* J.nrm
+      dP .= dP .* J.nrm
+   end
    # return P, dP
 end
 

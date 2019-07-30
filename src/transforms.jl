@@ -207,8 +207,8 @@ function eval_basis_d!(P, dP, tmp, J::TransformedJacobi, r)
    # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
    eval_basis_d!(P, dP, nothing, J.J, x)
    # apply the cutoff multiplier and chain rule
-   fc = fcut(J, x)
-   fc_d = fcut_d(J, x)
+   fc = fcut(J, x) * sqrt(abs(2 / (J.tu-J.tl)))
+   fc_d = fcut_d(J, x) * sqrt(abs(2 / (J.tu-J.tl)))
    for n = 1:N+1
       @inbounds p = P[n]
       @inbounds dp = dP[n]

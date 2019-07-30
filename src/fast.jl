@@ -87,7 +87,7 @@ function _init_spec(bo::Integer, nz::Integer, T=Float64, TI=IntS, TZ=Int16)
    for n = 1:bo, iz = 1:nz
       spec[n, iz] = Tspec{n, T, TZ, TI}[]
    end
-   return SMatrix{bo, nz}(spec)
+   return SMatrix{bo, nz, Vector}(spec)
 end
 
 

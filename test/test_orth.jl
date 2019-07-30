@@ -6,6 +6,8 @@
 # --------------------------------------------------------------------------
 
 
+@testset "Basis Orthogonality"
+
 using Test
 using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
 using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
@@ -14,9 +16,9 @@ using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
 
 ##
 
-@info("Testing orthogonality of r-basis")
+@info("Testing ortho-normality of Jacobi Polynomials")
 
-α, β = 4, 0
+α, β = 1 + rand(), 1 + rand() 
 N = 30
 J = Jacobi(α, β, N)
 Bj = alloc_B(J)
@@ -32,7 +34,7 @@ println(@test round.(Q, digits=8) == Matrix(I, N+1, N+1))
 
 ##
 
-@info("Testing orthogonality of r-basis")
+@info("Testing ortho-normality of r-basis")
 
 N = 20
 rl, ru = 0.5, 3.0
@@ -51,3 +53,6 @@ integrand = let P = P, B = B, tmp = tmp
 
 Q = quadgk(integrand, rl, ru)[1]
 println(@test round.(Q, digits=8) == Matrix(I, N+1, N+1))
+
+
+end

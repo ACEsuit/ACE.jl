@@ -47,13 +47,14 @@ end
 djacobi(x, n, a, b) =  one(x)/2 * (a + b + n + 1) * jacobi(x, n-1, a+1, b+1)
 
 @info("--------------  JACOBI TESTS ---------------")
-@info("testing jacobi implementation against reference.") 
+@info("testing jacobi implementation against reference.")
 for ntest = 1:30
    x = 2*rand() - 1
    α, β = rand(), rand()
    N = 30
-   P = eval_basis(Jacobi(α, β, N), x)
-   P1, dP = eval_basis_d(Jacobi(α, β, N), x)
+   J = Jacobi(α, β, N, normalise=false)
+   P = eval_basis(J, x)
+   P1, dP = eval_basis_d(J, x)
    Ptest = [ jacobi(x, n, α, β) for n = 0:N ]
    dPtest = [ djacobi(x, n, α, β) for n = 0:N ]
    print_tf((@test P ≈ P1 ≈ Ptest))
