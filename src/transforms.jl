@@ -68,19 +68,27 @@ PolyCutoff1s(p, rcut)
 """
 struct PolyCutoff1s{P} <: PolyCutoff
    valP::Val{P}
+   rl::Float64
    ru::Float64
+   PolyCutoff1s(valP::Val{P}, rl::Real, ru::Real) where {P} = (
+         ((P isa Integer) && (P > 0))  ? new{P}(valP, Float64(rl), Float64(ru))
+                                       : error("P must be a positive integer") )
 end
 
-PolyCutoff1s(p, ru) = PolyCutoff1s(Val(Int(p)), ru)
+PolyCutoff1s(p::Integer, ru) = PolyCutoff1s(Val(Int(p)), 0.0, ru)
+PolyCutoff1s(p::Integer, rl, ru) = PolyCutoff1s(Val(Int(p)), rl, ru)
 
 Dict(C::PolyCutoff1s{P}) where {P} =
-   Dict("__id__" => "SHIPs_PolyCutoff1s", "P" => P, "ru" => C.ru)
-PolyCutoff1s(D::Dict) = PolyCutoff1s(D["P"], D["ru"])
+   Dict("__id__" => "SHIPs_PolyCutoff1s",
+        "P" => P, "rl" => C.rl, "ru" => C.ru)
+PolyCutoff1s(D::Dict) = PolyCutoff1s(D["P"], D["rl"],  D["ru"])
 convert(::Val{:SHIPs_PolyCutoff1s}, D::Dict) = PolyCutoff1s(D)
 
 # what happened to @pure ??? => not exported anymore
-fcut(::PolyCutoff1s{P}, x) where {P} = @fastmath( (1 - x)^P )
-fcut_d(::PolyCutoff1s{P}, x) where {P} = @fastmath( - P * (1 - x)^(P-1) )
+fcut(C::PolyCutoff1s{P}, r::T, x::T) where {P, T} =
+      r < C.ru ? @fastmath( (1 - x)^P ) : zero(T)
+fcut_d(C::PolyCutoff1s{P}, r::T, x::T) where {P, T} =
+      r < C.ru ? @fastmath( - P * (1 - x)^(P-1) ) : zero(T)
 
 """
 Implements the two-sided cutoff
@@ -97,9 +105,12 @@ struct PolyCutoff2s{P} <: PolyCutoff
    valP::Val{P}
    rl::Float64
    ru::Float64
+   PolyCutoff2s(valP::Val{P}, rl::Real, ru::Real) where {P} = (
+         ((P isa Integer) && (P > 0))  ? new{P}(valP, Float64(rl), Float64(ru))
+                                       : error("P must be a positive integer") )
 end
 
-PolyCutoff2s(p, rl, ru) = PolyCutoff2s(Val(Int(p)), rl, ru)
+PolyCutoff2s(p::Integer, rl, ru) = PolyCutoff2s(Val(Int(p)), rl, ru)
 
 Dict(C::PolyCutoff2s{P}) where {P} =
    Dict("__id__" => "SHIPs_PolyCutoff2s", "P" => P,
@@ -107,8 +118,10 @@ Dict(C::PolyCutoff2s{P}) where {P} =
 PolyCutoff2s(D::Dict) = PolyCutoff2s(D["P"], D["rl"], D["ru"])
 convert(::Val{:SHIPs_PolyCutoff2s}, D::Dict) = PolyCutoff2s(D)
 
-fcut(::PolyCutoff2s{P}, x) where {P} = @fastmath( (1 - x^2)^P )
-fcut_d(::PolyCutoff2s{P}, x) where {P} = @fastmath( -2*P * x * (1 - x^2)^(P-1) )
+fcut(C::PolyCutoff2s{P}, r::T, x) where {P, T} =
+      C.rl < r < C.ru ? @fastmath( (1 - x^2)^P ) : zero(T)
+fcut_d(C::PolyCutoff2s{P}, r::T, x) where {P, T} =
+      C.rl < r < C.ru ? @fastmath( -2*P * x * (1 - x^2)^(P-1) ) : zero(T)
 
 
 # Transformed Jacobi Polynomials
@@ -160,8 +173,8 @@ Base.length(J::TransformedJacobi) = length(J.J)
 cutoff(J::TransformedJacobi) = J.ru
 transform(J::TransformedJacobi, r) = transform(J.trans, r)
 transform_d(J::TransformedJacobi, r) = transform_d(J.trans, r)
-fcut(J::TransformedJacobi, r) = fcut(J.mult, r)
-fcut_d(J::TransformedJacobi, r) = fcut_d(J.mult, r)
+fcut(J::TransformedJacobi, r, x) = fcut(J.mult, r, x)
+fcut_d(J::TransformedJacobi, r, x) = fcut_d(J.mult, r, x)
 
 SHIPs.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
       Vector{T}(undef, length(J.J))
@@ -171,22 +184,21 @@ SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
 function eval_basis!(P, tmp, J::TransformedJacobi, r)
    N = length(J)-1
    @assert length(P) >= N+1
-   # apply the cutoff
-   if !(J.rl < r < J.ru)
-      fill!(P, 0.0)
-      return P
-   end
    # transform coordinates
    t = transform(J.trans, r)
    x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
-   # evaluate the actual Jacobi polynomials
-   eval_basis!(P, nothing, J.J, x)
-   # apply the cutoff multiplier
+   # evaluate the cutoff multiplier
    # the (J.tu-J.tl) / 2 factor makes the basis orthonormal
    # (just for the kick of it...)
-   fc = fcut(J, x) * sqrt(abs(2 / (J.tu-J.tl)))
-   for n = 1:N+1
-      @inbounds P[n] *= fc
+   fc = fcut(J, r, x) * sqrt(abs(2 / (J.tu-J.tl)))
+   if fc == 0
+      fill!(P, 0.0)
+   else
+      # evaluate the actual Jacobi polynomials
+      eval_basis!(P, nothing, J.J, x)
+      for n = 1:N+1
+         @inbounds P[n] *= fc
+      end
    end
    return P
 end
@@ -194,26 +206,25 @@ end
 function eval_basis_d!(P, dP, tmp, J::TransformedJacobi, r)
    N = length(J)-1
    @assert length(P) >= N+1
-   # apply the cutoff
-   if !(J.rl < r < J.ru)
-      fill!(P, 0.0)
-      fill!(dP, 0.0)
-      # return P, dP
-   end
    # transform coordinates
    t = transform(J.trans, r)
    x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
    dx = (2/(J.tu-J.tl)) * transform_d(J.trans, r)
-   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-   eval_basis_d!(P, dP, nothing, J.J, x)
-   # apply the cutoff multiplier and chain rule
-   fc = fcut(J, x) * sqrt(abs(2 / (J.tu-J.tl)))
-   fc_d = fcut_d(J, x) * sqrt(abs(2 / (J.tu-J.tl)))
-   for n = 1:N+1
-      @inbounds p = P[n]
-      @inbounds dp = dP[n]
-      @inbounds P[n] = p * fc
-      @inbounds dP[n] = (dp * fc + p * fc_d) * dx
+   # evaluate the cutoff multiplier and chain rule
+   fc = fcut(J, r, x) * sqrt(abs(2 / (J.tu-J.tl)))
+   if fc ==  0
+      fill!(P, 0.0)
+      fill!(dP, 0.0)
+   else
+      fc_d = fcut_d(J, r, x) * sqrt(abs(2 / (J.tu-J.tl)))
+      # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
+      eval_basis_d!(P, dP, nothing, J.J, x)
+      for n = 1:N+1
+         @inbounds p = P[n]
+         @inbounds dp = dP[n]
+         @inbounds P[n] = p * fc
+         @inbounds dP[n] = (dp * fc + p * fc_d) * dx
+      end
    end
    return dP
 end
@@ -223,7 +234,7 @@ end
 TransformedJacobi(maxdeg::Integer,
                   trans::DistanceTransform,
                   cut::PolyCutoff1s{P}) where {P} =
-      TransformedJacobi( Jacobi(2*P,   0, maxdeg), trans, cut, 0.0,    cut.ru)
+      TransformedJacobi( Jacobi(2*P,   0, maxdeg), trans, cut, cut.rl, cut.ru)
 
 TransformedJacobi(maxdeg::Integer,
                   trans::DistanceTransform,
