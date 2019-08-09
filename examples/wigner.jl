@@ -10,6 +10,7 @@
 module Wigner
    using PyCall, StaticArrays, Cubature
 
+   sympy = pyimport("sympy")
    sympy_spin = pyimport("sympy.physics.quantum.spin")
    Rotation = sympy_spin.Rotation
 
@@ -34,10 +35,34 @@ module Wigner
       return hcubature(f, xmin, xmax; kwargs...)
    end
 
+
+   function symprodD(ll, mm, kk)
+      a = sympy.Symbol("a")
+      b = sympy.Symbol("b")
+      c = sympy.Symbol("c")
+      p = Rotation.D(ll[1], mm[1], kk[1], a, b, c)
+      for i = 2:length(ll)
+         p = p * Rotation.D(ll[i], mm[i], kk[i], a, b, c)
+      end
+      return p
+   end
+
+   function symC(ll, mm, kk)
+      a = sympy.Symbol("a")
+      b = sympy.Symbol("b")
+      c = sympy.Symbol("c")
+      p = Rotation.D(ll[1], mm[1], kk[1], a, b, c)
+      for i = 2:length(ll)
+         p = p * Rotation.D(ll[i], mm[i], kk[i], a, b, c)
+      end
+      spi = sympy.pi
+      Ip = sympy.integrate(p, (a, 0, 2*spi), (b, 0, spi), (c, 0, 2*spi))
+      Ip.doit().evalf()
+   end
 end
 
 
 ll = SVector(2,2,2)
 mm = SVector(-1,2,-1)
 kk = SVector(0,2,-2)
-Wigner.quad_prodD(ll, mm, kk; reltol=1e-2)
+Wigner.symC(ll, mm, kk)
