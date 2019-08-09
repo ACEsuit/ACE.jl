@@ -5,10 +5,12 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-
+using StaticArrays, LinearAlgebra
 
 module Wigner
-   using PyCall, StaticArrays, Cubature
+   using PyCall, StaticArrays, Cubature, SHIPs, JuLIP 
+   using ProgressMeter
+   using SHIPs: _mrange
 
    sympy = pyimport("sympy")
    sympy_spin = pyimport("sympy.physics.quantum.spin")
@@ -56,13 +58,63 @@ module Wigner
          p = p * Rotation.D(ll[i], mm[i], kk[i], a, b, c)
       end
       spi = sympy.pi
-      Ip = sympy.integrate(p, (a, 0, 2*spi), (b, 0, spi), (c, 0, 2*spi))
+      Ip = sympy.integrate(p * sympy.sin(b), (a, 0, 2*spi), (b, 0, spi), (c, 0, 2*spi))
       Ip.doit().evalf()
+   end
+
+   function compute_Cmk(ll)
+      len = 0
+      for mm in SHIPs._mrange(ll)
+         len += 1
+      end
+      Cmk = zeros(ComplexF64, len, len)
+      pmtr = Progress(len^2)
+      ctr = 0
+      for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+         Cmk[im, ik] = symC(ll, mm, kk)
+         ctr += 1
+         update!(pmtr, ctr)
+      end
+      println()
+
+      return Cmk
+   end
+
+   function compute_all_Cmk(maxlen)
+      D = Dict()
+      for len = 2:maxlen
+         for ill in CartesianIndices( ntuple(_->0:2, len) )
+            ll = SVector(Tuple(ill)...)
+            C_mk = compute_Cmk(ll)
+            D[string(ll)] = C_mk
+            JuLIP.save_json("all_Cmk.json", D)
+         end
+      end
+      return D
    end
 end
 
 
-ll = SVector(2,2,2)
-mm = SVector(-1,2,-1)
-kk = SVector(0,2,-2)
-Wigner.symC(ll, mm, kk)
+# ll = SVector(2,2,2)
+# mm = SVector(-1,2,-1)
+# kk = SVector(0,2,-2)
+# Wigner.symC(ll, mm, kk)
+# ll = SVector(2,2,2)
+
+# ll2a = SVector(2, 3) => Cmk = 0 => checked
+
+# 2b => should get rank-1
+#       alternating signs?
+# ll2 = SVector(2, 2)
+# Cmk = Wigner.compute_Cmk(ll2)
+# rank(Cmk)
+# svdvals(Cmk)
+
+# 3
+# ll3 = SVector(1, 2, 2)
+# Cmk = Wigner.compute_Cmk(ll3)
+# rank(Cmk)
+# svdvals(Cmk)
+
+
+compute_all_Cmk(5)
