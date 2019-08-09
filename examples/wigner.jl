@@ -8,7 +8,7 @@
 using StaticArrays, LinearAlgebra
 
 module Wigner
-   using PyCall, StaticArrays, Cubature, SHIPs, JuLIP 
+   using PyCall, StaticArrays, Cubature, SHIPs, JuLIP, LinearAlgebra
    using ProgressMeter
    using SHIPs: _mrange
 
@@ -81,12 +81,15 @@ module Wigner
    end
 
    function compute_all_Cmk(maxlen)
-      D = Dict()
+      D = Dict("re" => Dict(), "im" => Dict())
       for len = 2:maxlen
          for ill in CartesianIndices( ntuple(_->0:2, len) )
             ll = SVector(Tuple(ill)...)
+            @info("Computing the coefficients for $ll")
             C_mk = compute_Cmk(ll)
-            D[string(ll)] = C_mk
+            @show rank(C_mk)
+            D["re"][string(ll)] = real.(C_mk)
+            D["im"][string(ll)] = imag.(C_mk)
             JuLIP.save_json("all_Cmk.json", D)
          end
       end
@@ -117,4 +120,4 @@ end
 # svdvals(Cmk)
 
 
-compute_all_Cmk(5)
+Wigner.compute_all_Cmk(5)
