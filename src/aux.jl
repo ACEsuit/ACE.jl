@@ -15,14 +15,38 @@ _mvec(::CartesianIndex{0}) = SVector(IntS(0))
 
 _mvec(mpre::CartesianIndex) = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
 
+struct MRange{T1, T2}
+   ll::T1
+   cartrg::T2
+end
+
 """
 Given an l-vector `ll` iterate over all combinations of `mm` vectors  of
 the same length such that `sum(mm) == 0`
 """
-_mrange(ll) = (
-                  _mvec(mpre) for mpre in CartesianIndices(
-                                ntuple(i -> -ll[i]:ll[i], length(ll)-1) )
-              )
+_mrange(ll) = MRange(ll, Iterators.Stateful(
+                        CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll)-1))))
+
+function Base.iterate(mr::MRange, args...)
+   while true
+      if isempty(mr.cartrg)
+         return nothing
+      end
+      mpre = popfirst!(mr.cartrg)
+      if abs(sum(mpre.I)) <= mr.ll[end]
+         return _mvec(mpre), nothing
+      end
+   end
+   error("we should never be here")
+end
+
+
+# _mrange_prefilter(ll) = (
+#                   _mvec(mpre) for mpre in CartesianIndices(
+#                                 ntuple(i -> -ll[i]:ll[i], length(ll)-1) )
+#               )
+
+
 
 
 """
