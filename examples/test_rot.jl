@@ -86,3 +86,24 @@ display(Ckm[:, [1,2,3]])
 norm(Ckm_sym - Ckm, Inf)
 svdvals(Ckm)
 svdvals(Ckm_sym)
+
+ll = SVector(2,1,1,1)
+Ckm = compute_Ckm(ll)
+rank(Ckm)
+c1 = Ckm[:,1]
+c2 = Ckm[:,3]
+c1 /= norm(c1)
+c2 /= norm(c2)
+[sort(c1) sort(c2)]
+
+U = svd(Ckm).U[:,1:2]
+[ sort(U[:,1]) sort(U[:,2]) ]
+U' * U
+
+svd(Ckm)
+
+for l = 1:6
+   ll = SVector(l,l,l,l)
+   Ckm = compute_Ckm(ll)
+   @show l, rank(Ckm)
+end
