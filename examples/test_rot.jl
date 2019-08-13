@@ -10,8 +10,111 @@
 using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra
 using SHIPs: _mrange
 
+module RotationCoeffs
 
-function compute_Ckm(ll::SVector{4})
+   using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra
+   using SHIPs: _mrange
+
+   struct CoeffArray{NMAX}
+      vals::SVector{NMAX, Dict}
+      cg::ClebschGordan{Float64}
+   end
+
+   dicttype(N::Integer) = dicttype(Val(N))
+   dicttype(::Val{N}) where {N} =
+         Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
+
+
+   function CoeffArray(Nmax, Lmax)
+      vals = SVector{Nmax, Dict}([ dicttype(N)() for N = 1:Nmax ]...)
+      cg = ClebschGordan(Lmax)
+      return CoeffArray(vals, cg)
+   end
+
+
+   function get_vals(A::CoeffArray, ::Val{N}) where {N}
+      return A.vals[N]::Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
+   end
+
+   _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
+         (SVector{N, Int8}(ll), SVector{N, Int8}(mm), SVector{N, Int8}(kk))
+
+   function (A::CoeffArray)(ll::StaticVector{N},
+                            mm::StaticVector{N},
+                            kk::StaticVector{N}) where {N}
+      vals = A.vals[N]::Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
+      key = _key(ll, mm, kk)
+      if haskey(vals, key)
+         val  = vals[key]
+      else
+         val = _compute_val(A, key...)
+         vals[key] = val
+      end
+      return val
+   end
+
+   function _compute_val(A::CoeffArray, ll::StaticVector{N},
+                                        mm::StaticVector{N},
+                                        kk::StaticVector{N}) where {N}
+      val = 0.0
+      llp = ll[1:N-2]
+      mmp = ll[1:N-2]
+      kkp = ll[1:N-2]
+      for j = abs(ll[N-1]-ll[N]):(ll[N-1]+ll[N])
+         if abs(kk[N-1]+kk[N]) > j || abs(mm[N-1]+mm[N]) > j
+            continue
+         end
+         val += A.cg(ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N]) *
+                A.cg(ll[N-1], mm[N-1], ll[N], mm[N], j, mm[N-1]+mm[N]) *
+                      A( SVector(llp..., j),
+                         SVector(mmp..., mm[N-1]+mm[N]),
+                         SVector(kkp..., kk[N-1]+kk[N]) )
+      end
+      return val
+   end
+
+   _compute_val(A::CoeffArray, ll::StaticVector{2},
+                               mm::StaticVector{2},
+                               kk::StaticVector{2}) = (
+      ll[1] == ll[2] ? 8 * pi^2 / (2*ll[1]+1) * (-1)^(kk[2]-mm[2]) : 0.0 )
+
+   compute_Al(ll::SVector{N}) where {N} =
+      compute_Al(CoeffArray(N, sum(ll)), ll)
+
+   function compute_Al(A::CoeffArray, ll::SVector)
+      len = 0
+      for mm in _mrange(ll)
+         len += 1
+      end
+      CC = zeros(len, len)
+      for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+         CC[ik, im] = A(ll, mm, kk)
+      end
+      return CC
+   end
+end
+
+ll = SVector(3,2,4)
+A = RotationCoeffs.CoeffArray(5, 12)
+ll = SVector(3,2)
+@time Cl = RotationCoeffs.compute_Al(A, ll)
+ll = SVector(4,3,3,2)
+@time Cl = RotationCoeffs.compute_Al(A, ll)
+@time Cold = compute_Ckm_old(ll)
+
+Ul = svd(Cl).U[:, 1:5]
+Uo = svd(Cold).U[:, 1:5]
+
+rank([Ul Uo])
+
+
+ll = SVector(2, 2, 2, 2, 2)
+Cl = RotationCoeffs.compute_Al(A, ll)
+rank(Cl)
+Matrix(svd(Cl).U)
+A.vals[5]
+
+function compute_Ckm_old(ll::SVector{4})
    cg = ClebschGordan(sum(ll))
 
    len = 0

@@ -10,6 +10,8 @@ using Lasso
 using GLM
 using LinearAlgebra
 
+##
+
 Ψ = rand(100_000, 200)
 Y = rand(100_000)
 qrΨ = qr(Ψ)
@@ -36,3 +38,5 @@ end
 @show length(c.nzind)
 @show norm(Ψ * c - Y)/norm(Y)
 @show 1.2 * η
+
+## ------------------------------------------------------------------------
