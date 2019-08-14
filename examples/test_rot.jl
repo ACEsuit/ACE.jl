@@ -42,6 +42,12 @@ module RotationCoeffs
    function (A::CoeffArray)(ll::StaticVector{N},
                             mm::StaticVector{N},
                             kk::StaticVector{N}) where {N}
+      if       sum(mm) != 0 ||
+               sum(kk) != 0 ||
+               !all(abs.(mm) .<=  ll) ||
+               !all(abs.(kk) .<= ll)
+         return 0.0
+      end
       vals = A.vals[N]::Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
       key = _key(ll, mm, kk)
       if haskey(vals, key)
@@ -58,8 +64,8 @@ module RotationCoeffs
                                         kk::StaticVector{N}) where {N}
       val = 0.0
       llp = ll[1:N-2]
-      mmp = ll[1:N-2]
-      kkp = ll[1:N-2]
+      mmp = mm[1:N-2]
+      kkp = kk[1:N-2]
       for j = abs(ll[N-1]-ll[N]):(ll[N-1]+ll[N])
          if abs(kk[N-1]+kk[N]) > j || abs(mm[N-1]+mm[N]) > j
             continue
@@ -73,10 +79,15 @@ module RotationCoeffs
       return val
    end
 
-   _compute_val(A::CoeffArray, ll::StaticVector{2},
-                               mm::StaticVector{2},
-                               kk::StaticVector{2}) = (
-      ll[1] == ll[2] ? 8 * pi^2 / (2*ll[1]+1) * (-1)^(kk[2]-mm[2]) : 0.0 )
+   function _compute_val(A::CoeffArray, ll::StaticVector{2},
+                                        mm::StaticVector{2},
+                                        kk::StaticVector{2})
+      if ll[1] != ll[2] || sum(mm) != 0 || sum(kk) != 0
+         return 0.0
+      else
+         return 8 * pi^2 / (2*ll[1]+1) * (-1)^(mm[1]-kk[1])
+      end
+   end
 
    compute_Al(ll::SVector{N}) where {N} =
       compute_Al(CoeffArray(N, sum(ll)), ll)
@@ -93,6 +104,75 @@ module RotationCoeffs
       return CC
    end
 end
+
+
+function Alkm_old(ll::SVector{2}, mm, kk, cg)
+   if ll[1] != ll[2] ||  sum(mm) != 0 || sum(kk) != 0
+      return 0.0
+   end
+   return 8 * pi^2 / (2*ll[1]+1) * (-1)^(mm[1]-kk[1])
+end
+
+
+function Alkm_old(ll::SVector{3}, mm, kk, cg)
+   if sum(mm) != 0 || sum(kk) != 0
+      return 0.0
+   end
+   return 8 * pi^2 / (2*ll[3]+1) * (-1)^(mm[3]-kk[3]) *
+          cg(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3]) *
+          cg(ll[1], kk[1], ll[2], kk[2], ll[3], -kk[3])
+end
+
+function Alkm_old(ll::SVector{4}, mm, kk, cg)
+   Alkm = 0.0
+   jlo = max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4]))
+   jhi = min(ll[1]+ll[2], ll[3]+ll[4])
+   for j = jlo:jhi
+      if (abs(mm[1]+mm[2]) > j) || (abs(mm[3]+mm[4]) > j) ||
+         (abs(kk[1]+kk[2]) > j) || (abs(kk[3]+kk[4]) > j)
+         continue
+      end
+      Alkm += 8 * pi^2 * (-1)^(mm[1]+mm[2]-kk[1]-kk[2]) / (2*j+1) *
+                    cg(ll[1], mm[1], ll[2], mm[2], j, mm[1]+mm[2]) *
+                    cg(ll[3], mm[3], ll[4], mm[4], j, mm[3]+mm[4]) *
+                    cg(ll[1], kk[1], ll[2], kk[2], j, kk[1]+kk[2]) *
+                    cg(ll[3], kk[3], ll[4], kk[4], j, kk[3]+kk[4])
+   end
+   return Alkm
+end
+
+##
+A = RotationCoeffs.CoeffArray(5, 12)
+cg = ClebschGordan(12)
+
+## len-2
+l2a = SVector(2,3)
+l2b = SVector(2,2)
+m2 = SVector(-1,1)
+k2 = SVector(2,-2)
+Alkm_old(l2a, m2, k2, cg)
+A(l2a, m2, k2)
+Alkm_old(l2b, m2, k2, cg)
+A(l2b, m2, k2)
+
+## len-3
+l3 = SVector(3,2,3)
+m3 = SVector(-2,1,1)
+k3 = SVector(0,2,-2)
+Alkm_old(l3, m3, k3, cg)
+A(l3, m3, k3)
+
+##  len-4
+l4 = SVector(3,3,3,3)
+m4 = SVector(-2,1,3,-2)
+k4 = SVector(0,3,-2,-1)
+Alkm_old(l4, m4, k4, cg)
+A(l4, m4, k4)
+
+A4 = A.vals[4]
+
+ll = SVector(5,3,2,2)
+@time RotationCoeffs.compute_Al(A, ll)
 
 ll = SVector(3,2,4)
 A = RotationCoeffs.CoeffArray(5, 12)
@@ -148,6 +228,10 @@ function compute_Ckm_old(ll::SVector{4})
    return Ckm
 end
 
+##
+
+
+##
 
 # CASE 1
 ll1 = SVector(2,1,1,2)
