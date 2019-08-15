@@ -20,6 +20,11 @@ struct MRange{T1, T2}
    cartrg::T2
 end
 
+Base.length(mr::MRange) = sum(_->1, copy(mr))
+
+Base.copy(mr::MRange) = MRange(copy(mr.ll),
+                               Iterators.Stateful(mr.cartrg.itr))
+
 """
 Given an l-vector `ll` iterate over all combinations of `mm` vectors  of
 the same length such that `sum(mm) == 0`

@@ -104,7 +104,11 @@ end
 
 function _Bcoeff(ll::SVector{2, <:Integer}, mm::SVector{2, <:Integer}, cg)
    @assert(mm[1] + mm[2] == 0)
-   return (-1)^(mm[1])
+   if ll[1] != ll[2]
+      return 0.0
+   else
+      return (-1)^(mm[1])
+   end
 end
 
 function _Bcoeff(ll::SVector{3, <:Integer}, mm::SVector{3, <:Integer}, cg)

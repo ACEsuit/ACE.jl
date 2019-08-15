@@ -87,7 +87,8 @@ for the given indices ``(l,m)``.
 ``P_l^m`` are stored in l-major order i.e. [P(0,0), [P(1,0), P(1,1), P(2,0), ...]
 """
 # Base.@pure index_p(l,m) = m + div(l*(l+1), 2) + 1
-@inline index_p(l,m) = m + div(l*(l+1), 2) + 1
+@inline index_p(l::Int,m::Int) = m + div(l*(l+1), 2) + 1
+index_p(l::Integer, m::Integer) = index_y(Int(l), Int(m))
 
 """
 	index_y(l,m)
@@ -97,8 +98,8 @@ for the given indices ``(l,m)``.
 ``Y_{l,m}`` are stored in l-major order i.e.
 [Y(0,0), [Y(1,-1), Y(1,0), Y(1,1), Y(2,-2), ...]
 """
-Base.@pure index_y(l,m) = m + l + (l*l) + 1
-
+Base.@pure index_y(l::Int, m::Int) = m + l + (l*l) + 1
+index_y(l::Integer, m::Integer) = index_y(Int(l), Int(m))
 
 # --------------------------------------------------------
 #     Associated Legendre Polynomials
@@ -417,86 +418,5 @@ function eval_basis_d!(Y, dY, tmp, SH::SHBasis, R::JVec)
 	# return Y, dY
 end
 
-
-# ---------------- Clebsch Gordan Stuff
-
-
-export clebschgordan, cg1
-
-cg_l_condition(j1, j2, j3) = (abs(j1-j2) <= j3 <= j1 + j2)
-cg_m_condition(m1, m2, m3) = (m3 == m1 + m2)
-
-"""
-`cg1(j1, m1, j2, m2, j3, m3, T=Float64)` : A reference implementation of
-Clebsch-Gordon coefficients based on
-
-https://hal.inria.fr/hal-01851097/document
-Equation (4-6)
-
-This heavily uses BigInt and BigFloat and should therefore not be employed
-for performance critical tasks.
-"""
-function cg1(j1, m1, j2, m2, j3, m3, T=Float64)
-   if !cg_m_condition(m1, m2, m3) || !cg_l_condition(j1, j2, j3)
-      return zero(T)
-   end
-
-   N = (2*j3+1) *
-       factorial(big(j1+m1)) * factorial(big(j1-m1)) *
-       factorial(big(j2+m2)) * factorial(big(j2-m2)) *
-       factorial(big(j3+m3)) * factorial(big(j3-m3)) /
-       factorial(big( j1+j2-j3)) /
-       factorial(big( j1-j2+j3)) /
-       factorial(big(-j1+j2+j3)) /
-       factorial(big(j1+j2+j3+1))
-
-   G = big(0)
-   # 0 ≦ k ≦ j1+j2-j3
-   # 0 ≤ j1-m1-k ≤ j1-j2+j3   <=>   j2-j3-m1 ≤ k ≤ j1-m1
-   # 0 ≤ j2+m2-k ≤ -j1+j2+j3  <=>   j1-j3+m2 ≤ k ≤ j2+m2
-   lb = (0, j2-j3-m1, j1-j3+m2)
-   ub = (j1+j2-j3, j1-m1, j2+m2)
-   for k in maximum(lb):minimum(ub)
-      bk = big(k)
-      G += (-1)^k *
-           binomial(big( j1+j2-j3), big(k)) *
-           binomial(big( j1-j2+j3), big(j1-m1-k)) *
-           binomial(big(-j1+j2+j3), big(j2+m2-k))
-   end
-
-   return T(sqrt(N) * G)
-end
-
-clebschgordan = cg1
-
-# TODO: reduce dimensionality of the storage tensor
-#       to numY x numY x maxL (or possibly less?)
-struct ClebschGordan{T}
-	maxL::Int
-	cg::Array{T, 3}
-end
-
-function ClebschGordan(maxL, T=Float64)
-	n = sizeY(maxL)
-	cg = zeros(T, n, n, n)
-	# TODO: insert restrictions on (j1,j2,j3)-values!
-	for j1 = 0:maxL, j2 = 0:maxL, j3 = 0:maxL
-		if !cg_l_condition(j1, j2, j3)
-			continue
-		end
-		for m1 = -j1:j1, m2 = -j2:j2
-			m3 = m1 + m2  # cf. cg_m_condition
-			if abs(m3) > j3
-				continue
-			end
-			cg[index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)] =
-					clebschgordan(j1,m1,j2,m2,j3,m3)
-		end
-	end
-	return ClebschGordan(maxL, cg)
-end
-
-(cg::ClebschGordan)(j1,m1,j2,m2,j3,m3) =
-	cg.cg[index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)]
 
 end

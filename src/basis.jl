@@ -11,8 +11,8 @@ import JuLIP
 using JuLIP.MLIPs: IPBasis
 import JuLIP: alloc_temp, alloc_temp_d
 
-using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y,
-         ClebschGordan
+using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y
+using SHIPs.Rotations: ClebschGordan
 
 import Base: Dict, convert, ==
 

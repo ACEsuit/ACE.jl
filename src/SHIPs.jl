@@ -21,6 +21,7 @@ include("transforms.jl")
 
 # specification of the angular basis
 include("sphericalharmonics.jl")
+include("rotations.jl") 
 
 # body-order specific code: filter_tuple, _Bcoeff
 include("bodyorders.jl")
