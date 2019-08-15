@@ -103,7 +103,51 @@ module RotationCoeffs
       end
       return CC
    end
+
+   compute_Al_symm(ll::SVector{N}) where {N} =
+      compute_Al_symm(CoeffArray(N, sum(ll)), ll)
+
+
+   function compute_Al_symm(A::CoeffArray, ll::SVector)
+      len = 0
+      for mm in _mrange(ll)
+         len += 1
+      end
+      CC = zeros(len, len)
+      KK = Vector{Any}(undef, len)
+      for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+         CC[ik, im] = A(ll, mm, kk)
+         KK[ik] = kk
+      end
+
+      return CC, KK
+   end
+
 end
+
+using Combinatorics
+ll = SVector(4,4,4,4)
+CC, KK = RotationCoeffs.compute_Al_symm(ll)
+DK = Dict([ kk => ik for (ik, kk) in enumerate(KK)]...)
+sumCC = zeros(size(CC))
+for p in permutations(1:4)
+   global sumCC
+   # kk = KK[i] then a_kk,j = CC[i,j]
+   # kk[p] = KK[ip] then CCp[ip,:] = CC[i,:]
+   CCp = zeros(size(CC))
+   for i = 1:size(CC,1)
+      kk = KK[i]
+      # kk[p] is the permutation of p
+      ip = DK[SVector(kk[p] ...)]
+      CCp[ip, :] = CC[i, :]
+   end
+   sumCC += CCp
+end
+
+rank(CC)
+rank(sumCC)
+svdvals(sumCC)
+
 
 
 function Alkm_old(ll::SVector{2}, mm, kk, cg)
@@ -294,3 +338,11 @@ for l = 1:6
    Ckm = compute_Ckm(ll)
    @show l, rank(Ckm)
 end
+
+using Profile
+A = RotationCoeffs.CoeffArray(5, 12)
+ll = SVector(1,1,1,1,1)
+ll = SVector(4,4,2,1,1)
+@profile Al = RotationCoeffs.compute_Al(A, ll)
+
+Profile.print()
