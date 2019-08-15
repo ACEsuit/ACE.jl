@@ -1,5 +1,5 @@
 
-@testset "SHIP Basis" begin
+@testset "SHIP Multi-Species" begin
 
 ##
 
