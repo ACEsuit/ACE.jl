@@ -64,9 +64,10 @@ struct SHIPBasis{BO, T, NZ, TJ,
    SH::SHBasis{T}      # specifies the angular basis
    # ------------------------------------------------------------------------
    KL::NTuple{NZ, Vector{NamedTuple{(:k, :l),Tuple{IntS,IntS}}}}    # 1-particle indexing
-   NuZ::SMatrix{BO, NZ, Vector}                               # N-particle indexing
+   NuZ::SMatrix{BO, NZ, Vector}       # N-particle indexing
    cg::ClebschGordan{T}               # precomputed CG coefficients
    firstA::NTuple{NZ, Vector{IntS}}   # indexing into A-basis vectors
+   rotcoefs::SVector{BO, Dict}        # storage for the rot-inv coefs
 end
 
 function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
@@ -74,17 +75,19 @@ function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
    return SHIPBasis(spec, J)
 end
 
-function SHIPBasis(spec::BasisSpec, J::TransformedJacobi)
+function SHIPBasis(spec::BasisSpec{BO}, J::TransformedJacobi) where {BO}
    # R̂ - basis
    SH = SHBasis(maxL(spec))
    # precompute the Clebsch-Gordan coefficients
-   cg = ClebschGordan(maxL(spec))
+   cg = ClebschGordan()
    # instantiate the basis specification
    allKL, NuZ = generate_ZKL_tuples(spec, cg)
    # compute the (l,k) -> indexing into A[(k,l,m)] information
    firstA = _firstA.(allKL)
+   # get the Ylm basis coefficients
+   rotcoefs = precompute_rotcoefs(allKL, NuZ, eltype(SH))
    # putting it all together ...
-   return SHIPBasis(spec, J, SH, allKL, NuZ, cg, firstA)
+   return SHIPBasis(spec, J, SH, allKL, NuZ, cg, firstA, rotcoefs)
 end
 
 Dict(shipB::SHIPBasis) = Dict(
@@ -109,6 +112,26 @@ bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
 Base.length(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.NuZ))
 
+# ----------------------------------------------
+#      Computation of the Ylm coefficients
+# ----------------------------------------------
+
+
+function precompute_rotcoefs(KL, NuZ::SMatrix{BO, NZ}, T) where {BO, NZ}
+   rotcoefs = SVector{BO, Dict}(
+                  [ Dict{SVector{N, IntS}, Vector{T}}() for N = 1:BO ]... )
+   A = SHIPs.Rotations.CoeffArray()
+   for bo = 1:BO, iz = 1:NZ, νz in NuZ[bo, iz]
+      ll = getfield.(KL[iz][νz.ν], :l)
+      if !haskey(rotcoefs[bo], ll)
+         rotcoefs[bo][ll] = SHIPs.Rotations.single_B(A, ll)
+      end
+   end
+   return rotcoefs
+end
+
+get_rotcoefs(shipB::SHIPBasis{BO,T}, ll::SVector{N}) where {BO, T, N} =
+      (shipB.rotcoefs[N]::Dict{SVector{N, IntS}, Vector{T}})[ll]
 
 # ----------------------------------------------
 #      Computation of the A-basis
@@ -291,14 +314,17 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
       ν = νz.ν
       izz = νz.izz
       kk, ll = _kl(ν, izz, ZKL)
+      # read the basis coefficients, this is a Vector{T} with the same length
+      # as _mrange(ll)
+      Clm = get_rotcoefs(ship, ll)
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
       b = zero(ComplexF64)
-      for mm in _mrange(ll)    # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
+      for (mm, clm) in zip(_mrange(ll), Clm)    # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
          # skip any m-tuples that aren't admissible (incorporate into mrange?)
-         if abs(mm[end]) > ll[end]; continue; end
+         # if abs(mm[end]) > ll[end]; continue; end
          # compute the symmetry prefactor from the CG-coefficients
-         bm = ComplexF64(_Bcoeff(ll, mm, ship.cg))
+         bm = ComplexF64(clm)
          if bm != 0  # TODO: if bm ≈ 0.0; continue; end
             # for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
             for α = 1:length(kk)
@@ -366,12 +392,13 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
       ν = νz.ν
       izz = νz.izz
       kk, ll = _kl(ν, izz, ZKL)
-      for mm in _mrange(ll)       # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
+      Clm = get_rotcoefs(ship, ll)
+      for (mm, clm) in zip(_mrange(ll), Clm)       # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
          # skip any m-tuples that aren't admissible
-         if abs(mm[end]) > ll[end]; continue; end
+         # if abs(mm[end]) > ll[end]; continue; end
          # ------------------------------------------------------------------
-         # compute the symmetry prefactor from the CG-coefficients
-         C = _Bcoeff(ll, mm, ship.cg)
+         # compute the symmetry prefactor from the CG-coefficients (done above!)
+         C = clm
          if C != 0
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
             # [1] The basis function B_𝐤𝐥 itself

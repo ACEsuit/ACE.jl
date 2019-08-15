@@ -10,10 +10,10 @@ module Rotations
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
-using SHIPs: _mrange
-using SHIPs.SphericalHarmonics: index_y, sizeY
+using SHIPs: _mrange, IntS
+using SHIPs.SphericalHarmonics: index_y
 
-export ClebschGordan, CoeffArray, onebasis
+export ClebschGordan, CoeffArray, single_B
 
 
 # TODO: reduce dimensionality of the storage tensor
@@ -23,8 +23,9 @@ export ClebschGordan, CoeffArray, onebasis
 `?clebschgordan` for the convention that is use.
 """
 struct ClebschGordan{T}
-	maxL::Int
-	cg::Array{T, 3}   # rewrite as Dict!
+	# maxL::Int
+	# cg::Array{T, 3}   # rewrite as Dict!
+	vals::Dict{Tuple{IntS, IntS, IntS}, T}
 end
 
 """
@@ -105,33 +106,23 @@ function clebschgordan(j1, m1, j2, m2, j3, m3, T=Float64)
 end
 
 
-function ClebschGordan(maxL, T=Float64)
-	n = sizeY(maxL)
-	cg = zeros(T, n, n, n)
-	# TODO: insert restrictions on (j1,j2,j3)-values!
-	for j1 = 0:maxL, j2 = 0:maxL, j3 = 0:maxL
-		if !cg_l_condition(j1, j2, j3)
-			continue
-		end
-		for m1 = -j1:j1, m2 = -j2:j2
-			m3 = m1 + m2  # cf. cg_m_condition
-			if abs(m3) > j3
-				continue
-			end
-			cg[index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)] =
-					clebschgordan(j1,m1,j2,m2,j3,m3)
-		end
-	end
-	return ClebschGordan(maxL, cg)
-end
+ClebschGordan(T=Float64) =
+	ClebschGordan(Dict{Tuple{IntS,IntS,IntS}, T}())
 
-function (cg::ClebschGordan)(j1,m1,j2,m2,j3,m3)
-	I1, I2, I3 = index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)
-	if minimum((I1, I2, I3)) <= 0
-		@show j1,m1,j2,m2,j3, m3
-		@show I1,I2,I3
+_cg_key(j1, m1, j2, m2, j3, m3) =
+	IntS.((index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)))
+
+function (cg::ClebschGordan{T})(j1, m1, j2, m2, j3, m3) where {T}
+	if !cg_conditions(j1,m1,j2,m2,j3,m3)
+		return zero(T)
 	end
-	return cg.cg[I1, I2, I3]
+	key = _cg_key(j1, m1, j2, m2, j3, m3)
+	if haskey(cg.vals, key)
+		return cg.vals[key]
+	end
+	val = clebschgordan(j1, m1, j2, m2, j3, m3, T)
+	cg.vals[key] = val
+	return val
 end
 
 
@@ -144,7 +135,7 @@ dicttype(N::Integer) = dicttype(Val(N))
 dicttype(::Val{N}) where {N} =
    Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
 
-CoeffArray(Lmax) = CoeffArray(Dict[], ClebschGordan(Lmax))
+CoeffArray(T=Float64) = CoeffArray(Dict[], ClebschGordan(T))
 
 
 function get_vals(A::CoeffArray, valN::Val{N}) where {N}

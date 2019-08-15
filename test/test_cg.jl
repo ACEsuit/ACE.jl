@@ -20,7 +20,7 @@ spin = pyimport("sympy.physics.quantum.spin")
 pycg(j1, m1, j2, m2, j3, m3, T=Float64) =
       spin.CG(j1, m1, j2, m2, j3, m3).doit().evalf().__float__()
 
-cg = ClebschGordan(10)
+cg = ClebschGordan()
 
 ntest = 0
 while ntest <= 200

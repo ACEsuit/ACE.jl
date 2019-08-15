@@ -114,12 +114,14 @@ function _get_C_IA!(spec, basis, coeffs, ::Val{N}, iz0) where {N}
       izz = νz.izz
       idxB = idx0 + idx
       kk, ll = _kl(ν, izz, basis.KL)   # TODO: allocation -> fix this!
-      for mm in _mrange(ll)
+      Bcoefs = get_rotcoefs(basis, ll)
+      for (mm, clm) in zip(_mrange(ll), Bcoefs)
          # skip any m-tuples that aren't admissible:
          # TODO: incorporate this into _mrange
          if abs(mm[end]) > ll[end]; continue; end
          # compute the coefficient of a ∏ Aⱼ term
-         c = _Bcoeff(ll, mm, basis.cg) * coeffs[idxB]
+         # c = _Bcoeff(ll, mm, basis.cg) * coeffs[idxB]
+         c = clm * coeffs[idxB]
          # compute the indices of Aⱼ in the store.A array
          for α = 1:N
             ia[α] = basis.firstA[izz[α]][ν[α]] + ll[α] + mm[α]

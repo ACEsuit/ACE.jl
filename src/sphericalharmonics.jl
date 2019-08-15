@@ -17,7 +17,7 @@ import SHIPs: alloc_B, alloc_dB, alloc_temp, alloc_temp_d,
 
 const JVec = SVector{3}
 
-export SHBasis, ClebschGordan
+export SHBasis
 
 
 struct PseudoSpherical{T}

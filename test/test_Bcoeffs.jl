@@ -67,7 +67,7 @@ println(@test all( mpre -> (abs(sum(mpre.I)) > ll[end]) ||
 
 ##
 Deg = SparseSHIP(3, 5, 1.0)
-cg = ClebschGordan(maxL(Deg))
+cg = ClebschGordan()
 KL, Nu =  generate_ZKL_tuples(Deg, cg; filter=false)
 KL = KL[1]
 _, Nu_filter = generate_ZKL_tuples(Deg, cg; filter=true)
@@ -95,7 +95,7 @@ println(@test (length(Nu3) == length(Nu3_filter) + length(Izodd)))
 
 ##
 Deg = SparseSHIP(4, 10, 2.0)
-cg = ClebschGordan(maxL(Deg))
+cg = ClebschGordan()
 KL, Nu =  generate_ZKL_tuples(Deg, cg; filter=false)
 KL = KL[1]
 _, Nu_filter = generate_ZKL_tuples(Deg, cg; filter=true)
