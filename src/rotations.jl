@@ -242,6 +242,7 @@ end
 
 compute_Al(ll::SVector{N}) where {N} = compute_Al(CoeffArray(N, sum(ll)), ll)
 
+
 function compute_Al(A::CoeffArray{T}, ll::SVector) where {T}
 	len = _len_mrange(ll)
    CC = zeros(T, len, len)
@@ -250,5 +251,24 @@ function compute_Al(A::CoeffArray{T}, ll::SVector) where {T}
    end
    return CC
 end
+
+
+function single_B(A::CoeffArray{T}, ll::SVector) where {T}
+	MM = collect(_mrange(ll))
+	Is = sortperm([ (sum(mm .!= 0), norm(mm)) for mm in MM ])
+	MM = MM[Is]
+	CC = zeros(T, length(MM))
+	for mm in MM
+		for (ik, kk) in enumerate(_mrange(ll))
+			CC[ik] = A(ll, mm, kk)
+		end
+		if norm(CC) > 0
+			CC ./= norm(CC)
+			break
+		end
+	end
+	return CC
+end
+
 
 end
