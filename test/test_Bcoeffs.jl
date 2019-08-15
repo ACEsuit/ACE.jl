@@ -51,16 +51,19 @@ end
 
 ##
 @info("Testing _mrange")
-ll = SVector(2,3,0)
-mrange2 = SHIPs._mrange(ll)
+ll = SVector(2,3,4)
+mrange2 = collect(SHIPs._mrange(ll))
 testrg = CartesianIndices( (-2:2, -3:3) )
-println(@test all( (sum(mm) == 0) && (mm[1:2] == [Tuple(mpre)...])
-                   for (mm, mpre) in zip(mrange2, testrg) ))
-ll = SVector(4,2,5,0)
-mrange3 = SHIPs._mrange(ll)
-testrg = CartesianIndices( (-4:4, -2:2, -5:5) )
-println(@test all( (sum(mm) == 0) && (mm[1:3] == [Tuple(mpre)...])
-                    for (mm, mpre) in zip(mrange3, testrg) ))
+println(@test all( mpre -> (abs(sum(mpre.I)) > ll[end]) ||
+                           (SVector(mpre.I..., -sum(mpre.I)) ∈ mrange2),
+                   testrg ))
+
+ll = SVector(4,2,3,4)
+mrange3 = collect(SHIPs._mrange(ll))
+testrg = CartesianIndices( (-4:4, -2:2, -3:3) )
+println(@test all( mpre -> (abs(sum(mpre.I)) > ll[end]) ||
+                           (SVector(mpre.I..., -sum(mpre.I)) ∈ mrange3),
+                   testrg ))
 
 ##
 Deg = SparseSHIP(3, 5, 1.0)
