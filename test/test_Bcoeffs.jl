@@ -11,7 +11,7 @@
 using SHIPs
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
 using SHIPs: generate_ZKL, generate_ZKL_tuples, SparseSHIP, maxL
-using SHIPs.SphericalHarmonics: ClebschGordan, cg1
+using SHIPs.Rotations: ClebschGordan, clebschgordan
 using JuLIP.Testing
 
 
@@ -20,17 +20,17 @@ function naive_Bcoeff(ll::SVector{4}, mm, cg)
    @assert sum(mm) ≈ 0
    M = mm[1] + mm[2]
    for J = max(abs(ll[1]-ll[2]), abs(ll[3]-ll[4])):min(ll[1]+ll[2], ll[3]+ll[4])
-      # @assert cg1(ll[1], mm[1], ll[2], mm[2], J, M) == cg(ll[1], mm[1], ll[2], mm[2], J, M)
-      # @assert cg1(ll[3], mm[3], ll[4], mm[4], J, -M) == cg(ll[3], mm[3], ll[4], mm[4], J, -M)
+      # @assert clebschgordan(ll[1], mm[1], ll[2], mm[2], J, M) == cg(ll[1], mm[1], ll[2], mm[2], J, M)
+      # @assert clebschgordan(ll[3], mm[3], ll[4], mm[4], J, -M) == cg(ll[3], mm[3], ll[4], mm[4], J, -M)
       coeff += ( (-1)^(M) *
-                  cg1(ll[1], mm[1], ll[2], mm[2], J, M) *
-                  cg1(ll[3], mm[3], ll[4], mm[4], J, -M) )
+                  clebschgordan(ll[1], mm[1], ll[2], mm[2], J, M) *
+                  clebschgordan(ll[3], mm[3], ll[4], mm[4], J, -M) )
    end
    return coeff
 end
 
 function naive_Bcoeff(ll::SVector{3}, mm, cg)
-   @assert ( cg1(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3]) ≈
+   @assert ( clebschgordan(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3]) ≈
               cg(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3]) )
    return (-1)^mm[3] * cg(ll[1], mm[1], ll[2], mm[2], ll[3], -mm[3])
 end
