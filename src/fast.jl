@@ -154,8 +154,8 @@ function _dict2spec(specD, bo, nz)
       idx += 1
       specD_izN = specD[idx]
       for sD in specD_izN
-         izz = SVector(Int16.(sD[1]))
-         iA = SVector(IntS.(sD[2]))
+         izz = SVector(Int16.(sD[1])...)
+         iA = SVector(IntS.(sD[2])...)
          c = Float64(sD[3])
          push!(spec[N, iz], (izz=izz, iA=iA, c=c))
       end
@@ -184,7 +184,7 @@ SHIP(D::Dict) = _SHIP(D, Val(Int(D["bodyorder"]-1)),
 
 function _SHIP(D::Dict, ::Val{BO}, T, ::Val{NZ}) where {BO, NZ}
    spec = _dict2spec(D["spec"], BO, NZ)
-   KL =  [ [ (k = k, l = l) for (k, l) in zip(D["K"][iz], D["L"][iz]) ]
+   KL =  [ [ (k = IntS(k), l = IntS(l)) for (k, l) in zip(D["K"][iz], D["L"][iz]) ]
            for iz = 1:NZ ]
    firstA = [ Vector{IntS}(D["firstA"][iz]) for iz = 1:NZ ]
 
@@ -194,7 +194,7 @@ function _SHIP(D::Dict, ::Val{BO}, T, ::Val{NZ}) where {BO, NZ}
       tuple(KL...),
       tuple(firstA...),
       spec,
-      Int16.(D["Z"]) )
+      tuple(Int16.(D["Z"])...) )
 end
 
 convert(::Val{:SHIPs_SHIP}, D::Dict) = SHIP(D)

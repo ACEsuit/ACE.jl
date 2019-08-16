@@ -127,4 +127,13 @@ end
 
 ##
 
+coeffs = randcoeffs(B5)
+ship = SHIP(B5, coeffs)
+println(@test decode_dict(Dict(ship)) == ship)
+save_json("tmp.json", Dict("IP" => Dict(ship)))
+IP = decode_dict( load_json("tmp.json")["IP"])
+println(@test IP == ship)
+run(`rm tmp.json`)
+
+##
 end
