@@ -160,7 +160,8 @@ convert(::Val{:SHIPs_HyperbolicCrossSHIP}, D::Dict) =
 
 
 # ---------------------------------------------------------------
-
+#    generating the basis specification
+# ---------------------------------------------------------------
 
 function generate_KL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
    allKL = NamedTuple{(:k, :l), Tuple{TI,TI}}[]
@@ -204,20 +205,6 @@ function _kl(ν::StaticVector{N}, izz::StaticVector{N}, KLZ) where {N}
 end
 
 
-# TODO: remove if not needed
-# """
-# create a vector of Nu arrays with the right type information
-# for each body-order
-# """
-# function _init_Nu(bo::Integer, nz::Integer, TI=IntS)
-#    Nu = Matrix{Vector}(undef, bo, nz)
-#    for n = 1:bo, iz = 1:nz
-#       Nu[n, iz] = SVector{n, TI}[]
-#    end
-#    # convert into an SVector to make the length a type parameters
-#    return SMatrix{bo,nz}(Nu)
-# end
-
 """
 create a vector of Nu arrays with the right type information
 for each body-order
@@ -233,14 +220,14 @@ function _init_NuZ(bo::Integer, nz::Integer, TI=IntS)
 end
 
 
-function generate_ZKL_tuples(spec::AnalyticBasisSpec{BO}, cg;
+function generate_ZKL_tuples(spec::AnalyticBasisSpec{BO}, rotcoefs;
                             filter=true) where {BO}
    # all possible (k, l) pairs
    allZKL = generate_ZKL(spec)
    # separate arrays for all body-orders and species
    NuZ = _init_NuZ(BO, nspecies(spec))
    for N = 1:BO
-      _generate_ZKL_tuples!(NuZ[N,1], spec, cg, allZKL, Val(N); filter=filter)
+      _generate_ZKL_tuples!(NuZ[N,1], spec, rotcoefs, allZKL, Val(N); filter=filter)
       for iz = 2:nspecies(spec)
          append!(NuZ[N, iz], NuZ[N, 1])
       end
@@ -275,7 +262,7 @@ z3 = SVector(2,1,1)
 end
 
 
-function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL, ::Val{BO};
+function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, rotcoefs, ZKL, ::Val{BO};
                                filter=true) where {BO}
    nz = nspecies(spec)
    izz = @MVector ones(Int16, BO)
@@ -298,7 +285,7 @@ function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL, ::Val{BO};
       # specified by `zz`.  A (zz, ν) combination specifies a basis function
       #    ∏_a A[zₐ][νₐ]     (actually izₐ instead of zₐ and ignoring the m's)
       empty!(Nu)
-      _generate_KL_tuples!(Nu, spec, cg, ZKL[izz]; filter=filter)
+      _generate_KL_tuples!(Nu, spec, rotcoefs, ZKL[izz]; filter=filter)
 
       # now loop through all the ν tuples we found to push them into NuZ
       for ν in Nu
@@ -324,7 +311,7 @@ end
 
 function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
                               spec::AnalyticBasisSpec,
-                              cg, ZKLs;
+                              rotcoefs, ZKLs;
                               filter=true) where {BO}
    # the first item is just (1, ..., 1)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
@@ -353,7 +340,7 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
          # ... then we add it to the stack  ...
          #     (at least if it is an admissible basis function respecting
          #      all the symmetries - this is checked by filter_tuple)
-         if !filter || filter_tuple(ll, cg)
+         if !filter || filter_tuple(ll, rotcoefs)
             push!(Nu, SVector(ν))
          end
          # ... and increment it
@@ -370,4 +357,13 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
       end
    end
    return nothing
+end
+
+
+function filter_tuple(ll, rotcoefs)
+   if isodd(sum(ll))
+      return false
+   end 
+   Bcoefs = SHIPs.Rotations.single_B(rotcoefs, ll)
+   return norm(Bcoefs) > 1e-12
 end

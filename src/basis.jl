@@ -65,7 +65,6 @@ struct SHIPBasis{BO, T, NZ, TJ,
    # ------------------------------------------------------------------------
    KL::NTuple{NZ, Vector{NamedTuple{(:k, :l),Tuple{IntS,IntS}}}}    # 1-particle indexing
    NuZ::SMatrix{BO, NZ, Vector}       # N-particle indexing
-   cg::ClebschGordan{T}               # precomputed CG coefficients
    firstA::NTuple{NZ, Vector{IntS}}   # indexing into A-basis vectors
    rotcoefs::SVector{BO, Dict}        # storage for the rot-inv coefs
 end
@@ -78,16 +77,16 @@ end
 function SHIPBasis(spec::BasisSpec{BO}, J::TransformedJacobi) where {BO}
    # R̂ - basis
    SH = SHBasis(maxL(spec))
-   # precompute the Clebsch-Gordan coefficients
-   cg = ClebschGordan()
+   # precompute the rotation-coefficients
+   Bcoefs = Rotations.CoeffArray(eltype(SH))
    # instantiate the basis specification
-   allKL, NuZ = generate_ZKL_tuples(spec, cg)
+   allKL, NuZ = generate_ZKL_tuples(spec, Bcoefs)
    # compute the (l,k) -> indexing into A[(k,l,m)] information
    firstA = _firstA.(allKL)
    # get the Ylm basis coefficients
-   rotcoefs = precompute_rotcoefs(allKL, NuZ, eltype(SH))
+   rotcoefs = precompute_rotcoefs(allKL, NuZ, Bcoefs)
    # putting it all together ...
-   return SHIPBasis(spec, J, SH, allKL, NuZ, cg, firstA, rotcoefs)
+   return SHIPBasis(spec, J, SH, allKL, NuZ, firstA, rotcoefs)
 end
 
 Dict(shipB::SHIPBasis) = Dict(
@@ -117,10 +116,10 @@ Base.length(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.NuZ))
 # ----------------------------------------------
 
 
-function precompute_rotcoefs(KL, NuZ::SMatrix{BO, NZ}, T) where {BO, NZ}
+function precompute_rotcoefs(KL, NuZ::SMatrix{BO, NZ},
+                             A::Rotations.CoeffArray{T}) where {BO, NZ, T}
    rotcoefs = SVector{BO, Dict}(
                   [ Dict{SVector{N, IntS}, Vector{T}}() for N = 1:BO ]... )
-   A = SHIPs.Rotations.CoeffArray()
    for bo = 1:BO, iz = 1:NZ, νz in NuZ[bo, iz]
       ll = getfield.(KL[iz][νz.ν], :l)
       if !haskey(rotcoefs[bo], ll)

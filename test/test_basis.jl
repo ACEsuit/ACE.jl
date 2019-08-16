@@ -42,7 +42,8 @@ ship2 = SHIPBasis(SparseSHIP(2, 15, 2.0), trans, cutf)
 ship3 = SHIPBasis(SparseSHIP(3, 13, 2.0), trans, cutf)
 ship4 = SHIPBasis(SparseSHIP(4, 10, 1.5), trans, cutf)
 ship5 = SHIPBasis(SparseSHIP(5,  8, 1.5), trans, cutf)
-ships = [ship2, ship3, ship4, ship5]
+ship6 = SHIPBasis(SparseSHIP(6,  8, 1.5), trans, cutf)
+ships = [ship2, ship3, ship4, ship5, ship6]
 
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships
@@ -51,7 +52,7 @@ end
 
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
-for ntest = 1:20
+for ntest = 1:30
    Rs, Zs = randR(20)
    BB = [ eval_basis(🚢, Rs, Zs, 0) for 🚢 in ships ]
    RsX = randiso(Rs)
