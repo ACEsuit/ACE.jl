@@ -68,12 +68,12 @@ function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
 end
 
 function SHIPBasis(spec::BasisSpec{BO}, J::TransformedJacobi) where {BO}
-   # R̂ - basis
-   SH = SHBasis(maxL(spec))
    # precompute the rotation-coefficients
-   Bcoefs = Rotations.CoeffArray(eltype(SH))
+   Bcoefs = Rotations.CoeffArray(Float64)
    # instantiate the basis specification
    allKL, NuZ = generate_ZKL_tuples(spec, Bcoefs)
+   # R̂ - basis
+   SH = SHBasis(get_maxL(allKL))
    # compute the (l,k) -> indexing into A[(k,l,m)] information
    firstA = _firstA.(allKL)
    # get the Ylm basis coefficients
@@ -103,6 +103,9 @@ i2z(B::SHIPBasis, i::Integer) = i2z(B.spec, i)
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
 Base.length(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.NuZ))
+
+get_maxL(allKL) = maximum( maximum( kl.l for kl in allKL_ )
+                           for allKL_ in allKL )
 
 # ----------------------------------------------
 #      Computation of the Ylm coefficients
