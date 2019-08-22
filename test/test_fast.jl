@@ -126,6 +126,7 @@ end
 
 ##
 
+@info("Test JSON (de-)serialisation of SHIPs")
 coeffs = randcoeffs(B5)
 ship = SHIP(B5, coeffs)
 println(@test decode_dict(Dict(ship)) == ship)
