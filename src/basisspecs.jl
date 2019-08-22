@@ -13,7 +13,7 @@ using JuLIP.Chemistry: atomic_number
 
 import Base: ==
 
-export SparseSHIP, HyperbolicCrossSHIP
+export SparseSHIP
 
 
 
@@ -46,14 +46,32 @@ admissible(D::AnalyticBasisSpec, k, l) = deg(D, k, l) <= D.deg
 
 
 """
-`SparseSHIP` : a sparse-grid type degree definition,
+`SparseSHIP` : a general sparse-grid type degree definition,
 ```
-deg({k}, {l}) = ∑ (k + wL * l)
+deg({k}, {l}) = csp ∑ᵢ (kᵢ + wL * lᵢ)
+              + chc ∏ᵢ max(ahc, bhc + kᵢ + wL * lᵢ)
 ```
+
+Constructors:
+```
+SparseSHIP(bo, deg; kwargs...)
+SparseSHIP(Zs, bo, deg; kwargs...)
+```
+where the keyword arguments are (with defaults)
+* `wL = 1.5`
+* `csp = 1.0`
+* `chc = 0.0`
+* `ahc = 0.0`
+* `bhc = 0.0`
 """
 struct SparseSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
    deg::IntS
    wL::Float64
+   csp::Float64
+   chc::Float64
+   ahc::Float64
+   bhc::Float64
+   # --------------------
    Zs::NTuple{NZ, Int16}
    valbo::Val{BO}
    z2i::Dict{Int16, Int16}
@@ -63,17 +81,23 @@ end
       all( getfield(s1, i) == getfield(s2, i)
            for i = 1:fieldcount(SparseSHIP) )
 
+SparseSHIP(bo::Integer, deg::Integer; kwargs...) =
+      SparseSHIP(:X, bo, deg; kwargs...)
 
-SparseSHIP(bo::Integer, deg::Integer, wL::Real) =
-      SparseSHIP(bo::Integer, :X, deg::Integer, wL::Real)
-
-function SparseSHIP(bo::Integer, Zs, deg::Integer, wL::Real)
+function SparseSHIP(Zs, bo::Integer, deg::Integer;
+                    wL = 1.5,
+                    csp = 1.0,
+                    chc = 0.0,
+                    ahc = 0.0,
+                    bhc = 0.0)
    @assert wL > 0
    @assert deg > 0
    @assert bo >= 0
    Zs = _convert_Zs(Zs)
    z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
-   return SparseSHIP(IntS(deg), Float64(wL), Zs, Val(bo), z2i)
+   return SparseSHIP(IntS(deg), Float64(wL), Float64(csp),
+                     Float64(chc), Float64(ahc), Float64(bhc),
+                     Zs, Val(bo), z2i)
 end
 
 
@@ -81,86 +105,58 @@ deg(D::SparseSHIP, k::Integer, l::Integer) =
       k + D.wL * l
 
 deg(D::SparseSHIP, kk::VecOrTup, ll::VecOrTup) =
-      sum( deg(D, k, l) for (k, l) in zip(kk, ll) )
+      D.csp * sum( deg(D, k, l) for (k, l) in zip(kk, ll) ) +
+      D.chc * prod( max(D.ahc, D.bhc + deg(D, k, l)) for (k, l) in zip(kk, ll) )
 
-maxK(D::SparseSHIP) = D.deg
+# if one k is non-zero all other ks and ls are zero then we get
+#    csp * k + chc * max(ahc, bhc)^{N-1} * max(ahc, bhc + k)
+# take body-order = 1 (minimal) then we get just
+#    csp * k + chc * max(ahc, bhc + k)
+function maxK(D::SparseSHIP)
+   allk = 0:ceil(Int, D.deg / D.csp)
+   # degs = D.csp * allk + D.chc * max.(ahc, bhc .+ allk)
+   degs = [ deg(D, (k,), (0,)) for k in allk ]
+   admissible = findall(degs .<= D.deg)
+   return maximum(allk[admissible])
+end
 
 # For a pure 2-body potential we don't need an angular component
 maxL(D::SparseSHIP{1}, k::Integer =  0) = 0
 
-maxL(D::SparseSHIP) = floor(Int, D.deg / D.wL)
-
-maxL(D::SparseSHIP, k::Integer) = floor(Int, (D.deg - k) / D.wL)
+# if just one k is non-zero (or 0), just one l non-zero and all other
+# ks and ls are zero then we get
+#    csp * (k+wL*l) + chc * max(ahc, bhc + k + wL*l)
+function maxL(D::SparseSHIP, k::Integer = 0)
+   alll = 0:ceil(Int, (D.deg / D.csp - k) / D.wL)
+   degs = [ deg(D, (k,), (l,)) for l in alll ]
+   admissible = findall(degs .<= D.deg)
+   if isempty(admissible)
+      return 0
+   else
+      return maximum(alll[admissible])
+   end
+end
 
 Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIP",
                                 "deg" => D.deg,
                                 "wL" => D.wL,
+                                "csp" => D.csp,
+                                "chc" => D.chc,
+                                "ahc" => D.ahc,
+                                "bhc" => D.bhc,
                                 "Zs" => D.Zs,
                                 "bo" => BO)
 
 convert(::Val{:SHIPs_SparseSHIP}, D::Dict) =
-      SparseSHIP(D["bo"], D["Zs"], D["deg"], D["wL"])
-
-# ---------------------------------------------------------------
-
-
-"""
-`HyperbolicCrossSHIP` : standard hyperbolic cross degree,
-```
-deg({k}, {l}) = prod( max(a, b + k + wL * l) )
-```
-default is `a = 1, b = 0`
-"""
-struct HyperbolicCrossSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
-   deg::IntS
-   wL::Float64
-   a::Float64
-   b::Float64
-   Zs::NTuple{NZ, Int16}
-   valbo::Val{BO}
-   z2i::Dict{Int16, Int16}
-end
-
-==(s1::HyperbolicCrossSHIP, s2::HyperbolicCrossSHIP) =
-      all( getfield(s1, i) == getfield(s2, i)
-           for i = 1:fieldcount(HyperbolicCrossSHIP) )
-
-HyperbolicCrossSHIP(bo::Integer, deg::Integer, wL::Real; kwargs...) =
-      HyperbolicCrossSHIP(bo::Integer, :X, deg::Integer, wL::Real; kwargs...)
-
-function HyperbolicCrossSHIP(bo::Integer, Zs, deg::Integer, wL::Real;
-                             a = 1.0, b = 0.0)
-   @assert wL > 0
-   @assert deg > 0
-   @assert bo >= 0
-   Zs = _convert_Zs(Zs)
-   z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
-   return HyperbolicCrossSHIP(IntS(deg), Float64(wL), Float64(a), Float64(b),
-                              Zs, Val(bo), z2i)
-end
-
-
-deg(spec::HyperbolicCrossSHIP, k::Integer, l::Integer) =
-      k + spec.wL * l
-
-deg(spec::HyperbolicCrossSHIP, kk::VecOrTup, ll::VecOrTup) =
-      prod( max(spec.a, spec.b + deg(spec, k, l)) for (k, l) in zip(kk, ll) )
-
-maxK(spec::HyperbolicCrossSHIP) = floor(Int, spec.deg - spec.b)
-
-maxL(spec::HyperbolicCrossSHIP) = floor(Int, (spec.deg - spec.b) / spec.wL)
-
-maxL(spec::HyperbolicCrossSHIP, k::Integer) = floor(Int, (spec.deg - spec.b - k) / spec.wL)
-
-Dict(D::HyperbolicCrossSHIP) = Dict("__id__" => "SHIPs_HyperbolicCrossSHIP",
-                            "deg" => D.deg, "wL" => D.wL)
-convert(::Val{:SHIPs_HyperbolicCrossSHIP}, D::Dict) =
-      HyperbolicCrossSHIP(D["deg"], D["wL"])
+      SparseSHIP(D["Zs"], D["bo"], D["deg"],
+                 wL = D["wL"], csp = D["csp"],
+                 chc = D["chc"], ahc = D["ahc"], bhc = D["bhc"] )
 
 
 
 # ---------------------------------------------------------------
-
+#    generating the basis specification
+# ---------------------------------------------------------------
 
 function generate_KL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
    allKL = NamedTuple{(:k, :l), Tuple{TI,TI}}[]
@@ -204,20 +200,6 @@ function _kl(ν::StaticVector{N}, izz::StaticVector{N}, KLZ) where {N}
 end
 
 
-# TODO: remove if not needed
-# """
-# create a vector of Nu arrays with the right type information
-# for each body-order
-# """
-# function _init_Nu(bo::Integer, nz::Integer, TI=IntS)
-#    Nu = Matrix{Vector}(undef, bo, nz)
-#    for n = 1:bo, iz = 1:nz
-#       Nu[n, iz] = SVector{n, TI}[]
-#    end
-#    # convert into an SVector to make the length a type parameters
-#    return SMatrix{bo,nz}(Nu)
-# end
-
 """
 create a vector of Nu arrays with the right type information
 for each body-order
@@ -233,14 +215,14 @@ function _init_NuZ(bo::Integer, nz::Integer, TI=IntS)
 end
 
 
-function generate_ZKL_tuples(spec::AnalyticBasisSpec{BO}, cg;
+function generate_ZKL_tuples(spec::AnalyticBasisSpec{BO}, rotcoefs;
                             filter=true) where {BO}
    # all possible (k, l) pairs
    allZKL = generate_ZKL(spec)
    # separate arrays for all body-orders and species
    NuZ = _init_NuZ(BO, nspecies(spec))
    for N = 1:BO
-      _generate_ZKL_tuples!(NuZ[N,1], spec, cg, allZKL, Val(N); filter=filter)
+      _generate_ZKL_tuples!(NuZ[N,1], spec, rotcoefs, allZKL, Val(N); filter=filter)
       for iz = 2:nspecies(spec)
          append!(NuZ[N, iz], NuZ[N, 1])
       end
@@ -275,7 +257,7 @@ z3 = SVector(2,1,1)
 end
 
 
-function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL, ::Val{BO};
+function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, rotcoefs, ZKL, ::Val{BO};
                                filter=true) where {BO}
    nz = nspecies(spec)
    izz = @MVector ones(Int16, BO)
@@ -298,7 +280,7 @@ function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, cg, ZKL, ::Val{BO};
       # specified by `zz`.  A (zz, ν) combination specifies a basis function
       #    ∏_a A[zₐ][νₐ]     (actually izₐ instead of zₐ and ignoring the m's)
       empty!(Nu)
-      _generate_KL_tuples!(Nu, spec, cg, ZKL[izz]; filter=filter)
+      _generate_KL_tuples!(Nu, spec, rotcoefs, ZKL[izz]; filter=filter)
 
       # now loop through all the ν tuples we found to push them into NuZ
       for ν in Nu
@@ -324,7 +306,7 @@ end
 
 function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
                               spec::AnalyticBasisSpec,
-                              cg, ZKLs;
+                              rotcoefs, ZKLs;
                               filter=true) where {BO}
    # the first item is just (1, ..., 1)
    # we can choose (k1, l1), (k2, l2) ... by indexing into allKL
@@ -353,7 +335,7 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
          # ... then we add it to the stack  ...
          #     (at least if it is an admissible basis function respecting
          #      all the symmetries - this is checked by filter_tuple)
-         if !filter || filter_tuple(ll, cg)
+         if !filter || filter_tuple(ll, rotcoefs)
             push!(Nu, SVector(ν))
          end
          # ... and increment it
@@ -370,4 +352,13 @@ function _generate_KL_tuples!(Nu::Vector{<: SVector{BO}},
       end
    end
    return nothing
+end
+
+
+function filter_tuple(ll, rotcoefs)
+   if isodd(sum(ll))
+      return false
+   end
+   Bcoefs = SHIPs.Rotations.single_B(rotcoefs, ll)
+   return norm(Bcoefs) > 1e-12
 end

@@ -10,7 +10,8 @@
 
 using PyCall, Test, SHIPs.SphericalHarmonics
 using SHIPs: eval_basis
-using SHIPs.SphericalHarmonics: index_y, ClebschGordan
+using SHIPs.SphericalHarmonics: index_y
+using SHIPs.Rotations: ClebschGordan, clebschgordan
 
 sympy = pyimport("sympy")
 spin = pyimport("sympy.physics.quantum.spin")
@@ -19,7 +20,7 @@ spin = pyimport("sympy.physics.quantum.spin")
 pycg(j1, m1, j2, m2, j3, m3, T=Float64) =
       spin.CG(j1, m1, j2, m2, j3, m3).doit().evalf().__float__()
 
-cg = ClebschGordan(10)
+cg = ClebschGordan()
 
 ntest = 0
 while ntest <= 200
@@ -31,8 +32,8 @@ while ntest <= 200
       M = m1+m2
       if abs(M) <= J
          ntest += 1
-         print_tf(@test cg1(j1,m1,j2,m2,J, M) ≈ pycg(j1,m1, j2,m2, J, M))
-         print_tf(@test cg1(j1,m1,j2,m2,J, M) ≈ cg(j1,m1, j2,m2, J, M))
+         print_tf(@test clebschgordan(j1,m1,j2,m2,J, M) ≈ pycg(j1,m1, j2,m2, J, M))
+         print_tf(@test clebschgordan(j1,m1,j2,m2,J, M) ≈ cg(j1,m1, j2,m2, J, M))
       end
    end
 end
@@ -62,8 +63,8 @@ for ntest = 1:100
 
    for L = abs(M):(l1+l2)
       p2 += sqrt( (2*l1+1)*(2*l2+1) / (4 * π * (2*L+1)) ) *
-            cg1(l1,  0, l2,  0, L, 0) *
-            cg1(l1, m1, l2, m2, L, M) *
+            clebschgordan(l1,  0, l2,  0, L, 0) *
+            clebschgordan(l1, m1, l2, m2, L, M) *
             Ylm[index_y(L, M)]
    end
    print_tf((@test (p ≈ p2) || (abs(p-p2) < 1e-15)))

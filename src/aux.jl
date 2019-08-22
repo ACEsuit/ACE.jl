@@ -37,7 +37,7 @@ function Base.iterate(mr::MRange{1, TI}, args...) where {TI}
    while !isempty(mr.cartrg)
       popfirst!(mr.cartrg)
    end
-   return SVector{1, TI}(0), nothing 
+   return SVector{1, TI}(0), nothing
 end
 
 function Base.iterate(mr::MRange, args...)

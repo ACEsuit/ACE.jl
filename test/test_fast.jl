@@ -26,12 +26,11 @@ randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 trans = PolyTransform(3, 1.0)
 fcut = PolyCutoff2s(2, 0.5, 3.0)
-B2 = SHIPBasis(SparseSHIP(2, 10, 2.0), trans, fcut)
-B3 = SHIPBasis(SparseSHIP(3,  8, 2.0), trans, fcut)
-B4 = SHIPBasis(SparseSHIP(4,  7, 2.0), trans, fcut)
-B5 = SHIPBasis(SparseSHIP(5,  6, 2.0), trans, fcut)
+B2 = SHIPBasis(SparseSHIP(2, 10, wL=2.0), trans, fcut)
+B3 = SHIPBasis(SparseSHIP(3,  8, wL=2.0), trans, fcut)
+B4 = SHIPBasis(SparseSHIP(4,  7, wL=2.0), trans, fcut)
+B5 = SHIPBasis(SparseSHIP(5,  6, wL=2.0), trans, fcut)
 BB = [B2, B3, B4, B5]
-
 
 ##
 

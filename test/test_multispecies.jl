@@ -49,16 +49,16 @@ end
 ##
 @info("Testing creation and (de-)dictionisation of a few BasisSpecs")
 
-spec = SparseSHIP(3, :X, 10, 1.5)
-println(@test spec == SparseSHIP(3, 10, 1.5))
+spec = SparseSHIP(:X, 3, 10)
+println(@test spec == SparseSHIP(3, 10))
 println(@test decode_dict(Dict(spec)) == spec)
 
-spec = SparseSHIP(3, [:H, :He], 6, 1.5)
-println(@test spec == SparseSHIP(3, [1,2], 6, 1.5))
+spec = SparseSHIP([:H, :He], 3, 6)
+println(@test spec == SparseSHIP([1,2], 3, 6))
 println(@test decode_dict(Dict(spec)) == spec)
 
-spec = SparseSHIP(2, [:H, :He, :Li], 6, 1.5)
-println(@test spec == SparseSHIP(2, [1,2,3], 6, 1.5))
+spec = SparseSHIP([:H, :He, :Li], 2, 6)
+println(@test spec == SparseSHIP([1,2,3], 2, 6))
 println(@test decode_dict(Dict(spec)) == spec)
 
 ##
@@ -66,10 +66,10 @@ println(@test decode_dict(Dict(spec)) == spec)
 trans = PolyTransform(2, 1.0)
 cutf = PolyCutoff2s(2, 0.5, 3.0)
 
-ship2 = SHIPBasis(SparseSHIP(2, [1,2], 10, 2.0), trans, cutf)
-ship3 = SHIPBasis(SparseSHIP(3, [1,2], 8, 2.0), trans, cutf)
-ship4 = SHIPBasis(SparseSHIP(4, [1,2], 6, 1.5), trans, cutf)
-ship5 = SHIPBasis(SparseSHIP(5, [1,2],  5, 1.5), trans, cutf)
+ship2 = SHIPBasis(SparseSHIP([1,2], 2, 10, wL=2.0), trans, cutf)
+ship3 = SHIPBasis(SparseSHIP([1,2], 3,  8, wL=2.0), trans, cutf)
+ship4 = SHIPBasis(SparseSHIP([1,2], 4,  6, wL=1.5), trans, cutf)
+ship5 = SHIPBasis(SparseSHIP([1,2], 5,  5, wL=1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5]
 
 @info("Test (de-)dictionisation of basis sets")
