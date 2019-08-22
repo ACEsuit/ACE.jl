@@ -13,11 +13,20 @@ using SHIPs.JacobiPolys:   Jacobi
 import Base:   Dict, convert, ==
 import JuLIP:  cutoff
 
-export PolyTransform, rbasis, PolyCutoff1s, PolyCutoff2s
+export PolyTransform, rbasis, PolyCutoff1s, PolyCutoff2s,
+       PolyTransformCut
 
 
 
 abstract type DistanceTransform end
+
+abstract type DistanceTransformCut <: DistanceTransform end
+
+
+poly_trans(p, r0, r) = @fastmath(((1+r0)/(1+r))^p)
+
+poly_trans_d(p, r0, r) = @fastmath((-p/(1+r0)) * ((1+r0)/(1+r))^(p+1))
+
 
 """
 Implements the distance transform
@@ -42,16 +51,54 @@ PolyTransform(D::Dict) = PolyTransform(D["p"], D["r0"])
 
 convert(::Val{:SHIPs_PolyTransform}, D::Dict) = PolyTransform(D)
 
+transform(t::PolyTransform, r::Number) = poly_trans(t.p, t.r0, r)
 
-transform(t::PolyTransform, r::Number) =
-      @fastmath(((1+t.r0)/(1+r))^t.p)
+transform_d(t::PolyTransform, r::Number) = poly_trans_d(t.p, t.r0, r)
 
-transform_d(t::PolyTransform, r::Number) =
-      @fastmath((-t.p/(1+t.r0)) * ((1+t.r0)/(1+r))^(t.p+1))
 
-# # x = (r0/r)^p
-# # r x^{1/p} = r0
-# inv_transform(t::PolyTransform, x::Number) = t.r0 / x^(1.0/t.p)
+
+"""
+Implements the distance transform
+```
+r -> ( (1+r0)/(1+r))^p - c0 - c1 (r - rcut)
+```
+
+Constructor:
+```
+PolyTransformCut(p, r0)
+```
+"""
+struct PolyTransformCut{TP, T} <: DistanceTransformCut
+   p::TP
+   r0::T
+   c0::T
+   c1::T
+   rcut::T
+end
+
+Dict(T::PolyTransformCut) =
+   Dict("__id__" => "SHIPs_PolyTransform",
+        "p" => T.p, "r0" => T.r0, "rcut" => rcut)
+
+PolyTransformCut(D::Dict) = PolyTransformCut(D["p"], D["r0"], D["rcut"])
+
+convert(::Val{:SHIPs_PolyTransformCut}, D::Dict) = PolyTransformCut(D)
+
+
+transform(t::PolyTransformCut, r::Number) =
+       (poly_trans(t.p, t.r0, r) + t.c0 + t.c1 * (r - t.rcut)) * (r < t.rcut)
+
+transform_d(t::PolyTransformCut, r::Number) =
+       (poly_trans_d(t.p, t.r0, r) + t.c1) * (r < t.rcut)
+
+function PolyTransformCut(p, r0, rcut)
+   c0 = - poly_trans(p, r0, rcut)
+   c1 = - poly_trans_d(p, r0, rcut)
+   return PolyTransformCut(p, r0, c0, c1, rcut)
+end
+
+cutoff(trans::PolyTransformCut) = trans.rcut
+
 
 
 abstract type PolyCutoff end
@@ -124,6 +171,14 @@ fcut_d(C::PolyCutoff2s{P}, r::T, x) where {P, T} =
       C.rl < r < C.ru ? @fastmath( -2*P * x * (1 - x^2)^(P-1) ) : zero(T)
 
 
+
+struct OneCutoff
+   rcut::Float64
+end
+fcut(C::OneCutoff, r, x) = r < rcut ? one(r) : zero(r)
+fcut_d(C::OneCutoff, r, x) = zero(r)
+
+
 # Transformed Jacobi Polynomials
 # ------------------------------
 # these define the radial components of the polynomials
@@ -157,11 +212,12 @@ Dict(J::TransformedJacobi) = Dict(
       "rl" => J.rl,
       "ru" => J.ru,
       "trans" => Dict(J.trans),
-      "cutoff" => Dict(J.mult)
+      "cutoff" => Dict(J.mult),
+      "skip0" => J.J.skip0
    )
 
 TransformedJacobi(D::Dict) = TransformedJacobi(
-      Jacobi(D["a"], D["b"], D["deg"]),
+      Jacobi(D["a"], D["b"], D["deg"], skip0=D["skip0"]),
       decode_dict(D["trans"]),
       decode_dict(D["cutoff"]),
       D["rl"],
@@ -170,6 +226,7 @@ TransformedJacobi(D::Dict) = TransformedJacobi(
 
 
 Base.length(J::TransformedJacobi) = length(J.J)
+
 cutoff(J::TransformedJacobi) = J.ru
 transform(J::TransformedJacobi, r) = transform(J.trans, r)
 transform_d(J::TransformedJacobi, r) = transform_d(J.trans, r)
@@ -177,9 +234,10 @@ fcut(J::TransformedJacobi, r, x) = fcut(J.mult, r, x)
 fcut_d(J::TransformedJacobi, r, x) = fcut_d(J.mult, r, x)
 
 SHIPs.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
-      Vector{T}(undef, length(J.J))
+      Vector{T}(undef, length(J))
+
 SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
-      Vector{T}(undef, length(J.J))
+      Vector{T}(undef, length(J))
 
 function eval_basis!(P, tmp, J::TransformedJacobi, r)
    N = length(J)-1
@@ -240,3 +298,11 @@ TransformedJacobi(maxdeg::Integer,
                   trans::DistanceTransform,
                   cut::PolyCutoff2s{P}) where {P} =
       TransformedJacobi( Jacobi(2*P, 2*P, maxdeg), trans, cut, cut.rl, cut.ru)
+
+
+TransformedJacobi(maxdeg::Integer,
+                  trans::DistanceTransformCut,
+                  rl = 0.0) =
+      TransformedJacobi( Jacobi(0, 0, maxdeg, skip0=true), trans,
+                         OneCutoff(cutoff(trans)),
+                         rl, cutoff(trans))

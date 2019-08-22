@@ -74,7 +74,13 @@ function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
    return SHIPBasis(spec, J)
 end
 
-function SHIPBasis(spec::BasisSpec{BO}, J::TransformedJacobi) where {BO}
+function SHIPBasis(spec::BasisSpec, trans::DistanceTransformCut)
+   J = TransformedJacobi(maxK(spec), trans)
+   return SHIPBasis(spec, J)
+end
+
+
+function SHIPBasis(spec::BasisSpec{BO}, J) where {BO}
    # precompute the rotation-coefficients
    Bcoefs = Rotations.CoeffArray(Float64)
    # instantiate the basis specification
