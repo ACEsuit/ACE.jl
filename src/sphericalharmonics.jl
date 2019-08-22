@@ -117,7 +117,7 @@ struct ALPCoefficients{T}
 	B::Vector{T}
 end
 
-ALPCoefficients(maxDegree::Integer, T=Float64) =
+ALPCoefficients(maxDegree::Integer, T::Type=Float64) =
 	ALPCoefficients( Vector{T}(undef, sizeP(maxDegree)),
 						  Vector{T}(undef, sizeP(maxDegree)) )
 
@@ -126,8 +126,8 @@ ALPCoefficients(maxDegree::Integer, T=Float64) =
 
 Precompute coefficients ``a_l^m`` and ``b_l^m`` for all l <= L, m <= l
 """
-function compute_coefficients(L::Integer)
-	coeff = ALPCoefficients(L)
+function compute_coefficients(L::Integer, T::Type=Float64)
+	coeff = ALPCoefficients(L, T)
 	for l in 2:L
 		ls = l*l
 		lm1s = (l-1) * (l-1)
@@ -374,8 +374,8 @@ end
 import Base.==
 ==(B1::SHBasis, B2::SHBasis) = (B1.maxL == B1.maxL)
 
-SHBasis(maxL::Integer, T=Float64) =
-		SHBasis(maxL, compute_coefficients(maxL))
+SHBasis(maxL::Integer, T::Type=Float64) =
+		SHBasis(Int(maxL), compute_coefficients(maxL, T))
 
 Base.eltype(SH::SHBasis{T}) where {T} = T
 Base.length(S::SHBasis) = sizeY(S.maxL)

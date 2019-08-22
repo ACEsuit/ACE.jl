@@ -66,7 +66,7 @@ println(@test all( mpre -> (abs(sum(mpre.I)) > ll[end]) ||
                    testrg ))
 
 ##
-Deg = SparseSHIP(3, 5, 1.0)
+Deg = SparseSHIP(3, 5; wL = 1.0)
 Bcoefs = SHIPs.Rotations.CoeffArray()
 KL, Nu =  generate_ZKL_tuples(Deg, Bcoefs; filter=false)
 KL = KL[1]
@@ -95,7 +95,7 @@ Izodd = union(Izero, Iodd)
 println(@test (length(Nu3) == length(Nu3_filter) + length(Izodd)))
 
 ##
-Deg = SparseSHIP(4, 10, 2.0)
+Deg = SparseSHIP(4, 10; wL = 2.0)
 Bcoefs = SHIPs.Rotations.CoeffArray()
 KL, Nu =  generate_ZKL_tuples(Deg, Bcoefs; filter=false)
 KL = KL[1]

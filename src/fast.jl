@@ -52,7 +52,7 @@ end
 
 ==(S1::SHIP, S2::SHIP) =
       all( getfield(S1, i) == getfield(S2, i)
-           for i = 1:fieldcount(SparseSHIP) )
+           for i = 1:fieldcount(SHIP) )
 
 # ==(S1::SHIP, S2::SHIP) = (
 #       (bodyorder(S1) == bodyorder(S2)) &&
