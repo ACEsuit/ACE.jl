@@ -6,9 +6,14 @@
 # --------------------------------------------------------------------------
 
 
-module SHIPsDescriptors
 
-using JuLIP, ASE, SHIPs, PyCall
+module Descriptors
+
+using JuLIP
+
+using SHIPs: SparseSHIP, PolyTransform, PolyCutoff1s, SHIPBasis
+
+export SHIPDescriptor, descriptors
 
 """
 `SHIPDescriptor(; deg=nothing, wY=1.5, rcut=nothing, r0=1.0, p=2)`
@@ -29,25 +34,19 @@ tensor products `Pk * Ylm` such that `k + wY * l ≦ deg`.
 * `p` : specifies distance transform, u = (r/r0)^(-p); i.e., polynomials
 `Pk` are polynomials in `u` not in `r`. (e.g. p = 1 => Coulomb coordinates)
 """
-function SHIPDescriptor(; bodyorder=3, deg=nothing, wY=1.5, rcut=nothing, r0=2.5, p=2)
-   Deg = SparseSHIP(deg, wY)
+function SHIPDescriptor(species = :X;
+                        bodyorder=3, deg=nothing,
+                        rcut=nothing, r0=2.5, p=2,
+                        kwargs... )
+   spec = SparseSHIP(species, bodyorder-1, deg; kwargs...)
    trans = PolyTransform(p, r0)
    fcut = PolyCutoff1s(2, rcut)
-   return SHIPBasis(Deg, bodyorder-1, trans, fcut)
+   return SHIPBasis(spec, trans, fcut)
 end
 
-"""
-`descriptors(basis::SHIPBasis, pyo::PyObject)`
 
-If `pyo` is an `ase` `Atoms` object, then this returns a `Nx x Nat` matrix
-where the i-th column is the descriptor vector for the neighbourhood of the
-i-th atom.
-"""
-descriptors(basis::SHIPBasis, pyo::PyObject) =
-   descriptors(basis, ASEAtoms(pyo))
-
-function descriptors(basis::SHIPBasis, aseat::ASEAtoms)
-   at = Atoms(aseat)
+function descriptors(basis::SHIPBasis, _at)
+   at = Atoms(_at)
    B = zeros(Float64, length(basis), length(at))
    for i = 1:length(at)
       B[:, i] = site_energy(basis, at, i)
@@ -56,12 +55,3 @@ function descriptors(basis::SHIPBasis, aseat::ASEAtoms)
 end
 
 end
-
-
-# example code to test this:
-using ASE, SHIPs
-at = bulk("Si", cubic=true) * 2
-desc = SHIPsDescriptors.SHIPDescriptor(deg=6, rcut=4.0)
-B1 = SHIPsDescriptors.descriptors(desc, at)
-B2 = SHIPsDescriptors.descriptors(desc, at.po)
-B1 == B2
