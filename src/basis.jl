@@ -112,6 +112,7 @@ convert(::Val{:SHIPs_SHIPBasis}, D::Dict) = SHIPBasis(D)
 z2i(B::SHIPBasis, z::Integer) = z2i(B.spec, z)
 i2z(B::SHIPBasis, i::Integer) = i2z(B.spec, i)
 
+nspecies(B::SHIPBasis) = nspecies(B.spec)
 
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
