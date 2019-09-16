@@ -25,4 +25,6 @@ include("basis.jl")
 # SHIP interatomic potential definition
 include("fast.jl")
 
+include("regularisers.jl") 
+
 end # module
