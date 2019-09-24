@@ -93,7 +93,7 @@ function SHIPBasis(spec::BasisSpec{BO}, J) where {BO}
    firstA = _firstA.(allKL)
    # get the Ylm basis coefficients
    rotcoefs = precompute_rotcoefs(allKL, NuZ, Bcoefs)
-   len_Bll, idx_Bll = precompute_Bll(allKL, NuZ, rotcoeffs)
+   len_Bll, idx_Bll = precompute_Bll(allKL, NuZ, rotcoefs)
    # putting it all together ...
    return SHIPBasis(spec, J, SH, allKL, NuZ, firstA, rotcoefs, len_Bll, idx_Bll)
 end
@@ -146,6 +146,12 @@ get_rotcoefs(shipB::SHIPBasis{BO,T}, ll::SVector{N}) where {BO, T, N} =
       (shipB.rotcoefs[N]::Dict{SVector{N, IntS}, Matrix{T}})[ll]
 
 
+# get_rotcoefs(rotcoeffs::SVector{BO, Dict{<: SVector, Matrix{T}}}, ll::SVector{N}
+#             ) where {BO, T, N} =
+#       (rotcoefs[N]::Dict{SVector{N, IntS}, Matrix{T}})[ll]
+#       # (shipB.rotcoefs[N]::Dict{SVector{N, IntS}, Matrix{T}})[ll]
+
+get_rotcoefs(rotcoeffs::Dict, ll::SVector) = rotcoeffs[ll]
 
 """
 determines the number of rotation-invariant basis functions
@@ -157,8 +163,8 @@ _length_basis(ship::SHIPBasis, ll::StaticVector{N}) where {N} =
 
 # U is a #mm(ll) x num-basis matrix where each columns defines
 # one basis function
-_length_basis(rotcoeffs::Dict, ll::StaticVector{N}) where {N} =
-      size(SHIPs.Rotations.basis(rotcoefs, ll), 2)
+_length_basis(rotcoeffs::SVector{BO, <: Dict}, ll::StaticVector{N}) where {BO, N} =
+      size(get_rotcoefs(rotcoeffs[N], ll), 2)
 
 
 """
@@ -177,17 +183,17 @@ function precompute_len_Bll(KL, NuZ_N::Vector{Tνz{N}}, rotcoeffs) where {N}
 end
 
 function precompute_Bll(KL, NuZ::SMatrix{BO, NZ}, rotcoeffs) where {BO, NZ}
-   len_Bll = SMatrix{BO, NZ}( [ precompute_len_Bll(KL[iz], NuZ[bo, iz])
+   len_Bll = SMatrix{BO, NZ}( [ precompute_len_Bll(KL[iz], NuZ[bo, iz], rotcoeffs)
                                 for bo = 1:BO, iz = 1:NZ ] )
    # now compute basis indices from the lengths
    idx = 0
    idx_Bll = Matrix{Vector{IntS}}(undef, BO, NZ)
-   for bo = 1:BO, iz = 1:iz
+   for bo = 1:BO, iz = 1:NZ
       sumlen = idx .+ cumsum( len_Bll[bo, iz] )
       idx_Bll[bo, iz] = [ IntS[idx]; sumlen[1:end-1] ]
       idx = sumlen[end]
    end
-   idx_Bll = SMatrix{BO, NZ}([ idx_Bll[bo, iz]  for bo = 1:BO, iz = 1:iz ])
+   idx_Bll = SMatrix{BO, NZ}([ idx_Bll[bo, iz]  for bo = 1:BO, iz = 1:NZ ])
    return len_Bll, idx_Bll
 end
 
