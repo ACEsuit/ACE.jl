@@ -9,13 +9,12 @@ using a spherical harmonics basis, based on
 [![Build Status](https://travis-ci.com/cortner/SHIPs.jl.svg?branch=master)](https://travis-ci.com/cortner/SHIPs.jl)
 [![Codecov](https://codecov.io/gh/cortner/SHIPs.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/cortner/SHIPs.jl)
 
----
-
-work in progress
 
 ---
 
 ## Temporary Documentation of Internals
+
+**this is out of date - will update soon**
 
 ### Transformed Jacobi Polynomials
 
