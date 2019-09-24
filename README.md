@@ -80,3 +80,5 @@ follows (pseudo-code)
     (precomputing ∇_rj J_k and ∇_Rj Y_lm is in fact enough)
 (4)     Compute ∂A_𝐳𝐤𝐥𝐦 / ∂A_{zₐkₐlₐmₐ} * ∇_Rj ϕ_{kₐlₐmₐ} for zj = zₐ
 ```
+
+---
