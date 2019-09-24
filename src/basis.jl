@@ -396,13 +396,14 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
       # read the basis coefficients, this is a Vector{T} with the same length
       # as _mrange(ll)
       Ulm = get_rotcoefs(ship, ll)
+      @assert len == size(Ulm, 2)
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
       b = zeros(Complex{T}, len)
       for (im, mm) in enumerate(_mrange(ll))    # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
          # compute the symmetry prefactor from the CG-coefficients
          um = @view Ulm[im, :] # Complex{T}(clm)
-         ∏Alm = zero(Complex{T})
+         ∏Alm = one(Complex{T})
          if norm(um) != 0  # TODO: if bm ≈ 0.0; continue; end
             # for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
             for α = 1:length(kk)
@@ -467,44 +468,47 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
    @assert N <= BO
    # NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
    ZKL = ship.KL
-   idx0 = _first_B_idx(ship, N, iz0)
+
    # loop over N-body basis functions
-   for (idx, νz) in enumerate(NuZ_N)
-      idxB = idx0+idx
+   # for (idx, νz) in enumerate(NuZ_N)
+   for (νz, idx, len) in zip(NuZ_N, ship.idx_Bll[N, iz0], ship.len_Bll[N, iz0])
       ν = νz.ν
       izz = νz.izz
       kk, ll = _kl(ν, izz, ZKL)
-      Clm = get_rotcoefs(ship, ll)
-      for (mm, clm) in zip(_mrange(ll), Clm)       # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
+      Ulm = get_rotcoefs(ship, ll)
+      @assert len == size(Ulm, 2)
+      for (im, mm) in enumerate(_mrange(ll))    # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
          # skip any m-tuples that aren't admissible
          # if abs(mm[end]) > ll[end]; continue; end
          # ------------------------------------------------------------------
          # compute the symmetry prefactor from the CG-coefficients (done above!)
-         C = clm
-         if C != 0
+         ulm = @view Ulm[im, :]
+         if norm(ulm) != 0
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
             # [1] The basis function B_𝐤𝐥 itself
-            #     B_𝐤𝐥 = ∑_𝐦 C_{𝐤𝐥𝐦} ∏_a A_{kₐlₐmₐ}
+            #     B_𝐤𝐥 = ∑_𝐦 u_{𝐥𝐦} ∏_a A_{kₐlₐmₐ}
             #     the ∑_𝐦 is the `for mm in _mrange` loop
             # TODO: drop this? only compute the gradients?
-            CxA = Complex{T}(C)
+            ∏Alm = one(Complex{T})
             for β = 1:length(ν)
                i0 = ship.firstA[izz[β]][ν[β]]
-               CxA *= tmp.A[izz[β]][i0 + ll[β] + mm[β]] # the k-info is contained in ν[α]
+               ∏Alm *= tmp.A[izz[β]][i0 + ll[β] + mm[β]] # the k-info is contained in ν[α]
             end
-            B[idxB] += real(CxA)
+            for i = 1:len
+               B[idx+i] += real(∏Alm * ulm[i])
+            end
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
 
             # ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
             # [2]  The gradients ∂B_{k}{l} / ∂Rⱼ
             #      ∑_a [ ∏_{b ≠ a} A_{kᵦlᵦmᵦ} ] ∂ϕ_{kₐlₐmₐ} / ∂Rⱼ
             for α = 1:length(ν)
-               # CxA_α =  CxA / A_α   (we could replace this with _dprodA_dAi!)
-               CxA_α = Complex{T}(C)
+               # ∏A_α =  ∏A / A_α   (we could replace this with _dprodA_dAi!)
+               ∏A_α = one(Complex{T})
                for β = 1:length(ν)
                   if β != α
                      i0 = ship.firstA[izz[β]][ν[β]]
-                     CxA_α *= tmp.A[izz[β]][i0 + ll[β] + mm[β]]
+                     ∏A_α *= tmp.A[izz[β]][i0 + ll[β] + mm[β]]
                   end
                end
 
@@ -517,7 +521,9 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
                      R = Rs[j]
                      ∇ϕ_klm = ( tmp.dJ[j, ik] *  tmp.Y[j, iy] * (R/norm(R))
                                + tmp.J[j, ik] * tmp.dY[j, iy] )
-                     dB[j, idxB] += real(CxA_α * ∇ϕ_klm)
+                     for i = 1:len
+                        dB[j, idx+i] += real(ulm[i] * ∏A_α * ∇ϕ_klm)
+                     end
                   end
                end
             end
