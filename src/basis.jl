@@ -67,6 +67,8 @@ struct SHIPBasis{BO, T, NZ, TJ,
    NuZ::SMatrix{BO, NZ, Vector}       # N-particle indexing
    firstA::NTuple{NZ, Vector{IntS}}   # indexing into A-basis vectors
    rotcoefs::SVector{BO, Dict}        # storage for the rot-inv coefs
+   len_Bll::SMatrix{BO, NZ, Vector{IntS}}  # length of an ll - basis subblock
+   idx_Bll::SMatrix{BO, NZ, Vector{IntS}}  # first index of an ll - basis subblock
 end
 
 function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
@@ -91,8 +93,9 @@ function SHIPBasis(spec::BasisSpec{BO}, J) where {BO}
    firstA = _firstA.(allKL)
    # get the Ylm basis coefficients
    rotcoefs = precompute_rotcoefs(allKL, NuZ, Bcoefs)
+   len_Bll, idx_Bll = precompute_Bll(allKL, NuZ, rotcoeffs)
    # putting it all together ...
-   return SHIPBasis(spec, J, SH, allKL, NuZ, firstA, rotcoefs)
+   return SHIPBasis(spec, J, SH, allKL, NuZ, firstA, rotcoefs, len_Bll, idx_Bll)
 end
 
 Dict(shipB::SHIPBasis) = Dict(
@@ -116,31 +119,89 @@ nspecies(B::SHIPBasis) = nspecies(B.spec)
 
 bodyorder(ship::SHIPBasis{BO}) where {BO} = BO + 1
 
-Base.length(ship::SHIPBasis{BO}) where {BO} = sum(length.(ship.NuZ))
-
 get_maxL(allKL) = maximum( maximum( kl.l for kl in allKL_ )
                            for allKL_ in allKL )
+
 
 # ----------------------------------------------
 #      Computation of the Ylm coefficients
 # ----------------------------------------------
 
+_get_ll(KL, νz) = getfield.(KL[νz.ν], :l)
 
 function precompute_rotcoefs(KL, NuZ::SMatrix{BO, NZ},
                              A::Rotations.CoeffArray{T}) where {BO, NZ, T}
    rotcoefs = SVector{BO, Dict}(
-                  [ Dict{SVector{N, IntS}, Vector{T}}() for N = 1:BO ]... )
+                  [ Dict{SVector{N, IntS}, Matrix{T}}() for N = 1:BO ]... )
    for bo = 1:BO, iz = 1:NZ, νz in NuZ[bo, iz]
-      ll = getfield.(KL[iz][νz.ν], :l)
+      ll = _get_ll(KL[iz], νz) # getfield.(KL[iz][νz.ν], :l)
       if !haskey(rotcoefs[bo], ll)
-         rotcoefs[bo][ll] = SHIPs.Rotations.single_B(A, ll)
+         rotcoefs[bo][ll] = SHIPs.Rotations.basis(A, ll)
       end
    end
    return rotcoefs
 end
 
 get_rotcoefs(shipB::SHIPBasis{BO,T}, ll::SVector{N}) where {BO, T, N} =
-      (shipB.rotcoefs[N]::Dict{SVector{N, IntS}, Vector{T}})[ll]
+      (shipB.rotcoefs[N]::Dict{SVector{N, IntS}, Matrix{T}})[ll]
+
+
+
+"""
+determines the number of rotation-invariant basis functions
+at a given ll - tuple. (basically, just reads out the precomputed
+coefficients and checks the size of the matrix)
+"""
+_length_basis(ship::SHIPBasis, ll::StaticVector{N}) where {N} =
+      _length_basis(ship.rotcoeffs, ll)
+
+# U is a #mm(ll) x num-basis matrix where each columns defines
+# one basis function
+_length_basis(rotcoeffs::Dict, ll::StaticVector{N}) where {N} =
+      size(SHIPs.Rotations.basis(rotcoefs, ll), 2)
+
+
+"""
+for each ll-tuple, we check the length of the ll-sub-basis and
+store it in len_Bll.
+"""
+function precompute_len_Bll(KL, NuZ_N::Vector{Tνz{N}}, rotcoeffs) where {N}
+   len_Bll = Vector{IntS}(undef, length(NuZ_N))
+   idx_Bll = Vector{IntS}(undef, length(NuZ_N))
+   for (i, νz) in enumerate(NuZ_N)
+      ll = _get_ll(KL, νz)
+      len = _length_basis(rotcoeffs, ll)
+      len_Bll[i] = len
+   end
+   return len_Bll
+end
+
+function precompute_Bll(KL, NuZ::SMatrix{BO, NZ}, rotcoeffs) where {BO, NZ}
+   len_Bll = SMatrix{BO, NZ}( [ precompute_len_Bll(KL[iz], NuZ[bo, iz])
+                                for bo = 1:BO, iz = 1:NZ ] )
+   # now compute basis indices from the lengths
+   idx = 0
+   idx_Bll = Matrix{Vector{IntS}}(undef, BO, NZ)
+   for bo = 1:BO, iz = 1:iz
+      sumlen = idx .+ cumsum( len_Bll[bo, iz] )
+      idx_Bll[bo, iz] = [ IntS[idx]; sumlen[1:end-1] ]
+      idx = sumlen[end]
+   end
+   idx_Bll = SMatrix{BO, NZ}([ idx_Bll[bo, iz]  for bo = 1:BO, iz = 1:iz ])
+   return len_Bll, idx_Bll
+end
+
+"""
+`_length_basis(ship, bo, iz)` -> length of sub-basis at body-order bo,
+species index iz
+"""
+_length_basis(ship, bo, iz) = sum(ship.len_Bll[bo, iz])
+
+# the length of the basis depends on how many RI-coefficient sets there are
+# so we have to be very careful how we define this.
+Base.length(ship::SHIPBasis{BO, T, NZ}) where {BO, T, NZ} =
+   sum( _length_basis(ship, bo, iz)   for bo = 1:BO, iz = 1:NZ )
+
 
 # ----------------------------------------------
 #      Computation of the A-basis
@@ -281,34 +342,38 @@ function alloc_temp_d(ship::SHIPBasis, N::Integer)
 end
 
 
-"""
-compute the zeroth index in a B array (basis values) corresponding
-to the N-body subset of the SHIPBasis. This function specifies the
-ordering of the basis set:
-```
-   iz    N
-------------
-   1     1
-   1     2
-   1     ...
-   1     BO
-   2     1
-   2     2
-   2     ...
-   ...   ...
-```
-"""
-function _first_B_idx(ship::SHIPBasis{BO}, N, iz0)::Int where {BO}
-   # compute the first index into the basis
-   idx0 = 0
-   for iz = 1:iz0-1, n = 1:BO
-      idx0 += length(ship.NuZ[n, iz])
-   end
-   for n = 1:N-1
-      idx0 += length(ship.NuZ[n, iz0])
-   end
-   return idx0
-end
+# """
+# compute the zeroth index in a B array (basis values) corresponding
+# to the N-body subset of the SHIPBasis. This function specifies the
+# ordering of the basis set:
+# ```
+#    iz    N
+# ------------
+#    1     1
+#    1     2
+#    1     ...
+#    1     BO
+#    2     1
+#    2     2
+#    2     ...
+#    ...   ...
+# ```
+# """
+# function _first_B_idx(ship::SHIPBasis{BO}, N, iz0)::Int where {BO}
+#    #
+#    # TODO : WARNING - this function is now type-unstable
+#    #        and probably very slow. We may wish to precompute something here
+#    #
+#    # compute the first index into the basis
+#    idx0 = 0
+#    for iz = 1:iz0-1, n = 1:BO
+#       idx0 += _length_basis(ship.NuZ[n, iz])
+#    end
+#    for n = 1:N-1
+#       idx0 += _length_basis(ship.NuZ[n, iz0])
+#    end
+#    return idx0
+# end
 
 function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
                       NuZ_N::Vector{Tνz{N}}) where {BO, T, N}
@@ -333,7 +398,7 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
          # skip any m-tuples that aren't admissible (incorporate into mrange?)
          # if abs(mm[end]) > ll[end]; continue; end
          # compute the symmetry prefactor from the CG-coefficients
-         bm = ComplexF64(clm)
+         bm = Complex{T}(clm)
          if bm != 0  # TODO: if bm ≈ 0.0; continue; end
             # for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
             for α = 1:length(kk)

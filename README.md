@@ -81,6 +81,8 @@ follows (pseudo-code)
 (4)     Compute ∂A_𝐳𝐤𝐥𝐦 / ∂A_{zₐkₐlₐmₐ} * ∇_Rj ϕ_{kₐlₐmₐ} for zj = zₐ
 ```
 
+---
+
 ---------------------------------------------------------------------------
  ACE.jl and SHIPs.jl: Julia implementation of the Atomic Cluster Expansion
  Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>

@@ -44,11 +44,12 @@ end
 
 
 cg_conditions(j1,m1,j2,m2,j3,m3) =
-	cg_l_condition(j1, j2, j3) &&
+	cg_l_condition(j1, j2, j3)   &&
 	cg_m_condition(m1, m2, m3)   &&
 	(abs(m1) <= j1) && (abs(m2) <= j2) && (abs(m3) <= j3)
 
 cg_l_condition(j1, j2, j3) = (abs(j1-j2) <= j3 <= j1 + j2)
+
 cg_m_condition(m1, m2, m3) = (m3 == m1 + m2)
 
 
@@ -155,7 +156,7 @@ function (A::CoeffArray)(ll::StaticVector{N},
                          kk::StaticVector{N}) where {N}
    if       sum(mm) != 0 ||
             sum(kk) != 0 ||
-            !all(abs.(mm) .<=  ll) ||
+            !all(abs.(mm) .<= ll) ||
             !all(abs.(kk) .<= ll)
       return 0.0
    end
