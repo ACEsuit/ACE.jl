@@ -386,34 +386,34 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
    @assert N <= BO
    # NuZ_N = ship.NuZ[N, iz0]::Vector{Tνz{N}}
    ZKL = ship.KL
-   # compute the zeroth (not first!) index of the N-body subset of the SHIPBasis
-   idx0 = _first_B_idx(ship, N, iz0)
+
    # loop over N-body basis functions
    # A has already been filled in the outer eval_basis!
-   for (idx, νz) in enumerate(NuZ_N)
+   for (νz, idx, len) in zip(NuZ_N, ship.idx_Bll[N, iz0], ship.len_Bll[N, iz0])
       ν = νz.ν
       izz = νz.izz
       kk, ll = _kl(ν, izz, ZKL)
       # read the basis coefficients, this is a Vector{T} with the same length
       # as _mrange(ll)
-      Clm = get_rotcoefs(ship, ll)
+      Ulm = get_rotcoefs(ship, ll)
       # b will eventually become B[idx], but we keep it Complex for now
       # so we can do a sanity check that it is in fact real.
-      b = zero(ComplexF64)
-      for (mm, clm) in zip(_mrange(ll), Clm)    # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
-         # skip any m-tuples that aren't admissible (incorporate into mrange?)
-         # if abs(mm[end]) > ll[end]; continue; end
+      b = zeros(Complex{T}, len)
+      for (im, mm) in enumerate(_mrange(ll))    # loops over mᵢ ∈ -lᵢ:lᵢ s.t. ∑mᵢ = 0
          # compute the symmetry prefactor from the CG-coefficients
-         bm = Complex{T}(clm)
-         if bm != 0  # TODO: if bm ≈ 0.0; continue; end
+         um = @view Ulm[im, :] # Complex{T}(clm)
+         ∏Alm = zero(Complex{T})
+         if norm(um) != 0  # TODO: if bm ≈ 0.0; continue; end
             # for (i, (k, l, m, iz)) in enumerate(zip(kk, ll, mm, izz))
             for α = 1:length(kk)
-               # TODO: this is the indexing convention used to construct A
+               # TODO: this is the indexing convention used to construct ∏A
                # (feels brittle - maybe rethink it and write a function for it)
                i0 = ship.firstA[izz[α]][ν[α]]
-               bm *= tmp.A[izz[α]][i0 + ll[α] + mm[α]]
+               ∏Alm *= tmp.A[izz[α]][i0 + ll[α] + mm[α]]
             end
-            b += bm
+            for i = 1:len
+               b[i] += um[i] * ∏Alm
+            end
          end
       end
       # two little sanity checks which we could run in a debug mode
@@ -423,7 +423,9 @@ function _eval_basis!(B, tmp, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
       # if abs(imag(b) / abs(b)) > 1e-10
       #    @warn("b/|b| == $(b/abs(b))")
       # end
-      B[idx0+idx] = real(b)
+      for i = 1:len
+         B[idx+i] = real(b[i])
+      end
    end
    return nothing
 end
