@@ -105,22 +105,27 @@ function SHIP(basis::SHIPBasis{BO, T, NZ}, coeffs::AbstractVector{T}
                 basis.spec.Zs )
 end
 
-function _get_C_IA!(spec, basis, coeffs, ::Val{N}, iz0) where {N}
+function _get_C_IA!(spec, basis::SHIPBasis{BO, T}, coeffs, ::Val{N}, iz0
+                   ) where {BO, T, N}
    ia = zero(MVector{N, IntS})
    NuZ_N = basis.NuZ[N, iz0]::Vector{Tνz{N}}
-   idx0 = _first_B_idx(basis, N, iz0)
-   for (idx, νz) in enumerate(NuZ_N)
+
+   for (idx, len, νz) in zip(basis.idx_Bll[N, iz0],
+                             basis.len_Bll[N, iz0],
+                             NuZ_N)
       ν = νz.ν
       izz = νz.izz
-      idxB = idx0 + idx
       kk, ll = _kl(ν, izz, basis.KL)   # TODO: allocation -> fix this!
-      Bcoefs = get_rotcoefs(basis, ll)
-      for (mm, clm) in zip(_mrange(ll), Bcoefs)
+      Ulm = get_rotcoefs(basis, ll)
+      @assert len == size(Ulm, 2)
+      for (im, mm) in enumerate(_mrange(ll))
          # skip any m-tuples that aren't admissible:
          # TODO: incorporate this into _mrange
          if abs(mm[end]) > ll[end]; continue; end
          # compute the coefficient of a ∏ Aⱼ term
-         c = clm * coeffs[idxB]
+         # this sums over all basis functions within one ll-group
+         # (often just a single one!)
+         c = sum(Ulm[im, i] * coeffs[idx+i] for i = 1:len)
          # compute the indices of Aⱼ in the store.A array
          for α = 1:N
             ia[α] = basis.firstA[izz[α]][ν[α]] + ll[α] + mm[α]

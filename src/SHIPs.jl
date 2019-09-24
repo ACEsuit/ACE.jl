@@ -30,7 +30,7 @@ include("basisspecs.jl")
 include("basis.jl")
 
 # SHIP interatomic potential definition
-# include("fast.jl")
+include("fast.jl")
 
 # include("regularisers.jl")
 
