@@ -221,21 +221,42 @@ end
 
 
 _len_mrange(ll) = sum(_ -> 1, _mrange(ll))
+_len_mrange_sorted(ll) = sum(mm -> issocket(mm), _mrange(ll))
 
 
-function basis(A::CoeffArray{T}, ll) where {T}
-	len = _len_mrange(ll)
-	CC = compute_Al(A, ll)
+function basis(A::CoeffArray{T}, ll; ordered=true) where {T}
+	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))
 	return svdC.U[:, 1:rk]
 end
 
 
-compute_Al(ll::SVector{N}) where {N} = compute_Al(CoeffArray(N, sum(ll)), ll)
+compute_Al(ll::SVector{N}; ordered = false) where {N} =
+		compute_Al(CoeffArray(N, sum(ll)), ll; ordered=ordered)
 
+compute_Al(A::CoeffArray{T}, ll::SVector{N}; ordered = false) where {N} =
+		compute_Al(A, ll, Val(ordered))
 
-function compute_Al(A::CoeffArray{T}, ll::SVector) where {T}
+# unordered
+function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
+	num_mm_sorted = _len_mrange_sorted(ll)
+	num_mm = _len_mrange(ll)
+   CC = zeros(T, len, len)
+	im = 0
+   for mm in _mrange(ll)
+		if issorted(mm)
+			im += 1
+			for (ik, kk) in enumerate(_mrange(ll))
+		      CC[ik, im] = A(ll, mm, kk)
+			end
+		end
+	end
+   return CC
+end
+
+# ordered
+function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
 	len = _len_mrange(ll)
    CC = zeros(T, len, len)
    for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
