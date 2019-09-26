@@ -6,23 +6,46 @@
 # --------------------------------------------------------------------------
 
 
-
+using JuLIP
 using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra,
       Combinatorics
 using SHIPs: _mrange
 using SHIPs.Rotations
 
-ll = SVector(1,1,1,2)
+ll = SVector(1,1,1,1)
 A = SHIPs.Rotations.CoeffArray(Float64)
 U = SHIPs.Rotations.compute_Al(A, ll, ordered=true)
-
+rank(U)
+U = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
+rank(U)
 
 function randR()
    R = rand(JVecF) .- 0.5
    return (0.9 + 2 * rand()) * R/norm(R)
 end
-randR(N) = [ randR() for n=1:N ], zeros(Int16, N)|
+randR(N) = [ randR() for n=1:N ], zeros(Int16, N)
 randR(N, syms) = randR(N)[1], rand( Int16.(atomic_number.(syms)), N )
+
+trans = PolyTransform(2, 1.0)
+cutf = PolyCutoff2s(2, 0.5, 3.0)
+ship4 = SHIPBasis(SparseSHIP(4, 10; wL = 1.5), trans, cutf)
+
+idx = (length(ship4)-2):length(ship4)
+G = zeros(1000, 3)
+tmp = JuLIP.alloc_temp(ship4, 5)
+for n = 1:1000
+   R, Z = randR(5)
+   G[n, :] = SHIPs.eval_basis(ship4, R, Z, 0)[idx]
+end
+
+rank(G)
+ship4.NuZ[end][end]
+SHIPs._get_ll(ship4.KL[end], ship4.NuZ[end][end])
+# i.e. ll = (1,1,1,1)
+
+
+
+# --------------------
 
 const SH = SHIPs.SphericalHarmonics.SHBasis(10)
 
