@@ -12,12 +12,20 @@ using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra,
 using SHIPs: _mrange
 using SHIPs.Rotations
 
-ll = SVector(1,1,1,1)
+##
+lmax = 3
 A = SHIPs.Rotations.CoeffArray(Float64)
-U = SHIPs.Rotations.compute_Al(A, ll, ordered=true)
-rank(U)
-U = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
-rank(U)
+for l1 = 0:lmax, l2=0:lmax, l3=0:lmax, l4=0:lmax
+   global A
+   ll = SVector(l1, l2, l3, l4)
+   Uslim = SHIPs.Rotations.compute_Al(A, ll, ordered=true)
+   Uall = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
+   if rank(Uslim) != rank(Uall)
+      @show ll, rank(Uslim), rank(Uall)
+   end
+end
+
+## -------------
 
 function randR()
    R = rand(JVecF) .- 0.5
