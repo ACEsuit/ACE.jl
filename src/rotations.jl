@@ -221,7 +221,7 @@ end
 
 
 _len_mrange(ll) = sum(_ -> 1, _mrange(ll))
-_len_mrange_sorted(ll) = sum(mm -> issocket(mm), _mrange(ll))
+_len_mrange_sorted(ll) = sum(mm -> issorted(mm), _mrange(ll))
 
 
 function basis(A::CoeffArray{T}, ll; ordered=true) where {T}
@@ -235,14 +235,14 @@ end
 compute_Al(ll::SVector{N}; ordered = false) where {N} =
 		compute_Al(CoeffArray(N, sum(ll)), ll; ordered=ordered)
 
-compute_Al(A::CoeffArray{T}, ll::SVector{N}; ordered = false) where {N} =
+compute_Al(A::CoeffArray, ll::SVector{N}; ordered = false) where {N} =
 		compute_Al(A, ll, Val(ordered))
 
 # unordered
-function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
+function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
 	num_mm_sorted = _len_mrange_sorted(ll)
 	num_mm = _len_mrange(ll)
-   CC = zeros(T, len, len)
+   CC = zeros(T, num_mm, num_mm_sorted)
 	im = 0
    for mm in _mrange(ll)
 		if issorted(mm)
@@ -256,7 +256,7 @@ function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
 end
 
 # ordered
-function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
+function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
 	len = _len_mrange(ll)
    CC = zeros(T, len, len)
    for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))

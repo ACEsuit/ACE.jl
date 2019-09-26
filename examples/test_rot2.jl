@@ -10,6 +10,12 @@
 using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra,
       Combinatorics
 using SHIPs: _mrange
+using SHIPs.Rotations
+
+ll = SVector(1,1,1,2)
+A = SHIPs.Rotations.CoeffArray(Float64)
+U = SHIPs.Rotations.compute_Al(A, ll, ordered=true)
+
 
 function randR()
    R = rand(JVecF) .- 0.5
