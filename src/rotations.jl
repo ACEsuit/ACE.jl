@@ -224,7 +224,7 @@ _len_mrange(ll) = sum(_ -> 1, _mrange(ll))
 _len_mrange_sorted(ll) = sum(mm -> issorted(mm), _mrange(ll))
 
 
-function basis(A::CoeffArray{T}, ll; ordered=true) where {T}
+function basis(A::CoeffArray{T}, ll; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))

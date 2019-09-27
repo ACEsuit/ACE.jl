@@ -25,6 +25,13 @@ for l1 = 0:lmax, l2=0:lmax, l3=0:lmax, l4=0:lmax
    end
 end
 
+<<<<<<< HEAD
+=======
+ll = SVector(1,1,1,0)
+U = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
+
+
+>>>>>>> 14ee199fe32862737cd306ae0033dac552f4f512
 ## -------------
 
 function randR()
