@@ -92,38 +92,36 @@ function gramian(SH::SHIPs.SphericalHarmonics.SHBasis, Nsamples=1_000_000)
 end
 
 G = gramian(SH)
-@show cond(G)
+println(@test cond(G) < 1.1)
 
 
-# ##
-#
-# @info("Testing (near-)orthonormality of A-basis via sampling")
-#
-# shpB = SHIPBasis( SparseSHIP(3, 10), trans, fcut )
-# function evalA(shpB, tmp, Rs)
-#    Zs = zeros(Int16, length(Rs))
-#    SHIPs.precompute_A!(tmp, shpB, Rs, Zs)
-#    return tmp.A[1]
-# end
-#
-# function A_gramian(shpB, Nsamples = 1_000)
-#    tmp = alloc_temp(shpB)
-#    lenA = length(tmp.A[1])
-#    G = zeros(ComplexF64, lenA, lenA)
-#    for n = 1:Nsamples
-#       R = SHIPs.Utils.rand(shpB.J)
-#       A = evalA(shpB, tmp, [R])
-#       for i = 1:lenA, j = 1:lenA
-#          G[i,j] +=  A[i] * A[j]'
-#       end
-#    end
-#    return G
-# end
-#
-# G = A_gramian(shpB)
-# cond(G)
-#
+##
 
+@info("Testing (near-)orthonormality of A-basis via sampling")
+
+shpB = SHIPBasis( SparseSHIP(3, 5), trans, fcut )
+function evalA(shpB, tmp, Rs)
+   Zs = zeros(Int16, length(Rs))
+   SHIPs.precompute_A!(tmp, shpB, Rs, Zs)
+   return tmp.A[1]
+end
+
+function A_gramian(shpB, Nsamples = 100_000)
+   tmp = alloc_temp(shpB)
+   lenA = length(tmp.A[1])
+   G = zeros(ComplexF64, lenA, lenA)
+   for n = 1:Nsamples
+      R = SHIPs.Utils.rand(shpB.J)
+      A = evalA(shpB, tmp, [R])
+      for i = 1:lenA, j = 1:lenA
+         G[i,j] +=  A[i] * A[j]'
+      end
+   end
+   return G
+end
+
+G = A_gramian(shpB)
+println(@test cond(G) < 1.2)
 
 
 end
