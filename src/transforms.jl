@@ -27,6 +27,8 @@ poly_trans(p, r0, r) = @fastmath(((1+r0)/(1+r))^p)
 
 poly_trans_d(p, r0, r) = @fastmath((-p/(1+r0)) * ((1+r0)/(1+r))^(p+1))
 
+poly_trans_inv(p, r0, x) = ( (1+r0)/(x^(1/p)) - 1 )
+
 
 """
 Implements the distance transform
@@ -55,6 +57,7 @@ transform(t::PolyTransform, r::Number) = poly_trans(t.p, t.r0, r)
 
 transform_d(t::PolyTransform, r::Number) = poly_trans_d(t.p, t.r0, r)
 
+inv_transform(t::PolyTransform, x::Number) = poly_trans_inv(t.p, t.r0, x)
 
 
 """
@@ -219,7 +222,7 @@ Dict(J::TransformedJacobi) = Dict(
 @noinline TransformedJacobi(D::Dict) =
    TransformedJacobi(
       Jacobi(D["a"], D["b"], D["deg"],
-             skip0 = haskey(D, "skip0")  ? D["skip0"]  : false), 
+             skip0 = haskey(D, "skip0")  ? D["skip0"]  : false),
       decode_dict(D["trans"]),
       decode_dict(D["cutoff"]),
       D["rl"],

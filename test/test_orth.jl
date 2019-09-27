@@ -8,6 +8,8 @@
 
 @testset "Basis Orthogonality"
 
+##
+
 using Test
 using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
 using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
@@ -18,7 +20,7 @@ using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
 
 @info("Testing ortho-normality of Jacobi Polynomials")
 
-α, β = 1 + rand(), 1 + rand() 
+α, β = 1 + rand(), 1 + rand()
 N = 30
 J = Jacobi(α, β, N)
 Bj = alloc_B(J)
@@ -53,6 +55,75 @@ integrand = let P = P, B = B, tmp = tmp
 
 Q = quadgk(integrand, rl, ru)[1]
 println(@test round.(Q, digits=8) == Matrix(I, N+1, N+1))
+
+
+##
+
+@info("Testing (near-) orthonormality of r-basis via sampling")
+
+# P = TransformedJacobi(...) from previous cell
+Nsamples = 1_000_000
+
+G = zeros(length(P), length(P))
+for n = 1:Nsamples
+   eval_basis!(B, tmp, P, SHIPs.Utils.rand_radial(P))
+   global  G += B * B'
+end
+
+println(@test cond(G) < 1.1)
+
+
+##
+
+@info("Testing (near-)orthonormality of Ylm-basis via sampling")
+
+SH = SHIPs.SphericalHarmonics.SHBasis(5)
+
+function gramian(SH::SHIPs.SphericalHarmonics.SHBasis, Nsamples=1_000_000)
+   lenY = length(SH)
+   G = zeros(ComplexF64, lenY, lenY)
+   for n = 1:Nsamples
+      Y = SHIPs.eval_basis(SH, SHIPs.Utils.rand_sphere())
+      for i = 1:lenY, j = 1:lenY
+         G[i,j] += Y[i] * Y[j]'
+      end
+   end
+   return G / Nsamples
+end
+
+G = gramian(SH)
+@show cond(G)
+
+
+# ##
+#
+# @info("Testing (near-)orthonormality of A-basis via sampling")
+#
+# shpB = SHIPBasis( SparseSHIP(3, 10), trans, fcut )
+# function evalA(shpB, tmp, Rs)
+#    Zs = zeros(Int16, length(Rs))
+#    SHIPs.precompute_A!(tmp, shpB, Rs, Zs)
+#    return tmp.A[1]
+# end
+#
+# function A_gramian(shpB, Nsamples = 1_000)
+#    tmp = alloc_temp(shpB)
+#    lenA = length(tmp.A[1])
+#    G = zeros(ComplexF64, lenA, lenA)
+#    for n = 1:Nsamples
+#       R = SHIPs.Utils.rand(shpB.J)
+#       A = evalA(shpB, tmp, [R])
+#       for i = 1:lenA, j = 1:lenA
+#          G[i,j] +=  A[i] * A[j]'
+#       end
+#    end
+#    return G
+# end
+#
+# G = A_gramian(shpB)
+# cond(G)
+#
+
 
 
 end
