@@ -18,10 +18,10 @@ using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
 get_IN(N) = collect((shpB.idx_Bll[N][1]+1):(shpB.idx_Bll[N][end]+shpB.len_Bll[N][end]))
 
 # function barrier
-gramian(N, shpB, Nsamples=100_000) =
-   gramian(N, get_IN(N), alloc_temp(shpB), alloc_B(shpB), shpB, Nsamples)
+gramian(N, shpB, Nsamples=100_000; normalise=false) =
+   gramian(N, get_IN(N), alloc_temp(shpB), alloc_B(shpB), shpB, Nsamples, normalise)
 
-function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000)
+function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000, normalise = false)
    Zs = zeros(Int16, N)
    lenB = length(IN)
    G = zeros(Float64, lenB, lenB)
@@ -35,17 +35,30 @@ function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000)
          end
       end
    end
+   if normalise
+      g = diag(G)
+      for i = 1:lenB, j = 1:lenB
+         G[i,j] /= sqrt(g[i]*g[j])
+      end
+   end
    return G / Nsamples
 end
 
 ##
-
+Nmax = 4
 rl, ru = 0.5, 3.0
 fcut =  PolyCutoff2s(2, rl, ru)
 trans = PolyTransform(2, 1.0)
-shpB = SHIPBasis( SparseSHIP(4, 10), trans, fcut )
+shpB = SHIPBasis( SparseSHIP(Nmax, 10), trans, fcut )
 
-for N = 1:4
+@info("Conditions numbers of gramians")
+for N = 1:Nmax
    GN = gramian(N, shpB, 10_000)
+   @show N, cond(GN)
+end
+
+@info("Conditions numbers of normalised gramians")
+for N = 1:Nmax
+   GN = gramian(N, shpB, 10_000, normalise=true)
    @show N, cond(GN)
 end
