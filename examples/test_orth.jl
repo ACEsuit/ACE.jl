@@ -52,8 +52,38 @@ Nsamples = 1_000
 rl, ru = 0.5, 3.0
 fcut =  PolyCutoff2s(2, rl, ru)
 trans = PolyTransform(2, 1.0)
-shpB = SHIPBasis( SparseSHIP(Nmax, 10), trans, fcut )
-shpB.spec.Zs[1]
+shpB = SHIPBasis( SparseSHIP(6, 15), trans, fcut )
+
+ctr = 0
+nnz = 0
+for N = 1:Nmax
+   for νz in shpB.NuZ[N]
+      # ll = SHIPs._get_ll(shpB.KL[N], νz)
+      kk, ll = SHIPs._kl(νz.ν, νz.izz, shpB.KL)
+      for mm in SHIPs._mrange(ll)
+         global ctr += 1
+         global nnz += size( shpB.rotcoefs[N][ll], 2 )
+      end
+   end
+end
+length(shpB)
+ctr
+nnz
+
+function fill_an_array!(A)
+   for n = 1:length(A)
+      A[n] = rand()
+   end
+   return A
+end
+
+A = zeros(100_000);
+(@elapsed fill_an_array!(A)) * 1000
+
+
+
+# SHIPs._get_ll(shpB.KL, shpB.NuZ[2][1])
+
 @show shpB.idx_Bll[end]
 @show shpB.len_Bll[end]
 @show length(shpB)

@@ -657,7 +657,7 @@ end
 
 """
 main function to call to orthonormalise all basis blocks; the real work
-   is carried out in _compute_gramians_N!.
+is carried out in _compute_gramians_N!.
 """
 function filter_dependents(shpB::SHIPBasis{BO}, N_samples=1_000) where {BO}
    G = _all_the_gramians(shpB)
@@ -714,7 +714,7 @@ function _compute_gramians_N!(G, ::Val{N}, shpB::SHIPBasis{BO, T, NZ}, Nsamples,
    end
 end
 
-function _get_filtered_basis(shpB, G)
+function filter_rotcoefs(shpB, G)
+   rotcoeffs = shpB.rotcoeffs
 
-   for
 end
