@@ -71,18 +71,20 @@ struct SHIPBasis{BO, T, NZ, TJ,
    idx_Bll::SMatrix{BO, NZ, Vector{IntS}}  # first index of an ll - basis subblock
 end
 
-function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff)
+function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff;
+                   kwargs...)
    J = TransformedJacobi(maxK(spec), trans, fcut)
-   return SHIPBasis(spec, J)
+   return SHIPBasis(spec, J; kwargs...)
 end
 
-function SHIPBasis(spec::BasisSpec, trans::DistanceTransformCut)
+function SHIPBasis(spec::BasisSpec, trans::DistanceTransformCut; kwargs...)
    J = TransformedJacobi(maxK(spec), trans)
-   return SHIPBasis(spec, J)
+   return SHIPBasis(spec, J; kwargs...)
 end
 
 
-function SHIPBasis(spec::BasisSpec{BO}, J) where {BO}
+function SHIPBasis(spec::BasisSpec{BO}, J; filter = true, Nsamples = 1_000
+                  ) where {BO}
    # precompute the rotation-coefficients
    Bcoefs = Rotations.CoeffArray(Float64)
    # instantiate the basis specification
@@ -95,7 +97,12 @@ function SHIPBasis(spec::BasisSpec{BO}, J) where {BO}
    rotcoefs = precompute_rotcoefs(allKL, NuZ, Bcoefs)
    len_Bll, idx_Bll = precompute_Bll(allKL, NuZ, rotcoefs)
    # putting it all together ...
-   return SHIPBasis(spec, J, SH, allKL, NuZ, firstA, rotcoefs, len_Bll, idx_Bll)
+   prebasis = SHIPBasis(spec, J, SH, allKL, NuZ, firstA, rotcoefs, len_Bll, idx_Bll)
+   if filter
+      return filter_dependents(prebasis, Nsamples)
+   else
+      return prebasis
+   end
 end
 
 Dict(shipB::SHIPBasis) = Dict(
@@ -639,4 +646,75 @@ function site_energy_d(basis::SHIPBasis, at::Atoms{T}, i0::Integer) where {T}
       dEs[iB][i0] -= dB[n, iB]
    end
    return dEs
+end
+
+
+
+# ------------------------------------------------------------------
+#  code to filter out linearly dependent basis functions
+#  and at the same time normalise the basis functions
+# ------------------------------------------------------------------
+
+"""
+main function to call to orthonormalise all basis blocks; the real work
+   is carried out in _compute_gramians_N!.
+"""
+function filter_dependents(shpB::SHIPBasis{BO}, N_samples=1_000) where {BO}
+   G = _all_the_gramians(shpB)
+   tmp = alloc_temp(shpB)
+   B = alloc_B(shpB)
+   for N = 1:BO
+      _compute_gramians_N!(G, Val(N), shpB, Nsamples, tmp, B)
+   end
+   newrotcoefs = filter_rotcoefs(shpB, G)
+   newlen_Bll, newidx_Bll = precompute_Bll(shpB.allKL, shpB.NuZ, newrotcoefs)
+   return SHIPBasis(shpB.spec, shpB.J, shpB.SH, shpB.allKL, shpB.NuZ,
+                    shpB.firstA, newrotcoefs, newlen_Bll, newidx_Bll)
+end
+
+
+"""
+allocates space for a gramian matrix for every basis block these are then
+filled in `_compute_gramians_N!`
+"""
+function _all_the_gramians(shpB::SHIPBasis{BO, T, NZ}) where {BO, T, NZ}
+   G = Matrix{Vector{Matrix{T}}}(undef, BO, NZ)
+   for N = 1:BO, iz = 1:NZ
+      G[N, iz] = Vector{Matrix{T}}(undef, length(shpB.idx_Bll[N, iz]))
+      for j = 1:length(length(shpB.idx_Bll[N, iz]))
+         nBll = shpB.len_Bll[N, iz][j]
+         G[N, iz][j] = zeros(T, nBll, nBll)
+      end
+   end
+   return G
+end
+
+
+
+function _compute_gramians_N!(G, ::Val{N}, shpB::SHIPBasis{BO, T, NZ}, Nsamples,
+                              tmp, B ) where {N, BO, T, NZ}
+   if !NZ == 1
+      error("the gramian computation is only implemented for the single-species basis")
+   end
+   # TODO: for multi-species we need to loop over all combinations of species
+   #       this requires a subtle computation of an INZ array?
+   #       or maybe we can just compute all of them ... ???
+
+   z0 = shpB.spec.Zs[1]
+   Zs = fill(z0, N)
+   for ns = 1:Nsamples
+      # evaluate all basis functions on a randomly drawn N-body configuration
+      Rs = SHIPs.Utils.rand(shpB.J, N)
+      eval_basis!(B, tmp, shpB, Rs, Zs, z0)
+      # compute the corresponding gramian contributions...
+      for iν = 1:length(shpB.idx_Bll)
+         B_iν = B[(shpB.idx_Bll[N][iν]+1):(shpB.idx_Bll[N][iν+1])]
+         G[N][iν] += B_iν * B_iν' / Nsamples
+      end
+   end
+end
+
+function _get_filtered_basis(shpB, G)
+
+   for
 end

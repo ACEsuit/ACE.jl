@@ -6,7 +6,6 @@
 # --------------------------------------------------------------------------
 
 
-@info("Testing conditioning of non-orth 3B SHIP Basis")
 
 using Test
 using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
@@ -15,11 +14,14 @@ using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
 
 ##
 
-get_IN(N) = collect((shpB.idx_Bll[N][1]+1):(shpB.idx_Bll[N][end]+shpB.len_Bll[N][end]))
+@noinline get_IN(N) = collect((shpB.idx_Bll[N][1]+1):(shpB.idx_Bll[N][end]+shpB.len_Bll[N][end]))
 
 # function barrier
-gramian(N, shpB, Nsamples=100_000; normalise=false) =
-   gramian(N, get_IN(N), alloc_temp(shpB), alloc_B(shpB), shpB, Nsamples, normalise)
+@noinline gramian(N, shpB, Nsamples=100_000; normalise=false) =
+   gramian(N, get_IN(N), shpB, Nsamples; normalise=normalise)
+
+@noinline gramian(N, IN, shpB, Nsamples; normalise=false) =
+   gramian(N, IN, alloc_temp(shpB), alloc_B(shpB), shpB, Nsamples, normalise)
 
 function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000, normalise = false)
    Zs = zeros(Int16, N)
@@ -46,11 +48,20 @@ end
 
 ##
 Nmax = 4
-Nsamples = 100_000
+Nsamples = 1_000
 rl, ru = 0.5, 3.0
 fcut =  PolyCutoff2s(2, rl, ru)
 trans = PolyTransform(2, 1.0)
 shpB = SHIPBasis( SparseSHIP(Nmax, 10), trans, fcut )
+shpB.spec.Zs[1]
+@show shpB.idx_Bll[end]
+@show shpB.len_Bll[end]
+@show length(shpB)
+
+G = gramian(4, shpB, 10_000)
+rank(G)
+svdG = svd(G)
+svdG.U
 
 @info("Conditions numbers of gramians")
 for N = 1:Nmax
