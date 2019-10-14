@@ -12,7 +12,51 @@ using a spherical harmonics basis, based on
 
 ---
 
-## Temporary Documentation of Internals
+## Refactoring of Internals
+
+### Evaluation of the Basis
+
+The basis functions are defined as follows:
+```
+ϕ_klm(R) = P_k(r) Y_lm(R̂)          #    k, l, m :: Integer
+A_zklm = ∑_{j:zⱼ=z} ϕ_klm(R_j)     #          z :: Integer
+A_𝐳𝐤𝐥𝐦 = ∏_a A_zₐkₐlₐmₐ            #   𝐳, 𝐤, 𝐥, 𝐤 :: Tuple{Int} or Vector{Int}
+Bˢⁱ_𝐳𝐤𝐥 = ∑_𝐦 Dⁱ_𝐥𝐦 A_𝐳𝐤𝐥𝐦
+```
+The s-superscript denotes the species of the center-atom. It is only implicit
+in that the basis functions are the same for each species, but the coefficents
+are of course species-dependent.
+
+TODO:
+ - allow different basis functions for each species
+
+The klm values are restriced as follows:
+* For every k,l, the m values range through -l:l.
+* deg(k, l) <= maxdeg  where maxdeg is a prescribe degree. In practise this
+is usually something like k + wY l <= maxdeg, but something more general is
+possible
+
+In practise we therefore proceed as follows:
+ 1. evaluate all  A_zklm
+ 2. evaluate all  A_𝐳𝐤𝐥𝐦
+ 3. evaluate  (Bˢⁱ_𝐳𝐤𝐥)_n = D * (A_𝐳𝐤𝐥𝐦)
+    where D is a sparse matrix encoding the Dⁱ_𝐥𝐦 coefficients
+
+### Precomputation and Storage
+
+The above section makes the actual evaluation of the basis straightforward, but
+shifts all the work into the precomputation of the necessary datastructures.
+
+#### A_zklm
+
+**Precomputation Stage:** `basis.jl:` 
+
+Starting from a list of all (𝐳, 𝐤, 𝐥) we can compute a list of all possible
+  (𝐳, 𝐤, 𝐥, 𝐦) and from those a list of all possible (z, k, l, m).
+
+
+
+## Temporary Documentation of Internals [OLD VERSION]
 
 **this is out of date - will update soon**
 
