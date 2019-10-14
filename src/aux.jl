@@ -7,6 +7,7 @@
 
 
 using StaticArrays
+using SparseArrays: SparseMatrixCSC
 
 # -----------------------------------
 # iterating over an m collection
@@ -112,3 +113,19 @@ end
       return v
    end
 end
+
+
+# (de-)serialize a sparse matric
+Base.Dict(A::SparseMatrixCSC) =
+   Dict("__id__" => "SparseMatrixCSC",
+        "colptr" => A.colptr,
+        "rowval" => A.rowval,
+        "nzval" => A.nzval,
+        "m" => m,
+        "n" => n )
+
+Base.convert(::Val{:SparseMatrixCSC}, D::Dict) =
+   SparseMatrixCSC(D)
+
+SparseMatrixCSC(D::Dict) =
+   SparseMatrixCSC(D["m"], D["n"], D["colptr"], D["rowval"], D["nzval"])

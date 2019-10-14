@@ -20,58 +20,15 @@ import Base: Dict, convert, ==
 export SHIPBasis
 
 
-# -------------------------------------------------------------
-#       define the basis itself
-# -------------------------------------------------------------
-# THOUGHTS
-#  - technically we don't have to store spec in the basis, but only
-#    to generate it?
-#  - Possibly remove it entirely  from `SHIPBasis`, but still use it to
-#    initially generate that basis.
 
-# TODO [tuples]
-# for now ignore 1-body and 2-body, and leave the indexing into
-# Nu to mean the number of neighbours. But after this runs, we
-# should rewrite this as Nu[1] -> 1-body, Nu[2] -> 2-body, etc.
-# so the meaning of BO will return to what it should be.
-
-# TODO: Move to precomputed ∏A coefficients instead of Clebsch-Gordan
-#       coefficients to speed up LSQ assembly.
-
-const Tνz{N} = NamedTuple{  (:izz, :ν),
-                  Tuple{SVector{N, Int16}, SVector{N, IntS}} }
-
-"""
-`struct SHIPBasis` : the main type around eveything in `SHIPs.jl` revolves;
-it implements a permutation and rotation invariant basis.
-
-### Developer Docs
-
-* `spec` : degree type specifying which tuples to keep
-* `J` : `TransformedJacobi` basis set for the `r`-component
-* `SH` : spherical harmonics basis set for the `R̂`-component
-* `KL` : list of all admissible `(k,l)` tuples
-* `NuZ` : a ν ∈ `Nu[n]` specifies an n-body basis function B_ν = ∑_m ∏_i A_νᵢm
-(details see `README.md`)
-* `firstA` : same length as `KL`; each `(k,l) = KL[i]` has `2l+1`
-A_klm-functions associated which will be stored in the `A` buffer, the first of
-these is stored as `A[firstA[i]]`.
-* `cg` : precomputed Clebsch Gordan coefficients
-"""
-struct SHIPBasis{BO, T, NZ, TJ,
-                 TSPEC <: BasisSpec{BO, NZ}} <: IPBasis
+struct SHIPBasis2{BO, T, NZ, TJ, TSPEC} <: IPBasis
    spec::TSPEC         # specify which tensor products to keep  in the basis
    J::TJ               # specifies the radial basis
    SH::SHBasis{T}      # specifies the angular basis
    # ------------------------------------------------------------------------
-   KL::NTuple{NZ, Vector{NamedTuple{(:k, :l),Tuple{IntS,IntS}}}}    # 1-particle indexing
-   NuZ::SMatrix{BO, NZ, Vector}       # N-particle indexing
-   firstA::NTuple{NZ, Vector{IntS}}   # indexing into A-basis vectors
-   # A2B::SparseMatrixCSC{T, IntS}
-   rotcoefs::SVector{BO, Dict}        # storage for the rot-inv coefs
-   len_Bll::SMatrix{BO, NZ, Vector{IntS}}  # length of an ll - basis subblock
-   idx_Bll::SMatrix{BO, NZ, Vector{IntS}}  # first index of an ll - basis subblock
-   # pure::Bool
+   alist::AList
+   aalist::AAList
+   A2B::SparseMatrixCSC{Complex{T}, IntS}
 end
 
 function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff;
