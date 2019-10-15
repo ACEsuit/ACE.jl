@@ -32,7 +32,8 @@ include("fast.jl")
 include("utils.jl")
 
 
+include("Alist.jl")
 
-include("Alist.jl") 
+include("basis_new.jl")
 
 end # module
