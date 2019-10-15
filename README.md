@@ -18,10 +18,10 @@ using a spherical harmonics basis, based on
 
 The basis functions are defined as follows:
 ```
-ϕ_klm(R) = P_k(r) Y_lm(R̂)          #    k, l, m :: Integer
-A_zklm = ∑_{j:zⱼ=z} ϕ_klm(R_j)     #          z :: Integer
-A_𝐳𝐤𝐥𝐦 = ∏_a A_zₐkₐlₐmₐ            #   𝐳, 𝐤, 𝐥, 𝐤 :: Tuple{Int} or Vector{Int}
-Bˢⁱ_𝐳𝐤𝐥 = ∑_𝐦 Dⁱ_𝐥𝐦 A_𝐳𝐤𝐥𝐦
+ ϕ_klm(R) = P_k(r) Y_lm(R̂)          #    k, l, m :: Integer
+   A_zklm = ∑_{zⱼ=z} ϕ_klm(R_j)     #          z :: Integer
+   A_𝐳𝐤𝐥𝐦 = ∏_a A_zₐkₐlₐmₐ            #   𝐳, 𝐤, 𝐥, 𝐤 :: Tuple{Int} or Vector{Int}
+   Bˢⁱ_𝐳𝐤𝐥 = ∑_𝐦 Dⁱ_𝐥𝐦 A_𝐳𝐤𝐥𝐦
 ```
 The s-superscript denotes the species of the center-atom. It is only implicit
 in that the basis functions are the same for each species, but the coefficents
@@ -42,18 +42,71 @@ In practise we therefore proceed as follows:
  3. evaluate  (Bˢⁱ_𝐳𝐤𝐥)_n = D * (A_𝐳𝐤𝐥𝐦)
     where D is a sparse matrix encoding the Dⁱ_𝐥𝐦 coefficients
 
-### Precomputation and Storage
-
 The above section makes the actual evaluation of the basis straightforward, but
 shifts all the work into the precomputation of the necessary datastructures.
 
-#### A_zklm
+### A_zklm (`Alist.jl -> struct AList`)
 
-**Precomputation Stage:** `basis.jl:` 
+Starting from a list of all (𝐳, 𝐤, 𝐥), `Alist` computes a list of all possible
+(𝐳, 𝐤, 𝐥, 𝐦) and from those a list of all possible (z, k, l, m). This is stored
+in an `AList`, which provides the mapping `i -> zklm` as well as the inverse
+mapping `zklm -> i`. The `i -> zklm` mapping is used to compute the `A` vector,
+roughly as follows
+```
+# Alist.jl:precompute_A!
+fill!(A, 0)
+for (R, Z) in current_neighbourhood
+   Φ = evaluate_basis(R)  # {ϕ_klm}
+   for i = 1:length(alist)
+      zklm = alist[i]
+      if zklm.z == Z
+         A[i] += Φ[zklm.k, zklm.l, zklm.m]
+      end
+   end
+end
+```
 
-Starting from a list of all (𝐳, 𝐤, 𝐥) we can compute a list of all possible
-  (𝐳, 𝐤, 𝐥, 𝐦) and from those a list of all possible (z, k, l, m).
+### A_𝐳𝐤𝐥𝐦 (`Alist.jl -> struct AAList`)
 
+The second datastructure `struct AAList` computes the products A_𝐳𝐤𝐥𝐦 from the
+precomputed scalars A_zklm. To generate A_𝐳𝐤𝐥𝐦 we take a list of all
+possible (𝐳, 𝐤, 𝐥), generate a list of all possible (𝐳, 𝐤, 𝐥, 𝐦). These are
+stored with references to an `alist::AList`. Say, `aalist::AAList`, and
+suppose
+```
+aalist.i2Aidx[i, :] == [n₁, n₂, ...]
+```
+then this row of the Matrix specifies the basis function
+```
+ A_𝐳𝐤𝐥𝐦 = ∏_a A_zₐkₐlₐmₐ
+```
+where `(zₐ, kₐ, lₐ, mₐ) == alist[nₐ]`. Once `alist::AList` has assembled
+the Vector `A`, then the products can be easily assembled into a second
+Vector `AA` as follows
+```
+# Alist.jl:precompute_AA!
+fill!(AA, 1)
+for i = 1:length(aalist)
+   for α = 1:bodyorder_i
+      iA = aalist.i2Aidx[i, α]
+      AA[i] *= A[iA]
+   end
+end
+```
+
+### Bˢⁱ_𝐳𝐤𝐥 (`basis.jl` -> `eval_basis!`)
+
+To define the Bˢⁱ_𝐳𝐤𝐥, we precompute the rotation-coefficients and the assemble
+them into a sparse matrix. To be specific, for each species z, we compute
+a separate `AList, AAList` and `A2B` matrix. The basis computation can then
+simply be achieved as follows:
+```
+precompute_A!(  A[iz0], params)
+precompute_AA!(AA[iz0], params)
+B = A2B[iz0] * AA[iz0]
+```
+Because all look-up is precomputed this is quite fast, and with zero
+allocations.
 
 
 ## Temporary Documentation of Internals [OLD VERSION]

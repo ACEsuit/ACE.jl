@@ -662,7 +662,7 @@ function filter_dependents(shpB::SHIPBasis{BO}, N_samples=1_000) where {BO}
    tmp = alloc_temp(shpB)
    B = alloc_B(shpB)
    for N = 1:BO
-      _compute_gramians_N!(G, Val(N), shpB, Nsamples, tmp, B)
+      _compute_gramians_N!(G, Val(N), shpB, N_samples, tmp, B)
    end
    newrotcoefs = filter_rotcoefs(shpB, G)
    newlen_Bll, newidx_Bll = precompute_Bll(shpB.allKL, shpB.NuZ, newrotcoefs)
