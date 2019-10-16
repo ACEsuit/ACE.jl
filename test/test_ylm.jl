@@ -151,25 +151,54 @@ end
 println()
 
 ##
-
+verbose=true
 @info("Test: check derivatives of complex spherical harmonics")
 for nsamples = 1:30
    R = @SVector rand(3)
+   u = @SVector rand(3); u /= norm(u)
    SH = SHBasis(5)
    Y, dY = eval_basis_d(SH, R)
+   dY_u = dot.(Ref(u), dY)
    DY = Matrix(transpose(hcat(dY...)))
    errs = []
    verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
       DYh = similar(DY)
+      dYh_u = similar(dY_u)
       Rh = Vector(R)
       for i = 1:3
          Rh[i] += h
          DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
          Rh[i] -= h
+         dYh_u += DYh[:, i] * u[i]
       end
-      push!(errs, norm(DY - DYh, Inf))
+      # push!(errs, norm(DY - DYh, Inf))
+      push!(errs, norm(dY_u - dYh_u, Inf))
+      verbose && @printf(" %.2e | %.2e \n", h, errs[end])
+   end
+   success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+   print_tf(@test success)
+end
+println()
+
+##
+
+verbose=true
+@info("Test: check derivatives of complex spherical harmonics")
+for nsamples = 1:30
+   R = @SVector rand(3)
+   u = @SVector rand(3); u /= norm(u)
+   u = SVector(1.0, 0.0, 0.0)
+   SH = SHBasis(5)
+   Y, dY = eval_basis_d(SH, R)
+   dY_u = dot.(dY, Ref(u))
+   errs = []
+   verbose && @printf("     h    | error \n")
+   for p = 2:10
+      h = 0.1^p
+      dYh = (eval_basis(SH, R+h*u) - Y) / h
+      push!(errs, norm((dYh - dY_u), Inf))
       verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
    success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)

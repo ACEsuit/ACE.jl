@@ -132,14 +132,14 @@ function alloc_temp_d(ship::SHIPBasis2{T, NZ}, N::Integer) where {T, NZ}
         AA = [ alloc_AA(ship.aalists[iz0])  for iz0 = 1:NZ ],
        dBc = zeros(JVec{Complex{T}}, length(ship)),
       dAAj = [ zeros(JVec{Complex{T}}, length(ship.aalists[iz0])) for iz0 = 1:NZ ],
-         J = zeros(eltype(J1), N, length(J1)),
-        dJ = zeros(eltype(dJ1), N, length(dJ1)),
-         Y = zeros(eltype(Y1), N, length(Y1)),
-        dY = zeros(eltype(dY1), N, length(dY1)),
-        J1 = J1,
-       dJ1 = dJ1,
-        Y1 = Y1,
-       dY1 = dY1,
+         JJ = zeros(eltype(J1), N, length(J1)),
+        dJJ = zeros(eltype(dJ1), N, length(dJ1)),
+         YY = zeros(eltype(Y1), N, length(Y1)),
+        dYY = zeros(eltype(dY1), N, length(dY1)),
+        J = J1,
+       dJ = dJ1,
+        Y = Y1,
+       dY = dY1,
       tmpJ = alloc_temp_d(ship.J, N),
       tmpY = alloc_temp_d(ship.SH, N)
       )
@@ -166,19 +166,18 @@ function eval_basis_d!(dB, tmp, ship::SHIPBasis2{T},
                        z0::Integer ) where {T}
    iz0 = z2i(ship, z0)
    len_AA = length(ship.aalists[iz0])
-   precompute_A!(tmp, ship, Rs, Zs, iz0)
+   precompute_dA!(tmp, ship, Rs, Zs, iz0)
    precompute_AA!(tmp, ship, iz0)
-   fill!(tmp.dBc, zero(JVec{Complex{T}}))
    for j = 1:length(Rs)
-      for iAA = 1:len_AA
-         tmp.dAAj[iAA] = grad_AA_Rj(Rs[j], j, ship.alists[iz0], ship.aalists[iz0], tmp, iz0)
+      dAAj = grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0)  # writes into tmp.dAAj[iz0]
+      for icol = 1:length(dAAj)
+         dB[j, :] += real.( .*(Ref(dAAj[icol]), ship.A2B[iz0][:, icol]) )
       end
-      mul!(tmp.dBc, ship.A2B[iz0], tmp.dAAj)
-      dB[j, :] .= real.(tmp.dBc)
+      # _my_mul!(tmp.dBc, ship.A2B[iz0], dAAj)
+      # dB[j, :] .= real.(tmp.dBc)
    end
    return dB
 end
-
 
 
 
@@ -216,21 +215,19 @@ function precompute_dA!(tmp,
    alist = ship.alists[iz0]
    fill!(tmp.A[iz0], zero(Complex{T}))
 
-   for (R, Z) in zip(Rs, Zs)
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
       # ---------- precompute the derivatives of the Jacobi polynomials
       #            and copy into the tmp array
-      eval_basis_d!(tmp.J1, tmp.dJ1, tmp.tmpJ, ship.J, norm(R))
-      @simd for a = 1:length(tmp.J1)
-         @inbounds tmp.J[iR, a] = tmp.J1[a]
-         @inbounds tmp.dJ[iR, a] = tmp.dJ1[a]
+      eval_basis_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
+      @simd for a = 1:length(tmp.J)
+         @inbounds tmp.JJ[iR, a] = tmp.J[a]
+         @inbounds tmp.dJJ[iR, a] = tmp.dJ[a]
       end
-      # tmp.J[iR,:] .= tmp.J1[:]
-      # tmp.dJ[iR,:] .= tmp.dJ1[:]
       # ----------- precompute the Ylm derivatives
-      eval_basis_d!(tmp.Y1, tmp.dY1, tmp.tmpY, ship.SH, R)
-      @simd for a = 1:length(tmp.Y1)
-         @inbounds tmp.Y[iR,a] = tmp.Y1[a]
-         @inbounds tmp.dY[iR,a] = tmp.dY1[a]
+      eval_basis_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
+      @simd for a = 1:length(tmp.Y)
+         @inbounds  tmp.YY[iR,a] = tmp.Y[a]
+         @inbounds tmp.dYY[iR,a] = tmp.dY[a]
       end
       # ----------- precompute the A values
       iz = z2i(ship, Z)
@@ -261,34 +258,48 @@ end
 # --------------------------------------------------------
 
 function grad_phi_Rj(Rj, j, zklm, tmp)
-   k = zklm.k
+   ik = zklm.k + 1
    iy = index_y(zklm.l, zklm.m)
-   return ( tmp.dJ[j, ik] * tmp.Y[j, iy] * (Rj/norm(Rj))
-           + tmp.J[j, ik] * tmp.dY[j, iy] )
+   return ( tmp.dJJ[j, ik] *  tmp.YY[j, iy] * (Rj/norm(Rj))
+           + tmp.JJ[j, ik] * tmp.dYY[j, iy] )
 end
 
-function grad_AA_Ab(iAA, b, alist, aalist, iz0, tmp)
-   g = one(eltype(tmp.A[1]))
+function grad_AA_Ab(iAA, b, alist, aalist, A)
+   g = one(eltype(A))
    for a = 1:aalist.len[iAA]
       if a != b
          iA = aalist.i2Aidx[iAA, a]
-         g *= tmp.A[iz0][iA]
+         g *= A[iA]
       end
    end
    return g
 end
 
-function grad_AA_Rj(Rj::JVec{T}, j, iAA, alist, aalist, tmp, iz0) where {T}
+function grad_AAi_Rj(iAA, j, Rj::JVec{T}, izj::Integer,
+                     alist, aalist, A, AA, tmp) where {T}
    g = zero(JVec{Complex{T}})
-   len = aalist.len[iAA]  # body-order,
-   aa = tmp.AA[iz0][iAA]
-   for b = 1:len
+   for b = 1:aalist.len[iAA] # body-order
+      # A_{n_b} = A[iA]
       iA = aalist.i2Aidx[iAA, b]
-      a_b = tmp.A[iz0][iA]                # A_b
-      aa_b = (a_b != 0 ? (aa / a_b)       # ∏_{a ≂̸ b} A_a
-                       : grad_AA_Aj(iAA, alist, aalist, iz0) )
-      zklm = alist.i2zklm[iA]
-      g += aa_b * grad_phi_Rj(Rj, j, zklm, tmp)
+      # daa_dab = ∂(∏A_{n_a}) / ∂A_{n_b}
+      daa_dab = grad_AA_Ab(iAA, b, alist, aalist, A)
+      @assert daa_dab ≈ AA[iAA] / A[iA]
+      zklm = alist[iA] # (zklm corresponding to A_{n_b})
+      ∇ϕ_zklm = grad_phi_Rj(Rj, j, zklm, tmp)
+      g += daa_dab * ∇ϕ_zklm
    end
    return g
 end
+
+function grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0) where {T}
+   for iAA = 1:length(ship.aalists[iz0])
+      # g = ∂(∏_a A_a) / ∂Rj     # TODO: species needs to go in here as well!
+      tmp.dAAj[iz0][iAA] = grad_AAi_Rj(iAA, j, Rs[j], z2i(ship, Zs[j]),
+                                       ship.alists[iz0], ship.aalists[iz0],
+                                       tmp.A[iz0], tmp.AA[iz0], tmp)
+   end
+   return tmp.dAAj[iz0]
+end
+
+      # aa_b = (a_b != 0 ? (aa / a_b)       # ∏_{a ≂̸ b} A_a
+      #                  : grad_AA_Aj(iAA, alist, aalist, iz0) )

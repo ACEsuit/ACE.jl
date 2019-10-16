@@ -524,8 +524,9 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
                   # ∂ / ∂Rj only contributes if Rj contributed to A[zα]!!
                   if z2i(ship, Zs[j]) == izz[α]
                      R = Rs[j]
-                     ∇ϕ_klm = ( tmp.dJ[j, ik] *  tmp.Y[j, iy] * (R/norm(R))
-                               + tmp.J[j, ik] * tmp.dY[j, iy] )
+                     ∇ϕ_klm = _grad_phi_Rj(R, j, (k=kk[α], l=ll[α], m=mm[α]), tmp)
+                     # ∇ϕ_klm = ( tmp.dJ[j, ik] *  tmp.Y[j, iy] * (R/norm(R))
+                     #           + tmp.J[j, ik] * tmp.dY[j, iy] )
                      for i = 1:len
                         dB[j, idx+i] += real(ulm[i] * ∏A_α * ∇ϕ_klm)
                      end
@@ -541,6 +542,12 @@ function _eval_basis_d!(B, dB, tmp, ship::SHIPBasis{BO, T}, Rs, Zs,
    # return B, dB
 end
 
+function _grad_phi_Rj(Rj, j, zklm, tmp)
+   ik = zklm.k + 1
+   iy = index_y(zklm.l, zklm.m)
+   return ( tmp.dJ[j, ik] *  tmp.Y[j, iy] * (Rj/norm(Rj))
+           + tmp.J[j, ik] * tmp.dY[j, iy] )
+end
 
 
 
