@@ -31,7 +31,6 @@ Base.getindex(alist::AList, i::Integer) = alist.i2zklm[i]
 Base.getindex(alist::AList, zklm::zklmTuple) = alist.zklm2i[zklm]
 
 alloc_A(alist::AList, T=Float64) = zeros(Complex{T}, length(alist))
-alloc_dA(alist::AList, T=Float64) = zeros(JVec{Complex{T}}, length(alist))
 
 function AList(zklmlist::AbstractVector{zklmTuple})
    # sort the tuples - by z, then k, then l, then m
@@ -48,27 +47,6 @@ function AList(zklmlist::AbstractVector{zklmTuple})
    return AList( i2zklm, zklm2i, [firstz; length(i2zklm)+1] )
 end
 
-"""
-This fills the A-array stored in tmp with the A_zklm density projections in
-the order specified by AList. It also evaluates the radial and angular basis
-functions along the way.
-"""
-function precompute_A!(tmp, ship::SHIPBasis2{T}, Rs, Zs, iz0) where {T}
-   alist = ship.alists[iz0]
-   fill!(tmp.A[iz0], zero(Complex{T}))
-   for (R, Z) in zip(Rs, Zs)
-      iz = z2i(ship, Z)
-      # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(tmp.J, tmp.tmpJ, ship.J, norm(R))
-      eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
-      # add the contributions to the A_zklm
-      for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
-         zklm = alist[i]
-         tmp.A[iz0][i] += tmp.J[zklm.k+1] * tmp.Y[index_y(zklm.l, zklm.m)]
-      end
-   end
-   return nothing
-end
 
 
 # ---------
@@ -131,21 +109,9 @@ function AAList(ZKLM_list, alist)
 end
 
 
-function precompute_AA!(tmp, ship::SHIPBasis2{T}, iz0) where {T}
-   aalist = ship.aalists[iz0]
-   A = tmp.A[iz0]
-   AA = tmp.AA[iz0]
-   fill!(AA, one(Complex{T}))
-   for i = 1:length(aalist)
-      for α = 1:aalist.len[i]
-         iA = aalist.i2Aidx[i, α]
-         AA[i] *= A[iA]
-      end
-   end
-   return nothing
-end
 
 
+# --------------------------------------------------------
 
 """
 convert the "old" `(NuZ, ZKL)` format into the simpler (zz, kk, ll, mm)
@@ -168,4 +134,25 @@ function alists_from_bgrps(bgrps::Tuple)
    alist =  ntuple(iz0 -> AList([ zklm for zklm in collect(zklm_set[iz0]) ]), NZ)
    aalist = ntuple(iz0 -> AAList(zzkkllmm_list[iz0], alist[iz0]), NZ)
    return alist, aalist
+end
+
+
+# --------------------------------------------------------
+
+using SparseArrays: SparseMatrixCSC
+
+function _my_mul!(C::StridedVecOrMat, A::SparseMatrixCSC, B::StridedVecOrMat)
+    A.n == size(B, 1) || throw(DimensionMismatch())
+    A.m == size(C, 1) || throw(DimensionMismatch())
+    size(B, 2) == size(C, 2) || throw(DimensionMismatch())
+    nzv = A.nzval
+    rv = A.rowval
+    for k = 1:size(C, 2)
+        @inbounds for col = 1:A.n
+            for j = A.colptr[col]:(A.colptr[col + 1] - 1)
+                C[rv[j], k] += nzv[j]*B[col,k]
+            end
+        end
+    end
+    C
 end
