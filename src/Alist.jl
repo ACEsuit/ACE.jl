@@ -141,18 +141,17 @@ end
 
 using SparseArrays: SparseMatrixCSC
 
-function _my_mul!(C::StridedVecOrMat, A::SparseMatrixCSC, B::StridedVecOrMat)
-    A.n == size(B, 1) || throw(DimensionMismatch())
-    A.m == size(C, 1) || throw(DimensionMismatch())
-    size(B, 2) == size(C, 2) || throw(DimensionMismatch())
-    nzv = A.nzval
-    rv = A.rowval
-    for k = 1:size(C, 2)
-        @inbounds for col = 1:A.n
-            for j = A.colptr[col]:(A.colptr[col + 1] - 1)
-                C[rv[j], k] += nzv[j]*B[col,k]
-            end
-        end
-    end
-    C
+function _my_mul!(C::AbstractVector, A::SparseMatrixCSC, B::AbstractVector)
+   A.n == length(B) || throw(DimensionMismatch())
+   A.m == length(C) || throw(DimensionMismatch())
+   nzv = A.nzval
+   rv = A.rowval
+   fill!(C, zero(eltype(C)))
+   @inbounds for col = 1:A.n
+      b = B[col]
+      for j = A.colptr[col]:(A.colptr[col + 1] - 1)
+         C[rv[j]] += nzv[j] * b
+      end
+   end
+   return C
 end

@@ -7,7 +7,8 @@
 
 
 using Test
-using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
+using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys,
+      BenchmarkTools
 using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
              alloc_B, alloc_temp, alloc_temp_d, alloc_dB, IntS,
              eval_basis_d!
@@ -31,15 +32,12 @@ shpB = SHIPBasis( SparseSHIP(Nmax, 10), trans, fcut; filter=false )
 ##
 shpB2 = SHIPBasis2(shpB)
 
-
-Nr = 10
+Nr = 50
 Rs, Zs = randR(Nr)
 tmp = alloc_temp(shpB, Nr)
 B = SHIPs.alloc_B(shpB)
 tmp2 = alloc_temp(shpB2, Nr)
 B2 = SHIPs.alloc_B(shpB2)
-
-using BenchmarkTools
 
 SHIPs.eval_basis!(B, tmp, shpB, Rs, Zs, 0)
 SHIPs.eval_basis!(B2, tmp2, shpB2, Rs, Zs, 0)
@@ -58,8 +56,8 @@ eval_basis_d!(B, dB, tmpd, shpB, Rs, Zs, 0)
 tmpd2 = alloc_temp_d(shpB2, Nr)
 dB2 = alloc_dB(shpB2, Nr)
 eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
-dB2 ≈ dB
-dB2[1,:] ≈ dB[1,:]
+
+@show dB2 ≈ dB
 
 @btime eval_basis_d!($B, $dB, $tmpd, $shpB, $Rs, $Zs, 0)
 @btime eval_basis_d!($dB2, $tmpd2, $shpB2, $Rs, $Zs, 0)
@@ -67,44 +65,57 @@ dB2[1,:] ≈ dB[1,:]
 
 
 
-
-
-
-
-# debugging -> shows that SHIPs.grad_AA_Rj! is correct...
-
-_AA(Rs) = (
-   SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
-   SHIPs.precompute_AA!(tmp2, shpB2, 1);
-   return copy(tmp2.AA[1])
-   )
-
-_dAA(Rs, j) = (
-   SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
-   SHIPs.precompute_AA!(tmpd2, shpB2, 1);
-   SHIPs.grad_AA_Rj!(tmpd2, shpB2, j, Rs, Zs, 1);
-   return copy(tmpd2.dAAj[1])
-   )
-
-
-u1 = rand(JVecF); u1 /= norm(u1)
-jj = 4
-
-for p = 2:12
-   h = 0.1^p
-
-   A = _AA(Rs)
-   Rs_h = copy(Rs); Rs_h[jj] += h * u1
-   A_h = _AA(Rs_h)
-   dA_h = (A_h - A) / h
-
-   dAA = _dAA(Rs, jj)
-   dAA_u1 = [ dot(u1, da) for da in dAA ]
-
-   @show norm(real.(dAA_u1 - dA_h), Inf)
-end
-
-
+# ##
+#
+# f = let dB2 = dB2, tmpd2 = tmpd2, shpB2 = shpB2, Rs = Rs, Zs = Zs
+#    () -> eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
+# end
+# runn(f, N) = (for n=1:N; f(); end)
+# runn(f, 1)
+# ##
+#
+# using Profile
+# Profile.clear()
+# @profile runn(f, 100)
+# Profile.print()
+#
+# ##
+#
+#
+# # debugging -> shows that SHIPs.grad_AA_Rj! is correct...
+#
+# _AA(Rs) = (
+#    SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
+#    SHIPs.precompute_AA!(tmp2, shpB2, 1);
+#    return copy(tmp2.AA[1])
+#    )
+#
+# _dAA(Rs, j) = (
+#    SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
+#    SHIPs.precompute_AA!(tmpd2, shpB2, 1);
+#    SHIPs.grad_AA_Rj!(tmpd2, shpB2, j, Rs, Zs, 1);
+#    return copy(tmpd2.dAAj[1])
+#    )
+#
+#
+# u1 = rand(JVecF); u1 /= norm(u1)
+# jj = 4
+#
+# for p = 2:12
+#    h = 0.1^p
+#
+#    A = _AA(Rs)
+#    Rs_h = copy(Rs); Rs_h[jj] += h * u1
+#    A_h = _AA(Rs_h)
+#    dA_h = (A_h - A) / h
+#
+#    dAA = _dAA(Rs, jj)
+#    dAA_u1 = [ dot(u1, da) for da in dAA ]
+#
+#    @show norm(real.(dAA_u1 - dA_h), Inf)
+# end
+#
+#
 
 
 

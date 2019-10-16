@@ -129,6 +129,7 @@ function alloc_temp_d(ship::SHIPBasis2{T, NZ}, N::Integer) where {T, NZ}
    dY1 = alloc_dB(ship.SH)
    return (
          A = [ alloc_A(ship.alists[iz0])  for iz0 = 1:NZ ],
+        dA = [ zeros(JVec{Complex{T}}, N, length(ship.alists[iz0])) for iz0 = 1:NZ ],
         AA = [ alloc_AA(ship.aalists[iz0])  for iz0 = 1:NZ ],
        dBc = zeros(JVec{Complex{T}}, length(ship)),
       dAAj = [ zeros(JVec{Complex{T}}, length(ship.aalists[iz0])) for iz0 = 1:NZ ],
@@ -153,7 +154,8 @@ function eval_basis!(B, tmp, ship::SHIPBasis2{T},
    iz0 = z2i(ship, z0)
    precompute_A!(tmp, ship, Rs, Zs, iz0)
    precompute_AA!(tmp, ship, iz0)
-   mul!(tmp.Bc, ship.A2B[iz0], tmp.AA[iz0])
+   # fill!(tmp.Bc, 0)
+   _my_mul!(tmp.Bc, ship.A2B[iz0], tmp.AA[iz0])
    B .= real.(tmp.Bc)
    return B
 end
@@ -170,11 +172,11 @@ function eval_basis_d!(dB, tmp, ship::SHIPBasis2{T},
    precompute_AA!(tmp, ship, iz0)
    for j = 1:length(Rs)
       dAAj = grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0)  # writes into tmp.dAAj[iz0]
-      for icol = 1:length(dAAj)
-         dB[j, :] += real.( .*(Ref(dAAj[icol]), ship.A2B[iz0][:, icol]) )
+      # fill!(tmp.dBc, zero(JVec{Complex{T}}))
+      _my_mul!(tmp.dBc, ship.A2B[iz0], dAAj)
+      @inbounds for i = 1:length(tmp.dBc)
+         dB[j, i] = real(tmp.dBc[i])
       end
-      # _my_mul!(tmp.dBc, ship.A2B[iz0], dAAj)
-      # dB[j, :] .= real.(tmp.dBc)
    end
    return dB
 end
@@ -234,8 +236,12 @@ function precompute_dA!(tmp,
       for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
          zklm = alist[i]
          tmp.A[iz0][i] += tmp.J[zklm.k+1] * tmp.Y[index_y(zklm.l, zklm.m)]
+         # and into dA
+         ∇ϕ_zklm = grad_phi_Rj(R, iR, zklm, tmp)
+         tmp.dA[iz0][iR, i] = ∇ϕ_zklm
       end
    end
+
    return tmp
 end
 
@@ -276,16 +282,15 @@ function grad_AA_Ab(iAA, b, alist, aalist, A)
 end
 
 function grad_AAi_Rj(iAA, j, Rj::JVec{T}, izj::Integer,
-                     alist, aalist, A, AA, tmp) where {T}
+                     alist, aalist, A, AA, dA, tmp) where {T}
    g = zero(JVec{Complex{T}})
    for b = 1:aalist.len[iAA] # body-order
       # A_{n_b} = A[iA]
       iA = aalist.i2Aidx[iAA, b]
       # daa_dab = ∂(∏A_{n_a}) / ∂A_{n_b}
       daa_dab = grad_AA_Ab(iAA, b, alist, aalist, A)
-      @assert daa_dab ≈ AA[iAA] / A[iA]
       zklm = alist[iA] # (zklm corresponding to A_{n_b})
-      ∇ϕ_zklm = grad_phi_Rj(Rj, j, zklm, tmp)
+      ∇ϕ_zklm = dA[j, iA] # grad_phi_Rj(Rj, j, zklm, tmp)
       g += daa_dab * ∇ϕ_zklm
    end
    return g
@@ -296,10 +301,8 @@ function grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0) where {T}
       # g = ∂(∏_a A_a) / ∂Rj     # TODO: species needs to go in here as well!
       tmp.dAAj[iz0][iAA] = grad_AAi_Rj(iAA, j, Rs[j], z2i(ship, Zs[j]),
                                        ship.alists[iz0], ship.aalists[iz0],
-                                       tmp.A[iz0], tmp.AA[iz0], tmp)
+                                       tmp.A[iz0], tmp.AA[iz0], tmp.dA[iz0],
+                                       tmp)
    end
    return tmp.dAAj[iz0]
 end
-
-      # aa_b = (a_b != 0 ? (aa / a_b)       # ∏_{a ≂̸ b} A_a
-      #                  : grad_AA_Aj(iAA, alist, aalist, iz0) )
