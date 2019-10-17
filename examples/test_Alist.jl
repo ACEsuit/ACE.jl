@@ -27,10 +27,12 @@ Nmax = 4
 rl, ru = 0.5, 3.0
 fcut =  PolyCutoff2s(2, rl, ru)
 trans = PolyTransform(2, 1.0)
-shpB = SHIPBasis( SparseSHIP(Nmax, 10), trans, fcut; filter=false )
+spec = SparseSHIP(Nmax, 10)
+shpB = SHIPBasis(spec, trans, fcut; filter=false)
+shpB2 = SHIPBasis2(spec, trans, fcut)
+# shpB2 = SHIPBasis2(shpB)
 
 ##
-shpB2 = SHIPBasis2(shpB)
 
 Nr = 50
 Rs, Zs = randR(Nr)
@@ -62,7 +64,7 @@ eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 @btime eval_basis_d!($B, $dB, $tmpd, $shpB, $Rs, $Zs, 0)
 @btime eval_basis_d!($dB2, $tmpd2, $shpB2, $Rs, $Zs, 0)
 
-
+##
 
 
 # ##

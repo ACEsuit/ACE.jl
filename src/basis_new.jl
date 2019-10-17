@@ -9,6 +9,7 @@ using StaticArrays, LinearAlgebra
 using JuLIP: JVec
 import JuLIP
 using JuLIP.MLIPs: IPBasis
+using JuLIP.Potentials: SZList, ZList
 import JuLIP: alloc_temp, alloc_temp_d
 
 using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y
@@ -21,24 +22,62 @@ export SHIPBasis2
 
 
 
-struct SHIPBasis2{T, NZ, TJ, TSPEC} <: IPBasis
-   spec::TSPEC         # specify which tensor products to keep  in the basis
+struct SHIPBasis2{T, NZ, TJ} <: IPBasis
    J::TJ               # specifies the radial basis
    SH::SHBasis{T}      # specifies the angular basis
    # ------------------------------------------------------------------------
-   bgrps::NTuple{NZ, Vector{Tuple}}
+   bgrps::NTuple{NZ, Vector{Tuple}}  # specification of basis functions
+   zlist::SZList{NZ}                 # list of species (S=static)
+   # ------------------------------------------------------------------------
    alists::NTuple{NZ, AList}
    aalists::NTuple{NZ, AAList}
    A2B::NTuple{NZ, SparseMatrixCSC{Complex{T}, IntS}}
 end
+
+function SHIPBasis2(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff;
+                   kwargs...)
+   J = TransformedJacobi(maxK(spec), trans, fcut)
+   return SHIPBasis2(spec, J; kwargs...)
+end
+
+function SHIPBasis2(spec::BasisSpec{BO}, J;
+                    filter = false, Nsamples = 1_000, pure = false, T = Float64
+                   ) where {BO}
+   # precompute the rotation-coefficients
+   Bcoefs = Rotations.CoeffArray(T)
+   # instantiate the basis specification
+   allKL, NuZ = generate_ZKL_tuples(spec, Bcoefs)
+   # R̂ - basis
+   SH = SHBasis(get_maxL(allKL))
+   # get the Ylm basis coefficients
+   rotcoefs = precompute_rotcoefs(allKL, NuZ, Bcoefs)
+   # convert to new format ...
+   bgrps = convert_basis_groups(NuZ, allKL) # zkl tuples
+   alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
+   A2B = A2B_matrices(bgrps, alists, aalists, rotcoefs, T)
+   Zs = spec.Zs
+   @assert issorted(Zs)
+   zlist = ZList([Zs...]; static=true)
+   return SHIPBasis2( J, SH,
+                      bgrps, zlist,
+                      alists, aalists, A2B )
+end
+
+
+
+
 
 function SHIPBasis2(shpB1::SHIPBasis{BO, T}) where {BO, T}
    bgrps = convert_basis_groups(shpB1.NuZ, shpB1.KL) # zkl tuples
    alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
    rotcoefs = shpB1.rotcoefs
    A2B = A2B_matrices(bgrps, alists, aalists, rotcoefs, T)
-   return SHIPBasis2( shpB1.spec, shpB1.J, shpB1.SH,
-                      bgrps, alists, aalists, A2B )
+   Zs = shpB1.spec.Zs
+   @assert issorted(Zs)
+   zlist = ZList([Zs...]; static=true)
+   return SHIPBasis2( shpB1.J, shpB1.SH,
+                      bgrps, zlist,
+                      alists, aalists, A2B )
 end
 
 A2B_matrices(bgrps, alists, aalists, rotcoefs, T=Float64) =
@@ -89,9 +128,6 @@ end
 
 # ----------------------------------------
 
-
-z2i(B::SHIPBasis2, z::Integer) = z2i(B.spec, z)
-i2z(B::SHIPBasis2, i::Integer) = i2z(B.spec, i)
 
 nspecies(B::SHIPBasis2{T, NZ}) where {T, NZ} = NZ
 

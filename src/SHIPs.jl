@@ -9,6 +9,8 @@ module SHIPs
 
 const IntS = Int32
 
+import JuLIP.Potentials: z2i
+
 using Reexport
 @reexport using JuLIP
 

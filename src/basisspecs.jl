@@ -35,9 +35,9 @@ _convert_Zs(Zs::NTuple{NZ, Symbol}) where {NZ} = atomic_number.(Zs)
 _convert_Zs(Zs::NTuple{NZ, <: Integer}) where {NZ} = Int16.(Zs)
 
 
-z2i(spec::AnalyticBasisSpec, z) = spec.z2i[z]
+z2i(spec::AnalyticBasisSpec, z::Integer) = spec.z2i[z]
 
-i2z(spec::AnalyticBasisSpec, z) = spec.Zs[i]
+i2z(spec::AnalyticBasisSpec, z::Integer) = spec.Zs[i]
 
 nspecies(spec::AnalyticBasisSpec) = length(spec.Zs)
 
