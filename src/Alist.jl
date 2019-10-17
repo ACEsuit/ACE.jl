@@ -48,6 +48,51 @@ function AList(zklmlist::AbstractVector{zklmTuple})
 end
 
 
+"""
+This fills the A-array stored in tmp with the A_zklm density projections in
+the order specified by AList. It also evaluates the radial and angular basis
+functions along the way.
+"""
+function precompute_A!(A, tmp, alist, Rs, Zs, ship)
+   fill!(A, 0)
+   for (R, Z) in zip(Rs, Zs)
+      # evaluate the r-basis and the R̂-basis for the current neighbour at R
+      eval_basis!(tmp.J, tmp.tmpJ, ship.J, norm(R))
+      eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
+      # add the contributions to the A_zklm
+      iz = z2i(ship, Z)
+      for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
+         zklm = alist[i]
+         A[i] += tmp.J[zklm.k+1] * tmp.Y[index_y(zklm.l, zklm.m)]
+      end
+   end
+   return A
+end
+
+
+
+
+function precompute_dA!(A, dA, tmp, alist, Rs, Zs, ship)
+   fill!(A, 0)
+   fill!(dA, zero(eltype(dA)))
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      # precompute the derivatives of the Jacobi polynomials and Ylms
+      eval_basis_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
+      eval_basis_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
+      # deduce the A and dA values
+      iz = z2i(ship, Z)
+      R̂ = R / norm(R)
+      for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
+         zklm = alist[i]
+         ik = zklm.k+1; iy = index_y(zklm.l, zklm.m)
+         A[i] += tmp.J[ik] * tmp.Y[iy]
+         # and into dA # grad_phi_Rj(R, iR, zklm, tmp)
+         ∇ϕ_zklm = tmp.dJ[ik] * tmp.Y[iy] * R̂ + tmp.J[ik] * tmp.dY[iy]
+         dA[iR, i] = ∇ϕ_zklm
+      end
+   end
+   return dA
+end
 
 # ---------
 
@@ -109,6 +154,65 @@ function AAList(ZKLM_list, alist)
 end
 
 
+function precompute_AA!(AA, A, aalist) # tmp, ship::SHIPBasis2{T}, iz0) where {T}
+   fill!(AA, 1)
+   for i = 1:length(aalist)
+      for α = 1:aalist.len[i]
+         iA = aalist.i2Aidx[i, α]
+         AA[i] *= A[iA]
+      end
+   end
+   return nothing
+end
+
+
+# --------------------------------------------------------
+# this section of functions is for computing
+#  ∂∏A / ∂R_j
+
+# function grad_phi_Rj(Rj, j, zklm, tmp)
+#    ik = zklm.k + 1
+#    iy = index_y(zklm.l, zklm.m)
+#    return ( tmp.dJJ[j, ik] *  tmp.YY[j, iy] * (Rj/norm(Rj))
+#            + tmp.JJ[j, ik] * tmp.dYY[j, iy] )
+# end
+
+function grad_AA_Ab(iAA, b, alist, aalist, A)
+   g = one(eltype(A))
+   for a = 1:aalist.len[iAA]
+      if a != b
+         iA = aalist.i2Aidx[iAA, a]
+         g *= A[iA]
+      end
+   end
+   return g
+end
+
+function grad_AAi_Rj(iAA, j, Rj::JVec{T}, izj::Integer,
+                     alist, aalist, A, AA, dA, tmp) where {T}
+   g = zero(JVec{Complex{T}})
+   for b = 1:aalist.len[iAA] # body-order
+      # A_{n_b} = A[iA]
+      iA = aalist.i2Aidx[iAA, b]
+      # daa_dab = ∂(∏A_{n_a}) / ∂A_{n_b}
+      daa_dab = grad_AA_Ab(iAA, b, alist, aalist, A)
+      zklm = alist[iA] # (zklm corresponding to A_{n_b})
+      ∇ϕ_zklm = dA[j, iA] # grad_phi_Rj(Rj, j, zklm, tmp)
+      g += daa_dab * ∇ϕ_zklm
+   end
+   return g
+end
+
+function grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0) where {T}
+   for iAA = 1:length(ship.aalists[iz0])
+      # g = ∂(∏_a A_a) / ∂Rj     # TODO: species needs to go in here as well!
+      tmp.dAAj[iz0][iAA] = grad_AAi_Rj(iAA, j, Rs[j], z2i(ship, Zs[j]),
+                                       ship.alists[iz0], ship.aalists[iz0],
+                                       tmp.A[iz0], tmp.AA[iz0], tmp.dA[iz0],
+                                       tmp)
+   end
+   return tmp.dAAj[iz0]
+end
 
 
 # --------------------------------------------------------

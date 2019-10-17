@@ -205,7 +205,7 @@ function eval_basis_d!(dB, tmp, ship::SHIPBasis2{T},
    iz0 = z2i(ship, z0)
    len_AA = length(ship.aalists[iz0])
    precompute_dA!(tmp, ship, Rs, Zs, iz0)
-   precompute_AA!(tmp, ship, iz0)
+   # precompute_AA!(tmp, ship, iz0)
    for j = 1:length(Rs)
       dAAj = grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0)  # writes into tmp.dAAj[iz0]
       # fill!(tmp.dBc, zero(JVec{Complex{T}}))
@@ -220,125 +220,17 @@ end
 
 
 # -------------------------------------------------------
-# move back into Alist???
+# linking to the functions implemented in `Alist.jl`
 
 
-"""
-This fills the A-array stored in tmp with the A_zklm density projections in
-the order specified by AList. It also evaluates the radial and angular basis
-functions along the way.
-"""
-function precompute_A!(tmp, ship::SHIPBasis2{T}, Rs, Zs, iz0) where {T}
-   alist = ship.alists[iz0]
-   fill!(tmp.A[iz0], zero(Complex{T}))
-   for (R, Z) in zip(Rs, Zs)
-      # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(tmp.J, tmp.tmpJ, ship.J, norm(R))
-      eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
-      # add the contributions to the A_zklm
-      iz = z2i(ship, Z)
-      for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
-         zklm = alist[i]
-         tmp.A[iz0][i] += tmp.J[zklm.k+1] * tmp.Y[index_y(zklm.l, zklm.m)]
-      end
-   end
-   return nothing
-end
+precompute_A!(tmp, ship::SHIPBasis2, Rs, Zs, iz0) =
+   precompute_A!(tmp.A[iz0], tmp, ship.alists[iz0], Rs, Zs, ship)
 
+precompute_dA!(tmp, ship::SHIPBasis2,
+                    Rs::AbstractVector{<:JVec},
+                    Zs::AbstractVector{<:Integer}, iz0 ) =
+   precompute_dA!(tmp.A[iz0], tmp.dA[iz0], tmp, ship.alists[iz0],
+                  Rs, Zs, ship)
 
-function precompute_dA!(tmp,
-                        ship::SHIPBasis2{T},
-                        Rs::AbstractVector{JVec{T}},
-                        Zs::AbstractVector{<:Integer}, iz0 ) where {T}
-   alist = ship.alists[iz0]
-   fill!(tmp.A[iz0], zero(Complex{T}))
-
-   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-      # ---------- precompute the derivatives of the Jacobi polynomials
-      #            and copy into the tmp array
-      eval_basis_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
-      @simd for a = 1:length(tmp.J)
-         @inbounds tmp.JJ[iR, a] = tmp.J[a]
-         @inbounds tmp.dJJ[iR, a] = tmp.dJ[a]
-      end
-      # ----------- precompute the Ylm derivatives
-      eval_basis_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
-      @simd for a = 1:length(tmp.Y)
-         @inbounds  tmp.YY[iR,a] = tmp.Y[a]
-         @inbounds tmp.dYY[iR,a] = tmp.dY[a]
-      end
-      # ----------- precompute the A values
-      iz = z2i(ship, Z)
-      for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
-         zklm = alist[i]
-         tmp.A[iz0][i] += tmp.J[zklm.k+1] * tmp.Y[index_y(zklm.l, zklm.m)]
-         # and into dA
-         ∇ϕ_zklm = grad_phi_Rj(R, iR, zklm, tmp)
-         tmp.dA[iz0][iR, i] = ∇ϕ_zklm
-      end
-   end
-
-   return tmp
-end
-
-
-function precompute_AA!(tmp, ship::SHIPBasis2{T}, iz0) where {T}
-   aalist = ship.aalists[iz0]
-   A = tmp.A[iz0]
-   AA = tmp.AA[iz0]
-   fill!(AA, one(Complex{T}))
-   for i = 1:length(aalist)
-      for α = 1:aalist.len[i]
-         iA = aalist.i2Aidx[i, α]
-         AA[i] *= A[iA]
-      end
-   end
-   return nothing
-end
-
-
-# --------------------------------------------------------
-
-function grad_phi_Rj(Rj, j, zklm, tmp)
-   ik = zklm.k + 1
-   iy = index_y(zklm.l, zklm.m)
-   return ( tmp.dJJ[j, ik] *  tmp.YY[j, iy] * (Rj/norm(Rj))
-           + tmp.JJ[j, ik] * tmp.dYY[j, iy] )
-end
-
-function grad_AA_Ab(iAA, b, alist, aalist, A)
-   g = one(eltype(A))
-   for a = 1:aalist.len[iAA]
-      if a != b
-         iA = aalist.i2Aidx[iAA, a]
-         g *= A[iA]
-      end
-   end
-   return g
-end
-
-function grad_AAi_Rj(iAA, j, Rj::JVec{T}, izj::Integer,
-                     alist, aalist, A, AA, dA, tmp) where {T}
-   g = zero(JVec{Complex{T}})
-   for b = 1:aalist.len[iAA] # body-order
-      # A_{n_b} = A[iA]
-      iA = aalist.i2Aidx[iAA, b]
-      # daa_dab = ∂(∏A_{n_a}) / ∂A_{n_b}
-      daa_dab = grad_AA_Ab(iAA, b, alist, aalist, A)
-      zklm = alist[iA] # (zklm corresponding to A_{n_b})
-      ∇ϕ_zklm = dA[j, iA] # grad_phi_Rj(Rj, j, zklm, tmp)
-      g += daa_dab * ∇ϕ_zklm
-   end
-   return g
-end
-
-function grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0) where {T}
-   for iAA = 1:length(ship.aalists[iz0])
-      # g = ∂(∏_a A_a) / ∂Rj     # TODO: species needs to go in here as well!
-      tmp.dAAj[iz0][iAA] = grad_AAi_Rj(iAA, j, Rs[j], z2i(ship, Zs[j]),
-                                       ship.alists[iz0], ship.aalists[iz0],
-                                       tmp.A[iz0], tmp.AA[iz0], tmp.dA[iz0],
-                                       tmp)
-   end
-   return tmp.dAAj[iz0]
-end
+precompute_AA!(tmp, ship::SHIPBasis2, iz0) =
+   precompute_AA!(tmp.AA[iz0], tmp.A[iz0], ship.aalists[iz0])
