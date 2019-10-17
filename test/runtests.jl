@@ -19,8 +19,8 @@ using SHIPs: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
     # include("test_Bcoeffs.jl")  # TODO: this test needs to be rewritten!
     include("test_basis.jl")
     include("test_fast.jl")
-    include("test_multispecies.jl")
-    include("test_orth.jl")
+    # include("test_multispecies.jl")
+    # include("test_orth.jl")
 end
 
 

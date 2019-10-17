@@ -116,6 +116,8 @@ struct AAList
    zklm2i::Dict{Any, IntS}
 end
 
+bodyorder(aalist::AAList) = maximum(aalist.len) + 1
+
 Base.length(aalist::AAList) = length(aalist.len)
 
 Base.getindex(aalist::AAList, t::Tuple) = aalist.zklm2i[t]
@@ -154,7 +156,7 @@ function AAList(ZKLM_list, alist)
 end
 
 
-function precompute_AA!(AA, A, aalist) # tmp, ship::SHIPBasis2{T}, iz0) where {T}
+function precompute_AA!(AA, A, aalist) # tmp, ship::SHIPBasis{T}, iz0) where {T}
    fill!(AA, 1)
    for i = 1:length(aalist)
       for α = 1:aalist.len[i]

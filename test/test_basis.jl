@@ -45,10 +45,10 @@ ship5 = SHIPBasis(SparseSHIP(5,  8; wL = 1.5), trans, cutf)
 ship6 = SHIPBasis(SparseSHIP(6,  8; wL = 1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5, ship6]
 
-@info("Test (de-)dictionisation of basis sets")
-for ship in ships
-   println(@test (decode_dict(Dict(ship)) == ship))
-end
+# @info("Test (de-)dictionisation of basis sets")
+# for ship in ships
+#    println(@test (decode_dict(Dict(ship)) == ship))
+# end
 
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
@@ -69,13 +69,10 @@ for 🚢 in ships
    @info("  body-order = $(SHIPs.bodyorder(🚢)):")
    Rs, Zs = randR(20)
    tmp = SHIPs.alloc_temp_d(🚢, Rs)
-   SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
-   B1 = eval_basis(🚢, Rs, Zs, 0)
-   B = SHIPs.alloc_B(🚢)
+   # SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
+   B = eval_basis(🚢, Rs, Zs, 0)
    dB = SHIPs.alloc_dB(🚢, Rs)
-   SHIPs.eval_basis_d!(B, dB, tmp, 🚢, Rs, Zs, 0)
-   @info("      check the basis and basis_d co-incide exactly")
-   println(@test B ≈ B1)
+   SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us, Zs = randR(length(Rs))
@@ -103,11 +100,9 @@ verbose=false
 Rs = [ randR(5)[1]; [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
 _, Zs = randR(length(Rs))
 tmp = SHIPs.alloc_temp_d(🚢, Rs)
-SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
-B1 = eval_basis(🚢, Rs, Zs, 0)
-B = SHIPs.alloc_B(🚢)
+B = eval_basis(🚢, Rs, Zs, 0)
 dB = SHIPs.alloc_dB(🚢, Rs)
-SHIPs.eval_basis_d!(B, dB, tmp, 🚢, Rs, Zs, 0)
+SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
 @info("      finite-difference test into random directions")
 for ndirections = 1:30
    Us, _ = randR(length(Rs))

@@ -29,8 +29,8 @@ fcut =  PolyCutoff2s(2, rl, ru)
 trans = PolyTransform(2, 1.0)
 spec = SparseSHIP(Nmax, 10)
 shpB = SHIPBasis(spec, trans, fcut; filter=false)
-shpB2 = SHIPBasis2(spec, trans, fcut)
-# shpB2 = SHIPBasis2(shpB)
+shpB2 = SHIPBasis(spec, trans, fcut)
+# shpB2 = SHIPBasis(shpB)
 
 ##
 
