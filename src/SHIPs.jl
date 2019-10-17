@@ -21,6 +21,9 @@ include("rotations.jl")
 # basis specification: subsets of the full expansion
 include("basisspecs.jl")
 
+# implements the A functions ∏A functions 
+include("Alist.jl")
+
 # SHIPBasis definition
 include("basis.jl")
 
@@ -33,9 +36,5 @@ include("fast.jl")
 
 include("utils.jl")
 
-
-include("Alist.jl")
-
-include("basis_new.jl")
 
 end # module
