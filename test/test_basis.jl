@@ -45,11 +45,10 @@ ship5 = SHIPBasis(SparseSHIP(5,  8; wL = 1.5), trans, cutf)
 ship6 = SHIPBasis(SparseSHIP(6,  8; wL = 1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5, ship6]
 
-# @info("Test (de-)dictionisation of basis sets")
-# for ship in ships
-#    println(@test (decode_dict(Dict(ship)) == ship))
-# end
-
+@info("Test (de-)dictionisation of basis sets")
+for ship in ships
+   println(@test (decode_dict(Dict(ship)) == ship))
+end
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:30

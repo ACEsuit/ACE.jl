@@ -22,9 +22,6 @@ export SHIPBasis
 
 
 # TODO:
-#  - rewrite the SHIPBasis generation from (J, bgrps, zlist) only
-#  - (de-)dictionize `bgrps`
-#  - (de-)dictionize `SHIPBasis`
 #  - documentation
 
 struct SHIPBasis{T, NZ, TJ} <: IPBasis
@@ -41,19 +38,26 @@ end
 
 
 Dict(shipB::SHIPBasis) = Dict(
-      "__id__" => "SHIPs_SHIPBasis",
-      "spec" => Dict(shipB.spec),
-      "J" => Dict(shipB.J) )
+      "__id__" => "SHIPs_SHIPBasis_v3",
+      "J" => Dict(shipB.J),
+      "zlist" => Dict(shipB.zlist),
+      "bgrps" => bgrp2vecvec.(shipB.bgrps)
+   )
+convert(::Val{:SHIPs_SHIPBasis_v3}, D::Dict) = SHIPBasis(D)
+SHIPBasis(D::Dict) = SHIPBasis(TransformedJacobi(D["J"]),
+                               SZList(D["zlist"]),
+                               vecvec2bgrps(D["bgrps"]))
 
-SHIPBasis(D::Dict) = SHIPBasis(
-      decode_dict(D["spec"]),
-      TransformedJacobi(D["J"]) )
-
-convert(::Val{:SHIPs_SHIPBasis}, D::Dict) = SHIPBasis(D)
+bgrp2vecvec(bgrp) = [ Vector{Int}(vcat(b...)) for b in bgrp ]
+vecvec2bgrps(Vbs) = convert.(Vector{Tuple}, tuple(vecvec2bgrp.(Vbs)...))
+vecvec2bgrp(Vb) = _vec2b.(Vb)
+_vec2b(v::Vector{<:Integer}) = (
+   N = length(v) ÷ 3; ( SVector{N, Int16}(v[1:N]...),
+                        SVector{N,  IntS}(v[N+1:2*N]...),
+                        SVector{N,  IntS}(v[2*N+1:3*N]...) ) )
 
 ==(B1::SHIPBasis, B2::SHIPBasis) =
-      (B1.spec == B2.spec) && (B1.J == B2.J)
-
+      (B1.J == B2.J) && (B1.bgrps == B2.bgrps) && (B1.zlist == B2.zlist)
 
 
 function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff;
@@ -62,24 +66,30 @@ function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff;
    return SHIPBasis(spec, J; kwargs...)
 end
 
-function SHIPBasis(spec::BasisSpec{BO}, J;
-                    filter = false, Nsamples = 1_000, pure = false, T = Float64
-                   ) where {BO}
+function SHIPBasis(spec::BasisSpec, J; T=Float64, kwargs...)
    # precompute the rotation-coefficients
    Bcoefs = Rotations.CoeffArray(T)
    # instantiate the basis specification
    allKL, NuZ = generate_ZKL_tuples(spec, Bcoefs)
-   # R̂ - basis
-   SH = SHBasis(get_maxL(allKL))
-   # get the Ylm basis coefficients
-   rotcoefs = precompute_rotcoefs(allKL, NuZ, Bcoefs)
+   # # get the Ylm basis coefficients
+   # rotcoefs = precompute_rotcoefs(allKL, NuZ, Bcoefs)
    # convert to new format ...
    bgrps = convert_basis_groups(NuZ, allKL) # zkl tuples
-   alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
-   A2B = A2B_matrices(bgrps, alists, aalists, rotcoefs, T)
+   # z-list to get i2z and z2i maps
    Zs = spec.Zs
    @assert issorted(Zs)
    zlist = ZList([Zs...]; static=true)
+
+   return SHIPBasis(J, zlist, bgrps; T=T, Bcoefs=Bcoefs, kwargs...)
+end
+
+function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
+                   filter = false, Nsamples = 1_000, pure = false, T = Float64,
+                   Bcoefs = Rotations.CoeffArray(T)
+                   ) where {NZ}
+   SH = SHBasis(get_maxL(bgrps))
+   alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
+   A2B = A2B_matrices(bgrps, alists, aalists, Bcoefs, T)
    return SHIPBasis( J, SH,
                       bgrps, zlist,
                       alists, aalists, A2B )
@@ -87,33 +97,18 @@ end
 
 
 
-
-
-function SHIPBasis(shpB1::SHIPBasis{BO, T}) where {BO, T}
-   bgrps = convert_basis_groups(shpB1.NuZ, shpB1.KL) # zkl tuples
-   alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
-   rotcoefs = shpB1.rotcoefs
-   A2B = A2B_matrices(bgrps, alists, aalists, rotcoefs, T)
-   Zs = shpB1.spec.Zs
-   @assert issorted(Zs)
-   zlist = ZList([Zs...]; static=true)
-   return SHIPBasis( shpB1.J, shpB1.SH,
-                      bgrps, zlist,
-                      alists, aalists, A2B )
-end
-
-A2B_matrices(bgrps, alists, aalists, rotcoefs, T=Float64) =
-       ntuple( iz0 -> A2B_matrix(bgrps[iz0], alists[iz0], aalists[iz0], rotcoefs, T),
+A2B_matrices(bgrps, alists, aalists, Bcoefs, T=Float64) =
+       ntuple( iz0 -> A2B_matrix(bgrps[iz0], alists[iz0], aalists[iz0], Bcoefs, T),
                length(alists) )
 
-function A2B_matrix(bgrps, alist, aalist, rotcoefs, T=Float64)
+function A2B_matrix(bgrps, alist, aalist, Bcoefs, T=Float64)
    # allocate triplet format
    Irow, Jcol, vals = IntS[], IntS[], Complex{T}[]
    idxB = 0
    # loop through all (zz, kk, ll) tuples; each specifies 1 to several B
    for (izz, kk, ll) in bgrps
       # get the rotation-coefficients for this basis group
-      Ull = rotcoefs[length(ll)][ll]
+      Ull = SHIPs.Rotations.basis(Bcoefs, ll)
       # loop over the columns of Ull -> each specifies a basis function
       for ibasis = 1:size(Ull, 2)
          idxB += 1
@@ -155,8 +150,11 @@ nspecies(B::SHIPBasis{T, NZ}) where {T, NZ} = NZ
 
 bodyorder(ship::SHIPBasis) = maximum(bodyorder, ship.aalists)
 
-get_maxL(allKL) = maximum( maximum( kl.l for kl in allKL_ )
-                           for allKL_ in allKL )
+# get_maxL(allKL) = maximum( maximum( kl.l for kl in allKL_ )
+#                            for allKL_ in allKL )
+
+get_maxL(bgrps::NTuple{NZ, Vector{Tuple}}) where {NZ} = maximum(get_maxL, bgrps)
+get_maxL(bgrp::Vector{Tuple}) = maximum(maximum(zkl[3]) for zkl in bgrp)
 
 # the length of the basis depends on how many RI-coefficient sets there are
 # so we have to be very careful how we define this.
@@ -168,18 +166,18 @@ Base.length(ship::SHIPBasis) = sum(size(A2B, 1) for A2B in ship.A2B)
 
 _get_ll(KL, νz) = getfield.(KL[νz.ν], :l)
 
-function precompute_rotcoefs(KL, NuZ::SMatrix{BO, NZ},
-                             A::Rotations.CoeffArray{T}) where {BO, NZ, T}
-   rotcoefs = SVector{BO, Dict}(
-                  [ Dict{SVector{N, IntS}, Matrix{T}}() for N = 1:BO ]... )
-   for bo = 1:BO, iz = 1:NZ, νz in NuZ[bo, iz]
-      ll = _get_ll(KL[iz], νz) # getfield.(KL[iz][νz.ν], :l)
-      if !haskey(rotcoefs[bo], ll)
-         rotcoefs[bo][ll] = SHIPs.Rotations.basis(A, ll)
-      end
-   end
-   return rotcoefs
-end
+# function precompute_rotcoefs(KL, NuZ::SMatrix{BO, NZ},
+#                              A::Rotations.CoeffArray{T}) where {BO, NZ, T}
+#    rotcoefs = SVector{BO, Dict}(
+#                   [ Dict{SVector{N, IntS}, Matrix{T}}() for N = 1:BO ]... )
+#    for bo = 1:BO, iz = 1:NZ, νz in NuZ[bo, iz]
+#       ll = _get_ll(KL[iz], νz) # getfield.(KL[iz][νz.ν], :l)
+#       if !haskey(rotcoefs[bo], ll)
+#          rotcoefs[bo][ll] = SHIPs.Rotations.basis(A, ll)
+#       end
+#    end
+#    return rotcoefs
+# end
 
 # ----------------------------------------------
 #      Computation of the B-basis

@@ -219,7 +219,7 @@ Dict(J::TransformedJacobi) = Dict(
       "skip0" => J.J.skip0
    )
 
-@noinline TransformedJacobi(D::Dict) =
+TransformedJacobi(D::Dict) =
    TransformedJacobi(
       Jacobi(D["a"], D["b"], D["deg"],
              skip0 = haskey(D, "skip0")  ? D["skip0"]  : false),
@@ -228,6 +228,8 @@ Dict(J::TransformedJacobi) = Dict(
       D["rl"],
       D["ru"]
    )
+
+convert(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
 
 
 Base.length(J::TransformedJacobi) = length(J.J)
