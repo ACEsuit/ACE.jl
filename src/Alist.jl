@@ -7,7 +7,7 @@
 
 
 
-
+import Base: ==, convert, Dict
 
 const zklmTuple = NamedTuple{(:z, :k, :l, :m), Tuple{Int16, IntS, IntS, IntS}}
 
@@ -25,6 +25,15 @@ struct AList
    zklm2i::Dict{zklmTuple, IntS}
    firstz::Vector{IntS}
 end
+
+# --------------(de-)serialisation----------------------------------------
+Dict(alist::AList) = Dict("__id__" => "SHIPs_AList",
+                           "i2zklm" => zklm2vec.(alist.i2zklm))
+AList(D::Dict) = AList(vec2zklm.(D["i2zklm"]))
+zklm2vec(t) = [t.z, t.k, t.l, t.m]
+vec2zklm(v) = (z=Int16(v[1]), k=IntS(v[2]), l=IntS(v[3]), m=IntS(v[4]))
+==(al1::AList, al2::AList) = (al1.i2zklm == al2.i2zklm)
+# ------------------------------------------------------------------------
 
 Base.length(alist::AList) = length(alist.i2zklm)
 Base.getindex(alist::AList, i::Integer) = alist.i2zklm[i]
@@ -96,7 +105,6 @@ end
 
 # ---------
 
-const zzkkllmmTuple{N} = SVector{N, zklmTuple}
 
 """
 `AAList` : datastructure to help compute the A_𝐳𝐤𝐥𝐦 = ∏ A_zklm
@@ -105,16 +113,36 @@ const zzkkllmmTuple{N} = SVector{N, zklmTuple}
 * `len`    : len[i] is the number of relevant entries of i2zklm[i,:]
              i.e. the body-order of this entry
 * `zklm2i` : dictionary of all (z,k,l,m) tuples to compute  the
-             map `(z,k,l,m) -> i`
+             map `(zz,kk,ll,mm) -> i`
 * `firstz` : `firstz[iz]` stores the first index in the A_zklm array for with
              z = zi. This can be used to iterate over all A entries for which
              z = zi. (they are sorted by z first)
 """
 struct AAList
-   i2Aidx::Matrix{IntS}
-   len::Vector{IntS}
-   zklm2i::Dict{Any, IntS}
+   i2Aidx::Matrix{IntS}    # where in A can we find these
+   len::Vector{IntS}       # body-order
+   zklm2i::Dict{Any, IntS} # inverse mapping
 end
+
+# --------------(de-)serialisation----------------------------------------
+
+==
+function Dict(aalist::AAList)
+   ZKLM_list = Vector{Any}(undef, length(aalist))
+   for (zzkkllmm, i) in aalist.zklm2i
+      ZKLM_list[i] = zzkkllmm
+   end
+   return Dict("__id__" => "SHIPs_AAList", "ZKLM_list" => ZKLM_list)
+end
+zzkkllmm2vec(zzkkllmm) = Vector.([zzkkllmm...])
+vec2zzkkllmm(v) = (SVector(Int16.(v[1])...),
+                   SVector(IntS.(v[2])...),
+                   SVector(IntS.(v[3])...),
+                   SVector(IntS.(v[4])...))
+AAList(D::Dict, alist) = AAList(vec2zzkkllmm.(D["ZKLM_list"]), alist)
+==(aal1::AAList, aal2::AAList) = (aal1.i2Aidx == aal2.i2Aidx)
+# ------------------------------------------------------------------------
+
 
 bodyorder(aalist::AAList) = maximum(aalist.len) + 1
 
@@ -124,6 +152,11 @@ Base.getindex(aalist::AAList, t::Tuple) = aalist.zklm2i[t]
 
 alloc_AA(aalist::AAList, T = Float64) = zeros(Complex{T}, length(aalist))
 
+"""
+`AAList(ZKLM_list, alist)` : standard AAList constructor,
+* `ZKLM_list` : a collection of (izz=?, kk=?, ll=?, mm=?) tuples
+* `alist` a compatible `AList`
+"""
 function AAList(ZKLM_list, alist)
    BO = maximum(ν -> length(ν[1]), ZKLM_list)  # body-order -> size of iAidx
 

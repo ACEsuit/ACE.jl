@@ -34,6 +34,7 @@ BB = [B2, B3, B4, B5]
 
 ##
 
+
 @info("--------------- Fast 🚢 Implementation ---------------")
 
 @info("Testing correctness of `SHIP` against `SHIPBasis`")
@@ -44,7 +45,7 @@ for B in BB
    @info("   test (de-)dictionisation")
    println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
-   tmp = SHIPs.alloc_temp(ship, 0)
+   tmp = SHIPs.alloc_temp(ship, 10)
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
       Rs, Zs, z0 = randR(10)

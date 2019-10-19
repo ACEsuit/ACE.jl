@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-@testset "Basis Orthogonality"
+@testset "Basis Orthogonality"  begin
 
 ##
 
@@ -64,11 +64,14 @@ println(@test round.(Q, digits=8) == Matrix(I, N+1, N+1))
 # P = TransformedJacobi(...) from previous cell
 Nsamples = 1_000_000
 
-G = zeros(length(P), length(P))
-for n = 1:Nsamples
-   eval_basis!(B, tmp, P, SHIPs.Utils.rand_radial(P))
-   global  G += B * B'
-end
+G = let
+   G = zeros(length(P), length(P))
+   for n = 1:Nsamples
+      eval_basis!(B, tmp, P, SHIPs.Utils.rand_radial(P))
+      G += B * B'
+   end
+   G
+end 
 
 println(@test cond(G) < 1.1)
 
@@ -102,7 +105,7 @@ println(@test cond(G) < 1.1)
 shpB = SHIPBasis( SparseSHIP(3, 5), trans, fcut )
 function evalA(shpB, tmp, Rs)
    Zs = zeros(Int16, length(Rs))
-   SHIPs.precompute_A!(tmp, shpB, Rs, Zs)
+   SHIPs.precompute_A!(tmp, shpB, Rs, Zs, 1)
    return tmp.A[1]
 end
 
@@ -122,7 +125,6 @@ end
 
 G = A_gramian(shpB)
 println(@test cond(G) < 1.2)
-
 
 
 

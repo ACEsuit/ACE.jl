@@ -164,20 +164,8 @@ Base.length(ship::SHIPBasis) = sum(size(A2B, 1) for A2B in ship.A2B)
 #      Computation of the Ylm coefficients
 # ----------------------------------------------
 
+# TODO: delete this?
 _get_ll(KL, νz) = getfield.(KL[νz.ν], :l)
-
-# function precompute_rotcoefs(KL, NuZ::SMatrix{BO, NZ},
-#                              A::Rotations.CoeffArray{T}) where {BO, NZ, T}
-#    rotcoefs = SVector{BO, Dict}(
-#                   [ Dict{SVector{N, IntS}, Matrix{T}}() for N = 1:BO ]... )
-#    for bo = 1:BO, iz = 1:NZ, νz in NuZ[bo, iz]
-#       ll = _get_ll(KL[iz], νz) # getfield.(KL[iz][νz.ν], :l)
-#       if !haskey(rotcoefs[bo], ll)
-#          rotcoefs[bo][ll] = SHIPs.Rotations.basis(A, ll)
-#       end
-#    end
-#    return rotcoefs
-# end
 
 # ----------------------------------------------
 #      Computation of the B-basis
