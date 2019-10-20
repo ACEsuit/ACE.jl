@@ -1,5 +1,4 @@
 
-# - TODO: TEST L2 orthogonality
 
 @testset "Transforms" begin
 
