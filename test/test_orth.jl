@@ -62,7 +62,7 @@ println(@test round.(Q, digits=8) == Matrix(I, N+1, N+1))
 @info("Testing (near-) orthonormality of r-basis via sampling")
 
 # P = TransformedJacobi(...) from previous cell
-Nsamples = 1_000_000
+Nsamples = 100_000
 
 G = let
    G = zeros(length(P), length(P))
@@ -71,7 +71,7 @@ G = let
       G += B * B'
    end
    G
-end 
+end
 
 println(@test cond(G) < 1.1)
 
@@ -82,11 +82,13 @@ println(@test cond(G) < 1.1)
 
 SH = SHIPs.SphericalHarmonics.SHBasis(5)
 
-function gramian(SH::SHIPs.SphericalHarmonics.SHBasis, Nsamples=1_000_000)
+function gramian(SH::SHIPs.SphericalHarmonics.SHBasis, Nsamples=100_000)
    lenY = length(SH)
    G = zeros(ComplexF64, lenY, lenY)
+   Y = alloc_B(SH)
+   tmp = alloc_temp(SH)
    for n = 1:Nsamples
-      Y = SHIPs.eval_basis(SH, SHIPs.Utils.rand_sphere())
+      SHIPs.eval_basis!(Y, tmp, SH, SHIPs.Utils.rand_sphere())
       for i = 1:lenY, j = 1:lenY
          G[i,j] += Y[i] * Y[j]'
       end

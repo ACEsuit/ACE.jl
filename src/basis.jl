@@ -18,7 +18,7 @@ using SparseArrays: SparseMatrixCSC, sparse
 
 import Base: Dict, convert, ==
 
-export SHIPBasis
+export SHIPBasis, bodyorder
 
 
 # TODO:
@@ -228,10 +228,10 @@ function eval_basis!(B, tmp, ship::SHIPBasis{T},
                      Rs::AbstractVector{<: JVec},
                      Zs::AbstractVector{<: Integer},
                      z0::Integer ) where {T}
+   fill!(B, 0)
    iz0 = z2i(ship, z0)
    precompute_A!(tmp, ship, Rs, Zs, iz0)
    precompute_AA!(tmp, ship, iz0)
-   # fill!(tmp.Bc, 0)
    _my_mul!(tmp.Bc[iz0], ship.A2B[iz0], tmp.AA[iz0])
    Iz0 = _get_I_iz0(ship, iz0)
    B[Iz0] .= real.(tmp.Bc[iz0])
@@ -244,13 +244,12 @@ function eval_basis_d!(dB, tmp, ship::SHIPBasis{T},
                        Rs::AbstractVector{<: JVec},
                        Zs::AbstractVector{<: Integer},
                        z0::Integer ) where {T}
+   fill!(dB, zero(JVec{T}))
    iz0 = z2i(ship, z0)
    len_AA = length(ship.aalists[iz0])
    precompute_dA!(tmp, ship, Rs, Zs, iz0)
-   # precompute_AA!(tmp, ship, iz0)
    for j = 1:length(Rs)
       dAAj = grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0)  # writes into tmp.dAAj[iz0]
-      # fill!(tmp.dBc, zero(JVec{Complex{T}}))
       _my_mul!(tmp.dBc[iz0], ship.A2B[iz0], dAAj)
       Iz0 = _get_I_iz0(ship, iz0)
       @inbounds for i = 1:length(tmp.dBc[iz0])
@@ -371,8 +370,8 @@ end
 function site_energy_d(basis::SHIPBasis, at::Atoms{T}, i0::Integer) where {T}
    Ineigs, Rs, Zs = _get_neigs(at, i0, cutoff(basis))
    dEs = [ zeros(JVec{T}, length(at)) for _ = 1:length(basis) ]
-   dB = alloc_dB(shipB, length(Rs))
-   tmp = alloc_temp_d(shipB, maxR)
+   dB = alloc_dB(basis, length(Rs))
+   tmp = alloc_temp_d(basis, length(Rs))
    eval_basis_d!(dB, tmp, basis, Rs, Zs, at.Z[i0])
    @assert dB isa Matrix{JVec{T}}
    @assert size(dB) == (length(Rs), length(basis))

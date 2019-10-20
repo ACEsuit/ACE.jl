@@ -134,10 +134,31 @@ m_naive_energy(basis::SHIPBasis, at) =
       sum( eval_basis(basis, R, at.Z[j], at.Z[i])
             for (i, j, R) in sites(at, cutoff(basis)) )
 
+# m_naive_energy2(basis::SHIPBasis, at) =
+#       sum( eval_basis(basis, JuLIP.Potentials.neigsz(nlist, at, i)[2:3]..., at.Z[i])
+#            for i = 1:length(at) )
+#
+# nlist = neighbourlist(at, cutoff(basis))
+# for ii = 1:length(at)
+#    jj, RR, ZZ = neigsz(nlist, at, ii)
+#    j, R =
+# end
+#
+# at = bulk(:Si) * 3
+# at.Z[:] .= 1
+# at.Z[2:2:end] .= 2
+# rattle!(at, 0.1)
+# print("     energy: ")
+# norm(energy(basis, at) - m_naive_energy(basis, at))
+# norm(energy(basis, at) - m_naive_energy2(basis, at))
+# energy(basis, at)
+# basis = ships[1]
+# println(@test energy(basis, at) ≈ m_naive_energy(basis, at)*2 )
+
 for basis in ships
    @info("   body-order = $(SHIPs.bodyorder(basis))")
    at = bulk(:Si) * 3
-   at.Z[1:2:end] .= 1
+   at.Z[:] .= 1
    at.Z[2:2:end] .= 2
    rattle!(at, 0.1)
    print("     energy: ")
@@ -147,16 +168,15 @@ for basis in ships
                                          for n = 1:length(at) ) )
    # we can test consistency of forces, site energy etc by taking
    # random inner products with coefficients
-   # TODO [tuple] revive this test after porting `fast`
-   # @info("     a few random combinations")
-   # for n = 1:10
-   #    c = randcoeffs(basis)
-   #    sh = JuLIP.MLIPs.combine(basis, c)
-   #    print_tf(@test energy(sh, at) ≈ dot(c, energy(basis, at)))
-   #    print_tf(@test forces(sh, at) ≈ sum(c*f for (c, f) in zip(c, forces(basis, at))) )
-   #    print_tf(@test site_energy(sh, at, 5) ≈ dot(c, site_energy(basis, at, 5)))
-   #    print_tf(@test site_energy_d(sh, at, 5) ≈ sum(c*f for (c, f) in zip(c, site_energy_d(basis, at, 5))) )
-   # end
+   @info("     a few random combinations")
+   for n = 1:10
+      c = randcoeffs(basis)
+      sh = JuLIP.MLIPs.combine(basis, c)
+      print_tf(@test energy(sh, at) ≈ dot(c, energy(basis, at)))
+      print_tf(@test forces(sh, at) ≈ sum(c*f for (c, f) in zip(c, forces(basis, at))) )
+      print_tf(@test site_energy(sh, at, 5) ≈ dot(c, site_energy(basis, at, 5)))
+      print_tf(@test site_energy_d(sh, at, 5) ≈ sum(c*f for (c, f) in zip(c, site_energy_d(basis, at, 5))) )
+   end
    println()
 end
 
