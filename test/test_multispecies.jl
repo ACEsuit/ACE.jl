@@ -78,6 +78,10 @@ for ship in ships
 end
 
 
+Rs, Zs, iz = randR(20, (1,2))
+🚢 = ship3
+eval_basis(🚢, Rs, Zs, iz)
+
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:20
    Rs, Zs, iz = randR(20, (1,2))
@@ -98,13 +102,10 @@ for 🚢 in ships
    @info("  body-order = $(SHIPs.bodyorder(🚢)):")
    Rs, Zs, z = randR(20, (1,2))
    tmp = SHIPs.alloc_temp_d(🚢, Rs)
-   SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
-   B1 = eval_basis(🚢, Rs, Zs, z)
-   B = SHIPs.alloc_B(🚢)
+   # SHIPs.precompute_dA!(tmp, 🚢, Rs, Zs)
+   B = eval_basis(🚢, Rs, Zs, z)
    dB = SHIPs.alloc_dB(🚢, Rs)
-   SHIPs.eval_basis_d!(B, dB, tmp, 🚢, Rs, Zs, z)
-   @info("      check the basis and basis_d co-incide exactly")
-   println(@test B ≈ B1)
+   SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, z)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us, _ = randR(length(Rs))
@@ -188,7 +189,7 @@ for B in shipsB
    # ------------------------------------------------------------
    # @info("      Quick timing test")
    # Nr = 30
-   # Rs, Zs, z0 = randR(Nr)
+   # Rs, Zs, z0 = randR(Nr, (1,2))
    # b = SHIPs.alloc_B(B)
    # tmp = SHIPs.alloc_temp(ship, Nr)
    # tmpB = SHIPs.alloc_temp(B, Nr)

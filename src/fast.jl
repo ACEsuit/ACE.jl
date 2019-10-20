@@ -53,7 +53,7 @@ combine(basis::SHIPBasis, coeffs) = SHIP(basis, coeffs)
 
 function SHIP(basis::SHIPBasis{T, NZ}, coeffs::AbstractVector{T}
               ) where {T, NZ}
-   AAcoeffs = ntuple(iz0 -> (coeffs' * basis.A2B[iz0])[:], NZ)
+   AAcoeffs = ntuple(iz0 -> (coeffs[_get_I_iz0(basis, iz0)]' * basis.A2B[iz0])[:], NZ)
    return SHIP( basis.J, basis.SH, basis.zlist,
                 basis.alists, basis.aalists, AAcoeffs )
 end

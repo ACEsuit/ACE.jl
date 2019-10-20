@@ -36,7 +36,7 @@ struct SHIPBasis{T, NZ, TJ} <: IPBasis
    A2B::NTuple{NZ, SparseMatrixCSC{Complex{T}, IntS}}
 end
 
-
+# ---------------(de-)dictionisation---------------------------------
 Dict(shipB::SHIPBasis) = Dict(
       "__id__" => "SHIPs_SHIPBasis_v3",
       "J" => Dict(shipB.J),
@@ -47,7 +47,6 @@ convert(::Val{:SHIPs_SHIPBasis_v3}, D::Dict) = SHIPBasis(D)
 SHIPBasis(D::Dict) = SHIPBasis(TransformedJacobi(D["J"]),
                                SZList(D["zlist"]),
                                vecvec2bgrps(D["bgrps"]))
-
 bgrp2vecvec(bgrp) = [ Vector{Int}(vcat(b...)) for b in bgrp ]
 vecvec2bgrps(Vbs) = convert.(Vector{Tuple}, tuple(vecvec2bgrp.(Vbs)...))
 vecvec2bgrp(Vb) = _vec2b.(Vb)
@@ -58,6 +57,7 @@ _vec2b(v::Vector{<:Integer}) = (
 
 ==(B1::SHIPBasis, B2::SHIPBasis) =
       (B1.J == B2.J) && (B1.bgrps == B2.bgrps) && (B1.zlist == B2.zlist)
+# ------------------------------------------------------------------------
 
 
 function SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff;
@@ -179,7 +179,7 @@ alloc_dB(ship::SHIPBasis, Rs::AbstractVector, args...) = alloc_dB(ship, length(R
 alloc_temp(ship::SHIPBasis{T, NZ}, args...) where {T, NZ} = (
       A = [ alloc_A(ship.alists[iz0])  for iz0 = 1:NZ ],
       AA = [ alloc_AA(ship.aalists[iz0])  for iz0 = 1:NZ ],
-      Bc = zeros(Complex{T}, length(ship)),
+      Bc = [ zeros(Complex{T}, size(ship.A2B[iz0], 1)) for iz0=1:NZ],
       J = alloc_B(ship.J),
       Y = alloc_B(ship.SH),
       tmpJ = alloc_temp(ship.J),
@@ -199,7 +199,7 @@ function alloc_temp_d(ship::SHIPBasis{T, NZ}, N::Integer) where {T, NZ}
          A = [ alloc_A(ship.alists[iz0])  for iz0 = 1:NZ ],
         dA = [ zeros(JVec{Complex{T}}, N, length(ship.alists[iz0])) for iz0 = 1:NZ ],
         AA = [ alloc_AA(ship.aalists[iz0])  for iz0 = 1:NZ ],
-       dBc = zeros(JVec{Complex{T}}, length(ship)),
+       dBc = [zeros(JVec{Complex{T}}, size(ship.A2B[iz0], 1)) for iz0=1:NZ],
       dAAj = [ zeros(JVec{Complex{T}}, length(ship.aalists[iz0])) for iz0 = 1:NZ ],
          JJ = zeros(eltype(J1), N, length(J1)),
         dJJ = zeros(eltype(dJ1), N, length(dJ1)),
@@ -214,6 +214,15 @@ function alloc_temp_d(ship::SHIPBasis{T, NZ}, N::Integer) where {T, NZ}
       )
 end
 
+function _get_I_iz0(ship::SHIPBasis, iz0)
+   idx0 = 0
+   for iz = 1:iz0-1
+      idx0 += size(ship.A2B[iz], 1)
+   end
+   idxend = idx0 + size(ship.A2B[iz0], 1)
+   return (idx0+1):idxend
+end
+
 
 function eval_basis!(B, tmp, ship::SHIPBasis{T},
                      Rs::AbstractVector{<: JVec},
@@ -223,8 +232,9 @@ function eval_basis!(B, tmp, ship::SHIPBasis{T},
    precompute_A!(tmp, ship, Rs, Zs, iz0)
    precompute_AA!(tmp, ship, iz0)
    # fill!(tmp.Bc, 0)
-   _my_mul!(tmp.Bc, ship.A2B[iz0], tmp.AA[iz0])
-   B .= real.(tmp.Bc)
+   _my_mul!(tmp.Bc[iz0], ship.A2B[iz0], tmp.AA[iz0])
+   Iz0 = _get_I_iz0(ship, iz0)
+   B[Iz0] .= real.(tmp.Bc[iz0])
    return B
 end
 
@@ -241,9 +251,10 @@ function eval_basis_d!(dB, tmp, ship::SHIPBasis{T},
    for j = 1:length(Rs)
       dAAj = grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0)  # writes into tmp.dAAj[iz0]
       # fill!(tmp.dBc, zero(JVec{Complex{T}}))
-      _my_mul!(tmp.dBc, ship.A2B[iz0], dAAj)
-      @inbounds for i = 1:length(tmp.dBc)
-         dB[j, i] = real(tmp.dBc[i])
+      _my_mul!(tmp.dBc[iz0], ship.A2B[iz0], dAAj)
+      Iz0 = _get_I_iz0(ship, iz0)
+      @inbounds for i = 1:length(tmp.dBc[iz0])
+         dB[j, Iz0[i]] = real(tmp.dBc[iz0][i])
       end
    end
    return dB
