@@ -33,4 +33,7 @@ rand(J::TransformedJacobi) = rand_radial(J) *  rand_sphere()
 rand(J::TransformedJacobi, N::Integer) =  [ rand(J) for _ = 1:N ]
 
 
+_get_ll(KL, νz) = getfield.(KL[νz.ν], :l)
+
+
 end

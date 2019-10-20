@@ -134,27 +134,6 @@ m_naive_energy(basis::SHIPBasis, at) =
       sum( eval_basis(basis, R, at.Z[j], at.Z[i])
             for (i, j, R) in sites(at, cutoff(basis)) )
 
-# m_naive_energy2(basis::SHIPBasis, at) =
-#       sum( eval_basis(basis, JuLIP.Potentials.neigsz(nlist, at, i)[2:3]..., at.Z[i])
-#            for i = 1:length(at) )
-#
-# nlist = neighbourlist(at, cutoff(basis))
-# for ii = 1:length(at)
-#    jj, RR, ZZ = neigsz(nlist, at, ii)
-#    j, R =
-# end
-#
-# at = bulk(:Si) * 3
-# at.Z[:] .= 1
-# at.Z[2:2:end] .= 2
-# rattle!(at, 0.1)
-# print("     energy: ")
-# norm(energy(basis, at) - m_naive_energy(basis, at))
-# norm(energy(basis, at) - m_naive_energy2(basis, at))
-# energy(basis, at)
-# basis = ships[1]
-# println(@test energy(basis, at) ≈ m_naive_energy(basis, at)*2 )
-
 for basis in ships
    @info("   body-order = $(SHIPs.bodyorder(basis))")
    at = bulk(:Si) * 3
@@ -266,17 +245,17 @@ for B in shipsB
    rattle!(at, 0.1)
    print("     energy: ")
    println(@test energy(ship, at) ≈ m_naive_energy(ship, at) )
-   # TODO [multi] : implement site-energies in JuLIP and revive this test!
-   # print("site-energy: ")
-   # println(@test energy(ship, at) ≈ sum( site_energy(ship, at, n)
-   #                                       for n = 1:length(at) ) )
+   print("site-energy: ")
+   println(@test energy(ship, at) ≈ sum( site_energy(ship, at, n)
+                                         for n = 1:length(at) ) )
    println("forces: ")
    println(@test JuLIP.Testing.fdtest(ship, at))
-   # println("site-forces: ")
-   # println(@test JuLIP.Testing.fdtest( x -> site_energy(ship, set_dofs!(at, x), 3),
-   #                                     x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
-   #                                     dofs(at) ) )
+   println("site-forces: ")
+   println(@test JuLIP.Testing.fdtest( x -> site_energy(ship, set_dofs!(at, x), 3),
+                                       x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
+                                       dofs(at) ) )
 end
 
+##
 
 end

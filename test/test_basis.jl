@@ -141,18 +141,17 @@ for basis in ships
                                          for n = 1:length(at) ) )
    # we can test consistency of forces, site energy etc by taking
    # random inner products with coefficients
-   # TODO [tuple] revive this test after porting `fast`
-   # @info("     a few random combinations")
-   # for n = 1:10
-   #    c = randcoeffs(basis)
-   #    sh = JuLIP.MLIPs.combine(basis, c)
-   #    print_tf(@test energy(sh, at) ≈ dot(c, energy(basis, at)))
-   #    print_tf(@test forces(sh, at) ≈ sum(c*f for (c, f) in zip(c, forces(basis, at))) )
-   #    print_tf(@test site_energy(sh, at, 5) ≈ dot(c, site_energy(basis, at, 5)))
-   #    print_tf(@test site_energy_d(sh, at, 5) ≈ sum(c*f for (c, f) in zip(c, site_energy_d(basis, at, 5))) )
-   # end
+   @info("     a few random combinations")
+   for n = 1:10
+      c = randcoeffs(basis)
+      sh = JuLIP.MLIPs.combine(basis, c)
+      print_tf(@test energy(sh, at) ≈ dot(c, energy(basis, at)))
+      print_tf(@test forces(sh, at) ≈ sum(c*f for (c, f) in zip(c, forces(basis, at))) )
+      print_tf(@test site_energy(sh, at, 5) ≈ dot(c, site_energy(basis, at, 5)))
+      print_tf(@test site_energy_d(sh, at, 5) ≈ sum(c*f for (c, f) in zip(c, site_energy_d(basis, at, 5))) )
+   end
    println()
 end
 
-
+##
 end

@@ -21,9 +21,21 @@ import Base: Dict, convert, ==
 export SHIPBasis, bodyorder
 
 
-# TODO:
-#  - documentation
 
+"""
+`struct SHIPBasis` : one of the two main types provided by `SHIPs.jl`;
+represents a SHIP basis.
+
+The standard constructor is
+```
+SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff; kwargs...)
+```
+Keyword arguments are
+* filter = false
+* Nsamples = 1_000
+* pure = false
+* T = Float64
+"""
 struct SHIPBasis{T, NZ, TJ} <: IPBasis
    J::TJ               # specifies the radial basis
    SH::SHBasis{T}      # specifies the angular basis
@@ -160,12 +172,6 @@ get_maxL(bgrp::Vector{Tuple}) = maximum(maximum(zkl[3]) for zkl in bgrp)
 # so we have to be very careful how we define this.
 Base.length(ship::SHIPBasis) = sum(size(A2B, 1) for A2B in ship.A2B)
 
-# ----------------------------------------------
-#      Computation of the Ylm coefficients
-# ----------------------------------------------
-
-# TODO: delete this?
-_get_ll(KL, νz) = getfield.(KL[νz.ν], :l)
 
 # ----------------------------------------------
 #      Computation of the B-basis

@@ -344,24 +344,6 @@ function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 end
 
 
-
-# revive if needed
-# """
-# 	cYlm_from_xz(L, x, z)
-#
-# Compute an entire set of real spherical harmonics ``Y_{l,m}(θ, φ)`` for
-# ``x = cos θ, z = sin φ`` where ``0 ≤ l ≤ L`` and ``-l ≤ m ≤ l``.
-# """
-# function cYlm_from_cart(L::Integer, R::JVec{T}) where {T}
-# 	S = cart2spher(R)
-# 	P = Vector{T}(undef, sizeP(L))
-# 	coeff = compute_coefficients(L)
-# 	compute_p!(L, S, coeff, P)
-# 	Y = Vector{ComplexF64}(undef, sizeY(L))
-# 	cYlm!(Y, L, S, P)
-# 	return Y
-# end
-
 # ---------------------------------------------
 #      Nicer interface
 # ---------------------------------------------

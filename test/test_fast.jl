@@ -113,16 +113,15 @@ for B in BB
    rattle!(at, 0.1)
    print("     energy: ")
    println(@test energy(ship, at) ≈ naive_energy(ship, at) )
-   # TODO [multi] : implement site-energies in JuLIP and revive this test!
-   # print("site-energy: ")
-   # println(@test energy(ship, at) ≈ sum( site_energy(ship, at, n)
-   #                                       for n = 1:length(at) ) )
+   print("site-energy: ")
+   println(@test energy(ship, at) ≈ sum( site_energy(ship, at, n)
+                                         for n = 1:length(at) ) )
    println("forces: ")
    println(@test JuLIP.Testing.fdtest(ship, at))
-   # println("site-forces: ")
-   # println(@test JuLIP.Testing.fdtest( x -> site_energy(ship, set_dofs!(at, x), 3),
-   #                                     x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
-   #                                     dofs(at) ) )
+   println("site-forces: ")
+   println(@test JuLIP.Testing.fdtest( x -> site_energy(ship, set_dofs!(at, x), 3),
+                                       x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
+                                       dofs(at) ) )
 end
 
 ##

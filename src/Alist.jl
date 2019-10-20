@@ -240,7 +240,7 @@ end
 
 function grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0) where {T}
    for iAA = 1:length(ship.aalists[iz0])
-      # g = ∂(∏_a A_a) / ∂Rj     # TODO: species needs to go in here as well!
+      # g = ∂(∏_a A_a) / ∂Rj     
       tmp.dAAj[iz0][iAA] = grad_AAi_Rj(iAA, j, Rs[j], z2i(ship, Zs[j]),
                                        ship.alists[iz0], ship.aalists[iz0],
                                        tmp.A[iz0], tmp.AA[iz0], tmp.dA[iz0],

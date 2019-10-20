@@ -16,8 +16,6 @@ using SHIPs.SphericalHarmonics: index_y
 export ClebschGordan, CoeffArray, single_B
 
 
-# TODO: reduce dimensionality of the storage tensor
-#       to numY x numY x maxL (or possibly less?)
 """
 `ClebschGordan: ` storing precomputed Clebsch-Gordan coefficients; see
 `?clebschgordan` for the convention that is use.

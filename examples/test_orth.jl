@@ -58,7 +58,6 @@ ctr = 0
 nnz = 0
 for N = 1:Nmax
    for νz in shpB.NuZ[N]
-      # ll = SHIPs._get_ll(shpB.KL[N], νz)
       kk, ll = SHIPs._kl(νz.ν, νz.izz, shpB.KL)
       for mm in SHIPs._mrange(ll)
          global ctr += 1
@@ -81,8 +80,6 @@ A = zeros(100_000);
 (@elapsed fill_an_array!(A)) * 1000
 
 
-
-# SHIPs._get_ll(shpB.KL, shpB.NuZ[2][1])
 
 @show shpB.idx_Bll[end]
 @show shpB.len_Bll[end]
