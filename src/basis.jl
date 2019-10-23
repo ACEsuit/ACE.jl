@@ -15,6 +15,7 @@ import JuLIP: alloc_temp, alloc_temp_d
 using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y
 using SHIPs.Rotations: ClebschGordan
 using SparseArrays: SparseMatrixCSC, sparse
+using LinearAlgebra: svd
 
 import Base: Dict, convert, ==
 
@@ -100,15 +101,20 @@ function SHIPBasis(spec::BasisSpec, J; T=Float64, kwargs...)
 end
 
 function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
-                   filter = false, Nsamples = 1_000, pure = false, T = Float64,
+                   filter = false, Nsamples = 1_000, T = Float64,
                    Bcoefs = Rotations.CoeffArray(T)
                    ) where {NZ}
    SH = SHBasis(get_maxL(bgrps))
    alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
    A2B, firstb = A2B_matrices(bgrps, alists, aalists, Bcoefs, T)
-   return SHIPBasis( J, SH,
-                      bgrps, zlist,
-                      alists, aalists, A2B, firstb )
+   preB = SHIPBasis( J, SH,
+                     bgrps, zlist,
+                     alists, aalists, A2B, firstb )
+   if filter
+      f_A2B, f_firstb = filter_rpi_basis(preB, Nsamples)
+      return SHIPBasis(J, SH, bgrps, zlist, alists, aalists, f_A2B, f_firstb)
+   end
+   return preB
 end
 
 
@@ -308,6 +314,72 @@ precompute_dA!(tmp, ship::SHIPBasis,
 precompute_AA!(tmp, ship::SHIPBasis, iz0) =
    precompute_AA!(tmp.AA[iz0], tmp.A[iz0], ship.aalists[iz0])
 
+
+# -------------------------------------------------------------
+#       Filtering the extra basis functions
+# -------------------------------------------------------------
+
+len_bgrp(shpB::SHIPBasis, igrp, iz0) =
+      shpB.firstb[iz0][igrp+1] - shpB.firstb[iz0][igrp]
+
+I_bgrp(shpB::SHIPBasis, igrp, iz0) =
+      (shpB.firstb[iz0][igrp]+1):shpB.firstb[iz0][igrp+1]
+
+function filter_rpi_basis(preB::SHIPBasis{T, NZ}, nsamples::Integer) where {T, NZ}
+   @assert nspecies(preB) == NZ == 1
+
+   # TODO: later
+   # loop through body-orders??
+   #    or try to just use the largest body-order in the system?
+   # loop through all Zs combinations??
+   #    for now assume there is just one species
+
+   # allocate the gramians for the basis groups
+   GG = Vector(Matrix{T}, length(preB.bgrps[1]))
+   for igrp = 1:length(GG)
+      len_grp = len_bgrp(preB, igrp, 1)  # 1 = iz0
+      GG[igrp] = zeros(T, len_grp, len_grp)
+   end
+
+   N = maximum( size(preB.aalists[i], 2) for i = 1:NZ )
+   Zs = ones(Int16, N)
+   for n = 1:nsamples
+      # create the next sample
+      Rs = SHIPs.Utils.rand(preB.J, N)
+      # evaluate the basis
+      B = eval_basis(preB, Rs, Zs, 1)   # iz0 == 1
+      # add the basis values to the little matrices
+      for igrp = 1:length(GG)
+         Ib_grp =  I_bgrp(preB, igrp, 1)
+         # remember ' = adjoint, not transpose!!
+         GG[igrp] += real.(B[Ib_grp] * B[Ib_grp]') / nsamples
+      end
+   end
+
+   new_A2B = sparse(IntS[], IntS[], T[], 0, size(preB,A2B[1], 2))
+   bidx0 = 0
+   new_firstb = IntS[]
+
+   for igrp = 1:length(GG)
+      Ggrp = G[igrp]
+      rk = rank(Ggrp)
+      S = svd(Ggrp)
+      Ugrp = S.U[:, 1:rk] * Diagonal(S.S[1:rk].^(-0.5))
+      # Ugrp' * Ggrp * Ugrp ~ Id
+      # use this to get the new coefficients
+      Ib_grp = I_bgrp(preB, igrp, 1)
+      newcoeffs = Ugrp' * shpB.A2B[1][Ib_grp, :]
+      newA2B = vcat(new_A2B, newcoeffs)
+      push!(new_firstb, idx0)
+      idx0 += rk
+   end
+   # check that we have exactly the right number of firstb entries
+   @assert length(new_firstb) == length(preB.firstb)
+   # and then add one more to get the total length of the basis
+   push!(new_firstb, idx0)
+
+   return new_A2B, new_firstb
+end
 
 
 
