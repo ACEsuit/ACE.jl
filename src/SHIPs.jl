@@ -21,7 +21,7 @@ include("rotations.jl")
 # basis specification: subsets of the full expansion
 include("basisspecs.jl")
 
-# implements the A functions ∏A functions 
+# implements the A functions ∏A functions
 include("Alist.jl")
 
 # SHIPBasis definition
@@ -30,9 +30,9 @@ include("basis.jl")
 # SHIP interatomic potential definition
 include("fast.jl")
 
-# include("regularisers.jl")
+include("regularisers.jl")
 
-# include("descriptors.jl")
+include("descriptors.jl")
 
 include("utils.jl")
 
