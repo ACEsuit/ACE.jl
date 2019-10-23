@@ -8,34 +8,24 @@
 
 module Regularisers
 
-using SHIPs: SHIPBasis, _get_NuZ_N, nfcalls, nspecies, _first_B_idx, _kl, Tνz
+using SHIPs: SHIPBasis, nspecies, _get_I_iz0
 using LinearAlgebra: Diagonal
 
-function _get_kls!(ww, ship::SHIPBasis{BO, T}, ::Val{N}, iz0,
-                   NuZ_N::Vector{Tνz{N}},
-                   weightfcn) where {BO, T, N}
-   @assert N <= BO
-   ZKL = ship.KL
-   # compute the zeroth (not first!) index of the N-body subset of the SHIPBasis
-   idx0 = _first_B_idx(ship, N, iz0)
-   # loop over N-body basis functions
-   # A has already been filled in the outer eval_basis!
-   for (idx, νz) in enumerate(NuZ_N)
-      ν = νz.ν
-      izz = νz.izz
-      kk, ll = _kl(ν, izz, ZKL)
-      # @show kk, ll, weightfcn(kk, ll)
-      ww[idx0+idx] = weightfcn(kk, ll)
+function _get_ww(ship::SHIPBasis{T}, iz0, weightfcn) where {T}
+   ww = zeros(T, size(ship.A2B[iz0], 1))
+   for ib = 1:length(ship.bgrps[iz0])
+      izz, kk, ll =  ship.bgrps[iz0][i]
+      Igrp = (ship.firstb[iz0][i]+1):ship.firstb[iz0][i+1]
+      ww[Igrp] = weightfcn(kk, ll)
    end
    return ww
 end
 
-function _get_ww(ship::SHIPBasis{BO, T}, weightfcn) where {BO, T}
+function _get_ww(ship::SHIPBasis{T}, weightfcn) where {T}
    ww = zeros(length(ship))
-   for iz = 1:nspecies(ship)
-      nfcalls(Val(BO), valN -> _get_kls!(ww, ship, valN, iz,
-                                         _get_NuZ_N(ship, valN, iz),
-                                         weightfcn))
+   for iz0 = 1:nspecies(ship)
+      Iz = _get_I_iz0(ship, iz0)
+      ww[Iz] = _get_ww(ship, iz0, weightfcn)
    end
    return ww
 end
@@ -47,6 +37,5 @@ function diagonal_regulariser(shp::SHIPBasis;
                               weightfcn = (kk, ll) -> diffweight(kk, ll, diff))
    return Diagonal(_get_ww(shp, weightfcn))
 end
-
 
 end

@@ -8,6 +8,7 @@
 
 @testset "Ylm" begin
 
+##
 import SHIPs
 using JuLIP.Testing
 using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
@@ -38,6 +39,8 @@ function explicit_shs(θ, φ)
    return [Y00, Y1m1, Y10, Y11, Y2m2, Y2m1, Y20, Y21, Y22,
            Y3m3, Y3m2, Y3m1, Y30, Y31, Y32, Y33]
 end
+
+##
 
 @info("Test: check complex spherical harmonics against explicit expressions")
 nsamples = 30
@@ -155,26 +158,21 @@ println()
 @info("Test: check derivatives of complex spherical harmonics")
 for nsamples = 1:30
    R = @SVector rand(3)
-   u = @SVector rand(3); u /= norm(u)
    SH = SHBasis(5)
    Y, dY = eval_basis_d(SH, R)
-   dY_u = dot.(Ref(u), dY)
    DY = Matrix(transpose(hcat(dY...)))
    errs = []
    verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
       DYh = similar(DY)
-      dYh_u = similar(dY_u)
       Rh = Vector(R)
       for i = 1:3
          Rh[i] += h
          DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
          Rh[i] -= h
-         dYh_u += DYh[:, i] * u[i]
       end
-      # push!(errs, norm(DY - DYh, Inf))
-      push!(errs, norm(dY_u - dYh_u, Inf))
+      push!(errs, norm(DY - DYh, Inf))
       verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
    success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
@@ -184,5 +182,22 @@ println()
 
 ##
 
+# another test, which we could add but isn't really necessary
+# R = SVector(0.589275, 0.468925, 0.00509384)
+# # R /= norm(R)
+# u = SVector(0.318475, 0.734832, 0.598829)
+# SH = SHBasis(5)
+# Y, dY = eval_basis_d(SH, R)
+# dY_u = dot.(Ref(u), dY)
+# errs = []
+# @printf("     h    | error \n")
+# for p = 2:10
+#    h = 0.1^p
+#    dYh_u = (eval_basis(SH, R + h * u) - Y) / h
+#    push!(errs, norm(dY_u - dYh_u, Inf))
+#    @printf(" %.2e | %.2e \n", h, errs[end])
+# end
+
+##
 
 end # @testset

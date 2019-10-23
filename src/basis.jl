@@ -41,11 +41,15 @@ struct SHIPBasis{T, NZ, TJ} <: IPBasis
    SH::SHBasis{T}      # specifies the angular basis
    # ------------------------------------------------------------------------
    bgrps::NTuple{NZ, Vector{Tuple}}  # specification of basis functions
+                                     # each group def. by a tuple (izz, kk, ll)
    zlist::SZList{NZ}                 # list of species (S=static)
    # ------------------------------------------------------------------------
-   alists::NTuple{NZ, AList}
-   aalists::NTuple{NZ, AAList}
-   A2B::NTuple{NZ, SparseMatrixCSC{Complex{T}, IntS}}
+   alists::NTuple{NZ, AList}         # datastructure to assemble A
+   aalists::NTuple{NZ, AAList}       # datastructure to assemble AA
+   A2B::NTuple{NZ, SparseMatrixCSC{Complex{T}, IntS}}   # convert AA -> B
+   firstb::NTuple{NZ, Vector{IntS}}  # for each bgrp, store the zeroth index of
+                                     # in the B vector; firstb[iz0][end] is the
+                                     # last index
 end
 
 # ---------------(de-)dictionisation---------------------------------
@@ -101,26 +105,43 @@ function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
                    ) where {NZ}
    SH = SHBasis(get_maxL(bgrps))
    alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
-   A2B = A2B_matrices(bgrps, alists, aalists, Bcoefs, T)
+   A2B, firstb = A2B_matrices(bgrps, alists, aalists, Bcoefs, T)
    return SHIPBasis( J, SH,
                       bgrps, zlist,
-                      alists, aalists, A2B )
+                      alists, aalists, A2B, firstb )
 end
 
 
 
-A2B_matrices(bgrps, alists, aalists, Bcoefs, T=Float64) =
-       ntuple( iz0 -> A2B_matrix(bgrps[iz0], alists[iz0], aalists[iz0], Bcoefs, T),
-               length(alists) )
+function A2B_matrices(bgrps, alists, aalists, Bcoefs, T=Float64)
+   NZ = length(alists)
+   A2B = Vector{Any}(undef, NZ)
+   firstb = Vector{Vector{IntS}}(undef, NZ)
+   idx0 = 0
+   for iz0  = 1:NZ
+      A2B_iz0, firstb_iz0 = A2B_matrix(bgrps[iz0], alists[iz0], aalists[iz0],
+                                       Bcoefs, T)
+      A2B[iz0] = A2B_iz0
+      # firstb_iz0 gives indexing only within the iz0 groups; adding
+      # idx0 gives the global basis indices
+      firstb[iz0] = idx0 .+ firstb_iz0
+      idx0 = firstb[iz0][end]
+   end
+   return ntuple(i->A2B[i], NZ), ntuple(i->firstb[i], NZ)
+end
 
 function A2B_matrix(bgrps, alist, aalist, Bcoefs, T=Float64)
    # allocate triplet format
    Irow, Jcol, vals = IntS[], IntS[], Complex{T}[]
+   firstb = IntS[]
    idxB = 0
    # loop through all (zz, kk, ll) tuples; each specifies 1 to several B
    for (izz, kk, ll) in bgrps
+      # store the zeroth index for this basis group
+      push!(firstb, idxB)
       # get the rotation-coefficients for this basis group
       Ull = SHIPs.Rotations.basis(Bcoefs, ll)
+      idxB += size(Ull, 2)
       # loop over the columns of Ull -> each specifies a basis function
       for ibasis = 1:size(Ull, 2)
          idxB += 1
@@ -136,8 +157,9 @@ function A2B_matrix(bgrps, alist, aalist, Bcoefs, T=Float64)
          end
       end
    end
+   push!(firstb, idxB)
    # create CSC: [   triplet    ]  nrows   ncols
-   return sparse(Irow, Jcol, vals, idxB, length(aalist))
+   return sparse(Irow, Jcol, vals, idxB, length(aalist)), firstb
 end
 
 
@@ -154,6 +176,7 @@ function convert_basis_groups(NuZ, ZKL)
    end
    return bgrps
 end
+
 
 # ----------------------------------------
 
@@ -226,7 +249,9 @@ function _get_I_iz0(ship::SHIPBasis, iz0)
       idx0 += size(ship.A2B[iz], 1)
    end
    idxend = idx0 + size(ship.A2B[iz0], 1)
-   return (idx0+1):idxend
+   I_iz0 = (idx0+1):idxend
+   @assert I_iz0 == (ship.firstb[iz0][1]+1):ship.firstb[iz0][end]
+   return I_iz0
 end
 
 
