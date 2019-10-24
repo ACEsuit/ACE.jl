@@ -36,32 +36,34 @@ end
 @info("Construct a 5B 🚢")
 trans = PolyTransform(2, 1.0)
 cutf = PolyCutoff2s(2, 0.5, 3.0)
-ship = SHIPBasis(SparseSHIP(4,  10; wL = 1.5), trans, cutf,
+ship = SHIPBasis(SparseSHIP(5,  12; wL = 1.5), trans, cutf,
                                     filter=false)
 
 ##
 @info("Select a basis group and show it doesn't have full rank:")
-igrp = findfirst(SHIPs.alllen_bgrp(ship, 1) .== 3)
+maxgrp = maximum(SHIPs.alllen_bgrp(ship, 1))
+@show maxgrp
+igrp = findfirst(SHIPs.alllen_bgrp(ship, 1) .== maxgrp)
 Igrp = SHIPs.I_bgrp(ship, igrp, 1)
 
 G = zeros(length(Igrp), length(Igrp))
-nsamples = 10 * length(Igrp)
-Zs = zeros(SHIPs.IntS, 4)
+nsamples = 100 * length(Igrp)
+Zs = zeros(SHIPs.IntS, 5)
 for n = 1:nsamples
-   Rs, Zs = randR(4)
+   Rs, Zs = randR(5)
    B = SHIPs.eval_basis(ship, Rs, Zs, 0)
    b = B[Igrp]
    global G += b * b' / nsamples
 end
 
-println(@test rank(G) < 3)
+println(@test rank(G) < maxgrp)
 @show rk = rank(G)
+
+@show svd(G).S
 
 ##
 @info("Now filter that basis and show that this basis group has reduced to length 1")
 
 fship = SHIPs.filter_rpi_basis(ship, 1_000)
-fship = SHIPBasis(SparseSHIP(4,  10; wL = 1.5), trans, cutf;
-                  filter=true, Nsamples=100)
 println(@test SHIPs.len_bgrp(fship, igrp, 1) == rk)
 @show length(ship), length(fship)
