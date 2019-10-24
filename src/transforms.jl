@@ -237,6 +237,9 @@ Base.length(J::TransformedJacobi) = length(J.J)
 cutoff(J::TransformedJacobi) = J.ru
 transform(J::TransformedJacobi, r) = transform(J.trans, r)
 transform_d(J::TransformedJacobi, r) = transform_d(J.trans, r)
+corr_transform(J::TransformedJacobi, r) =
+   -1 + 2 * (transform(J.trans, r) - J.tl) / (J.tu - J.tl)
+
 fcut(J::TransformedJacobi, r, x) = fcut(J.mult, r, x)
 fcut_d(J::TransformedJacobi, r, x) = fcut_d(J.mult, r, x)
 
@@ -247,8 +250,6 @@ SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
       Vector{T}(undef, length(J))
 
 function eval_basis!(P, tmp, J::TransformedJacobi, r)
-   N = length(J)-1
-   @assert length(P) >= N+1
    # transform coordinates
    t = transform(J.trans, r)
    x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
@@ -256,6 +257,12 @@ function eval_basis!(P, tmp, J::TransformedJacobi, r)
    # the (J.tu-J.tl) / 2 factor makes the basis orthonormal
    # (just for the kick of it...)
    fc = fcut(J, r, x) * sqrt(abs(2 / (J.tu-J.tl)))
+   eval_basis!(P, tmp, J, r, x, fc)
+end
+
+function eval_basis!(P, tmp, J::TransformedJacobi, r, x, fc)
+   N = length(J)-1
+   @assert length(P) >= N+1
    if fc == 0
       fill!(P, 0.0)
    else
