@@ -1,6 +1,6 @@
 name = "SHIPs"
 uuid = "07029e18-8f70-11e9-35ce-2d4df590abdc"
-version = "0.3.2-dev"
+version = "0.3.2"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
