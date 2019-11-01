@@ -111,7 +111,7 @@ function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
                      bgrps, zlist,
                      alists, aalists, A2B, firstb )
    if filter
-      return filter_rpi_basis(preB, Nsamples)
+      return alg_filter_rpi_basis(preB)
    end
    return preB
 end
@@ -326,57 +326,58 @@ alllen_bgrp(shpB::SHIPBasis, iz0) =
 I_bgrp(shpB::SHIPBasis, igrp, iz0) =
       (shpB.firstb[iz0][igrp]+1):shpB.firstb[iz0][igrp+1]
 
-function filter_rpi_basis(preB::SHIPBasis{T, NZ}, nsamples::Integer) where {T, NZ}
-   @assert nspecies(preB) == NZ == 1
-   z = preB.zlist.list[1]  # hack...
-
-   # TODO: later
-   # loop through body-orders??
-   #    or try to just use the largest body-order in the system?
-   # loop through all Zs combinations??
-   #    for now assume there is just one species
-
-   # allocate the gramians for the basis groups
-   GG = Vector{Matrix{T}}(undef, length(preB.bgrps[1]))
-   for igrp = 1:length(GG)
-      len_grp = len_bgrp(preB, igrp, 1)  # 1 = iz0
-      GG[igrp] = zeros(T, len_grp, len_grp)
-   end
-
-   N = maximum( size(preB.aalists[i].i2Aidx, 2) for i = 1:NZ )
-   Zs = z * ones(Int16, N)
-   for n = 1:nsamples
-      # create the next sample
-      Rs = SHIPs.Utils.rand(preB.J, N)
-      # evaluate the basis
-      B = eval_basis(preB, Rs, Zs, z)   # iz0 == 1
-      # add the basis values to the little matrices
-      for igrp = 1:length(GG)
-         Ib_grp =  I_bgrp(preB, igrp, 1)
-         # remember ' = adjoint, not transpose!!
-         GG[igrp] += real.(B[Ib_grp] * B[Ib_grp]') / nsamples
+function _algebraic_gramian(ship, zkl, Igr, U)
+   izz, kk, ll = zkl
+   N = length(kk)
+   n = length(Igr)
+   @assert size(U, 1) == n
+   G = zeros(n, n)
+   for σ in permutations(1:N)
+      if (kk[σ] != kk) || (ll[σ] != ll); continue; end
+      for mm1 in SHIPs._mrange(ll), mm2 in SHIPs._mrange(ll)
+         if mm1[σ] == mm2
+            iU1 = ship.aalists[1].zklm2i[(izz, kk, ll, mm1)]
+            iU2 = ship.aalists[1].zklm2i[(izz, kk, ll, mm2)]
+            for i1 = 1:n, i2 = 1:n
+               G[i1, i2] += conj(U[i1, iU1]) * U[i2, iU2]
+            end
+         end
       end
    end
+   return G
+end
+
+
+function _alg_filter_group(ship, zkl, Igr, U)
+   G = _algebraic_gramian(ship, zkl, Igr, U)
+   S = svd(G)
+   rk = rank(G)
+   return Diagonal(sqrt.(S.S[1:rk])) * S.U[:, 1:rk]' * U
+end
+
+
+function alg_filter_rpi_basis(preB::SHIPBasis{T, NZ}) where {T, NZ}
+   @assert nspecies(preB) == NZ == 1
+   z = preB.zlist.list[1]  # hack...
 
    new_A2B = sparse(IntS[], IntS[], Complex{T}[], 0, size(preB.A2B[1], 2))
    bidx0 = 0
    new_firstb = IntS[]
 
-   for igrp = 1:length(GG)
-      Ggrp = GG[igrp]
-      rk = rank(Ggrp)
-      S = svd(Ggrp)
-      Ugrp = S.U[:, 1:rk] * Diagonal(S.S[1:rk].^(-0.5))
-      # Ugrp' * Ggrp * Ugrp ~ Id
-      # use this to get the new coefficients
-      Ib_grp = I_bgrp(preB, igrp, 1)
-      newcoeffs = Ugrp' * preB.A2B[1][Ib_grp, :]
-      new_A2B = vcat(new_A2B, newcoeffs)
+   for igrp = 1:length(preB.bgrps[1])
+      zkl = preB.bgrps[1][igrp]
+      Ib_grp =  I_bgrp(preB, igrp, 1)
+      U = preB.A2B[1][Ib_grp, :]
+      Ufiltered = convert( SparseMatrixCSC{Complex{T},IntS},
+                           sparse(_alg_filter_group(preB, zkl, Ib_grp, U)) )
+      new_A2B = vcat(new_A2B, Ufiltered)
       push!(new_firstb, bidx0)
-      bidx0 += rk
+      bidx0 += size(Ufiltered, 1)
    end
+
    # and then add one more to get the total length of the basis
    push!(new_firstb, bidx0)
+
    # check that we have exactly the right number of firstb entries
    @assert length(new_firstb) == length(preB.firstb[1])
 
@@ -384,8 +385,13 @@ function filter_rpi_basis(preB::SHIPBasis{T, NZ}, nsamples::Integer) where {T, N
                     preB.alists, preB.aalists,
                     ntuple(i->new_A2B, 1),
                     ntuple(i->new_firstb, 1) )
-end
 
+   # TODO: later
+   # loop through body-orders??
+   #    or try to just use the largest body-order in the system?
+   # loop through all Zs combinations??
+   #    for now assume there is just one species
+end
 
 
 # -------------------------------------------------------------
