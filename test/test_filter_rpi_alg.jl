@@ -64,9 +64,9 @@ println(@test rank(G) < maxgrp)
 @info("now do it algebraically:")
 U = ship.A2B[1][Igrp, :]
 zkl = ship.bgrps[1][igrp]
-G_alg = SHIPs._algebraic_gramian(ship, zkl, Igrp, U)
+G_alg = SHIPs._algebraic_gramian(ship, zkl, Igrp, U, 1)
 rk_alg = rank(G_alg)
-@test rk == rk_alg
+println(@test rk == rk_alg)
 @show rank(G_alg)
 
 @info("check that the two schemes give the same space")
@@ -74,7 +74,7 @@ S = svd(G)
 S_alg = svd(G_alg)
 U = S.U[:, 1:rk]
 U_alg = S.U[:, 1:rk]
-@test rank([U U_alg]) == rk
+println(@test rank([U U_alg]) == rk)
 
 ##
 @info("Now filter that basis and show that this basis group has reduced to the correct length")

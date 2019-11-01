@@ -32,8 +32,7 @@ The standard constructor is
 SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff; kwargs...)
 ```
 Keyword arguments are
-* filter = false
-* Nsamples = 1_000
+* filter = true
 * pure = false
 * T = Float64
 """
@@ -101,9 +100,10 @@ function SHIPBasis(spec::BasisSpec, J; T=Float64, kwargs...)
 end
 
 function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
-                   filter = false, Nsamples = 1_000, T = Float64,
+                   filter = true, T = Float64, pure = false,
                    Bcoefs = Rotations.CoeffArray(T)
                    ) where {NZ}
+   @assert pure == false
    SH = SHBasis(get_maxL(bgrps))
    alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
    A2B, firstb = A2B_matrices(bgrps, alists, aalists, Bcoefs, T)
@@ -247,6 +247,9 @@ function alloc_temp_d(ship::SHIPBasis{T, NZ}, N::Integer) where {T, NZ}
       )
 end
 
+"""
+return all basis indices corresponding to species index iz0
+"""
 function _get_I_iz0(ship::SHIPBasis, iz0)
    idx0 = 0
    for iz = 1:iz0-1
@@ -257,6 +260,9 @@ function _get_I_iz0(ship::SHIPBasis, iz0)
    @assert I_iz0 == (ship.firstb[iz0][1]+1):ship.firstb[iz0][end]
    return I_iz0
 end
+
+# _get_I_iz0(ship::SHIPBasis, iz0) = (ship.firstb[iz0][1]+1):ship.firstb[iz0][end]
+
 
 
 function eval_basis!(B, tmp, ship::SHIPBasis{T},
@@ -326,18 +332,18 @@ alllen_bgrp(shpB::SHIPBasis, iz0) =
 I_bgrp(shpB::SHIPBasis, igrp, iz0) =
       (shpB.firstb[iz0][igrp]+1):shpB.firstb[iz0][igrp+1]
 
-function _algebraic_gramian(ship, zkl, Igr, U)
+function _algebraic_gramian(ship, zkl, Igr, U, iz0)
    izz, kk, ll = zkl
    N = length(kk)
    n = length(Igr)
    @assert size(U, 1) == n
    G = zeros(n, n)
    for σ in permutations(1:N)
-      if (kk[σ] != kk) || (ll[σ] != ll); continue; end
+      if (izz[σ] != izz) || (kk[σ] != kk) || (ll[σ] != ll); continue; end
       for mm1 in SHIPs._mrange(ll), mm2 in SHIPs._mrange(ll)
          if mm1[σ] == mm2
-            iU1 = ship.aalists[1].zklm2i[(izz, kk, ll, mm1)]
-            iU2 = ship.aalists[1].zklm2i[(izz, kk, ll, mm2)]
+            iU1 = ship.aalists[iz0][(izz, kk, ll, mm1)]
+            iU2 = ship.aalists[iz0][(izz, kk, ll, mm2)]
             for i1 = 1:n, i2 = 1:n
                G[i1, i2] += conj(U[i1, iU1]) * U[i2, iU2]
             end
@@ -348,49 +354,42 @@ function _algebraic_gramian(ship, zkl, Igr, U)
 end
 
 
-function _alg_filter_group(ship, zkl, Igr, U)
-   G = _algebraic_gramian(ship, zkl, Igr, U)
+function _alg_filter_group(ship::SHIPBasis{T}, zkl, Igr, U, iz0) where {T}
+   G = _algebraic_gramian(ship, zkl, Igr, U, iz0)
    S = svd(G)
    rk = rank(G)
-   return Diagonal(sqrt.(S.S[1:rk])) * S.U[:, 1:rk]' * U
+   UT = convert(SparseMatrixCSC{Complex{T},IntS}, S.U[:, 1:rk]')
+   return Diagonal(sqrt.(S.S[1:rk])) * UT * U
 end
 
 
 function alg_filter_rpi_basis(preB::SHIPBasis{T, NZ}) where {T, NZ}
-   @assert nspecies(preB) == NZ == 1
-   z = preB.zlist.list[1]  # hack...
 
-   new_A2B = sparse(IntS[], IntS[], Complex{T}[], 0, size(preB.A2B[1], 2))
+   new_A2B = [ sparse(IntS[], IntS[], Complex{T}[], 0, size(preB.A2B[1], 2))
+               for iz0 = 1:NZ ]
+   new_firstb = [ IntS[] for iz0 = 1:NZ ]
    bidx0 = 0
-   new_firstb = IntS[]
 
-   for igrp = 1:length(preB.bgrps[1])
-      zkl = preB.bgrps[1][igrp]
-      Ib_grp =  I_bgrp(preB, igrp, 1)
-      U = preB.A2B[1][Ib_grp, :]
-      Ufiltered = convert( SparseMatrixCSC{Complex{T},IntS},
-                           sparse(_alg_filter_group(preB, zkl, Ib_grp, U)) )
-      new_A2B = vcat(new_A2B, Ufiltered)
-      push!(new_firstb, bidx0)
-      bidx0 += size(Ufiltered, 1)
+   for iz0 = 1:NZ
+      for igrp = 1:length(preB.bgrps[iz0])
+         zkl = preB.bgrps[iz0][igrp]
+         Ib_grp =  I_bgrp(preB, igrp, iz0) .- preB.firstb[iz0][1]
+         U = preB.A2B[iz0][Ib_grp, :]
+         Ufiltered = _alg_filter_group(preB, zkl, Ib_grp, U, iz0)
+         new_A2B[iz0] = vcat(new_A2B[iz0], Ufiltered)
+         push!(new_firstb[iz0], bidx0)
+         bidx0 += size(Ufiltered, 1)
+      end
+      # and then add one more to get the total length of the basis
+      push!(new_firstb[iz0], bidx0)
+      # double-check that we have exactly the right number of firstb entries
+      @assert length(new_firstb[iz0]) == length(preB.firstb[1])
    end
-
-   # and then add one more to get the total length of the basis
-   push!(new_firstb, bidx0)
-
-   # check that we have exactly the right number of firstb entries
-   @assert length(new_firstb) == length(preB.firstb[1])
 
    return SHIPBasis(preB.J, preB.SH, preB.bgrps, preB.zlist,
                     preB.alists, preB.aalists,
-                    ntuple(i->new_A2B, 1),
-                    ntuple(i->new_firstb, 1) )
-
-   # TODO: later
-   # loop through body-orders??
-   #    or try to just use the largest body-order in the system?
-   # loop through all Zs combinations??
-   #    for now assume there is just one species
+                    ntuple(i->new_A2B[i], NZ),
+                    ntuple(i->new_firstb[i], NZ) )
 end
 
 

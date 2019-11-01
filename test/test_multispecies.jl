@@ -72,6 +72,8 @@ ship4 = SHIPBasis(SparseSHIP([1,2], 4,  6, wL=1.5), trans, cutf)
 ship5 = SHIPBasis(SparseSHIP([1,2], 5,  5, wL=1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5]
 
+##
+
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships
    println(@test (decode_dict(Dict(ship)) == ship))
@@ -257,5 +259,14 @@ for B in shipsB
 end
 
 ##
+
+@info("Multi-species filtering test")
+trans = PolyTransform(2, 1.0)
+cutf = PolyCutoff2s(2, 0.5, 3.0)
+ship = SHIPBasis(SparseSHIP((1, 2), 5,  6; wL = 1.0), trans, cutf, filter=false)
+@show maxgrp = maximum(SHIPs.alllen_bgrp(ship, 1))
+@time fship = SHIPs.alg_filter_rpi_basis(ship)
+@show length(fship), length(ship)
+println(@test length(fship) < length(ship))
 
 end
