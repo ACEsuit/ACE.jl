@@ -66,7 +66,7 @@ SHIPBasis(D::Dict) = SHIPBasis(TransformedJacobi(D["J"]),
 bgrp2vecvec(bgrp) = [ Vector{Int}(vcat(b...)) for b in bgrp ]
 vecvec2bgrps(Vbs) = convert.(Vector{Tuple}, tuple(vecvec2bgrp.(Vbs)...))
 vecvec2bgrp(Vb) = _vec2b.(Vb)
-_vec2b(v::Vector{<:Integer}) = (
+_vec2b(v::Vector) = (
    N = length(v) ÷ 3; ( SVector{N, Int16}(v[1:N]...),
                         SVector{N,  IntS}(v[N+1:2*N]...),
                         SVector{N,  IntS}(v[2*N+1:3*N]...) ) )

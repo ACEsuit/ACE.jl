@@ -47,7 +47,10 @@ ships = [ship2, ship3, ship4, ship5, ship6]
 
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships
-   println(@test (decode_dict(Dict(ship)) == ship))
+   print_tf(@test (decode_dict(Dict(ship)) == ship))
+   tmpf = tempname() * ".json"
+   save_json(tmpf, Dict(ship))
+   print_tf(@test decode_dict(load_json(tmpf)) == ship)
 end
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
