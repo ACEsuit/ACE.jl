@@ -1,6 +1,6 @@
 name = "SHIPs"
 uuid = "07029e18-8f70-11e9-35ce-2d4df590abdc"
-version = "0.3.2"
+version = "0.3.3"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
@@ -22,6 +22,7 @@ ASE = "51974c44-a7ed-5088-b8be-3e78c8ba416c"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [targets]
-test = ["Test", "PyCall", "BenchmarkTools", "ASE"]
+test = ["Test", "PyCall", "BenchmarkTools", "ASE", "Random"]
