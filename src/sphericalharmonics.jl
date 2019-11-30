@@ -3,9 +3,9 @@ module SphericalHarmonics
 
 using StaticArrays, LinearAlgebra
 
-import SHIPs
+import PoSH
 
-import SHIPs: alloc_B, alloc_dB, alloc_temp, alloc_temp_d,
+import PoSH: alloc_B, alloc_dB, alloc_temp, alloc_temp_d,
               eval_basis!, eval_basis_d!
 
 const JVec = SVector{3}

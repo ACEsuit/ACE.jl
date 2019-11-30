@@ -1,4 +1,4 @@
-module SHIPs
+module PoSH
 
 const IntS = Int32
 
