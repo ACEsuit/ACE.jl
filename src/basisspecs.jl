@@ -3,6 +3,7 @@
 
 using Combinatorics
 using JuLIP.Chemistry: atomic_number
+import JuLIP.Potentials: z2i, i2z
 
 import Base: ==
 
