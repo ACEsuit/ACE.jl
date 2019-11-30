@@ -12,10 +12,14 @@ using JuLIP.Potentials: evaluate!, evaluate_d!, evaluate, evaluate_d
 using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
 
 @testset "PoSH.jl" begin
-    include("test_jacobi.jl")
-    include("test_transforms.jl")
+    include("pairpots/test_jacobi.jl")
+    include("pairpots/test_transforms.jl")
+    include("pairpots/test_basics.jl")
+    include("pairpots/repulsion.jl") 
+    # ----------------------
     include("test_ylm.jl")
     include("test_cg.jl")
+    # ----------------------
     include("test_basis.jl")
     include("test_filter_rpi_alg.jl")
     include("test_fast.jl")
