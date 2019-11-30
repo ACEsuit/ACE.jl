@@ -12,8 +12,8 @@ using JuLIP.MLIPs: IPBasis
 using JuLIP.Potentials: SZList, ZList
 import JuLIP: alloc_temp, alloc_temp_d
 
-using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y
-using SHIPs.Rotations: ClebschGordan
+using PoSH.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y
+using PoSH.Rotations: ClebschGordan
 using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: svd
 
@@ -24,7 +24,7 @@ export SHIPBasis, bodyorder
 
 
 """
-`struct SHIPBasis` : one of the two main types provided by `SHIPs.jl`;
+`struct SHIPBasis` : one of the two main types provided by `PoSH.jl`;
 represents a SHIP basis.
 
 The standard constructor is
@@ -54,12 +54,12 @@ end
 
 # ---------------(de-)dictionisation---------------------------------
 Dict(shipB::SHIPBasis) = Dict(
-      "__id__" => "SHIPs_SHIPBasis_v3",
+      "__id__" => "PoSH_SHIPBasis_v3",
       "J" => Dict(shipB.J),
       "zlist" => Dict(shipB.zlist),
       "bgrps" => bgrp2vecvec.(shipB.bgrps)
    )
-convert(::Val{:SHIPs_SHIPBasis_v3}, D::Dict) = SHIPBasis(D)
+convert(::Val{:PoSH_SHIPBasis_v3}, D::Dict) = SHIPBasis(D)
 SHIPBasis(D::Dict) = SHIPBasis(TransformedJacobi(D["J"]),
                                SZList(D["zlist"]),
                                vecvec2bgrps(D["bgrps"]))
@@ -145,7 +145,7 @@ function A2B_matrix(bgrps, alist, aalist, Bcoefs, T=Float64)
       # store the zeroth index for this basis group
       push!(firstb, idxB)
       # get the rotation-coefficients for this basis group
-      Ull = SHIPs.Rotations.basis(Bcoefs, ll)
+      Ull = PoSH.Rotations.basis(Bcoefs, ll)
       # loop over the columns of Ull -> each specifies a basis function
       for ibasis = 1:size(Ull, 2)
          idxB += 1
@@ -340,7 +340,7 @@ function _algebraic_gramian(ship, zkl, Igr, U, iz0)
    G = zeros(n, n)
    for σ in permutations(1:N)
       if (izz[σ] != izz) || (kk[σ] != kk) || (ll[σ] != ll); continue; end
-      for mm1 in SHIPs._mrange(ll), mm2 in SHIPs._mrange(ll)
+      for mm1 in PoSH._mrange(ll), mm2 in PoSH._mrange(ll)
          if mm1[σ] == mm2
             iU1 = ship.aalists[iz0][(izz, kk, ll, mm1)]
             iU2 = ship.aalists[iz0][(izz, kk, ll, mm2)]

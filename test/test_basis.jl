@@ -11,8 +11,8 @@
 ##
 
 @info("-------- TEST 🚢  BASIS ---------")
-using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using SHIPs: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
+using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using PoSH: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
 using Printf
@@ -68,13 +68,13 @@ println()
 ##
 @info("Test gradients for 3-6B 🚢-basis")
 for 🚢 in ships
-   @info("  body-order = $(SHIPs.bodyorder(🚢)):")
+   @info("  body-order = $(PoSH.bodyorder(🚢)):")
    Rs, Zs = randR(20)
-   tmp = SHIPs.alloc_temp_d(🚢, Rs)
-   # SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
+   tmp = PoSH.alloc_temp_d(🚢, Rs)
+   # PoSH.precompute_grads!(tmp, 🚢, Rs, Zs)
    B = eval_basis(🚢, Rs, Zs, 0)
-   dB = SHIPs.alloc_dB(🚢, Rs)
-   SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
+   dB = PoSH.alloc_dB(🚢, Rs)
+   PoSH.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us, Zs = randR(length(Rs))
@@ -97,14 +97,14 @@ end
 verbose=false
 @info("Test gradients for 3B with and R near the pole")
 🚢 = ship2
-@info("  body-order = $(SHIPs.bodyorder(🚢)):")
+@info("  body-order = $(PoSH.bodyorder(🚢)):")
 # Rs = [ randR(5); [SVector(1e-14*rand(), 1e-14*rand(), 1.1+1e-6*rand())] ]
 Rs = [ randR(5)[1]; [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
 _, Zs = randR(length(Rs))
-tmp = SHIPs.alloc_temp_d(🚢, Rs)
+tmp = PoSH.alloc_temp_d(🚢, Rs)
 B = eval_basis(🚢, Rs, Zs, 0)
-dB = SHIPs.alloc_dB(🚢, Rs)
-SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
+dB = PoSH.alloc_dB(🚢, Rs)
+PoSH.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
 @info("      finite-difference test into random directions")
 for ndirections = 1:30
    Us, _ = randR(length(Rs))
@@ -133,7 +133,7 @@ naive_energy(basis::SHIPBasis, at) =
             for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships
-   @info("   body-order = $(SHIPs.bodyorder(basis))")
+   @info("   body-order = $(PoSH.bodyorder(basis))")
    at = bulk(:Si) * 3
    at.Z[:] .= 0   # this set of tests is species-agnostic!
    rattle!(at, 0.1)

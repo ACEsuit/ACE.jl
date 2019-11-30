@@ -7,9 +7,9 @@
 
 
 
-using SHIPs, Printf, Test, LinearAlgebra
-using SHIPs: PolyTransform, rbasis, eval_basis, eval_basis_d
-using SHIPs.JacobiPolys: Jacobi
+using PoSH, Printf, Test, LinearAlgebra
+using PoSH: PolyTransform, rbasis, eval_basis, eval_basis_d
+using PoSH.JacobiPolys: Jacobi
 using PyPlot
 
 trans = PolyTransform(1, 1)

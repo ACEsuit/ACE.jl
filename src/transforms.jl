@@ -8,7 +8,7 @@
 
 
 using JuLIP:               decode_dict
-using SHIPs.JacobiPolys:   Jacobi
+using PoSH.JacobiPolys:   Jacobi
 
 import Base:   Dict, convert, ==
 import JuLIP:  cutoff
@@ -47,11 +47,11 @@ struct PolyTransform{TP, T} <: DistanceTransform
 end
 
 Dict(T::PolyTransform) =
-   Dict("__id__" => "SHIPs_PolyTransform", "p" => T.p, "r0" => T.r0)
+   Dict("__id__" => "PoSH_PolyTransform", "p" => T.p, "r0" => T.r0)
 
 PolyTransform(D::Dict) = PolyTransform(D["p"], D["r0"])
 
-convert(::Val{:SHIPs_PolyTransform}, D::Dict) = PolyTransform(D)
+convert(::Val{:PoSH_PolyTransform}, D::Dict) = PolyTransform(D)
 
 transform(t::PolyTransform, r::Number) = poly_trans(t.p, t.r0, r)
 
@@ -80,12 +80,12 @@ struct PolyTransformCut{TP, T} <: DistanceTransformCut
 end
 
 Dict(T::PolyTransformCut) =
-   Dict("__id__" => "SHIPs_PolyTransform",
+   Dict("__id__" => "PoSH_PolyTransform",
         "p" => T.p, "r0" => T.r0, "rcut" => rcut)
 
 PolyTransformCut(D::Dict) = PolyTransformCut(D["p"], D["r0"], D["rcut"])
 
-convert(::Val{:SHIPs_PolyTransformCut}, D::Dict) = PolyTransformCut(D)
+convert(::Val{:PoSH_PolyTransformCut}, D::Dict) = PolyTransformCut(D)
 
 
 transform(t::PolyTransformCut, r::Number) =
@@ -129,10 +129,10 @@ PolyCutoff1s(p::Integer, ru) = PolyCutoff1s(Val(Int(p)), 0.0, ru)
 PolyCutoff1s(p::Integer, rl, ru) = PolyCutoff1s(Val(Int(p)), rl, ru)
 
 Dict(C::PolyCutoff1s{P}) where {P} =
-   Dict("__id__" => "SHIPs_PolyCutoff1s",
+   Dict("__id__" => "PoSH_PolyCutoff1s",
         "P" => P, "rl" => C.rl, "ru" => C.ru)
 PolyCutoff1s(D::Dict) = PolyCutoff1s(D["P"], D["rl"],  D["ru"])
-convert(::Val{:SHIPs_PolyCutoff1s}, D::Dict) = PolyCutoff1s(D)
+convert(::Val{:PoSH_PolyCutoff1s}, D::Dict) = PolyCutoff1s(D)
 
 # what happened to @pure ??? => not exported anymore
 fcut(C::PolyCutoff1s{P}, r::T, x::T) where {P, T} =
@@ -163,10 +163,10 @@ end
 PolyCutoff2s(p::Integer, rl, ru) = PolyCutoff2s(Val(Int(p)), rl, ru)
 
 Dict(C::PolyCutoff2s{P}) where {P} =
-   Dict("__id__" => "SHIPs_PolyCutoff2s", "P" => P,
+   Dict("__id__" => "PoSH_PolyCutoff2s", "P" => P,
         "rl" => C.rl, "ru" => C.ru)
 PolyCutoff2s(D::Dict) = PolyCutoff2s(D["P"], D["rl"], D["ru"])
-convert(::Val{:SHIPs_PolyCutoff2s}, D::Dict) = PolyCutoff2s(D)
+convert(::Val{:PoSH_PolyCutoff2s}, D::Dict) = PolyCutoff2s(D)
 
 fcut(C::PolyCutoff2s{P}, r::T, x) where {P, T} =
       C.rl < r < C.ru ? @fastmath( (1 - x^2)^P ) : zero(T)
@@ -208,7 +208,7 @@ TransformedJacobi(J, trans, mult, rl, ru) =
                      transform(trans, rl), transform(trans, ru) )
 
 Dict(J::TransformedJacobi) = Dict(
-      "__id__" => "SHIPs_TransformedJacobi",
+      "__id__" => "PoSH_TransformedJacobi",
       "a" => J.J.α,
       "b" => J.J.β,
       "deg" => length(J.J) - 1,
@@ -229,7 +229,7 @@ TransformedJacobi(D::Dict) =
       D["ru"]
    )
 
-convert(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
+convert(::Val{:PoSH_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
 
 
 Base.length(J::TransformedJacobi) = length(J.J)
@@ -240,10 +240,10 @@ transform_d(J::TransformedJacobi, r) = transform_d(J.trans, r)
 fcut(J::TransformedJacobi, r, x) = fcut(J.mult, r, x)
 fcut_d(J::TransformedJacobi, r, x) = fcut_d(J.mult, r, x)
 
-SHIPs.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
+PoSH.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
       Vector{T}(undef, length(J))
 
-SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
+PoSH.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
       Vector{T}(undef, length(J))
 
 function eval_basis!(P, tmp, J::TransformedJacobi, r)

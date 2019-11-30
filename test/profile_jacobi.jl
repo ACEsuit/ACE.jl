@@ -5,9 +5,9 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using SHIPs, BenchmarkTools
-using SHIPs.JacobiPolys: Jacobi
-using SHIPs: eval_basis
+using PoSH, BenchmarkTools
+using PoSH.JacobiPolys: Jacobi
+using PoSH: eval_basis
 
 
 
@@ -20,14 +20,14 @@ dP = zeros(N+1)
 J = Jacobi(α, β, N)
 
 
-SHIPs.JacobiPolys.eval_basis!(P, nothing, J, x)
-SHIPs.JacobiPolys.eval_basis_d!(P, dP, nothing, J, x)
+PoSH.JacobiPolys.eval_basis!(P, nothing, J, x)
+PoSH.JacobiPolys.eval_basis_d!(P, dP, nothing, J, x)
 @info("Timing for eval_basis!")
-@btime SHIPs.JacobiPolys.eval_basis!($P, nothing, $J, $x)
-@btime SHIPs.JacobiPolys.eval_basis!($P, nothing, $J, $x)
+@btime PoSH.JacobiPolys.eval_basis!($P, nothing, $J, $x)
+@btime PoSH.JacobiPolys.eval_basis!($P, nothing, $J, $x)
 @info("Timing for eval_basis_d!")
-@btime SHIPs.JacobiPolys.eval_basis_d!($P, $dP, nothing, $J, $x)
-@btime SHIPs.JacobiPolys.eval_basis_d!($P, $dP, nothing, $J, $x)
+@btime PoSH.JacobiPolys.eval_basis_d!($P, $dP, nothing, $J, $x)
+@btime PoSH.JacobiPolys.eval_basis_d!($P, $dP, nothing, $J, $x)
 
 # # Julia Bug? => not a bug but a current limitation
 # @info("Looking at that strange allocation?")
@@ -42,7 +42,7 @@ SHIPs.JacobiPolys.eval_basis_d!(P, dP, nothing, J, x)
 #
 # function runn(P, dP, J, x, N)
 #    for n = 1:1000
-#       SHIPs.JacobiPolys.eval_basis_d!(P, dP, J, rand(), N)
+#       PoSH.JacobiPolys.eval_basis_d!(P, dP, J, rand(), N)
 #    end
 #    return nothing
 # end

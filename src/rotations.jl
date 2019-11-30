@@ -10,8 +10,8 @@ module Rotations
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
-using SHIPs: _mrange, IntS
-using SHIPs.SphericalHarmonics: index_y
+using PoSH: _mrange, IntS
+using PoSH.SphericalHarmonics: index_y
 
 export ClebschGordan, CoeffArray, single_B
 

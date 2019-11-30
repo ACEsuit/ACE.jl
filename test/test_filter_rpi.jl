@@ -9,8 +9,8 @@
 ##
 
 @info("-------- TEST FILTERING MECHANISM ---------")
-using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using SHIPs: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
+using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using PoSH: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
 using Printf
@@ -41,17 +41,17 @@ ship = SHIPBasis(SparseSHIP(5,  12; wL = 1.5), trans, cutf,
 
 ##
 @info("Select a basis group and show it doesn't have full rank:")
-maxgrp = maximum(SHIPs.alllen_bgrp(ship, 1))
+maxgrp = maximum(PoSH.alllen_bgrp(ship, 1))
 @show maxgrp
-igrp = findfirst(SHIPs.alllen_bgrp(ship, 1) .== maxgrp)
-Igrp = SHIPs.I_bgrp(ship, igrp, 1)
+igrp = findfirst(PoSH.alllen_bgrp(ship, 1) .== maxgrp)
+Igrp = PoSH.I_bgrp(ship, igrp, 1)
 
 G = zeros(length(Igrp), length(Igrp))
 nsamples = 100 * length(Igrp)
-Zs = zeros(SHIPs.IntS, 5)
+Zs = zeros(PoSH.IntS, 5)
 for n = 1:nsamples
    Rs, Zs = randR(5)
-   B = SHIPs.eval_basis(ship, Rs, Zs, 0)
+   B = PoSH.eval_basis(ship, Rs, Zs, 0)
    b = B[Igrp]
    global G += b * b' / nsamples
 end
@@ -64,6 +64,6 @@ println(@test rank(G) < maxgrp)
 ##
 @info("Now filter that basis and show that this basis group has reduced to length 1")
 
-fship = SHIPs.filter_rpi_basis(ship, 1_000)
-println(@test SHIPs.len_bgrp(fship, igrp, 1) == rk)
+fship = PoSH.filter_rpi_basis(ship, 1_000)
+println(@test PoSH.len_bgrp(fship, igrp, 1) == rk)
 @show length(ship), length(fship)

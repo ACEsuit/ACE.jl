@@ -9,11 +9,11 @@
 
 @testset "Transforms" begin
 
-using SHIPs, Printf, Test, LinearAlgebra
-using SHIPs: PolyTransform, eval_basis, eval_basis_d, TransformedJacobi
-using SHIPs.JacobiPolys: Jacobi
-using SHIPs.SphericalHarmonics
-using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
+using PoSH, Printf, Test, LinearAlgebra
+using PoSH: PolyTransform, eval_basis, eval_basis_d, TransformedJacobi
+using PoSH.JacobiPolys: Jacobi
+using PoSH.SphericalHarmonics
+using PoSH.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart
 
 

@@ -137,7 +137,7 @@ function maxL(D::SparseSHIP, k::Integer = 0)
    end
 end
 
-Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIP",
+Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "PoSH_SparseSHIP",
                                 "deg" => D.deg,
                                 "wL" => D.wL,
                                 "csp" => D.csp,
@@ -147,7 +147,7 @@ Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIP",
                                 "Zs" => D.Zs,
                                 "bo" => BO)
 
-convert(::Val{:SHIPs_SparseSHIP}, D::Dict) =
+convert(::Val{:PoSH_SparseSHIP}, D::Dict) =
       SparseSHIP(D["Zs"], D["bo"], D["deg"],
                  wL = D["wL"], csp = D["csp"],
                  chc = D["chc"], ahc = D["ahc"], bhc = D["bhc"] )
@@ -359,6 +359,6 @@ function filter_tuple(ll, rotcoefs)
    if isodd(sum(ll))
       return false
    end
-   Bcoefs = SHIPs.Rotations.single_B(rotcoefs, ll)
+   Bcoefs = PoSH.Rotations.single_B(rotcoefs, ll)
    return norm(Bcoefs) > 1e-12
 end

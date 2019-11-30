@@ -9,8 +9,8 @@
 @testset "Fast SHIP Implementation" begin
 
 ##
-using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using SHIPs: eval_basis!, eval_basis
+using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using PoSH: eval_basis!, eval_basis
 using JuLIP
 using JuLIP.Potentials: evaluate, evaluate_d
 using JuLIP.Testing
@@ -39,18 +39,18 @@ BB = [B2, B3, B4, B5]
 
 @info("Testing correctness of `SHIP` against `SHIPBasis`")
 for B in BB
-   @info("   bodyorder = $(SHIPs.bodyorder(B))")
+   @info("   bodyorder = $(PoSH.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   test (de-)dictionisation")
    println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
-   tmp = SHIPs.alloc_temp(ship, 10)
+   tmp = PoSH.alloc_temp(ship, 10)
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
       Rs, Zs, z0 = randR(10)
-      Es = SHIPs.evaluate!(tmp, ship, Rs, Zs, z0)
-      Bs = dot(coeffs, SHIPs.eval_basis(B, Rs, Zs, z0))
+      Es = PoSH.evaluate!(tmp, ship, Rs, Zs, z0)
+      Bs = dot(coeffs, PoSH.eval_basis(B, Rs, Zs, z0))
       print_tf(@test Es ≈ Bs)
    end
    println()
@@ -58,11 +58,11 @@ for B in BB
    # @info("      Quick timing test")
    # Nr = 30
    # Rs, Zs, z0 = randR(Nr)
-   # b = SHIPs.alloc_B(B)
-   # tmp = SHIPs.alloc_temp(ship, Nr)
-   # tmpB = SHIPs.alloc_temp(B, Nr)
-   # print("       SHIPBasis : "); @btime SHIPs.eval_basis!($b, $tmpB, $B, $Rs, $Zs, $z0)
-   # print("            SHIP : "); @btime SHIPs.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
+   # b = PoSH.alloc_B(B)
+   # tmp = PoSH.alloc_temp(ship, Nr)
+   # tmpB = PoSH.alloc_temp(B, Nr)
+   # print("       SHIPBasis : "); @btime PoSH.eval_basis!($b, $tmpB, $B, $Rs, $Zs, $z0)
+   # print("            SHIP : "); @btime PoSH.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
    # println()
 end
 
@@ -70,14 +70,14 @@ end
 ##
 @info("Check Correctness of SHIP gradients")
 for B in BB
-   @info("   body-order = $(SHIPs.bodyorder(B))")
+   @info("   body-order = $(PoSH.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    Rs, Zs, z0 = randR(10)
-   tmp = SHIPs.alloc_temp_d(ship, length(Rs))
+   tmp = PoSH.alloc_temp_d(ship, length(Rs))
    dEs = zeros(JVecF, length(Rs))
-   SHIPs.evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
-   Es = SHIPs.evaluate!(tmp, ship, Rs, Zs, z0)
+   PoSH.evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
+   Es = PoSH.evaluate!(tmp, ship, Rs, Zs, z0)
    println(@test Es ≈ evaluate(ship, Rs, Zs, z0))
    println(@test dEs ≈ evaluate_d(ship, Rs, Zs, z0))
    @info("      Correctness of directional derivatives")
@@ -87,7 +87,7 @@ for B in BB
       for p = 2:10
          h = 0.1^p
          dEs_U = dot(dEs, U)
-         dEs_h = (SHIPs.evaluate!(tmp, ship, Rs + h * U, Zs, z0) - Es) / h
+         dEs_h = (PoSH.evaluate!(tmp, ship, Rs + h * U, Zs, z0) - Es) / h
          push!(errs, abs(dEs_h - dEs_U))
       end
       success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
@@ -105,7 +105,7 @@ naive_energy(ship::SHIP, at) =
             for (i, j, R) in sites(at, cutoff(ship)) )
 
 for B in BB
-   @info("   body-order = $(SHIPs.bodyorder(B))")
+   @info("   body-order = $(PoSH.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    at = bulk(:Si) * 3
@@ -126,7 +126,7 @@ end
 
 ##
 
-@info("Test JSON (de-)serialisation of SHIPs")
+@info("Test JSON (de-)serialisation of PoSH")
 coeffs = randcoeffs(B5)
 ship = SHIP(B5, coeffs)
 println(@test decode_dict(Dict(ship)) == ship)

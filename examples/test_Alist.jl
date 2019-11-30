@@ -7,9 +7,9 @@
 
 
 using Test
-using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys,
+using PoSH, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, PoSH.JacobiPolys,
       BenchmarkTools
-using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
+using PoSH: TransformedJacobi, transform, transform_d, eval_basis!,
              alloc_B, alloc_temp, alloc_temp_d, alloc_dB, IntS,
              eval_basis_d!
 
@@ -38,16 +38,16 @@ bgrp = shpB.bgrps[1]
 Nr = 50
 Rs, Zs = randR(Nr)
 tmp = alloc_temp(shpB, Nr)
-B = SHIPs.alloc_B(shpB)
+B = PoSH.alloc_B(shpB)
 tmp2 = alloc_temp(shpB2, Nr)
-B2 = SHIPs.alloc_B(shpB2)
+B2 = PoSH.alloc_B(shpB2)
 
-SHIPs.eval_basis!(B, tmp, shpB, Rs, Zs, 0)
-SHIPs.eval_basis!(B2, tmp2, shpB2, Rs, Zs, 0)
+PoSH.eval_basis!(B, tmp, shpB, Rs, Zs, 0)
+PoSH.eval_basis!(B2, tmp2, shpB2, Rs, Zs, 0)
 @show B ≈ B2
 
-@btime SHIPs.eval_basis!($B, $tmp, $shpB, $Rs, $Zs, 0);
-@btime SHIPs.eval_basis!($B2, $tmp2, $shpB2, $Rs, $Zs, 0);
+@btime PoSH.eval_basis!($B, $tmp, $shpB, $Rs, $Zs, 0);
+@btime PoSH.eval_basis!($B2, $tmp2, $shpB2, $Rs, $Zs, 0);
 
 ##
 
@@ -85,18 +85,18 @@ eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # ##
 #
 #
-# # debugging -> shows that SHIPs.grad_AA_Rj! is correct...
+# # debugging -> shows that PoSH.grad_AA_Rj! is correct...
 #
 # _AA(Rs) = (
-#    SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
-#    SHIPs.precompute_AA!(tmp2, shpB2, 1);
+#    PoSH.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
+#    PoSH.precompute_AA!(tmp2, shpB2, 1);
 #    return copy(tmp2.AA[1])
 #    )
 #
 # _dAA(Rs, j) = (
-#    SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
-#    SHIPs.precompute_AA!(tmpd2, shpB2, 1);
-#    SHIPs.grad_AA_Rj!(tmpd2, shpB2, j, Rs, Zs, 1);
+#    PoSH.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
+#    PoSH.precompute_AA!(tmpd2, shpB2, 1);
+#    PoSH.grad_AA_Rj!(tmpd2, shpB2, j, Rs, Zs, 1);
 #    return copy(tmpd2.dAAj[1])
 #    )
 #
@@ -145,17 +145,17 @@ eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 #
 #
 # _A(Rs) = (
-#    SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
+#    PoSH.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
 #    return copy(tmp2.A[1])
 #    )
 #
 # _dA1(Rs) = begin
-#       SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
+#       PoSH.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
 #       alist = shpB2.alists[1]
 #       dA = zeros(JVec{ComplexF64}, length(alist))
 #       for n = 1:length(alist)
 #          zklm = alist[n]
-#          dA[n] = SHIPs.grad_phi_Rj(Rs[1], 1, zklm, tmpd2)
+#          dA[n] = PoSH.grad_phi_Rj(Rs[1], 1, zklm, tmpd2)
 #       end
 #       return dA
 #    end
@@ -180,12 +180,12 @@ eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # R = Rs[1]
 # _phi(R) = _A([R])
 # _dphi(R) = begin
-#       SHIPs.precompute_dA!(tmpd2, shpB2, [R], [0], 1);
+#       PoSH.precompute_dA!(tmpd2, shpB2, [R], [0], 1);
 #       alist = shpB2.alists[1]
 #       dphi = zeros(JVec{ComplexF64}, length(alist))
 #       for n = 1:length(alist)
 #          zklm = alist[n]
-#          dphi[n] = SHIPs.grad_phi_Rj(R, 1, zklm, tmpd2)
+#          dphi[n] = PoSH.grad_phi_Rj(R, 1, zklm, tmpd2)
 #       end
 #       return dphi
 #    end
@@ -217,8 +217,8 @@ eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # Y = copy(tmpd2.Y)
 # dY = copy(tmpd2.dY)
 #
-# _Y(R) = SHIPs.eval_basis(SH, R)
-# _dY(R, u) = dot.(Ref(u), SHIPs.eval_basis_d(SH, R)[2])
+# _Y(R) = PoSH.eval_basis(SH, R)
+# _dY(R, u) = dot.(Ref(u), PoSH.eval_basis_d(SH, R)[2])
 #
 # h = 1e-5
 # dY0 = _dY(R, u1)

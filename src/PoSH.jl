@@ -5,7 +5,7 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-module SHIPs
+module PoSH
 
 const IntS = Int32
 

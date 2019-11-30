@@ -8,7 +8,7 @@
 
 module Regularisers
 
-using SHIPs: SHIPBasis, nspecies, _get_I_iz0
+using PoSH: SHIPBasis, nspecies, _get_I_iz0
 using LinearAlgebra: Diagonal
 
 function _get_ww(ship::SHIPBasis{T}, iz0, weightfcn) where {T}

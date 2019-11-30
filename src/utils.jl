@@ -10,7 +10,7 @@ module Utils
 
 using LinearAlgebra: norm
 using JuLIP: JVecF
-using SHIPs: TransformedJacobi,  inv_transform
+using PoSH: TransformedJacobi,  inv_transform
 
 import Base: rand
 

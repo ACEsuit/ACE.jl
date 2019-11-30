@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using JuLIP, SHIPs, Test, IPFitting, DataFrames
+using JuLIP, PoSH, Test, IPFitting, DataFrames
 using IPFitting: Dat
 using JuLIP.MLIPs
 using Printf
@@ -46,7 +46,7 @@ degrees = [4, 8, 12, 16, 20]
 @printf(" degree | #basis  RMSE \n")
 for deg in degrees
    shipB = basis(deg)
-   err = SHIPs.Lsq.lsqfit(train, shipB;
+   err = PoSH.Lsq.lsqfit(train, shipB;
                           configweights = Dict("rand" => 1.0),
                           obsweights   = Dict("E" => 1.0, "F" => 1.0, "V" => 1.0),
                           verbose=false)

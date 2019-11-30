@@ -6,9 +6,9 @@
 # --------------------------------------------------------------------------
 
 using StaticArrays
-using SHIPs
-using SHIPs.SphericalHarmonics
-SH = SHIPs.SphericalHarmonics
+using PoSH
+using PoSH.SphericalHarmonics
+SH = PoSH.SphericalHarmonics
 ##  TODO: there is something wrong here! => test errors due to sqrt(neg numbers)
 @info("Test 3: Old vs New Timing")
 L = 15

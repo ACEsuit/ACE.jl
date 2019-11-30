@@ -9,8 +9,8 @@
 @testset "Pair Potentials" begin
 
 @info("-------- TEST PAIR  BASIS ---------")
-using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using SHIPs: PairBasis
+using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using PoSH: PairBasis
 
 at = bulk(:W, cubic=true) * 3
 rattle!(at, 0.03)

@@ -8,10 +8,10 @@
 
 @testset "Jacobi" begin
 
-using SHIPs, Test
+using PoSH, Test
 
-using SHIPs.JacobiPolys: Jacobi
-using SHIPs: eval_basis, eval_basis_d
+using PoSH.JacobiPolys: Jacobi
+using PoSH: eval_basis, eval_basis_d
 
 # copy-pasted from
 # https://github.com/pjabardo/Jacobi.jl/blob/master/src/jac_poly.jl

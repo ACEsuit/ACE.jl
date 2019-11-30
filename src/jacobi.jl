@@ -16,7 +16,7 @@ module JacobiPolys
 
 using QuadGK
 
-import SHIPs: eval_basis,
+import PoSH: eval_basis,
               eval_basis!,
               eval_basis_d!,
               alloc_B,

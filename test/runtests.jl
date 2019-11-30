@@ -5,13 +5,13 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using SHIPs
+using PoSH
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
 using JuLIP, JuLIP.Testing
 using JuLIP.Potentials: evaluate!, evaluate_d!, evaluate, evaluate_d
-using SHIPs: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
+using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
 
-@testset "SHIPs.jl" begin
+@testset "PoSH.jl" begin
     include("test_jacobi.jl")
     include("test_transforms.jl")
     include("test_ylm.jl")
