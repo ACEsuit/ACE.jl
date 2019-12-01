@@ -14,6 +14,7 @@ using LinearAlgebra: dot
 
 import JuLIP.Potentials: evaluate, evaluate_d
 
+
 # ----------------------------------------------------
 
 export PolyPairPot
@@ -39,7 +40,7 @@ JuLIP.cutoff(V::PolyPairPot) = cutoff(V.J)
             ( (V1.J == V2.J) && (V1.coeffs == V2.coeffs) &&  V1.zlist == V2.zlist )
 
 Dict(V::PolyPairPot) = Dict(
-      "__id__" => "PolyPairPots_PolyPairPot",
+      "__id__" => "PoSH_PolyPairPot",
       "coeffs" => V.coeffs,
       "J" => Dict(V.J),
       "zlist" => V.zlist.list
@@ -52,7 +53,7 @@ function PolyPairPot(D::Dict)
                        J, zlist, get_bidx0(J, zlist) )
 end
 
-convert(::Val{:PolyPairPots_PolyPairPot}, D::Dict) = PolyPairPot(D)
+convert(::Val{:PoSH_PolyPairPot}, D::Dict) = PolyPairPot(D)
 
 
 alloc_temp(V::PolyPairPot{T}, N::Integer) where {T} =
@@ -74,10 +75,10 @@ function _dot_zij(V, B, z, z0)
 end
 
 evaluate!(tmp, V::PolyPairPot, r::Number, z, z0) =
-      _dot_zij(V, evaluate!(tmp.J, nothing, V.J, r), z, z0)
+      _dot_zij(V, eval_basis!(tmp.J, nothing, V.J, r), z, z0)
 
 evaluate_d!(tmp, V::PolyPairPot, r::Number, z, z0) =
-      _dot_zij(V, evaluate_d!(tmp.J, tmp.dJ, nothing, V.J, r), z, z0)
+      _dot_zij(V, eval_basis_d!(tmp.J, tmp.dJ, nothing, V.J, r), z, z0)
 
 function evaluate!(tmp, V::PolyPairPot, r::Number)
    @assert length(V.zlist) == 1

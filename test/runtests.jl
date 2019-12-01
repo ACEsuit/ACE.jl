@@ -11,11 +11,13 @@ using JuLIP, JuLIP.Testing
 using JuLIP.Potentials: evaluate!, evaluate_d!, evaluate, evaluate_d
 using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
 
+##
+
 @testset "PoSH.jl" begin
     include("pairpots/test_jacobi.jl")
     include("pairpots/test_transforms.jl")
     include("pairpots/test_basics.jl")
-    include("pairpots/repulsion.jl") 
+    include("pairpots/test_repulsion.jl")
     # ----------------------
     include("test_ylm.jl")
     include("test_cg.jl")

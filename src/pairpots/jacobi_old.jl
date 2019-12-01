@@ -40,9 +40,9 @@ Jacobi(α, β, N)   # N = max degree
 ```
 x = 2*(rand() - 0.5)
 P = zeros(N)
-eval_basis!(P, J, x)
+eval_basis!(P, J, x, N)
 dP = zeros(N)
-eval_basis_d!(P, dP, J, x)   # evaluates both P, dP
+eval_basis_d!(P, dP, J, x, N)   # evaluates both P, dP
 ```
 
 ### Notes
@@ -95,11 +95,6 @@ Base.length(J::Jacobi) = J.skip0 ? maxdegree(J) : maxdegree(J) + 1
 maxdegree(J::Jacobi) = length(J.A)
 alloc_B(J::Jacobi{T}, args...) where {T} = zeros(T, length(J))
 alloc_dB(J::Jacobi{T}, args...) where {T} = zeros(T, length(J))
-
-# TODO: not sure what this was needed for?
-#       but should probably re-inroduce it!!!
-# evaluate(J::Jacobi, x) where {T} = evaluate!( alloc_B(J), nothing, J, x )
-# evaluate_d(J::Jacobi, x) where {T} = evaluate!( alloc_B(J), alloc_dB(J), nothing, J, x )
 
 function eval_basis!(P::AbstractVector, tmp, J::Jacobi, x)
    N = maxdegree(J) #::Integer = length(P)-1
@@ -154,7 +149,6 @@ function eval_basis_d!(P::AbstractVector, dP::AbstractVector, tmp,
       dP .= dP .* J.nrm
    end
    # return P, dP
-   return dP
 end
 
 

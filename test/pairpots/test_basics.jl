@@ -14,6 +14,8 @@
 using Test
 using PoSH, JuLIP, LinearAlgebra, Test
 using JuLIP.Testing, JuLIP.MLIPs
+randr() = 1.0 + rand()
+randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 ##
 
@@ -34,20 +36,22 @@ println(@test decode_dict(Dict(pB)) == pB)
 E = energy(pB, at)
 DE = - forces(pB, at)
 
+##
+
 @info("Finite-difference test on PolyPairBasis forces")
-for ntest = 1:20
-   U = rand(JVecF, length(at)) .- 0.5
-   DExU = dot.(DE, Ref(U))
-   errs = Float64[]
-   for p = 2:10
-      h = 0.1^p
-      Eh = energy(pB, set_positions!(at, X+h*U))
-      DEhxU = (Eh-E) / h
-      push!(errs, norm(DExU - DEhxU, Inf))
-   end
-   success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
-   print_tf(@test success)
+# for ntest = 1:20
+U = [ (rand(JVecF) .- 0.5) for _=1:length(at) ]
+DExU = dot.(DE, Ref(U))
+errs = Float64[]
+for p = 2:10
+   h = 0.1^p
+   Eh = energy(pB, set_positions!(at, X+h*U))
+   DEhxU = (Eh-E) / h
+   push!(errs, norm(DExU - DEhxU, Inf))
 end
+success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+print_tf(@test success)
+# end
 println()
 ##
 
@@ -60,9 +64,11 @@ end
 
 ##
 
-using PolyPairPots, JuLIP, LinearAlgebra, Test
+using PoSH, JuLIP, LinearAlgebra, Test
 using JuLIP.Testing, LinearAlgebra
 using JuLIP.MLIPs
+randr() = 1.0 + rand()
+randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 ##
 

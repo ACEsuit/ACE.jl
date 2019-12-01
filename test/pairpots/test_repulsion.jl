@@ -13,6 +13,8 @@
 using Test
 using PoSH, JuLIP, LinearAlgebra, Test
 using JuLIP.Testing, JuLIP.MLIPs
+randr() = 1.0 + rand()
+randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 
 ##
@@ -38,7 +40,7 @@ if (@D Vfit(ri)) > 0
 end
 @show @D Vfit(ri)
 e0 = Vfit(ri) - 1.0
-Vrep = PolyPairPots.Repulsion.RepulsiveCore(Vfit, ri)
+Vrep = PoSH.Repulsion.RepulsiveCore(Vfit, ri)
 
 
 rout = range(ri+1e-15, 4.0, length=100)
@@ -75,7 +77,7 @@ z1 = 26
 z2 = 74
 @show @D Vfit(ri, z1, z2)
 e0 = min(Vfit(ri, z1, z2), Vfit(ri, z1, z1), Vfit(ri, z2, z2)) - 1.0
-Vrep = PolyPairPots.Repulsion.RepulsiveCore(Vfit, ri, e0)
+Vrep = PoSH.Repulsion.RepulsiveCore(Vfit, ri, e0)
 
 for (z, z0) in zip([z1, z1, z2], [z1, z2, z2])
    i, i0 = JuLIP.Potentials.z2i(Vfit, z), JuLIP.Potentials.z2i(Vfit, z0)

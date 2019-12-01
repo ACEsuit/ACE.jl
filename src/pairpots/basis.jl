@@ -15,6 +15,8 @@ using LinearAlgebra: norm
 using JuLIP.Potentials: ZList, SZList, z2i, i2z
 using StaticArrays: SMatrix
 
+import PoSH: eval_basis!, eval_basis_d!
+
 export PolyPairBasis
 
 struct PolyPairBasis{TJ, NZ} <: IPBasis
@@ -56,14 +58,14 @@ Base.length(pB::PolyPairBasis) = length(pB.J) * (nz(pB) * (nz(pB) + 1)) ÷ 2
 JuLIP.cutoff(pB::PolyPairBasis) = cutoff(pB.J)
 
 Dict(pB::PolyPairBasis) = Dict(
-      "__id__" => "PolyPairPots_PolyPairBasis",
+      "__id__" => "PoSH_PolyPairBasis",
       "J" => Dict(pB.J),
       "zlist" => pB.zlist.list )
 
 PolyPairBasis(D::Dict) = PolyPairBasis( TransformedJacobi(D["J"]),
                                         ZList(D["zlist"]; static=true) )
 
-convert(::Val{:PolyPairPots_PolyPairBasis}, D::Dict) = PolyPairBasis(D)
+convert(::Val{:PoSH_PolyPairBasis}, D::Dict) = PolyPairBasis(D)
 
 
 
@@ -82,7 +84,7 @@ function energy(pB::PolyPairBasis, at::Atoms{T}) where {T}
    stor = alloc_temp(pB)
    for (i, j, R) in pairs(at, cutoff(pB))
       r = norm(R)
-      evaluate!(stor.J, nothing, pB.J, r)
+      eval_basis!(stor.J, nothing, pB.J, r)
       idx0 = _Bidx0(pB, at.Z[i], at.Z[j])
       for n = 1:length(pB.J)
          E[idx0 + n] += 0.5 * stor.J[n]
@@ -96,7 +98,7 @@ function forces(pB::PolyPairBasis, at::Atoms{T}) where {T}
    stor = alloc_temp_d(pB)
    for (i, j, R) in pairs(at, cutoff(pB))
       r = norm(R)
-      evaluate_d!(stor.J, stor.dJ, nothing, pB.J, r)
+      eval_basis_d!(stor.J, stor.dJ, nothing, pB.J, r)
       idx0 = _Bidx0(pB, at.Z[i], at.Z[j])
       for n = 1:length(pB.J)
          F[i, idx0 + n] += 0.5 * stor.dJ[n] * (R/r)
@@ -111,7 +113,7 @@ function virial(pB::PolyPairBasis, at::Atoms{T}) where {T}
    stor = alloc_temp_d(pB)
    for (i, j, R) in pairs(at, cutoff(pB))
       r = norm(R)
-      evaluate_d!(stor.J, stor.dJ, nothing, pB.J, r)
+      eval_basis_d!(stor.J, stor.dJ, nothing, pB.J, r)
       idx0 = _Bidx0(pB, at.Z[i], at.Z[j])
       for n = 1:length(pB.J)
          V[idx0 + n] -= 0.5 * (stor.dJ[n]/r) * R * R'

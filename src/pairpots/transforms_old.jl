@@ -13,7 +13,8 @@ using PoSH.JacobiPolys:   Jacobi
 import Base:   Dict, convert, ==
 import JuLIP:  cutoff
 
-export PolyTransform, PolyCutoff1s, PolyCutoff2s
+export PolyTransform, rbasis, PolyCutoff1s, PolyCutoff2s,
+       PolyTransformCut
 
 
 
@@ -59,47 +60,47 @@ transform_d(t::PolyTransform, r::Number) = poly_trans_d(t.p, t.r0, r)
 inv_transform(t::PolyTransform, x::Number) = poly_trans_inv(t.p, t.r0, x)
 
 
-# """
-# Implements the distance transform
-# ```
-# r -> ( (1+r0)/(1+r))^p - c0 - c1 (r - rcut)
-# ```
-#
-# Constructor:
-# ```
-# PolyTransformCut(p, r0)
-# ```
-# """
-# struct PolyTransformCut{TP, T} <: DistanceTransformCut
-#    p::TP
-#    r0::T
-#    c0::T
-#    c1::T
-#    rcut::T
-# end
-#
-# Dict(T::PolyTransformCut) =
-#    Dict("__id__" => "PolyPairPots_PolyTransform",
-#         "p" => T.p, "r0" => T.r0, "rcut" => rcut)
-#
-# PolyTransformCut(D::Dict) = PolyTransformCut(D["p"], D["r0"], D["rcut"])
-#
-# convert(::Val{:PolyPairPots_PolyTransformCut}, D::Dict) = PolyTransformCut(D)
-#
-#
-# transform(t::PolyTransformCut, r::Number) =
-#        (poly_trans(t.p, t.r0, r) + t.c0 + t.c1 * (r - t.rcut)) * (r < t.rcut)
-#
-# transform_d(t::PolyTransformCut, r::Number) =
-#        (poly_trans_d(t.p, t.r0, r) + t.c1) * (r < t.rcut)
-#
-# function PolyTransformCut(p, r0, rcut)
-#    c0 = - poly_trans(p, r0, rcut)
-#    c1 = - poly_trans_d(p, r0, rcut)
-#    return PolyTransformCut(p, r0, c0, c1, rcut)
-# end
-#
-# cutoff(trans::PolyTransformCut) = trans.rcut
+"""
+Implements the distance transform
+```
+r -> ( (1+r0)/(1+r))^p - c0 - c1 (r - rcut)
+```
+
+Constructor:
+```
+PolyTransformCut(p, r0)
+```
+"""
+struct PolyTransformCut{TP, T} <: DistanceTransformCut
+   p::TP
+   r0::T
+   c0::T
+   c1::T
+   rcut::T
+end
+
+Dict(T::PolyTransformCut) =
+   Dict("__id__" => "PoSH_PolyTransform",
+        "p" => T.p, "r0" => T.r0, "rcut" => rcut)
+
+PolyTransformCut(D::Dict) = PolyTransformCut(D["p"], D["r0"], D["rcut"])
+
+convert(::Val{:PoSH_PolyTransformCut}, D::Dict) = PolyTransformCut(D)
+
+
+transform(t::PolyTransformCut, r::Number) =
+       (poly_trans(t.p, t.r0, r) + t.c0 + t.c1 * (r - t.rcut)) * (r < t.rcut)
+
+transform_d(t::PolyTransformCut, r::Number) =
+       (poly_trans_d(t.p, t.r0, r) + t.c1) * (r < t.rcut)
+
+function PolyTransformCut(p, r0, rcut)
+   c0 = - poly_trans(p, r0, rcut)
+   c1 = - poly_trans_d(p, r0, rcut)
+   return PolyTransformCut(p, r0, c0, c1, rcut)
+end
+
+cutoff(trans::PolyTransformCut) = trans.rcut
 
 
 
