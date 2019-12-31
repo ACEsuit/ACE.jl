@@ -5,8 +5,8 @@ using StaticArrays, LinearAlgebra
 
 import PoSH
 
-import PoSH: alloc_B, alloc_dB, alloc_temp, alloc_temp_d,
-              eval_basis!, eval_basis_d!
+import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
+import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!
 
 const JVec = SVector{3}
 
@@ -341,7 +341,7 @@ end
 #      Nicer interface
 # ---------------------------------------------
 
-struct SHBasis{T}
+struct SHBasis{T} <: IPBasis
 	maxL::Int
 	coeff::ALPCoefficients{T}
 end
@@ -369,7 +369,7 @@ alloc_temp_d(SH::SHBasis{T}, args...) where {T} = (
 		dP = Vector{T}(undef, sizeP(SH.maxL)) )
 
 
-function eval_basis!(Y, tmp, SH::SHBasis, R::JVec)
+function evaluate!(Y, tmp, SH::SHBasis, R::JVec)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
@@ -380,7 +380,7 @@ function eval_basis!(Y, tmp, SH::SHBasis, R::JVec)
 end
 
 
-function eval_basis_d!(Y, dY, tmp, SH::SHBasis, R::JVec)
+function evaluate_d!(Y, dY, tmp, SH::SHBasis, R::JVec)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)

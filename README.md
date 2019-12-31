@@ -98,7 +98,7 @@ for i = 1:length(aalist)
 end
 ```
 
-### Bˢⁱ_𝐳𝐤𝐥 (`basis.jl` -> `eval_basis!`)
+### Bˢⁱ_𝐳𝐤𝐥 (`basis.jl` -> `evaluate!`)
 
 To define the Bˢⁱ_𝐳𝐤𝐥, we precompute the rotation-coefficients and the assemble
 them into a sparse matrix. To be specific, for each species z, we compute
