@@ -8,7 +8,8 @@
 
 
 using PoSH, Printf, Test, LinearAlgebra
-using PoSH: PolyTransform, rbasis, eval_basis, eval_basis_d
+using PoSH: PolyTransform, rbasis,
+using JuLIP: evaluate, evaluate_d
 using PoSH.JacobiPolys: Jacobi
 using PyPlot
 
@@ -18,7 +19,7 @@ B2 = rbasis(4, trans, 2, 0.5, 2.0)
 rr = range(0, 2.5, length=100)
 BB = zeros(100, length(B2))
 for (i, r) in enumerate(rr)
-   BB[i, :] = eval_basis(B2, r)
+   BB[i, :] = evaluate(B2, r)
 end
 
 ##

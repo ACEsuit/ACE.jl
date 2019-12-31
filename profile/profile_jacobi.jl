@@ -7,7 +7,7 @@
 
 using PoSH, BenchmarkTools
 using PoSH.JacobiPolys: Jacobi
-using PoSH: eval_basis
+using JuLIP: evaluate
 
 
 
@@ -20,14 +20,14 @@ dP = zeros(N+1)
 J = Jacobi(α, β, N)
 
 
-PoSH.JacobiPolys.eval_basis!(P, nothing, J, x)
-PoSH.JacobiPolys.eval_basis_d!(P, dP, nothing, J, x)
-@info("Timing for eval_basis!")
-@btime PoSH.JacobiPolys.eval_basis!($P, nothing, $J, $x)
-@btime PoSH.JacobiPolys.eval_basis!($P, nothing, $J, $x)
-@info("Timing for eval_basis_d!")
-@btime PoSH.JacobiPolys.eval_basis_d!($P, $dP, nothing, $J, $x)
-@btime PoSH.JacobiPolys.eval_basis_d!($P, $dP, nothing, $J, $x)
+evaluate!(P, nothing, J, x)
+evaluate_d!(P, dP, nothing, J, x)
+@info("Timing for evaluate!")
+@btime evaluate!($P, nothing, $J, $x)
+@btime evaluate!($P, nothing, $J, $x)
+@info("Timing for evaluate_d!")
+@btime evaluate_d!($P, $dP, nothing, $J, $x)
+@btime evaluate_d!($P, $dP, nothing, $J, $x)
 
 # # Julia Bug? => not a bug but a current limitation
 # @info("Looking at that strange allocation?")
@@ -42,7 +42,7 @@ PoSH.JacobiPolys.eval_basis_d!(P, dP, nothing, J, x)
 #
 # function runn(P, dP, J, x, N)
 #    for n = 1:1000
-#       PoSH.JacobiPolys.eval_basis_d!(P, dP, J, rand(), N)
+#       evaluate_d!(P, dP, J, rand(), N)
 #    end
 #    return nothing
 # end

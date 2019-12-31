@@ -8,8 +8,8 @@
 using PoSH
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
 using JuLIP, JuLIP.Testing
-using JuLIP.Potentials: evaluate!, evaluate_d!, evaluate, evaluate_d
-using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
+using JuLIP: evaluate!, evaluate_d!, evaluate, evaluate_d
+using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s
 
 ##
 

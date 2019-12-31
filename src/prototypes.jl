@@ -6,30 +6,21 @@
 # --------------------------------------------------------------------------
 
 
-# TODO [tuples]
-# - document eval_basis and move it into JuLIP
+# We use IntS for all index integer types for all PoSH.jl basis types
+# The `S` originates from the previous name of the package, `SHIPs.jl`
+const IntS = Int32
 
-import JuLIP: energy!, forces!, virial!, alloc_temp, alloc_temp_d
-import JuLIP.Potentials: evaluate!, evaluate_d!
+import JuLIP.Potentials: z2i
 
+import JuLIP: energy, forces, virial, alloc_temp, alloc_temp_d, cutoff,
+              evaluate, evaluate_d,
+              energy!, forces!, virial!, evaluate!, evaluate_d!
 
-function eval_basis! end
-function eval_basis_d! end
+import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
 
-eval_basis(B, x, args...) =
-   eval_basis!(alloc_B(B, x), alloc_temp(B, x), B, x, args...)
+import Base: Dict, convert, ==
 
-function eval_basis_d(B, x, args...)
-   b = alloc_B(B, x)
-   db = alloc_dB(B, x)
-   tmp = alloc_temp_d(B, x)
-   eval_basis_d!(b, db, tmp, B, x, args...)
-   return b, db
-end
-
-function alloc_B end
-function alloc_dB end
-
+# prototypes for space transforms and cutoffs
 function transform end
 function transform_d end
 function fcut end

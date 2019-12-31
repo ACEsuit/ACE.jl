@@ -90,7 +90,7 @@ SubBasis(B, Ib::AbstractVector) =
    SubBasis(B, convert(Vector{Int}, collect(Ib)))
 
 (B::SubBasis)(Rs) =
-   PoSH.eval_basis(B.B, Rs, zeros(Int16,length(Rs)), 0)[B.Ib]
+   evaluate(B.B, Rs, zeros(Int16,length(Rs)), 0)[B.Ib]
 
 
 end

@@ -10,9 +10,10 @@
 
 @info("-------- TEST FILTERING MECHANISM ---------")
 using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using PoSH: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
+using PoSH: PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
+using JuLIP: evaluate!, evaluate
 using Printf
 
 function randR()
@@ -52,7 +53,7 @@ nsamples = 100 * length(Igrp)
 Zs = zeros(PoSH.IntS, 5)
 for n = 1:nsamples
    Rs, Zs = randR(5)
-   B = PoSH.eval_basis(ship, Rs, Zs, 0)
+   B = evaluate(ship, Rs, Zs, 0)
    b = B[Igrp]
    global G += b * b' / nsamples
 end

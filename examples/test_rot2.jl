@@ -50,7 +50,7 @@ G = zeros(1000, 3)
 tmp = JuLIP.alloc_temp(ship4, 5)
 for n = 1:1000
    R, Z = randR(5)
-   G[n, :] = PoSH.eval_basis(ship4, R, Z, 0)[idx]
+   G[n, :] = evaluate(ship4, R, Z, 0)[idx]
 end
 
 rank(G)

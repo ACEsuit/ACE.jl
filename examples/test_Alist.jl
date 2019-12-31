@@ -9,9 +9,10 @@
 using Test
 using PoSH, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, PoSH.JacobiPolys,
       BenchmarkTools
-using PoSH: TransformedJacobi, transform, transform_d, eval_basis!,
-             alloc_B, alloc_temp, alloc_temp_d, alloc_dB, IntS,
-             eval_basis_d!
+using PoSH: TransformedJacobi, transform, transform_d,
+             alloc_B, alloc_temp, alloc_temp_d, alloc_dB, IntS
+
+using JuLIP: evaluate!, evaluate_d!
 
 
 function randR()
@@ -42,28 +43,28 @@ B = PoSH.alloc_B(shpB)
 tmp2 = alloc_temp(shpB2, Nr)
 B2 = PoSH.alloc_B(shpB2)
 
-PoSH.eval_basis!(B, tmp, shpB, Rs, Zs, 0)
-PoSH.eval_basis!(B2, tmp2, shpB2, Rs, Zs, 0)
+evaluate!(B, tmp, shpB, Rs, Zs, 0)
+evaluate!(B2, tmp2, shpB2, Rs, Zs, 0)
 @show B ≈ B2
 
-@btime PoSH.eval_basis!($B, $tmp, $shpB, $Rs, $Zs, 0);
-@btime PoSH.eval_basis!($B2, $tmp2, $shpB2, $Rs, $Zs, 0);
+@btime evaluate!($B, $tmp, $shpB, $Rs, $Zs, 0);
+@btime evaluate!($B2, $tmp2, $shpB2, $Rs, $Zs, 0);
 
 ##
 
 tmpd = alloc_temp_d(shpB, Nr)
 dB = alloc_dB(shpB, Nr)
-eval_basis_d!(B, dB, tmpd, shpB, Rs, Zs, 0)
+evaluate_d!(B, dB, tmpd, shpB, Rs, Zs, 0)
 
 
 tmpd2 = alloc_temp_d(shpB2, Nr)
 dB2 = alloc_dB(shpB2, Nr)
-eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
+evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 
 @show dB2 ≈ dB
 
-@btime eval_basis_d!($B, $dB, $tmpd, $shpB, $Rs, $Zs, 0)
-@btime eval_basis_d!($dB2, $tmpd2, $shpB2, $Rs, $Zs, 0)
+@btime evaluate_d!($B, $dB, $tmpd, $shpB, $Rs, $Zs, 0)
+@btime evaluate_d!($dB2, $tmpd2, $shpB2, $Rs, $Zs, 0)
 
 ##
 
@@ -71,7 +72,7 @@ eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # ##
 #
 # f = let dB2 = dB2, tmpd2 = tmpd2, shpB2 = shpB2, Rs = Rs, Zs = Zs
-#    () -> eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
+#    () -> evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # end
 # runn(f, N) = (for n=1:N; f(); end)
 # runn(f, 1)
@@ -217,8 +218,8 @@ eval_basis_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # Y = copy(tmpd2.Y)
 # dY = copy(tmpd2.dY)
 #
-# _Y(R) = PoSH.eval_basis(SH, R)
-# _dY(R, u) = dot.(Ref(u), PoSH.eval_basis_d(SH, R)[2])
+# _Y(R) = evaluate(SH, R)
+# _dY(R, u) = dot.(Ref(u), evaluate_d(SH, R)[2])
 #
 # h = 1e-5
 # dY0 = _dY(R, u1)

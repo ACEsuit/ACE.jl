@@ -75,10 +75,10 @@ function _dot_zij(V, B, z, z0)
 end
 
 evaluate!(tmp, V::PolyPairPot, r::Number, z, z0) =
-      _dot_zij(V, eval_basis!(tmp.J, nothing, V.J, r), z, z0)
+      _dot_zij(V, evaluate!(tmp.J, nothing, V.J, r), z, z0)
 
 evaluate_d!(tmp, V::PolyPairPot, r::Number, z, z0) =
-      _dot_zij(V, eval_basis_d!(tmp.J, tmp.dJ, nothing, V.J, r), z, z0)
+      _dot_zij(V, evaluate_d!(tmp.J, tmp.dJ, nothing, V.J, r), z, z0)
 
 function evaluate!(tmp, V::PolyPairPot, r::Number)
    @assert length(V.zlist) == 1

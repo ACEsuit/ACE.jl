@@ -168,8 +168,8 @@ function evaluate_d!(dEs, tmp, ship::SHIP{T},
    fill!(dEs, zero(JVec{T}))
    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
       R̂ = R / norm(R)
-      eval_basis_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
-      eval_basis_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
+      evaluate_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
+      evaluate_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
       iz = z2i(ship, Z)
       for iA = alist.firstz[iz]:(alist.firstz[iz+1]-1)
          zklm = alist[iA]

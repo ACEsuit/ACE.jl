@@ -34,13 +34,13 @@ for n = 2:4
    @info("  body-order $(n+1):")
    🚢 = ships[n-1]
    B = PoSH.alloc_B(🚢)
-   @info("     eval_basis:")
-   @btime PoSH.eval_basis!($B, $tmp, $🚢, $Rs, $Zs, $z0)
-   @btime PoSH.eval_basis!($B, $tmp, $🚢, $Rs, $Zs, $z0)
-   @info("     eval_basis_d:")
+   @info("     evaluate:")
+   @btime evaluate!($B, $tmp, $🚢, $Rs, $Zs, $z0)
+   @btime evaluate!($B, $tmp, $🚢, $Rs, $Zs, $z0)
+   @info("     evaluate_d:")
    dB = PoSH.alloc_dB(🚢, Rs)
-   @btime PoSH.eval_basis_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
-   @btime PoSH.eval_basis_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
+   @btime evaluate_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
+   @btime evaluate_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
 end
 
 # ##
@@ -48,12 +48,12 @@ end
 # 🚢 = ships[2]
 # B = PoSH.alloc_B(🚢)
 # dB = PoSH.alloc_dB(🚢, Rs)
-# @btime PoSH.eval_basis!($B, $tmp, $🚢, $Rs, $Zs, $z0)
-# @btime PoSH.eval_basis_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
+# @btime evaluate!($B, $tmp, $🚢, $Rs, $Zs, $z0)
+# @btime evaluate_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
 #
-# @code_warntype PoSH._eval_basis!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
+# @code_warntype PoSH._evaluate!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
 #
-# PoSH._eval_basis!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
+# PoSH._evaluate!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
 #
 # ##
 #
@@ -63,11 +63,11 @@ end
 #    end
 # end
 #
-# runn(10, PoSH.eval_basis!, B, tmp, 🚢, Rs, Zs, z0)
-# runn(10, PoSH.eval_basis_d!, B, dB, tmpd, 🚢, Rs, Zs, z0)
+# runn(10, evaluate!, B, tmp, 🚢, Rs, Zs, z0)
+# runn(10, evaluate_d!, B, dB, tmpd, 🚢, Rs, Zs, z0)
 #
 # ##
 #
 # Profile.clear()
-# @profile runn(100, PoSH.eval_basis!, B, tmp, 🚢, Rs, Zs, z0)
+# @profile runn(100, evaluate!, B, tmp, 🚢, Rs, Zs, z0)
 # Profile.print()

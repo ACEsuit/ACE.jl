@@ -9,8 +9,10 @@
 
 using Test
 using PoSH, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, PoSH.JacobiPolys
-using PoSH: TransformedJacobi, transform, transform_d, eval_basis!,
+using PoSH: TransformedJacobi, transform, transform_d,
              alloc_B, alloc_temp
+
+using JuLIP: evaluate!
 
 ##
 
@@ -29,7 +31,7 @@ function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000, normalise = false)
    G = zeros(Float64, lenB, lenB)
    for n = 1:Nsamples
       Rs = PoSH.Utils.rand(shpB.J, N)
-      eval_basis!(B, tmp, shpB, Rs, Zs, 0)
+      evaluate!(B, tmp, shpB, Rs, Zs, 0)
       for j = 1:lenB
          Bj = B[IN[j]]'
          @simd for i = 1:lenB

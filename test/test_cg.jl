@@ -9,7 +9,7 @@
 @testset "Clebsch-Gordan" begin
 
 using PyCall, Test, PoSH.SphericalHarmonics
-using PoSH: eval_basis
+using JuLIP: evaluate
 using PoSH.SphericalHarmonics: index_y
 using PoSH.Rotations: ClebschGordan, clebschgordan
 
@@ -54,7 +54,7 @@ for ntest = 1:100
    φ = (rand()-0.5) * 2*π
    R = SVector( cos(φ)*sin(θ), sin(φ)*sin(θ), cos(θ) )
    # evaluate all relevant Ylms (up to l1 + l2)
-   Ylm = eval_basis(SHBasis(l1+l2), R)
+   Ylm = evaluate(SHBasis(l1+l2), R)
    # evaluate the product p = Y_l1_m1 * Y_l2_m2
    p = Ylm[index_y(l1,  m1)] * Ylm[index_y(l2,m2)]
    # and its expansion in terms of CG coeffs

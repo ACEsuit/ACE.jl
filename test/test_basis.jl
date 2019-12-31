@@ -12,10 +12,11 @@
 
 @info("-------- TEST 🚢  BASIS ---------")
 using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using PoSH: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
+using PoSH: PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
 using Printf
+using JuLIP: evaluate!, evaluate
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -56,9 +57,9 @@ end
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:30
    Rs, Zs = randR(20)
-   BB = [ eval_basis(🚢, Rs, Zs, 0) for 🚢 in ships ]
+   BB = [ evaluate(🚢, Rs, Zs, 0) for 🚢 in ships ]
    RsX = randiso(Rs)
-   BBX = [ eval_basis(🚢, RsX, Zs, 0) for 🚢 in ships ]
+   BBX = [ evaluate(🚢, RsX, Zs, 0) for 🚢 in ships ]
    for (B, BX) in zip(BB, BBX)
       print_tf(@test B ≈ BX)
    end
@@ -72,16 +73,16 @@ for 🚢 in ships
    Rs, Zs = randR(20)
    tmp = PoSH.alloc_temp_d(🚢, Rs)
    # PoSH.precompute_grads!(tmp, 🚢, Rs, Zs)
-   B = eval_basis(🚢, Rs, Zs, 0)
+   B = evaluate(🚢, Rs, Zs, 0)
    dB = PoSH.alloc_dB(🚢, Rs)
-   PoSH.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
+   evaluate_d!(dB, tmp, 🚢, Rs, Zs, 0)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us, Zs = randR(length(Rs))
       errs = Float64[]
       for p = 2:10
          h = 0.1^p
-         Bh = eval_basis(🚢, Rs+h*Us, Zs, 0)
+         Bh = evaluate(🚢, Rs+h*Us, Zs, 0)
          dBh = (Bh - B) / h
          dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
          push!(errs, norm(dBh - dBxU, Inf))
@@ -102,16 +103,16 @@ verbose=false
 Rs = [ randR(5)[1]; [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
 _, Zs = randR(length(Rs))
 tmp = PoSH.alloc_temp_d(🚢, Rs)
-B = eval_basis(🚢, Rs, Zs, 0)
+B = evaluate(🚢, Rs, Zs, 0)
 dB = PoSH.alloc_dB(🚢, Rs)
-PoSH.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
+evaluate_d!(dB, tmp, 🚢, Rs, Zs, 0)
 @info("      finite-difference test into random directions")
 for ndirections = 1:30
    Us, _ = randR(length(Rs))
    errs = Float64[]
    for p = 2:10
       h = 0.1^p
-      Bh = eval_basis(🚢, Rs+h*Us, Zs, 0)
+      Bh = evaluate(🚢, Rs+h*Us, Zs, 0)
       dBh = (Bh - B) / h
       dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
       push!(errs, norm(dBh - dBxU, Inf))
@@ -129,7 +130,7 @@ println()
 randcoeffs(B) = 2 * (rand(length(B)) .- 0.5) .* (1:length(B)).^(-2)
 
 naive_energy(basis::SHIPBasis, at) =
-      sum( eval_basis(basis, R, zeros(Int16, length(R)), 0)
+      sum( evaluate(basis, R, zeros(Int16, length(R)), 0)
             for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships

@@ -12,9 +12,8 @@
 
 using Test
 using PoSH, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, PoSH.JacobiPolys
-using PoSH: TransformedJacobi, transform, transform_d, eval_basis!,
-             alloc_B, alloc_temp
-
+using PoSH: TransformedJacobi, transform, transform_d, alloc_B, alloc_temp
+using JuLIP: evaluate!
 
 ##
 
@@ -26,7 +25,7 @@ J = Jacobi(α, β, N)
 Bj = alloc_B(J)
 integrandJ = let J=J, B=Bj, α=α, β=β
    x ->  begin
-            eval_basis!(B, nothing, J, x)
+            evaluate!(B, nothing, J, x)
             return B*B' * (1 - x)^α * (1+x)^β
          end
    end
@@ -48,7 +47,7 @@ tmp = alloc_temp(P)
 
 integrand = let P = P, B = B, tmp = tmp
    r ->  begin
-            eval_basis!(B, tmp, P, r)
+            evaluate!(B, tmp, P, r)
             return B * B' * abs(transform_d(P.trans, r))
          end
    end
@@ -67,7 +66,7 @@ Nsamples = 100_000
 G = let
    G = zeros(length(P), length(P))
    for n = 1:Nsamples
-      eval_basis!(B, tmp, P, PoSH.Utils.rand_radial(P))
+      evaluate!(B, tmp, P, PoSH.Utils.rand_radial(P))
       G += B * B'
    end
    G
@@ -88,7 +87,7 @@ function gramian(SH::PoSH.SphericalHarmonics.SHBasis, Nsamples=100_000)
    Y = alloc_B(SH)
    tmp = alloc_temp(SH)
    for n = 1:Nsamples
-      PoSH.eval_basis!(Y, tmp, SH, PoSH.Utils.rand_sphere())
+      evaluate!(Y, tmp, SH, PoSH.Utils.rand_sphere())
       for i = 1:lenY, j = 1:lenY
          G[i,j] += Y[i] * Y[j]'
       end

@@ -13,10 +13,10 @@
 
 @info("-------- TEST 🚢  Multi-Species-Basis ---------")
 using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using PoSH: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
+using PoSH:  PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
-using JuLIP.Potentials: evaluate, evaluate_d
+using JuLIP: evaluate!, evaluate, evaluate_d
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -82,14 +82,14 @@ end
 
 Rs, Zs, iz = randR(20, (1,2))
 🚢 = ship3
-eval_basis(🚢, Rs, Zs, iz)
+evaluate(🚢, Rs, Zs, iz)
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:20
    Rs, Zs, iz = randR(20, (1,2))
-   BB = [ eval_basis(🚢, Rs, Zs, iz) for 🚢 in ships ]
+   BB = [ evaluate(🚢, Rs, Zs, iz) for 🚢 in ships ]
    RsX, ZsX = randiso(Rs, Zs)
-   BBX = [ eval_basis(🚢, RsX, ZsX, iz) for 🚢 in ships ]
+   BBX = [ evaluate(🚢, RsX, ZsX, iz) for 🚢 in ships ]
    for (B, BX) in zip(BB, BBX)
       print_tf(@test B ≈ BX)
    end
@@ -105,16 +105,16 @@ for 🚢 in ships
    Rs, Zs, z = randR(20, (1,2))
    tmp = PoSH.alloc_temp_d(🚢, Rs)
    # PoSH.precompute_dA!(tmp, 🚢, Rs, Zs)
-   B = eval_basis(🚢, Rs, Zs, z)
+   B = evaluate(🚢, Rs, Zs, z)
    dB = PoSH.alloc_dB(🚢, Rs)
-   PoSH.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, z)
+   evaluate_d!(dB, tmp, 🚢, Rs, Zs, z)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us, _ = randR(length(Rs))
       errs = Float64[]
       for p = 2:10
          h = 0.1^p
-         Bh = eval_basis(🚢, Rs+h*Us, Zs, z)
+         Bh = evaluate(🚢, Rs+h*Us, Zs, z)
          dBh = (Bh - B) / h
          dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
          push!(errs, norm(dBh - dBxU, Inf))
@@ -133,7 +133,7 @@ end
 randcoeffs(B) = 2 * (rand(length(B)) .- 0.5) .* (1:length(B)).^(-2)
 
 m_naive_energy(basis::SHIPBasis, at) =
-      sum( eval_basis(basis, R, at.Z[j], at.Z[i])
+      sum( evaluate(basis, R, at.Z[j], at.Z[i])
             for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships
@@ -182,8 +182,8 @@ for B in shipsB
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
       Rs, Zs, z0 = randR(10, (1,2))
-      Es = PoSH.evaluate!(tmp, ship, Rs, Zs, z0)
-      Bs = dot(coeffs, PoSH.eval_basis(B, Rs, Zs, z0))
+      Es = evaluate!(tmp, ship, Rs, Zs, z0)
+      Bs = dot(coeffs, evaluate(B, Rs, Zs, z0))
       print_tf(@test Es ≈ Bs)
    end
    println()
@@ -194,8 +194,8 @@ for B in shipsB
    # b = PoSH.alloc_B(B)
    # tmp = PoSH.alloc_temp(ship, Nr)
    # tmpB = PoSH.alloc_temp(B, Nr)
-   # print("       SHIPBasis : "); @btime PoSH.eval_basis!($b, $tmpB, $B, $Rs, $Zs, $z0)
-   # print("            SHIP : "); @btime PoSH.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
+   # print("       SHIPBasis : "); @btime evaluate!($b, $tmpB, $B, $Rs, $Zs, $z0)
+   # print("            SHIP : "); @btime evaluate!($tmp, $ship, $Rs, $Zs, $z0)
    # println()
 end
 
@@ -209,8 +209,8 @@ for B in shipsB
    Rs, Zs, z0 = randR(10, (1,2))
    tmp = PoSH.alloc_temp_d(ship, length(Rs))
    dEs = zeros(JVecF, length(Rs))
-   PoSH.evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
-   Es = PoSH.evaluate!(tmp, ship, Rs, Zs, z0)
+   evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
+   Es = evaluate!(tmp, ship, Rs, Zs, z0)
    println(@test Es ≈ evaluate(ship, Rs, Zs, z0))
    println(@test dEs ≈ evaluate_d(ship, Rs, Zs, z0))
    @info("      Correctness of directional derivatives")
@@ -220,7 +220,7 @@ for B in shipsB
       for p = 2:10
          h = 0.1^p
          dEs_U = dot(dEs, U)
-         dEs_h = (PoSH.evaluate!(tmp, ship, Rs + h * U, Zs, z0) - Es) / h
+         dEs_h = (evaluate!(tmp, ship, Rs + h * U, Zs, z0) - Es) / h
          push!(errs, abs(dEs_h - dEs_U))
       end
       success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)

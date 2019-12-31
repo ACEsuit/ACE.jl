@@ -15,7 +15,7 @@ using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
 using PoSH.SphericalHarmonics
 using PoSH.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart
-using PoSH: eval_basis, eval_basis_d
+using JuLIP: evaluate, evaluate_d, evaluate_ed
 
 verbose = false
 
@@ -50,7 +50,7 @@ for n = 1:nsamples
    r = 0.1+rand()
    R = SVector(r*sin(θ)*cos(φ), r*sin(θ)*sin(φ), r*cos(θ))
    SH = SHBasis(3)
-   Y = eval_basis(SH, R)
+   Y = evaluate(SH, R)
    Yex = explicit_shs(θ, φ)
    print_tf((@test Y ≈ Yex))
 end
@@ -68,7 +68,7 @@ for n = 1:nsamples
    r = 0.1+rand()
    R = SVector(r*sin(θ)*cos(φ), r*sin(θ)*sin(φ), r*cos(θ))
    SH = SHBasis(3)
-   Y = eval_basis(SH, R)
+   Y = evaluate(SH, R)
    Yex = explicit_shs(θ, φ)
    print_tf((@test Y ≈ Yex || norm(Y - Yes, Inf) < 1e-12))
 end
@@ -159,7 +159,7 @@ println()
 for nsamples = 1:30
    R = @SVector rand(3)
    SH = SHBasis(5)
-   Y, dY = eval_basis_d(SH, R)
+   Y, dY = evaluate_ed(SH, R)
    DY = Matrix(transpose(hcat(dY...)))
    errs = []
    verbose && @printf("     h    | error \n")
@@ -169,7 +169,7 @@ for nsamples = 1:30
       Rh = Vector(R)
       for i = 1:3
          Rh[i] += h
-         DYh[:, i] = (eval_basis(SH, SVector(Rh...)) - Y) / h
+         DYh[:, i] = (evaluate(SH, SVector(Rh...)) - Y) / h
          Rh[i] -= h
       end
       push!(errs, norm(DY - DYh, Inf))
@@ -187,13 +187,13 @@ println()
 # # R /= norm(R)
 # u = SVector(0.318475, 0.734832, 0.598829)
 # SH = SHBasis(5)
-# Y, dY = eval_basis_d(SH, R)
+# Y, dY = evaluate_ed(SH, R)
 # dY_u = dot.(Ref(u), dY)
 # errs = []
 # @printf("     h    | error \n")
 # for p = 2:10
 #    h = 0.1^p
-#    dYh_u = (eval_basis(SH, R + h * u) - Y) / h
+#    dYh_u = (evaluate(SH, R + h * u) - Y) / h
 #    push!(errs, norm(dY_u - dYh_u, Inf))
 #    @printf(" %.2e | %.2e \n", h, errs[end])
 # end

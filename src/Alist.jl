@@ -66,8 +66,8 @@ function precompute_A!(A, tmp, alist, Rs, Zs, ship)
    fill!(A, 0)
    for (R, Z) in zip(Rs, Zs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
-      eval_basis!(tmp.J, tmp.tmpJ, ship.J, norm(R))
-      eval_basis!(tmp.Y, tmp.tmpY, ship.SH, R)
+      evaluate!(tmp.J, tmp.tmpJ, ship.J, norm(R))
+      evaluate!(tmp.Y, tmp.tmpY, ship.SH, R)
       # add the contributions to the A_zklm
       iz = z2i(ship, Z)
       for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
@@ -86,8 +86,8 @@ function precompute_dA!(A, dA, tmp, alist, Rs, Zs, ship)
    fill!(dA, zero(eltype(dA)))
    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
       # precompute the derivatives of the Jacobi polynomials and Ylms
-      eval_basis_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
-      eval_basis_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
+      evaluate_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
+      evaluate_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
       # deduce the A and dA values
       iz = z2i(ship, Z)
       R̂ = R / norm(R)

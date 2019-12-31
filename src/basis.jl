@@ -265,7 +265,7 @@ end
 
 
 
-function eval_basis!(B, tmp, ship::SHIPBasis{T},
+function evaluate!(B, tmp, ship::SHIPBasis{T},
                      Rs::AbstractVector{<: JVec},
                      Zs::AbstractVector{<: Integer},
                      z0::Integer ) where {T}
@@ -281,7 +281,7 @@ end
 
 
 
-function eval_basis_d!(dB, tmp, ship::SHIPBasis{T},
+function evaluate_d!(dB, tmp, ship::SHIPBasis{T},
                        Rs::AbstractVector{<: JVec},
                        Zs::AbstractVector{<: Integer},
                        z0::Integer ) where {T}
@@ -416,7 +416,7 @@ function energy(shipB::SHIPBasis, at::Atoms{T}) where {T}
    tmpRZ = (R = zeros(JVec{T}, maxnR), Z = zeros(Int16, maxnR))
    for i = 1:length(at)
       j, R, Z = neigsz!(tmpRZ, nlist, at, i)
-      eval_basis!(B, tmp, shipB, R, Z, at.Z[i])
+      evaluate!(B, tmp, shipB, R, Z, at.Z[i])
       E[:] .+= B[:]
    end
    return E
@@ -435,7 +435,7 @@ function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
    # assemble site gradients and write into F
    for i = 1:length(at)
       j, R, Z = neigsz!(tmpRZ, nlist, at, i)
-      eval_basis_d!(dB, tmp, shipB, R, Z, at.Z[i])
+      evaluate_d!(dB, tmp, shipB, R, Z, at.Z[i])
       for a = 1:length(R)
          F[j[a], :] .-= dB[a, :]
          F[i, :] .+= dB[a, :]
@@ -457,7 +457,7 @@ function virial(shipB::SHIPBasis, at::Atoms{T}) where {T}
    # assemble site gradients and write into F
    for i = 1:length(at)
       j, R, Z = neigsz!(tmpRZ, nlist, at, i)
-      eval_basis_d!(dB, tmp, shipB, R, Z, at.Z[i])
+      evaluate_d!(dB, tmp, shipB, R, Z, at.Z[i])
       for iB = 1:length(shipB)
          V[iB] += JuLIP.Potentials.site_virial(dB[:, iB], R)
       end
@@ -476,7 +476,7 @@ end
 
 function site_energy(basis::SHIPBasis, at::Atoms, i0::Integer)
    j, Rs, Zs = _get_neigs(at, i0, cutoff(basis))
-   return eval_basis(basis, Rs, Zs, at.Z[i0])
+   return evaluate(basis, Rs, Zs, at.Z[i0])
 end
 
 
@@ -485,7 +485,7 @@ function site_energy_d(basis::SHIPBasis, at::Atoms{T}, i0::Integer) where {T}
    dEs = [ zeros(JVec{T}, length(at)) for _ = 1:length(basis) ]
    dB = alloc_dB(basis, length(Rs))
    tmp = alloc_temp_d(basis, length(Rs))
-   eval_basis_d!(dB, tmp, basis, Rs, Zs, at.Z[i0])
+   evaluate_d!(dB, tmp, basis, Rs, Zs, at.Z[i0])
    @assert dB isa Matrix{JVec{T}}
    @assert size(dB) == (length(Rs), length(basis))
    for iB = 1:length(basis), n = 1:length(Ineigs)

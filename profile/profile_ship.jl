@@ -39,8 +39,8 @@ for n = 2:5
    btmp = PoSH.alloc_temp(B, length(Rs))
    tmp = PoSH.alloc_temp(🚢, length(Rs))
    @info("     evaluate a site energy:")
-   print("         SHIPBasis: "); @btime PoSH.eval_basis!($b, $btmp, $B, $Rs, $Zs, $z0)
-   print("         SHIP     : "); @btime PoSH.evaluate!($tmp, $🚢, $Rs, $Zs, $z0)
+   print("         SHIPBasis: "); @btime evaluate!($b, $btmp, $B, $Rs, $Zs, $z0)
+   print("         SHIP     : "); @btime evaluate!($tmp, $🚢, $Rs, $Zs, $z0)
 
    dEs = zeros(JVecF, length(Rs))
    db = PoSH.alloc_dB(B, length(Rs))
@@ -48,6 +48,6 @@ for n = 2:5
    tmp = PoSH.alloc_temp_d(🚢, length(Rs))
 
    @info("     site energy gradient:")
-   print("         SHIPBasis: "); @btime PoSH.eval_basis_d!($db, $dbtmp, $B, $Rs, $Zs, $z0)
-   print("         SHIP     : "); @btime PoSH.evaluate_d!($dEs, $tmp, $🚢, $Rs, $Zs, $z0)
+   print("         SHIPBasis: "); @btime evaluate_d!($db, $dbtmp, $B, $Rs, $Zs, $z0)
+   print("         SHIP     : "); @btime evaluate_d!($dEs, $tmp, $🚢, $Rs, $Zs, $z0)
 end

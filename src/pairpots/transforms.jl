@@ -185,7 +185,7 @@ fcut_d(C::OneCutoff, r, x) = zero(r)
 # ------------------------------
 # these define the radial components of the polynomials
 
-struct TransformedJacobi{T, TT, TM}
+struct TransformedJacobi{T, TT, TM} <: PoSH.IPBasis
    J::Jacobi{T}
    trans::TT      # coordinate transform
    mult::TM       # a multiplier function (cutoff)
@@ -245,7 +245,7 @@ PoSH.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
 PoSH.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
       Vector{T}(undef, length(J))
 
-function eval_basis!(P, tmp, J::TransformedJacobi, r)
+function evaluate!(P, tmp, J::TransformedJacobi, r)
    N = length(J)-1
    @assert length(P) >= N+1
    # transform coordinates
@@ -259,7 +259,7 @@ function eval_basis!(P, tmp, J::TransformedJacobi, r)
       fill!(P, 0.0)
    else
       # evaluate the actual Jacobi polynomials
-      eval_basis!(P, nothing, J.J, x)
+      evaluate!(P, nothing, J.J, x)
       for n = 1:N+1
          @inbounds P[n] *= fc
       end
@@ -267,7 +267,7 @@ function eval_basis!(P, tmp, J::TransformedJacobi, r)
    return P
 end
 
-function eval_basis_d!(P, dP, tmp, J::TransformedJacobi, r)
+function evaluate_d!(P, dP, tmp, J::TransformedJacobi, r)
    N = length(J)-1
    @assert length(P) >= N+1
    # transform coordinates
@@ -282,7 +282,7 @@ function eval_basis_d!(P, dP, tmp, J::TransformedJacobi, r)
    else
       fc_d = fcut_d(J, r, x) * sqrt(abs(2 / (J.tu-J.tl)))
       # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-      eval_basis_d!(P, dP, nothing, J.J, x)
+      evaluate_d!(P, dP, nothing, J.J, x)
       for n = 1:N+1
          @inbounds p = P[n]
          @inbounds dp = dP[n]
