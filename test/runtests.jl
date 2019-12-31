@@ -29,8 +29,3 @@ using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s
     include("test_orth.jl")
     include("test_descriptor.jl")
 end
-
-# TODO: this test needs to be rewritten!
-#       but maybe it is no longer needed? The rotation-invariance tests
-#       somehow take care of it???
-# include("test_Bcoeffs.jl")

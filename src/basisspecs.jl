@@ -180,7 +180,7 @@ end
 function generate_ZKL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
    allKL, degs = generate_KL(spec, TI, TF)
    allZKL = ntuple( _->copy(allKL), nspecies(spec) )
-   return return allZKL
+   return allZKL
 end
 
 

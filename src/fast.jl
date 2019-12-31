@@ -10,7 +10,7 @@ using PoSH.SphericalHarmonics: SHBasis, index_y
 using StaticArrays
 using JuLIP: AbstractCalculator, Atoms, JVec
 using JuLIP.Potentials: MSitePotential, SZList, ZList
-using NeighbourLists: max_neigs, neigs
+using NeighbourLists: neigs
 
 import JuLIP, JuLIP.MLIPs
 import JuLIP: cutoff, alloc_temp, alloc_temp_d

@@ -15,6 +15,8 @@ using PoSH: TransformedJacobi,  inv_transform,
 
 import PoSH
 import Base: rand
+import JuLIP: evaluate
+import JuLIP.MLIPs: IPBasis
 
 function rand_sphere()
    R = randn(JVecF)
@@ -81,7 +83,7 @@ end
 """
 create a sub-basis for easier evaluation
 """
-struct SubBasis{TB}
+struct SubBasis{TB} <: IPBasis
    B::TB
    Ib::Vector{Int}
 end

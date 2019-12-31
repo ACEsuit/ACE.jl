@@ -16,7 +16,7 @@ using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using PoSH:  PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
-using JuLIP: evaluate!, evaluate, evaluate_d
+using JuLIP: evaluate!, evaluate, evaluate_d, evaluate_d!
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -268,5 +268,7 @@ ship = SHIPBasis(SparseSHIP((1, 2), 5,  6; wL = 1.0), trans, cutf, filter=false)
 @time fship = PoSH.alg_filter_rpi_basis(ship)
 @show length(fship), length(ship)
 println(@test length(fship) < length(ship))
+
+##
 
 end

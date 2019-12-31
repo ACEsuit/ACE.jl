@@ -16,7 +16,7 @@ using PoSH: PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
 using Printf
-using JuLIP: evaluate!, evaluate
+using JuLIP: evaluate!, evaluate, evaluate_d!, evaluate_d
 
 function randR()
    R = rand(JVecF) .- 0.5
