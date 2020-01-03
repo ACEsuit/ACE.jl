@@ -312,3 +312,104 @@ TransformedJacobi(maxdeg::Integer,
       TransformedJacobi( Jacobi(0, 0, maxdeg, skip0=true), trans,
                          OneCutoff(cutoff(trans)),
                          rl, cutoff(trans))
+
+
+
+# struct AffineTransform{T, TT} <: DistanceTransform
+#    trans::TT
+#    rin::T
+#    rcut::T
+#    tin::T
+#    tcut::T
+# end
+#
+# AffineTransform(trans, rin, rcut) =
+#       AffineTransform(trans, rin, rcut,
+#                       transform(trans, rin), transform(trans, rcut))
+#
+# function transform(trans::AffineTransform, r)
+#    t = transform(trans.trans, r)
+#    return ( (t - trans.tin)  / (trans.tcut - t.tin)
+#           - (t - trans.tcut) / (trans.tin - trans.tcut) )
+# end
+#
+# function transform_d(trans::AffineTransform, r)
+#    dt = transform_d(trans.trans, r)
+#    return (2 / (trans.tcut - t.tin)) * dt
+# end
+
+
+
+struct TransformedPolys{T, TT, TJ} <: IPBasis
+   J::TJ
+   trans::TT      # coordinate transform
+   rl::T          # lower bound r
+   ru::T          # upper bound r
+   tl::T          # bound t(ru)
+   tu::T          # bound t(rl)
+end
+
+==(J1::TransformedPolys, J2::TransformedPolys) = (
+   (J1.J == J2.J) &&
+   (J1.trans == J2.trans) &&
+   (J1.rl == J2.rl) &&
+   (J1.ru == J2.ru) )
+
+TransformedPolys(J, trans, rl, ru) =
+   TransformedPolys(J, trans, rl, ru,
+                    transform(trans, rl), transform(trans, ru) )
+
+Dict(J::TransformedPolys) = Dict(
+      "__id__" => "PoSH_TransformedPolys",
+      "J" => Dict(J.J),
+      "rl" => J.rl,
+      "ru" => J.ru,
+      "trans" => Dict(J.trans)
+   )
+
+TransformedPolys(D::Dict) =
+   TransformedPolys(
+      decode_dict(D["J"]),
+      decode_dict(D["trans"]),
+      D["rl"],
+      D["ru"]
+   )
+
+convert(::Val{:PoSH_TransformedPolys}, D::Dict) = TransformedPolys(D)
+
+
+Base.length(J::TransformedPolys) = length(J.J)
+
+cutoff(J::TransformedPolys) = J.ru
+transform(J::TransformedPolys, r) = transform(J.trans, r)
+transform_d(J::TransformedPolys, r) = transform_d(J.trans, r)
+
+alloc_B( J::TransformedPolys, args...) = alloc_B( J.J, args...)
+alloc_dB(J::TransformedPolys, args...) = alloc_dB(J.J, args...)
+
+function evaluate!(P, tmp, J::TransformedPolys, r)
+   if r >= J.ru
+      fill!(P, 0.0)
+      return P
+   end
+   # transform coordinates
+   t = transform(J.trans, r)
+   # evaluate the actual Jacobi polynomials
+   evaluate!(P, nothing, J.J, t)
+   return P
+end
+
+function evaluate_d!(P, dP, tmp, J::TransformedPolys, r)
+   if r >= J.ru
+      fill!(P, 0.0)
+      fill!(dP, 0.0)
+      return dP
+   end
+   # transform coordinates
+   t = transform(J.trans, r)
+   dt = transform_d(J.trans, r)
+   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
+   evaluate_d!(P, dP, nothing, J.J, x)
+   @. dP *= dt
+   return dP
+end
