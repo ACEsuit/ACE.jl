@@ -22,10 +22,25 @@ import Base: ==, convert
 ___f___(D::Dict) = (@show D)
 
 
+_fcut_(pcut, tcut, pin, tin, t) = (t - tcut)^pcut * (t - tin)^pin
+
+function _fcut_d_(pcut, tcut, pin, tin, t)
+   df = 0.0
+   if pcut > 0; df += pcut * (t - tcut)^(pcut-1) * (t-tin )^pin ; end
+   if pin  > 0; df += pin  * (t -  tin)^(pin -1) * (t-tcut)^pcut; end
+   return df
+end
+
+# TODO: At the moment, the cutoff is hard-coded; we could
+#       weaken this again.
+
 struct OrthPolyBasis{T} <: IPBasis
-   # ----------------- the main polynomial parameters
+   # ----------------- the parameters for the cutoff function
    pcut::Int
    tcut::T
+   pin::Int
+   tin::T
+   # ----------------- the main polynomial parameters
    A::Vector{T}
    B::Vector{T}
    C::Vector{T}
@@ -39,12 +54,14 @@ Base.length(P::OrthPolyBasis) = length(P.A)
 
 ==(J1::OrthPolyBasis, J2::OrthPolyBasis) =
       all( getfield(J1, sym) == getfield(J2, sym)
-           for sym in (:pcut, :tcut, :A, :B, :C) )
+           for sym in (:pcut, :tcut, :pin, :tin, :A, :B, :C) )
 
 Dict(J::OrthPolyBasis) = Dict(
       "__id__" => "PoSH_OrthPolyBasis",
       "pcut" => J.pcut,
       "tcut" => J.tcut,
+      "pin" => J.pin,
+      "tin" => J.tin,
       "A" => J.A,
       "B" => J.B,
       "C" => J.C
@@ -52,7 +69,7 @@ Dict(J::OrthPolyBasis) = Dict(
 
 OrthPolyBasis(D::Dict, T=Float64) =
    OrthPolyBasis(
-      D["pcut"], D["tcut"],
+      D["pcut"], D["tcut"], D["pin"], D["tin"],
       Vector{T}(D["A"]), Vector{T}(D["B"]), Vector{T}(D["C"]),
       T[], T[]
    )
@@ -63,11 +80,17 @@ convert(::Val{:PoSH_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
 function OrthPolyBasis(N::Integer,
                        pcut::Integer,
                        tcut::T,
+                       pin::Integer,
+                       tin::T,
                        tdf::AbstractVector{T},
                        ww::AbstractVector{T} = ones(T, length(tdf))
                        ) where {T <: AbstractFloat}
-   @assert pcut >= 0
+   @assert pcut >= 0  && pin >= 0
    @assert N > 2
+   if minimum(tdf) < min(tin, tcut) || maximum(tdf) > max(tin, tcut)
+      @warn("OrthoPolyBasis: t range outside [tin, tcut]")
+   end
+
    A = zeros(T, N)
    B = zeros(T, N)
    C = zeros(T, N)
@@ -79,7 +102,7 @@ function OrthPolyBasis(N::Integer,
 
    # start the iteration
    # a J1 = (t - tcut)^pcut
-   _J1 = (tdf .- tcut).^pcut
+   _J1 = _fcut_.(pcut, tcut, pin, tin, tdf)
    a = sqrt( dotw(_J1, _J1) )
    A[1] = 1/a
    J1 = A[1] * _J1
@@ -108,14 +131,14 @@ function OrthPolyBasis(N::Integer,
       Jprev, Jpprev = _J / a, Jprev
    end
 
-   return OrthPolyBasis(pcut, tcut, A, B, C, collect(tdf), collect(ww))
+   return OrthPolyBasis(pcut, tcut, pin, tin, A, B, C, collect(tdf), collect(ww))
 end
 
 alloc_B( J::OrthPolyBasis{T}, args...) where {T} = zeros(T, length(J))
 alloc_dB(J::OrthPolyBasis{T}, args...) where {T} = zeros(T, length(J))
 
 function evaluate!(P, tmp, J::OrthPolyBasis, t)
-   P[1] = J.A[1] * (t - J.tcut)^(J.pcut)
+   P[1] = J.A[1] * _fcut_(J.pcut, J.tcut, J.pin, J.tin, t)
    P[2] = (J.A[2] * t + J.B[2]) * P[1]
    for n = 3:length(J)
       P[n] = (J.A[n] * t + J.B[n]) * P[n-1] + J.C[n] * P[n-2]
@@ -124,9 +147,8 @@ function evaluate!(P, tmp, J::OrthPolyBasis, t)
 end
 
 function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t)
-   P[1] = J.A[1] * (t - J.tcut)^(J.pcut)
-   dP[1] = ( J.pcut == 0 ? 0 :
-             J.A[1] * J.pcut * (t - J.tcut)^(J.pcut - 1) )
+   P[1] = J.A[1] * _fcut_(J.pcut, J.tcut, J.pin, J.tin, t)
+   dP[1] = J.A[1] * _fcut_d_(J.pcut, J.tcut, J.pin, J.tin, t)
 
    α = J.A[2] * t + J.B[2]
    P[2] = α * P[1]
@@ -141,10 +163,12 @@ function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t)
 end
 
 
-function discrete_jacobi(N; pcut=2, tcut=1.0, Nquad = 1000)
-   dt = 2 / Nquad
-   tdf = range(-1 + dt/2, 1 - dt/2, length=Nquad)
-   return OrthPolyBasis(N, pcut, tcut, tdf)
+function discrete_jacobi(N; pcut=2, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)
+   @assert tin <= tcut
+   dt = (tcut - tin) / Nquad
+   @show dt
+   tdf = range(tin + dt/2, tcut - dt/2, length=Nquad)
+   return OrthPolyBasis(N, pcut, tcut, pin, tin, tdf)
 end
 
 
