@@ -22,7 +22,7 @@ N = 15
 Nquad = 1000
 dt =  2 / Nquad
 tdf = range(-1.0+dt/2, 1.0-dt/2, length=Nquad)
-Jd = OrthPolyBasis(N,  0, 1.0, tdf)
+Jd = OrthPolyBasis(N,  0, 1.0, 0, -1.0, tdf)
 J = Jacobi(0.0, 0.0, N-1, normalise=true)
 
 for ntest = 1:30
@@ -42,7 +42,7 @@ for ntest = 1:10
    Nquad = 1000
    tdf = rand(1000)
    ww = 1.0 .+ rand(1000)
-   Jd = OrthPolyBasis(N,  2, 1.0, tdf, ww)
+   Jd = OrthPolyBasis(N, 2, 1.0, 1, -1.0, tdf, ww)
 
    print_tf(@test decode_dict(Dict(Jd)) == Jd)
 
@@ -58,7 +58,7 @@ N = 8
 Nquad = 1000
 tdf = rand(1000)
 ww = 1.0 .+ rand(1000)
-Jd = OrthPolyBasis(N,  2, 1.0, tdf, ww)
+Jd = OrthPolyBasis(N, 2, 1.0, 2, -1.0, tdf, ww)
 
 let h = 1e-4, errtol = 1e-4, ntest = 100, allowedfail = 5
    nfail = 0
@@ -80,8 +80,8 @@ end
 
 # ## Quick look at the basis
 # using Plots
-# N = 6
-# Jd = PoSH.OrthPolys.discrete_jacobi(N; pcut = 2)
+# N = 5
+# Jd = PoSH.OrthPolys.discrete_jacobi(N; pcut = 3, pin = 2)
 # tp = range(-1, 1, length=100)
 # Jp = zeros(length(tp), N)
 # for (i,t) in enumerate(tp)
