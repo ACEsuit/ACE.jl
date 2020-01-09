@@ -10,6 +10,7 @@ import PoSH
 import Base: rand
 import JuLIP: evaluate
 import JuLIP.MLIPs: IPBasis
+using StaticArrays
 
 function rand_sphere()
    R = randn(JVecF)
