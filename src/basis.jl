@@ -359,7 +359,7 @@ end
 function _alg_filter_group(ship::SHIPBasis{T}, zkl, Igr, U, iz0) where {T}
    G = _algebraic_gramian(ship, zkl, Igr, U, iz0)
    S = svd(G)
-   rk = rank(G)
+   rk = rank(G; rtol =  1e-7)
    UT = convert(SparseMatrixCSC{Complex{T},IntS}, S.U[:, 1:rk]')
    return Diagonal(sqrt.(S.S[1:rk])) * UT * U
 end
