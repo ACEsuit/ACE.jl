@@ -15,7 +15,7 @@ include("pairpots/basis.jl")
 include("pairpots/calculator.jl")
 include("pairpots/repulsion.jl")
 
-include("pairpots/orthpolys.jl") 
+include("pairpots/orthpolys.jl")
 
 # specification of the angular basis
 include("sphericalharmonics.jl")
@@ -38,6 +38,7 @@ include("regularisers.jl")
 include("descriptors.jl")
 
 include("utils.jl")
-
+# bond energies
+include("bonds/bonds.jl")
 
 end # module
