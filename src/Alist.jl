@@ -62,7 +62,7 @@ This fills the A-array stored in tmp with the A_zklm density projections in
 the order specified by AList. It also evaluates the radial and angular basis
 functions along the way.
 """
-function precompute_A!(A, tmp, alist, Rs, Zs, ship)
+function precompute_A!(A, tmp, alist, Rs, Zs, ship::SHIPBasis)
    fill!(A, 0)
    for (R, Z) in zip(Rs, Zs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
@@ -240,7 +240,7 @@ end
 
 function grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0) where {T}
    for iAA = 1:length(ship.aalists[iz0])
-      # g = ∂(∏_a A_a) / ∂Rj     
+      # g = ∂(∏_a A_a) / ∂Rj
       tmp.dAAj[iz0][iAA] = grad_AAi_Rj(iAA, j, Rs[j], z2i(ship, Zs[j]),
                                        ship.alists[iz0], ship.aalists[iz0],
                                        tmp.A[iz0], tmp.AA[iz0], tmp.dA[iz0],
