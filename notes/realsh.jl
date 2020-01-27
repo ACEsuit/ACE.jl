@@ -13,9 +13,10 @@ ll = [1, 3, 3, 4]
 mm = [1, -2, -1, 1]
 c = rand() + im * rand()
 
-function convert_AA(ll, mm, c)
+function convert_c2r_1b(ll, mm, c; verbose=true)
     # length of the tuple / length of the product
     n = length(ll)
+    verbose && println("mm = $mm")
 
     # create symbols representing the real spherical harmonics
     # by analogy with exp(ikx) = cos(kx) + i sin(kx)
@@ -43,20 +44,27 @@ function convert_AA(ll, mm, c)
 
     # let Sympy multiply and simplify the expression
     expr = simplify(real(coeff * prod(YR)))
-    println(expr)
+    verbose && println(expr)
 
     # next, we need to extract the prefactors
     CS = [S; C]
+    signs = Int[ - ones(n); ones(n) ]
+    real_basis = Any[]
+
+    verbose && println("mm = $mm")
     for ii in CartesianIndices(ntuple(_ -> length(CS), n))
-        if length(unique(ii.I)) != length(ii); continue; end
-        if sort([ii.I...]) != [ii.I...]; continue; end
-        term = prod(CS[SVector(ii.I...)])
+        ivec = SVector(ii.I...)
+        if length(unique(ivec)) != length(ivec); continue; end
+        if sort(ivec) != ivec; continue; end
+        term = prod(CS[ivec])
         pref = (expr.coeff(term)).subs(a, real(c)).subs(b, imag(c))
         if pref == 0; continue; end
-        println(term, " -> ", pref)
+        mm_i = signs[ivec] .* mm
+        println(term, " -> (", mm_i, ", ", pref, ")")
+        push!(real_basis, (mm = mm_i, c = N(pref)))
     end
-    nothing
+    return [b for b in real_basis]
 end
 
 
-convert_AA(ll, mm, c)
+convert_c2r_1b(ll, mm, c)
