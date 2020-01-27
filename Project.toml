@@ -1,6 +1,6 @@
 name = "PoSH"
 uuid = "6d8061eb-fedd-4e97-910f-b56e75c6ebb1"
-version = "0.5.0"
+version = "0.5.1"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
