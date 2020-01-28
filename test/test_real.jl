@@ -48,7 +48,7 @@ for B in BB
       Es = evaluate!(tmp, ship, Rs, Zs, z0)
       rEs = evaluate!(rtmp, rship, Rs, Zs, z0)
       # print_tf(@test Es ≈ rEs)
-      @show Es, rEs
+      @show abs(rEs - Es)
    end
    println()
 end

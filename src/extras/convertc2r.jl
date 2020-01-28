@@ -11,6 +11,12 @@ import SymPy
 using SymPy: symbols, simplify
 using PoSH.SphericalHarmonics: RSHBasis
 
+# These are the expressions we use to test the real SH implementation
+#  Y_l^m    =      1/√2 (Y_{lm} - i Y_{l,-m})
+#  Y_l^{-m} = (-1)^m/√2 (Y_{lm} + i Y_{l,-m})
+# cYt[i_p] = (1/sqrt(2)) * (rY[i_p] - im * rY[i_m])
+# cYt[i_m] = (-1)^m * (1/sqrt(2)) * (rY[i_p] + im * rY[i_m])
+
 
 """
 core of the C->R conversion, uses SymPy to express a product of
@@ -24,13 +30,15 @@ function convert_c2r_1b(ll, mm, c; verbose=false)
 
    # create symbols representing the real spherical harmonics
    # by analogy with exp(ikx) = cos(kx) + i sin(kx)
+   #   So Cj ≡ Y_{lj, |mj|} and Sj ≡ Y_{lj, -|mj|}
+   #   and Y_{lj}^{±|mj|} can be expressed in terms of Cj, Sj.
    C = [ symbols("C$j", real=true) for j in 1:length(ll) ]
    S = [ symbols("S$j", real=true) for j in 1:length(ll) ]
 
    # now express the complex spherical harmonics in terms of the real ones
    # (note we don't need to refer to the cY list since it stores the same
    #  symbols as the C, S lists)
-   cY = Any[nothing for _=1:n]
+   cY = Vector{Any}(undef, n)
    for j in 1:n
       if mm[j] == 0
          cY[j] = C[j]
@@ -47,7 +55,7 @@ function convert_c2r_1b(ll, mm, c; verbose=false)
    coeff = a + im * b
 
    # let Sympy multiply and simplify the expression
-   expr = simplify(real(coeff * prod(cY)))
+   expr = (real(coeff * prod(cY))).expand()
    verbose && println(expr)
 
    # next, we need to extract the prefactors
@@ -62,8 +70,15 @@ function convert_c2r_1b(ll, mm, c; verbose=false)
       if sort(ivec) != ivec; continue; end
       term = prod(CS[ivec])
       pref = (expr.coeff(term)).subs(a, real(c)).subs(b, imag(c))
+      if c != 0;
+         @show expr
+         @show term
+         @show expr.coeff(term)
+         @show pref
+         println("----------------")
+      end
       if pref == 0; continue; end
-      mm_i = signs[ivec] .* mm
+      mm_i = signs[ivec] .* abs.(mm)
       verbose && println(term, " -> (", mm_i, ", ", pref, ")")
       push!(real_basis, (mm = mm_i, c = SymPy.N(pref)))
    end
