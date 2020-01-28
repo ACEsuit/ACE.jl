@@ -10,7 +10,7 @@ import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!
 
 const JVec = SVector{3}
 
-export SHBasis
+export SHBasis, RSHBasis 
 
 
 struct PseudoSpherical{T}
