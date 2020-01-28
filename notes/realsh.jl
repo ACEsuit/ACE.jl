@@ -24,16 +24,16 @@ function convert_c2r_1b(ll, mm, c; verbose=true)
     S = [ symbols("S$j", real=true) for j in 1:length(ll) ]
 
     # now express the complex spherical harmonics in terms of the real ones
-    # (note we don't need to refer to the YR list since it stores the same
+    # (note we don't need to refer to the cY list since it stores the same
     #  symbols as the C, S lists)
-    YR = Any[nothing for _=1:n]
+    cY = Any[nothing for _=1:n]
     for j in 1:n
         if mm[j] == 0
-            YR[j] = C[j]
+            cY[j] = C[j]
         elseif mm[j] > 0
-            YR[j] = (1/SymPy.sqrt(2)) * (C[j] - im * S[j])
+            cY[j] = (1/SymPy.sqrt(2)) * (C[j] - im * S[j])
         else
-            YR[j] = ((-1)^mm[j]/SymPy.sqrt(2)) * (C[j] + im * S[j])
+            cY[j] = ((-1)^mm[j]/SymPy.sqrt(2)) * (C[j] + im * S[j])
         end
     end
 
@@ -43,7 +43,7 @@ function convert_c2r_1b(ll, mm, c; verbose=true)
     coeff = a + im * b
 
     # let Sympy multiply and simplify the expression
-    expr = simplify(real(coeff * prod(YR)))
+    expr = simplify(real(coeff * prod(cY)))
     verbose && println(expr)
 
     # next, we need to extract the prefactors

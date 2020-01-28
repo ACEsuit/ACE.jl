@@ -19,6 +19,8 @@ const zklmTuple = NamedTuple{(:z, :k, :l, :m), Tuple{Int16, IntS, IntS, IntS}}
 * `firstz` : `firstz[iz]` stores the first index in the A_zklm array for with
              z = zi. This can be used to iterate over all A entries for which
              z = zi. (they are sorted by z first)
+
+TODO: consider switching to Int8 and Int16 indexing
 """
 struct AList
    i2zklm::Vector{zklmTuple}
@@ -62,7 +64,7 @@ This fills the A-array stored in tmp with the A_zklm density projections in
 the order specified by AList. It also evaluates the radial and angular basis
 functions along the way.
 """
-function precompute_A!(A, tmp, alist, Rs, Zs, ship::SHIPBasis)
+function precompute_A!(A, tmp, alist, Rs, Zs, ship)
    fill!(A, 0)
    for (R, Z) in zip(Rs, Zs)
       # evaluate the r-basis and the R̂-basis for the current neighbour at R
