@@ -15,7 +15,7 @@ include("pairpots/basis.jl")
 include("pairpots/calculator.jl")
 include("pairpots/repulsion.jl")
 
-include("pairpots/orthpolys.jl")
+# include("pairpots/orthpolys.jl")
 
 # specification of the angular basis
 include("sphericalharmonics.jl")
@@ -32,13 +32,16 @@ include("basis.jl")
 
 # SHIP interatomic potential definition
 include("fast.jl")
+# include("real.jl")
 
 include("regularisers.jl")
 
 include("descriptors.jl")
 
 include("utils.jl")
+
+# ===== NEW STUFF 
 # bond energies
-include("bonds/bonds.jl")
+# include("bonds/bonds.jl")
 
 end # module
