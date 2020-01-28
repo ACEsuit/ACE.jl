@@ -62,7 +62,7 @@ function convert_c2r_1b(ll, mm, c; verbose=false)
    # to get these we loop over all possible {C,S}1*{C,S}2*... combinations
    # below, CS is to conveniently access the relevant symbols
    # while signs is used to decide which symbol correspond to a +|m| or -|m|
-   # basis function 
+   # basis function
    CS = [S'; C']
    signs = [- ones(Int, n)'; ones(Int, n)']
    real_basis = Any[]
