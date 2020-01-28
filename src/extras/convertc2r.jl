@@ -5,6 +5,7 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
+
 using StaticArrays
 import SymPy
 using SymPy: symbols, simplify
@@ -72,11 +73,13 @@ end
 
 function convertc2r(cship::SHIP{T, NZ}) where {T, NZ}
    RSH = RSHBasis(cship.SH.maxL, T)
-   rcoeffs = ntuple( iz -> _convert_c2r_inner(cship.coeffs[iz],
-                                              cship.alists[iz],
-                                              cship.aalists[iz]), NZ )
-   return RSHIP(cship.J, RSH, cship.zlist,
-                cship.alists, cship.aalists, rcoeffs)
+   alists =  ntuple(iz -> deepcopy(cship.alists[iz]), NZ)
+   aalists = ntuple(iz -> deepcopy(cship.aalists[iz]), NZ)
+   rcoeffs = ntuple(iz -> _convert_c2r_inner(cship.coeffs[iz],
+                                             alists[iz],
+                                             aalists[iz]), NZ )
+   return RSHIP(cship.J, RSH, deepcopy(cship.zlist),
+                alists, aalists, rcoeffs)
 end
 
 """
@@ -87,14 +90,17 @@ This is the main conversion loop, which is called from the glue code
 function _convert_c2r_inner(ccoeffs::AbstractVector{Complex{T}},
                             alist, aalist) where {T}
    rcoeffs = zeros(T, length(ccoeffs))
+   missed = Any[]
+   # count how many basis functions we are adding!
+   newb = 0
    for iAA = 1:length(aalist)
       N = aalist.len[iAA]    # number of As to be multiplied
       # get the (z, k, l, m) infor the the terms in the product
       As = [ alist[aalist.i2Aidx[iAA, α]]  for α = 1:N ]
-      izz = [ As[α].z for α = 1:N ]
-      kk = [ As[α].k for α = 1:N ]
-      ll = [ As[α].l for α = 1:N ]
-      mm = [ As[α].m for α = 1:N ]
+      izz = Int16[ As[α].z for α = 1:N ]
+      kk  = IntS[ As[α].k for α = 1:N ]
+      ll  = IntS[ As[α].l for α = 1:N ]
+      mm  = IntS[ As[α].m for α = 1:N ]
       # now we convert the ∏ Y_{lα}^{mα} to several ∏ Y_{lα, mα},
       # i.e. we get a LIST of several real basis functions
       rbasis = convert_c2r_1b(ll, mm, ccoeffs[iAA])
@@ -105,10 +111,23 @@ function _convert_c2r_inner(ccoeffs::AbstractVector{Complex{T}},
          # and b.c is the new coefficient; but we first need to identify
          # the correct index in `rcoeffs` which is the same as the
          # corresponding index in `aalist`
-         i_rAA = aalist.zklm2i[(izz, kk, ll, b.mm)]
+         b_mm = IntS.(b.mm)
+         if !haskey(aalist.zklm2i, (izz, kk, ll, b_mm))
+            # @info("inserting new AA")
+            # @show length(aalist), length(rcoeffs)
+            push!(aalist, (izz, kk, ll, b_mm), alist)
+            newb += 1
+            push!(rcoeffs, 0.0)
+            # @show length(aalist), length(rcoeffs)
+         end
+         i_rAA = aalist.zklm2i[(izz, kk, ll, b_mm)]
+         if i_rAA > length(rcoeffs)
+            @show i_rAA, length(aalist), size(aalist.i2Aidx), length(rcoeffs)
+         end
          rcoeffs[i_rAA] += b.c
       end
    end
+   if newb > 0; @info("Added $newb basis functions!"); end
    return rcoeffs
 end
 

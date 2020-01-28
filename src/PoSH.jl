@@ -52,12 +52,14 @@ include("utils.jl")
 # include("bonds/bonds.jl")
 
 # OPTIONAL MODULES
-using Requires
+# using Requires
+#
+# function _init_()
+#    @require SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6" begin
+#       include("convertc2r.jl")
+#    end
+# end
 
-function _init_()
-   @require SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6" begin
-      include("convertc2r.jl")
-   end
-end
+include("extras/convertc2r.jl")
 
 end # module

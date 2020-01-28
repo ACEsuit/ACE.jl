@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using PoSH.SphericalHarmonics: SHBasis, index_y
+using PoSH.SphericalHarmonics: RSHBasis, index_y
 using StaticArrays
 using JuLIP: AbstractCalculator, Atoms, JVec
 using JuLIP.Potentials: MSitePotential, SZList, ZList
@@ -88,7 +88,8 @@ alloc_temp(ship::RSHIP{T,NZ}, N::Integer) where {T, NZ} =
       tmpJ = alloc_temp(ship.J),
       tmpY = alloc_temp(ship.SH),
          R = zeros(JVec{T}, N),
-         Z = zeros(Int16, N)
+         Z = zeros(Int16, N),
+         AA = [ zeros(T, length(ship.aalists[iz])) for iz=1:NZ ],
            )
 
 
@@ -103,7 +104,7 @@ function evaluate!(tmp, ship::RSHIP{T},
    A = tmp.A[iz0]
    c = ship.coeffs[iz0]
    Es = zero(T)
-   for iAA = 1:length(aalist)
+   @inbounds for iAA = 1:length(aalist)
       Esi = c[iAA]
       for α = 1:aalist.len[iAA]
          Esi *= A[aalist.i2Aidx[iAA, α]]
@@ -111,6 +112,28 @@ function evaluate!(tmp, ship::RSHIP{T},
       Es += Esi
    end
    return Es
+end
+
+# compute one site energy
+function evaluate_new!(tmp, ship::RSHIP{T},
+                   Rs::AbstractVector{JVec{T}},
+                   Zs::AbstractVector{<:Integer},
+                   z0::Integer) where {T}
+   iz0 = z2i(ship, z0)
+   precompute_A!(tmp.A[iz0], tmp, ship.alists[iz0], Rs, Zs, ship)
+   aalist = ship.aalists[iz0]
+   A = tmp.A[iz0]
+   c = ship.coeffs[iz0]
+   AA = tmp.AA[iz0]
+   copy!(AA, c)
+   for α = 1:length(aalist)
+      for iAA = 1:length(aalist)
+         if α <= aalist.len[iAA]
+            AA[iAA] *= A[aalist.i2Aidx[iAA, α]]
+         end
+      end
+   end
+   return sum(AA)
 end
 
 
