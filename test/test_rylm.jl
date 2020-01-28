@@ -53,5 +53,20 @@ for nsamples = 1:30
 end
 println()
 
+##
+
+# basic benchmark : the real SH are marginally faster
+# using BenchmarkTools
+# maxL = 20
+# cSH = SHBasis(maxL)
+# rSH = RSHBasis(maxL)
+# R = PoSH.Utils.rand_sphere()
+# cY = PoSH.alloc_B(cSH)
+# rY  = PoSH.alloc_B(rSH)
+# tY = PoSH.alloc_temp(cSH)
+# PoSH.evaluate!(cY, tY, cSH, R) == evaluate(cSH, R)
+# PoSH.evaluate!(rY, tY, rSH, R) == evaluate(rSH, R)
+# @btime PoSH.evaluate!($cY, $tY, $cSH, $R)
+# @btime PoSH.evaluate!($rY, $tY, $rSH, $R)
 
 end

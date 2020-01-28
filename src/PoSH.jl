@@ -39,7 +39,7 @@ include("basis.jl")
 
 # SHIP interatomic potential definition
 include("fast.jl")
-# include("real.jl")
+include("real.jl")
 
 include("regularisers.jl")
 
@@ -47,8 +47,17 @@ include("descriptors.jl")
 
 include("utils.jl")
 
-# ===== NEW STUFF 
+# ===== NEW STUFF
 # bond energies
 # include("bonds/bonds.jl")
+
+# OPTIONAL MODULES
+using Requires
+
+function _init_()
+   @require SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6" begin
+      include("convertc2r.jl")
+   end
+end
 
 end # module

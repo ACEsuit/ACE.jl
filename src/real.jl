@@ -22,7 +22,7 @@ export RSHIP
 
 struct RSHIP{T, NZ, TJ} <: MSitePotential
    J::TJ
-   SH::SHBasis{T}
+   SH::RSHBasis{T}
    zlist::SZList{NZ}
    # -------------- A and AA datastructures + coefficients
    alists::NTuple{NZ, AList}
@@ -42,17 +42,6 @@ Base.length(ship::RSHIP) = sum(length.(ship.aalists))
 
 # BO + 1 because BO is the number of neighbours not the actual body-order
 bodyorder(ship::RSHIP{BO}) where {BO} = BO + 1
-
-
-# ------------------------------------------------------------
-#   Initialisation code
-# ------------------------------------------------------------
-
-function RSHIP(basis::SHIP{T, NZ}, coeffs::AbstractVector{T}
-              ) where {T, NZ}
-   error("TODO: provide an interface here!")
-end
-
 
 # ------------------------------------------------------------
 #   FIO code
@@ -119,7 +108,7 @@ function evaluate!(tmp, ship::RSHIP{T},
       for α = 1:aalist.len[iAA]
          Esi *= A[aalist.i2Aidx[iAA, α]]
       end
-      Es += real(Esi)
+      Es += Esi
    end
    return Es
 end
