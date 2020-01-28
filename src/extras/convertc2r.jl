@@ -59,28 +59,21 @@ function convert_c2r_1b(ll, mm, c; verbose=false)
    verbose && println(expr)
 
    # next, we need to extract the prefactors
-   CS = [S; C]
-   signs = Int[ - ones(n); ones(n) ]
+   # to get these we loop over all possible {C,S}1*{C,S}2*... combinations
+   # below, CS is to conveniently access the relevant symbols
+   # while signs is used to decide which symbol correspond to a +|m| or -|m|
+   # basis function 
+   CS = [S'; C']
+   signs = [- ones(Int, n)'; ones(Int, n)']
    real_basis = Any[]
 
    verbose && println("mm = $mm")
-   for ii in CartesianIndices(ntuple(_ -> length(CS), n))
+   for ii in CartesianIndices(ntuple(_ -> 2, n))
       ivec = SVector(ii.I...)
-      if length(unique(ivec)) != length(ivec); continue; end
-      if sort(ivec) != ivec; continue; end
-      term = prod(CS[ivec])
+      term = prod(CS[ivec[α], α] for α = 1:n)
       pref = (expr.coeff(term)).subs(a, real(c)).subs(b, imag(c))
       if pref == 0; continue; end
-      mm_i = signs[ivec] .* abs.(mm)
-      if c != 0;
-         @show expr
-         @show term
-         @show expr.coeff(term)
-         @show pref
-         @show mm_i
-         @show ivec, signs[ivec]
-         println("----------------")
-      end
+      mm_i = [ signs[ivec[α], α] * abs(mm[α])  for α = 1:n ]
       verbose && println(term, " -> (", mm_i, ", ", pref, ")")
       push!(real_basis, (mm = mm_i, c = SymPy.N(pref)))
    end
@@ -133,10 +126,6 @@ function _convert_c2r_inner(ccoeffs::AbstractVector{Complex{T}},
             push!(aalist, (izz, kk, ll, b_mm), alist)
             push!(rcoeffs, 0.0)
          end
-         if b.c != 0
-            @show (ll, mm, b_mm)
-            @show ccoeffs[iAA], b.c
-         end
          i_rAA = aalist.zklm2i[(izz, kk, ll, b_mm)]
          rcoeffs[i_rAA] += b.c
       end
@@ -146,11 +135,3 @@ function _convert_c2r_inner(ccoeffs::AbstractVector{Complex{T}},
    end
    return rcoeffs
 end
-
-
-# # a basis function is defined by an l and an m tuple:
-# ll = [1, 3, 3, 4]
-# mm = [1, -2, -1, 1]
-# c = rand() + im * rand()
-#
-# convert_c2r_1b(ll, mm, c)
