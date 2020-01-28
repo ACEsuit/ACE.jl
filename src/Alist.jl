@@ -19,6 +19,8 @@ const zklmTuple = NamedTuple{(:z, :k, :l, :m), Tuple{Int16, IntS, IntS, IntS}}
 * `firstz` : `firstz[iz]` stores the first index in the A_zklm array for with
              z = zi. This can be used to iterate over all A entries for which
              z = zi. (they are sorted by z first)
+
+TODO: consider switching to Int8 and Int16 indexing
 """
 struct AList
    i2zklm::Vector{zklmTuple}
@@ -118,7 +120,7 @@ end
              z = zi. This can be used to iterate over all A entries for which
              z = zi. (they are sorted by z first)
 """
-struct AAList
+mutable struct AAList
    i2Aidx::Matrix{IntS}    # where in A can we find these
    len::Vector{IntS}       # body-order
    zklm2i::Dict{Any, IntS} # inverse mapping
@@ -126,7 +128,7 @@ end
 
 # --------------(de-)serialisation----------------------------------------
 
-==
+
 function Dict(aalist::AAList)
    ZKLM_list = Vector{Any}(undef, length(aalist))
    for (zzkkllmm, i) in aalist.zklm2i
@@ -161,31 +163,37 @@ function AAList(ZKLM_list, alist)
    BO = maximum(ν -> length(ν[1]), ZKLM_list)  # body-order -> size of iAidx
 
    # create arrays to construct AAList
-   iAidx = IntS[]
-   len = IntS[]
-   zklm2i = Dict{Any, IntS}()
+   aalist = AAList(Matrix{IntS}(undef,0,BO), IntS[], Dict{Any, IntS}())
 
-   idx = 0
    for (izz, kk, ll, mm) in ZKLM_list
-      # store in the index of the current row in the reverse map
-      idx += 1
-      zklm2i[(izz, kk, ll, mm)] = idx
-      # store the body-order of the current ∏A function
-      push!(len, length(ll))
-
-      # fill the row of the i2Aidx matrix
-      for α = 1:length(ll)
-         zklm = (z=izz[α], k=kk[α], l=ll[α], m=IntS(mm[α]))
-         iA = alist[zklm]
-         push!(iAidx, iA)
-      end
-      # fill up the iAidx vector with zeros up to the body-order
-      # this will create 0 entries in the matrix after reshaping
-      for α = (length(ll)+1):BO
-         push!(iAidx, 0)
-      end
+      push!(aalist, (izz, kk, ll, mm), alist)
    end
-   return AAList( reshape(iAidx, (BO, idx))', len, zklm2i )
+   return aalist
+end
+
+function Base.push!(aalist::AAList, tpl, alist)
+   izz, kk, ll, mm = tpl
+   BO = size(aalist.i2Aidx, 2)
+   # store in the index of the current row in the reverse map
+   idx = length(aalist) + 1
+   aalist.zklm2i[(SVector(izz...), SVector(kk...), SVector(ll...), SVector(mm...))] = idx
+   # store the body-order of the current ∏A function
+   push!(aalist.len, length(ll))
+
+   # fill the row of the i2Aidx matrix
+   newrow = IntS[]
+   for α = 1:length(ll)
+      zklm = (z=izz[α], k=kk[α], l=ll[α], m=IntS(mm[α]))
+      push!(newrow, alist[zklm])
+   end
+   # fill up the iAidx vector with zeros up to the body-order
+   # this will create 0 entries in the matrix after reshaping
+   for α = (length(ll)+1):BO
+      push!(newrow, 0)
+   end
+   aalist.i2Aidx = vcat(aalist.i2Aidx, newrow')
+   @assert idx == size(aalist.i2Aidx, 1)
+   return aalist
 end
 
 
@@ -240,7 +248,7 @@ end
 
 function grad_AA_Rj!(tmp, ship, j, Rs, Zs, iz0) where {T}
    for iAA = 1:length(ship.aalists[iz0])
-      # g = ∂(∏_a A_a) / ∂Rj     
+      # g = ∂(∏_a A_a) / ∂Rj
       tmp.dAAj[iz0][iAA] = grad_AAi_Rj(iAA, j, Rs[j], z2i(ship, Zs[j]),
                                        ship.alists[iz0], ship.aalists[iz0],
                                        tmp.A[iz0], tmp.AA[iz0], tmp.dA[iz0],

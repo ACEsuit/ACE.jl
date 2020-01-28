@@ -17,7 +17,7 @@ import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!
 
 const JVec = SVector{3}
 
-export SHBasis
+export SHBasis, RSHBasis 
 
 
 struct PseudoSpherical{T}
@@ -285,7 +285,7 @@ function cYlm!(Y, L, S::PseudoSpherical, P)
 	@assert length(Y) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
 
-	ep = 1 / sqrt(2)
+	ep = 1 / sqrt(2) + im * 0
 	for l = 0:L
 		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
 	end
@@ -305,6 +305,37 @@ function cYlm!(Y, L, S::PseudoSpherical, P)
 
 	return Y
 end
+
+
+function rYlm!(Y::AbstractVector{T}, L, S::PseudoSpherical, P) where {T <: Real}
+	@assert length(P) >= sizeP(L)
+	@assert length(Y) >= sizeY(L)
+   @assert abs(S.cosθ) <= 1.0
+
+   oort2 = 1 / sqrt(2)
+	for l = 0:L
+		Y[index_y(l, 0)] = P[index_p(l, 0)] * oort2
+	end
+
+   sig = 1
+	ec = 1.0 + 0 * im
+   ec_fact = S.cosφ + im * S.sinφ
+	for m in 1:L
+		sig *= -1                # sig = (-1)^m
+		ec *= ec_fact            # ec = exp(i * m  * φ) / sqrt(2)
+		# cYlm = p * ec,    (also cYl{-m} = sig * p * conj(ec)), but not needed)
+		# rYlm    =  Re(cYlm)
+		# rYl{-m} = -Im(cYlm)
+		for l in m:L
+			p = P[index_p(l,m)]
+			@inbounds Y[index_y(l, -m)] = -p * imag(ec)
+			@inbounds Y[index_y(l,  m)] =  p * real(ec)
+		end
+	end
+
+	return Y
+end
+
 
 
 function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
@@ -348,41 +379,69 @@ end
 #      Nicer interface
 # ---------------------------------------------
 
-struct SHBasis{T} <: IPBasis
+abstract type AbstractSHBasis{T} <: IPBasis end
+
+"""
+complext spherical harmonics
+"""
+struct SHBasis{T} <: AbstractSHBasis{T}
 	maxL::Int
 	coeff::ALPCoefficients{T}
 end
 
+"""
+real spherical harmonics
+"""
+struct RSHBasis{T} <: AbstractSHBasis{T}
+	maxL::Int
+	coeff::ALPCoefficients{T}
+end
+
+
 import Base.==
-==(B1::SHBasis, B2::SHBasis) = (B1.maxL == B1.maxL)
+==(B1::AbstractSHBasis, B2::AbstractSHBasis) =
+	( (B1.maxL == B1.maxL) &&
+	  (typeof(B1) == typeof(B2)) )
 
 SHBasis(maxL::Integer, T::Type=Float64) =
 		SHBasis(Int(maxL), compute_coefficients(maxL, T))
 
-Base.eltype(SH::SHBasis{T}) where {T} = T
-Base.length(S::SHBasis) = sizeY(S.maxL)
+RSHBasis(maxL::Integer, T::Type=Float64) =
+		RSHBasis(Int(maxL), compute_coefficients(maxL, T))
+
+Base.eltype(SH::AbstractSHBasis{T}) where {T} = T
+Base.length(S::AbstractSHBasis) = sizeY(S.maxL)
 
 alloc_B( S::SHBasis{T}, args...) where {T} =
 		Vector{Complex{T}}(undef, length(S))
 
+alloc_B( S::RSHBasis{T}, args...) where {T} =
+		Vector{T}(undef, length(S))
+
 alloc_dB(S::SHBasis{T}, args...) where {T} =
 		Vector{JVec{Complex{T}}}(undef, length(S))
 
-alloc_temp(SH::SHBasis{T}, args...) where {T} = (
+alloc_dB(S::RSHBasis{T}, args...) where {T} =
+		Vector{JVec{T}}(undef, length(S))
+
+alloc_temp(SH::AbstractSHBasis{T}, args...) where {T} = (
 		P = Vector{T}(undef, sizeP(SH.maxL)), )
 
-alloc_temp_d(SH::SHBasis{T}, args...) where {T} = (
+alloc_temp_d(SH::AbstractSHBasis{T}, args...) where {T} = (
 		 P = Vector{T}(undef, sizeP(SH.maxL)),
 		dP = Vector{T}(undef, sizeP(SH.maxL)) )
 
 
-function evaluate!(Y, tmp, SH::SHBasis, R::JVec)
+_evaluate!(Y, L, S, P, ::SHBasis) = cYlm!(Y, L, S, P)
+_evaluate!(Y, L, S, P, ::RSHBasis) = rYlm!(Y, L, S, P)
+
+function evaluate!(Y, tmp, SH::AbstractSHBasis, R::JVec)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
 	S = cart2spher(R)
 	compute_p!(L, S, SH.coeff, tmp.P)
-	cYlm!(Y, L, S, tmp.P)
+	_evaluate!(Y, L, S, tmp.P, SH)
 	return Y
 end
 
