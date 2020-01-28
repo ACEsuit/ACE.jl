@@ -70,15 +70,17 @@ function convert_c2r_1b(ll, mm, c; verbose=false)
       if sort(ivec) != ivec; continue; end
       term = prod(CS[ivec])
       pref = (expr.coeff(term)).subs(a, real(c)).subs(b, imag(c))
+      if pref == 0; continue; end
+      mm_i = signs[ivec] .* abs.(mm)
       if c != 0;
          @show expr
          @show term
          @show expr.coeff(term)
          @show pref
+         @show mm_i
+         @show ivec, signs[ivec]
          println("----------------")
       end
-      if pref == 0; continue; end
-      mm_i = signs[ivec] .* abs.(mm)
       verbose && println(term, " -> (", mm_i, ", ", pref, ")")
       push!(real_basis, (mm = mm_i, c = SymPy.N(pref)))
    end
@@ -106,8 +108,6 @@ function _convert_c2r_inner(ccoeffs::AbstractVector{Complex{T}},
                             alist, aalist) where {T}
    rcoeffs = zeros(T, length(ccoeffs))
    missed = Any[]
-   # count how many basis functions we are adding!
-   newb = 0
    for iAA = 1:length(aalist)
       N = aalist.len[iAA]    # number of As to be multiplied
       # get the (z, k, l, m) infor the the terms in the product
@@ -127,22 +127,23 @@ function _convert_c2r_inner(ccoeffs::AbstractVector{Complex{T}},
          # the correct index in `rcoeffs` which is the same as the
          # corresponding index in `aalist`
          b_mm = IntS.(b.mm)
+         # if the izklm key doesn't exist it means we have to add a
+         # new AA-basis function to the aalist
          if !haskey(aalist.zklm2i, (izz, kk, ll, b_mm))
-            # @info("inserting new AA")
-            # @show length(aalist), length(rcoeffs)
             push!(aalist, (izz, kk, ll, b_mm), alist)
-            newb += 1
             push!(rcoeffs, 0.0)
-            # @show length(aalist), length(rcoeffs)
+         end
+         if b.c != 0
+            @show (ll, mm, b_mm)
+            @show ccoeffs[iAA], b.c
          end
          i_rAA = aalist.zklm2i[(izz, kk, ll, b_mm)]
-         if i_rAA > length(rcoeffs)
-            @show i_rAA, length(aalist), size(aalist.i2Aidx), length(rcoeffs)
-         end
          rcoeffs[i_rAA] += b.c
       end
    end
-   if newb > 0; @info("Added $newb basis functions!"); end
+   if length(rcoeffs) > length(ccoeffs)
+      @info("Added $(length(rcoeffs) - length(ccoeffs)) basis function(s).")
+   end
    return rcoeffs
 end
 

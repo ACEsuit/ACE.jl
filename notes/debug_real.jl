@@ -16,17 +16,18 @@ randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 onecoeffs(B) = ones(length(B))
 
 ##
+println(); println();
 
 trans = PolyTransform(3, 1.0)
 fcut = PolyCutoff2s(2, 0.5, 3.0)
 B = SHIPBasis(SparseSHIP(3, 4, wL=1.0), trans, fcut)
 
 # passed
-izz = [1,1,1]; kk = [0,0,0]; ll = [0,1,1]; mm = [0,0,0]
+# izz = [1,1,1]; kk = [0,0,0]; ll = [0,1,1]; mm = [0,0,0]
 
 # failed
 # izz = [1,1,1]; kk = [0,0,0]; ll = [1,1,2]; mm = [0,1,-1]
-izz = [1,1,1]; kk = [0,0,0]; ll = [0,1,1]; mm = [0,-1,1]
+izz = [1,1,1]; kk = [0,0,0]; ll = [0,1,1]; mm = [0,1,-1]
 
 iAA = B.aalists[1][ (izz, kk, ll, mm) ]
 coeffs = zeros(length(B))
