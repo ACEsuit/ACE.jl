@@ -13,7 +13,8 @@
 ##
 using PoSH, Test
 
-using LinearAlgebra: norm
+using LinearAlgebra: norm, cond
+using ForwardDiff
 
 using PoSH.JacobiPolys: Jacobi
 using PoSH.OrthPolys: OrthPolyBasis
@@ -67,20 +68,94 @@ tdf = rand(1000)
 ww = 1.0 .+ rand(1000)
 Jd = OrthPolyBasis(N, 2, 1.0, 2, -1.0, tdf, ww)
 
-let h = 1e-4, errtol = 1e-4, ntest = 100, allowedfail = 5
+let errtol = 1e-12, ntest = 100
    nfail = 0
    for itest = 1:ntest
       x = 2*rand() - 1
       dJx = evaluate_d(Jd, x)
-      dhJx = (evaluate(Jd, x + h) - evaluate(Jd, x-h)) / (2*h)
-      err = maximum(abs.(dJx - dhJx) ./ (1.0 .+ abs.(dJx)))
+      adJx = ForwardDiff.derivative(x -> evaluate(Jd, x), x)
+      err = maximum(abs.(dJx - adJx) ./ (1.0 .+ abs.(dJx)))
       if err > errtol
          nfail += 1
       end
    end
-   @info("nfail = $nfail (out of $ntest)")
-   println((@test nfail <= allowedfail))
+   println((@test nfail == 0))
 end
+##
+
+@info("Testing TransformedPolys")
+
+trans = PolyTransform(2, 1.0)
+Pnew = PoSH.OrthPolys.transformed_jacobi(10, trans, 2.0, 0.5; pcut = 2, pin = 2)
+fcut = PolyCutoff2s(2, 0.5, 2.0)
+Pold = PoSH.TransformedJacobi(9, trans, fcut)
+
+# r = 2*rand() + 0.25
+# pnew = evaluate(Pnew, r)
+# pold = evaluate(Pold, r)
+# norm((pold[1]/pnew[1]) * abs.(pnew) - pold, Inf)
+
+@info("   ... consistency with old implementation")
+for ntest = 1:30
+   r = 2*rand() + 0.25
+   pnew = evaluate(Pnew, r)
+   pold = evaluate(Pold, r)
+   if r <= 0.5 || r >= 2.0
+      print_tf(@test( norm(pnew, Inf) == norm(pold, Inf) == 0 ))
+   else
+      pnew_scal = pold[1]/pnew[1] * pnew
+      print_tf(@test norm(abs.(pnew_scal) - abs.(pold), Inf) < 1e-10 )
+   end
+end
+println()
+
+##
+
+@info("   ... consistency of derivatives")
+for ntest = 1:30
+   r = 2*rand() + 0.25
+   dp = evaluate_d(Pnew, r)
+   if r <= 0.5 || r >= 2.0
+      print_tf(@test( norm(dp, Inf) == 0 ))
+   else
+      adp = ForwardDiff.derivative(x -> evaluate(Pnew, x), r)
+      print_tf(@test norm(dp - adp) < 1e-12)
+   end
+end
+println()
+
+##
+
+@info("Testing the orthogonality (via A-basis)")
+
+spec = SparseSHIP(3, 10)
+P = PoSH.OrthPolys.transformed_jacobi(PoSH.maxK(spec)+1, trans, 2.0, 0.5;
+                                      pcut = 2, pin = 2)
+shpB = SHIPBasis(spec, P)
+
+function evalA(shpB, tmp, Rs)
+   Zs = zeros(Int16, length(Rs))
+   PoSH.precompute_A!(tmp, shpB, Rs, Zs, 1)
+   return tmp.A[1]
+end
+
+function A_gramian(shpB, Nsamples = 100_000)
+   tmp = PoSH.alloc_temp(shpB)
+   lenA = length(tmp.A[1])
+   G = zeros(ComplexF64, lenA, lenA)
+   for n = 1:Nsamples
+      R = PoSH.Utils.rand(shpB.J)
+      A = evalA(shpB, tmp, [R])
+      for i = 1:lenA, j = 1:lenA
+         G[i,j] +=  A[i] * A[j]'
+      end
+   end
+   return G
+end
+
+G = A_gramian(shpB)
+println(@test cond(G) < 1.2)
+
 ##
 
 end

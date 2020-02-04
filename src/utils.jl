@@ -11,7 +11,8 @@ module Utils
 using LinearAlgebra: norm
 using JuLIP: JVecF
 using PoSH: TransformedJacobi,  inv_transform,
-            PolyTransform, PolyCutoff1s, SparseSHIP, SHIPBasis
+            PolyTransform, PolyCutoff1s, SparseSHIP, SHIPBasis,
+            TransformedPolys
 
 import PoSH
 import Base: rand
@@ -31,11 +32,21 @@ function rand_radial(J::TransformedJacobi)
    return inv_transform(J.trans, x)
 end
 
+function rand_radial(J::TransformedPolys)
+   # sample from the polynomial orth. measure
+   t = rand(J.J)
+   # transform back
+   return inv_transform(J.trans, t)
+end
+
+
 rand_radial(J::TransformedJacobi, N::Integer) = [ rand_radial(J) for _=1:N ]
 
 rand(J::TransformedJacobi) = rand_radial(J) *  rand_sphere()
+rand(J::TransformedPolys) = rand_radial(J) *  rand_sphere()
 
 rand(J::TransformedJacobi, N::Integer) =  [ rand(J) for _ = 1:N ]
+rand(J::TransformedPolys, N::Integer) =  [ rand(J) for _ = 1:N ]
 
 
 _get_ll(KL, νz) = getfield.(KL[νz.ν], :l)

@@ -14,20 +14,28 @@ using LinearAlgebra: dot
 import JuLIP: evaluate!, evaluate_d!
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
-import PoSH: DistanceTransform, transform, transform_d
+import PoSH: DistanceTransform, transform, transform_d, TransformedPolys
 
 import Base: ==, convert
 
-# this is a hack to prevent a weird compiler error that I don't understand yet
+# this is a hack to prevent a weird compiler error that I don't understand
+# at all yet
 ___f___(D::Dict) = (@show D)
 
+function _fcut_(pl, tl, pr, tr, t)
+   if (pl > 0 && t < tl) || (pr > 0 && t > tr)
+      return zero(t)
+   end
+   return (t - tl)^pl * (t - tr)^pr
+end
 
-_fcut_(pcut, tcut, pin, tin, t) = (t - tcut)^pcut * (t - tin)^pin
-
-function _fcut_d_(pcut, tcut, pin, tin, t)
+function _fcut_d_(pl, tl, pr, tr, t)
+   if (pl > 0 && t < tl) || (pr > 0 && t > tr)
+      return zero(t)
+   end
    df = 0.0
-   if pcut > 0; df += pcut * (t - tcut)^(pcut-1) * (t-tin )^pin ; end
-   if pin  > 0; df += pin  * (t -  tin)^(pin -1) * (t-tcut)^pcut; end
+   if pl > 0; df += pl * (t - tl)^(pl-1) * (t-tr )^pr ; end
+   if pr  > 0; df += pr  * (t -  tr)^(pr -1) * (t-tl)^pl; end
    return df
 end
 
@@ -36,10 +44,10 @@ end
 
 struct OrthPolyBasis{T} <: IPBasis
    # ----------------- the parameters for the cutoff function
-   pcut::Int
-   tcut::T
-   pin::Int
-   tin::T
+   pl::Int
+   tl::T
+   pr::Int
+   tr::T
    # ----------------- the main polynomial parameters
    A::Vector{T}
    B::Vector{T}
@@ -54,14 +62,14 @@ Base.length(P::OrthPolyBasis) = length(P.A)
 
 ==(J1::OrthPolyBasis, J2::OrthPolyBasis) =
       all( getfield(J1, sym) == getfield(J2, sym)
-           for sym in (:pcut, :tcut, :pin, :tin, :A, :B, :C) )
+           for sym in (:pr, :tr, :pl, :tl, :A, :B, :C) )
 
 Dict(J::OrthPolyBasis) = Dict(
       "__id__" => "PoSH_OrthPolyBasis",
-      "pcut" => J.pcut,
-      "tcut" => J.tcut,
-      "pin" => J.pin,
-      "tin" => J.tin,
+      "pr" => J.pr,
+      "tr" => J.tr,
+      "pl" => J.pl,
+      "tl" => J.tl,
       "A" => J.A,
       "B" => J.B,
       "C" => J.C
@@ -69,13 +77,19 @@ Dict(J::OrthPolyBasis) = Dict(
 
 OrthPolyBasis(D::Dict, T=Float64) =
    OrthPolyBasis(
-      D["pcut"], D["tcut"], D["pin"], D["tin"],
+      D["pl"], D["tl"], D["pr"], D["tr"],
       Vector{T}(D["A"]), Vector{T}(D["B"]), Vector{T}(D["C"]),
       T[], T[]
    )
 
 convert(::Val{:PoSH_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
 
+# rand applied to a J will return a random transformed distance drawn from
+# the measure w.r.t. which the polynomials were constructed.
+function Base.rand(J::OrthPolyBasis)
+   @assert maximum(abs, diff(J.ww)) == 0
+   return rand(J.tdf)
+end
 
 function OrthPolyBasis(N::Integer,
                        pcut::Integer,
@@ -87,8 +101,17 @@ function OrthPolyBasis(N::Integer,
                        ) where {T <: AbstractFloat}
    @assert pcut >= 0  && pin >= 0
    @assert N > 2
-   if minimum(tdf) < min(tin, tcut) || maximum(tdf) > max(tin, tcut)
-      @warn("OrthoPolyBasis: t range outside [tin, tcut]")
+
+   if tcut < tin
+      tl, tr = tcut, tin
+      pl, pr = pcut, pin
+   else
+      tl, tr = tin, tcut
+      pl, pr = pin, pcut
+   end
+
+   if minimum(tdf) < tl || maximum(tdf) > tr
+      @warn("OrthoPolyBasis: t range outside [tl, tr]")
    end
 
    A = zeros(T, N)
@@ -101,8 +124,7 @@ function OrthPolyBasis(N::Integer,
    dotw = (f1, f2) -> dot(f1, ww .* f2)
 
    # start the iteration
-   # a J1 = (t - tcut)^pcut
-   _J1 = _fcut_.(pcut, tcut, pin, tin, tdf)
+   _J1 = _fcut_.(pl, tl, pr, tr, tdf)
    a = sqrt( dotw(_J1, _J1) )
    A[1] = 1/a
    J1 = A[1] * _J1
@@ -131,14 +153,17 @@ function OrthPolyBasis(N::Integer,
       Jprev, Jpprev = _J / a, Jprev
    end
 
-   return OrthPolyBasis(pcut, tcut, pin, tin, A, B, C, collect(tdf), collect(ww))
+   return OrthPolyBasis(pl, tl, pr, tr, A, B, C, collect(tdf), collect(ww))
 end
 
-alloc_B( J::OrthPolyBasis{T}, args...) where {T} = zeros(T, length(J))
-alloc_dB(J::OrthPolyBasis{T}, args...) where {T} = zeros(T, length(J))
+alloc_B( J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
+alloc_dB(J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
+
+alloc_B( J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(TX, length(J))
+alloc_dB(J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(TX, length(J))
 
 function evaluate!(P, tmp, J::OrthPolyBasis, t)
-   P[1] = J.A[1] * _fcut_(J.pcut, J.tcut, J.pin, J.tin, t)
+   P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
    P[2] = (J.A[2] * t + J.B[2]) * P[1]
    for n = 3:length(J)
       P[n] = (J.A[n] * t + J.B[n]) * P[n-1] + J.C[n] * P[n-2]
@@ -147,8 +172,8 @@ function evaluate!(P, tmp, J::OrthPolyBasis, t)
 end
 
 function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t)
-   P[1] = J.A[1] * _fcut_(J.pcut, J.tcut, J.pin, J.tin, t)
-   dP[1] = J.A[1] * _fcut_d_(J.pcut, J.tcut, J.pin, J.tin, t)
+   P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+   dP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
 
    α = J.A[2] * t + J.B[2]
    P[2] = α * P[1]
@@ -162,14 +187,24 @@ function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t)
    return dP
 end
 
-
 function discrete_jacobi(N; pcut=2, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)
-   @assert tin <= tcut
-   dt = (tcut - tin) / Nquad
-   @show dt
-   tdf = range(tin + dt/2, tcut - dt/2, length=Nquad)
+   tl, tr = minmax(tin, tcut)
+   dt = (tr - tl) / Nquad
+   tdf = range(tl + dt/2, tr - dt/2, length=Nquad)
    return OrthPolyBasis(N, pcut, tcut, pin, tin, tdf)
 end
+
+function transformed_jacobi(maxdeg::Integer,
+                            trans::DistanceTransform,
+                            rcut::Real, rin::Real = 0.0;
+                            kwargs...)
+   J =  discrete_jacobi(maxdeg; tcut = transform(trans, rcut),
+                                tin = transform(trans, rin),
+                                kwargs...)
+   return TransformedPolys(J, trans, rin, rcut)
+end
+
+
 
 
 end
