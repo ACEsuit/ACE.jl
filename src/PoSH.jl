@@ -15,7 +15,7 @@ include("pairpots/basis.jl")
 include("pairpots/calculator.jl")
 include("pairpots/repulsion.jl")
 
-# include("pairpots/orthpolys.jl")
+include("pairpots/orthpolys.jl")
 
 # specification of the angular basis
 include("sphericalharmonics.jl")
@@ -52,7 +52,8 @@ include("utils.jl")
 #       include("convertc2r.jl")
 #    end
 # end
-
+#  TODO: make conertc2r load only conditionally. The above seems to be
+#        incorrect, probably used Requires incorrectly? 
 include("extras/convertc2r.jl")
 
 end # module
