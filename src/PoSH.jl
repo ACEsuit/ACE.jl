@@ -60,7 +60,8 @@ include("utils.jl")
 #    end
 # end
 #  TODO: make conertc2r load only conditionally. The above seems to be
-#        incorrect, probably used Requires incorrectly? 
+#        incorrect, probably used Requires incorrectly?
 include("extras/convertc2r.jl")
+include("extras/compressA.jl") 
 
 end # module
