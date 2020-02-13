@@ -55,4 +55,64 @@ end
 
 ##
 
+@info("Check Correctness of SHIP gradients")
+for B in BB
+   @info("   body-order = $(PoSH.bodyorder(B))")
+   coeffs = randcoeffs(B)
+   ship = SHIP(B, coeffs)
+   @info("   converting to RSHIP ...")
+   rship = PoSH.convertc2r(ship)
+
+   Rs, Zs, z0 = randR(10)
+   tmp = PoSH.alloc_temp_d(rship, length(Rs))
+   dEs = zeros(JVecF, length(Rs))
+   evaluate_d!(dEs, tmp, rship, Rs, Zs, z0)
+   Es = evaluate!(tmp, rship, Rs, Zs, z0)
+   println(@test Es ≈ evaluate(rship, Rs, Zs, z0))
+   println(@test dEs ≈ evaluate_d(rship, Rs, Zs, z0))
+   @info("      Correctness of directional derivatives")
+   for ndir = 1:20
+      U = [rand(JVecF) .- 0.5 for _=1:length(Rs)]
+      errs = Float64[]
+      for p = 2:10
+         h = 0.1^p
+         dEs_U = dot(dEs, U)
+         dEs_h = (evaluate!(tmp, rship, Rs + h * U, Zs, z0) - Es) / h
+         push!(errs, abs(dEs_h - dEs_U))
+      end
+      success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+      print_tf(@test success)
+   end
+   println()
+end
+
+# ##
+# @info("Check Correctness of SHIP calculators")
+#
+# naive_energy(ship::SHIP, at) =
+#       sum( evaluate(ship, R, at.Z[j], at.Z[i])
+#             for (i, j, R) in sites(at, cutoff(ship)) )
+#
+# for B in BB
+#    @info("   body-order = $(PoSH.bodyorder(B))")
+#    coeffs = randcoeffs(B)
+#    ship = SHIP(B, coeffs)
+#    at = bulk(:Si) * 3
+#    at.Z[:] .= 0
+#    rattle!(at, 0.1)
+#    print("     energy: ")
+#    println(@test energy(ship, at) ≈ naive_energy(ship, at) )
+#    print("site-energy: ")
+#    println(@test energy(ship, at) ≈ sum( site_energy(ship, at, n)
+#                                          for n = 1:length(at) ) )
+#    println("forces: ")
+#    println(@test JuLIP.Testing.fdtest(ship, at))
+#    println("site-forces: ")
+#    println(@test JuLIP.Testing.fdtest( x -> site_energy(ship, set_dofs!(at, x), 3),
+#                                        x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
+#                                        dofs(at) ) )
+# end
+#
+
+
 end

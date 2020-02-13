@@ -17,7 +17,7 @@ import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!
 
 const JVec = SVector{3}
 
-export SHBasis, RSHBasis 
+export SHBasis, RSHBasis
 
 
 struct PseudoSpherical{T}
@@ -307,6 +307,44 @@ function cYlm!(Y, L, S::PseudoSpherical, P)
 end
 
 
+
+function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
+	@assert length(P) >= sizeP(L)
+	@assert length(Y) >= sizeY(L)
+	@assert length(dY) >= sizeY(L)
+   # @assert abs(S.cosθ) < 1.0
+
+	# m = 0 case
+	ep = 1 / sqrt(2)
+	for l = 0:L
+		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
+		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * ep)
+	end
+
+   sig = 1
+   ep_fact = S.cosφ + im * S.sinφ
+
+	for m in 1:L
+		sig *= -1
+		ep *= ep_fact            # ep =   exp(i *   m  * φ)
+		em = sig * conj(ep)      # ep = ± exp(i * (-m) * φ)
+		dep_dφ = im *   m  * ep
+		dem_dφ = im * (-m) * em
+		for l in m:L
+			p_div_sinθ = P[index_p(l,m)]
+			@inbounds Y[index_y(l, -m)] = em * p_div_sinθ * S.sinθ
+			@inbounds Y[index_y(l,  m)] = ep * p_div_sinθ * S.sinθ
+
+			dp_dθ = dP[index_p(l,m)]
+			@inbounds dY[index_y(l, -m)] = dspher_to_dcart(S, dem_dφ * p_div_sinθ, em * dp_dθ)
+			@inbounds dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p_div_sinθ, ep * dp_dθ)
+		end
+	end
+	# return Y, dY
+end
+
+
+
 function rYlm!(Y::AbstractVector{T}, L, S::PseudoSpherical, P) where {T <: Real}
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
@@ -337,41 +375,45 @@ function rYlm!(Y::AbstractVector{T}, L, S::PseudoSpherical, P) where {T <: Real}
 end
 
 
-
-function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
+function rYlm_d!(Y::AbstractVector{T}, dY,
+					  L, S::PseudoSpherical, P, dP) where {T <: Real}
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
-	@assert length(dY) >= sizeY(L)
-   # @assert abs(S.cosθ) < 1.0
+   @assert abs(S.cosθ) <= 1.0
 
-	# m = 0 case
-	ep = 1 / sqrt(2)
+   oort2 = 1 / sqrt(2)
 	for l = 0:L
-		Y[index_y(l, 0)] = P[index_p(l, 0)] * ep
-		# dY[index_y(l, 0)] = dspher_to_dcart_m0(S, dP[index_p(l, 0)] * ep)
-		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * ep)
+		Y[index_y(l, 0)] = P[index_p(l, 0)] * oort2
+		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * oort2)
 	end
 
    sig = 1
-   ep_fact = S.cosφ + im * S.sinφ
-
+	ec = 1.0 + 0 * im
+   ec_fact = S.cosφ + im * S.sinφ
+	drec_dφ = 0.0
 	for m in 1:L
-		sig *= -1
-		ep *= ep_fact            # ep =   exp(i *   m  * φ)
-		em = sig * conj(ep)      # ep = ± exp(i * (-m) * φ)
-		dep_dφ = im *   m  * ep
-		dem_dφ = im * (-m) * em
+		sig *= -1                # sig = (-1)^m
+		ec *= ec_fact            # ec = exp(i * m  * φ) / sqrt(2)
+		dec_dφ = im * m * ec
+
+		# cYlm = p * ec,    (also cYl{-m} = sig * p * conj(ec)), but not needed)
+		# rYlm    =  Re(cYlm)
+		# rYl{-m} = -Im(cYlm)
 		for l in m:L
 			p_div_sinθ = P[index_p(l,m)]
-			@inbounds Y[index_y(l, -m)] = em * p_div_sinθ * S.sinθ
-			@inbounds Y[index_y(l,  m)] = ep * p_div_sinθ * S.sinθ
+			p = p_div_sinθ * S.sinθ
+			Y[index_y(l, -m)] = -p * imag(ec)
+			Y[index_y(l,  m)] =  p * real(ec)
 
 			dp_dθ = dP[index_p(l,m)]
-			@inbounds dY[index_y(l, -m)] = dspher_to_dcart(S, dem_dφ * p_div_sinθ, em * dp_dθ)
-			@inbounds dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p_div_sinθ, ep * dp_dθ)
+			dY[index_y(l, -m)] = dspher_to_dcart(S, - imag(dec_dφ) * p_div_sinθ,
+															    - imag(ec) * dp_dθ)
+			dY[index_y(l,  m)] = dspher_to_dcart(S,   real(dec_dφ) * p_div_sinθ,
+															      real(ec) * dp_dθ)
 		end
 	end
-	# return Y, dY
+
+	return dY
 end
 
 
@@ -435,6 +477,9 @@ alloc_temp_d(SH::AbstractSHBasis{T}, args...) where {T} = (
 _evaluate!(Y, L, S, P, ::SHBasis) = cYlm!(Y, L, S, P)
 _evaluate!(Y, L, S, P, ::RSHBasis) = rYlm!(Y, L, S, P)
 
+_evaluate_d!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_d!(Y, dY, L, S, P, dP)
+_evaluate_d!(Y, dY, L, S, P, dP, ::RSHBasis) = rYlm_d!(Y, dY, L, S, P, dP)
+
 function evaluate!(Y, tmp, SH::AbstractSHBasis, R::JVec)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
@@ -446,7 +491,7 @@ function evaluate!(Y, tmp, SH::AbstractSHBasis, R::JVec)
 end
 
 
-function evaluate_d!(Y, dY, tmp, SH::SHBasis, R::JVec)
+function evaluate_d!(Y, dY, tmp, SH::AbstractSHBasis, R::JVec)
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
@@ -455,7 +500,7 @@ function evaluate_d!(Y, dY, tmp, SH::SHBasis, R::JVec)
 	# end
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
-	cYlm_d!(Y, dY, L, S, tmp.P, tmp.dP)
+	_evaluate_d!(Y, dY, L, S, tmp.P, tmp.dP, SH)
 	# return Y, dY
 end
 
