@@ -10,6 +10,7 @@
 using Combinatorics: permutations
 using LinearAlgebra: svd
 
+const RCSHIP{T, NZ} = Union{SHIP{T, NZ}, RSHIP{T, NZ}}
 
 function delete_rows(A::Matrix{T}, Idel) where {T}
    Idel = [sort(unique(Idel)); size(A,1)+1]
@@ -27,7 +28,7 @@ function delete_rows(A::Matrix{T}, Idel) where {T}
    return B
 end
 
-function remove_zeros!(ship::SHIP{T, NZ}; tol=1e-10) where {T, NZ}
+function remove_zeros!(ship::RCSHIP{T, NZ}; tol=1e-10) where {T, NZ}
    @assert NZ == 1
    Idel = sort(findall(abs.(ship.coeffs[1]) .< tol))
    ship2 = deepcopy(ship)
@@ -43,7 +44,7 @@ function remove_zeros!(ship::SHIP{T, NZ}; tol=1e-10) where {T, NZ}
 end
 
 
-function _eval_AA(ship::SHIP{T,NZ}, alist, aalist, Iaa, Rs) where {T, NZ}
+function _eval_AA(ship::RCSHIP{T,NZ}, alist, aalist, Iaa, Rs) where {T, NZ}
    @assert NZ ==  1
    Zs = zeros(Int16, length(Rs))
    A = PoSH.alloc_A(alist)
