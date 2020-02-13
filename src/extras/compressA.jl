@@ -11,6 +11,8 @@ using Combinatorics: permutations
 using LinearAlgebra: svd
 
 const RCSHIP{T, NZ} = Union{SHIP{T, NZ}, RSHIP{T, NZ}}
+celtype(ship::SHIP{T}) where {T}  = Complex{T}
+celtype(ship::RSHIP{T}) where {T} = T
 
 function delete_rows(A::Matrix{T}, Idel) where {T}
    Idel = [sort(unique(Idel)); size(A,1)+1]
@@ -47,10 +49,10 @@ end
 function _eval_AA(ship::RCSHIP{T,NZ}, alist, aalist, Iaa, Rs) where {T, NZ}
    @assert NZ ==  1
    Zs = zeros(Int16, length(Rs))
-   A = PoSH.alloc_A(alist)
    tmp = PoSH.alloc_temp(ship, length(Rs))
+   A = tmp.A[1]
    PoSH.precompute_A!(A, tmp, alist, Rs, Zs, ship)
-   AA = ones(Complex{T}, length(Iaa))
+   AA = ones(celtype(ship), length(Iaa))
    for i = 1:length(Iaa)
       for α = 1:aalist.len[Iaa[i]]
          AA[i] *= A[ aalist.i2Aidx[Iaa[i], α] ]
@@ -59,10 +61,10 @@ function _eval_AA(ship::RCSHIP{T,NZ}, alist, aalist, Iaa, Rs) where {T, NZ}
    return AA
 end
 
-function _sample_AA(ship::SHIP{T,NZ}, alist, aalist, Iaa,
+function _sample_AA(ship::RCSHIP{T,NZ}, alist, aalist, Iaa,
                     nsamples=length(Iaa)*10) where {T, NZ}
    N = aalist.len[Iaa[1]]
-   AA = zeros(Complex{T}, nsamples, length(Iaa))
+   AA = zeros(celtype(ship), nsamples, length(Iaa))
    for ns = 1:nsamples
       Rs = PoSH.Utils.rand(ship.J, N)
       AA[ns, :] = _eval_AA(ship, alist, aalist, Iaa, Rs)
@@ -106,7 +108,7 @@ end
 
 permute_AA(t, σ) = ( t[1][σ], t[2][σ], t[3][σ], t[4][σ] )
 
-function compressA(ship::SHIP{T, NZ};
+function compressA(ship::RCSHIP{T, NZ};
                    ) where{T, NZ}
    @assert NZ == 1   # TODO: obviously we need to turn this off
 
