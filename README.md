@@ -1,16 +1,20 @@
-# SHIPs.jl
+# PoSH.jl
 
-An implementation of rotation and permutation invariant function approximation
-using a spherical harmonics basis, based on
+[![Build Status](https://travis-ci.com/cortner/PoSH.jl.svg?branch=master)](https://travis-ci.com/cortner/PoSH.jl)
+
+[![Codecov](https://codecov.io/gh/cortner/PoSH.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/cortner/PoSH.jl)
+
+
+Approximation schemes built from symmetric polynomials, using spherical harmonics to enforce rotation invariance.
+
+The main scheme currently implemented is based on the Atomic Cluster Expansion (ACE) described in
 
    Drautz, R.: Atomic cluster expansion for accurate and transferable interatomic potentials. Phys. Rev. B Condens. Matter. 99, 014104 (2019). doi:10.1103/PhysRevB.99.014104
 
 
-[![Build Status](https://travis-ci.com/cortner/SHIPs.jl.svg?branch=master)](https://travis-ci.com/cortner/SHIPs.jl)
-[![Codecov](https://codecov.io/gh/cortner/SHIPs.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/cortner/SHIPs.jl)
-
-
 ---
+
+note: this repository builds `PoSH.jl` but incorporates multiple extensions, which will be documented in due course.
 
 ## Refactoring of Internals
 
@@ -94,7 +98,7 @@ for i = 1:length(aalist)
 end
 ```
 
-### Bˢⁱ_𝐳𝐤𝐥 (`basis.jl` -> `eval_basis!`)
+### Bˢⁱ_𝐳𝐤𝐥 (`basis.jl` -> `evaluate!`)
 
 To define the Bˢⁱ_𝐳𝐤𝐥, we precompute the rotation-coefficients and the assemble
 them into a sparse matrix. To be specific, for each species z, we compute
@@ -127,9 +131,9 @@ The `Jn(x)` only form the starting point. To construct the `r`-basis, we transfo
 
 ### Spherical Harmonics
 
-We implement standard complex spherical harmonics; our code is a straightforward modification of [SphericalHarmonics.jl](https://github.com/milthorpe/SphericalHarmonics.jl), including fixing some type instabilities for speed. This package follows the same design principle as most of the `SHIPs.jl` code of using buffer arrays for various precomputations and fast computation of multiple basis functions at the same time.
+We implement standard complex spherical harmonics; our code is a straightforward modification of [SphericalHarmonics.jl](https://github.com/milthorpe/SphericalHarmonics.jl), including fixing some type instabilities for speed. This package follows the same design principle as most of the `PoSH.jl` code of using buffer arrays for various precomputations and fast computation of multiple basis functions at the same time.
 
-There is another spherical harmonics package which we did not know about when starting to write `SHIPs.jl` but which we should look at to see whether it contains useful ideas [SphericalHarmonics.jl](https://github.com/hofmannmartin/SphericalHarmonics.jl).
+There is another spherical harmonics package which we did not know about when starting to write `PoSH.jl` but which we should look at to see whether it contains useful ideas [SphericalHarmonics.jl](https://github.com/hofmannmartin/SphericalHarmonics.jl).
 
 ### `SHIPBasis`
 
