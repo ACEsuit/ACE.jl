@@ -8,13 +8,12 @@
 
 
 using JuLIP:               decode_dict
-using SHIPs.JacobiPolys:   Jacobi
+using PoSH.JacobiPolys:   Jacobi
 
 import Base:   Dict, convert, ==
 import JuLIP:  cutoff
 
-export PolyTransform, rbasis, PolyCutoff1s, PolyCutoff2s,
-       PolyTransformCut
+export PolyTransform, PolyCutoff1s, PolyCutoff2s
 
 
 
@@ -47,11 +46,11 @@ struct PolyTransform{TP, T} <: DistanceTransform
 end
 
 Dict(T::PolyTransform) =
-   Dict("__id__" => "SHIPs_PolyTransform", "p" => T.p, "r0" => T.r0)
+   Dict("__id__" => "PoSH_PolyTransform", "p" => T.p, "r0" => T.r0)
 
 PolyTransform(D::Dict) = PolyTransform(D["p"], D["r0"])
 
-convert(::Val{:SHIPs_PolyTransform}, D::Dict) = PolyTransform(D)
+convert(::Val{:PoSH_PolyTransform}, D::Dict) = PolyTransform(D)
 
 transform(t::PolyTransform, r::Number) = poly_trans(t.p, t.r0, r)
 
@@ -60,47 +59,47 @@ transform_d(t::PolyTransform, r::Number) = poly_trans_d(t.p, t.r0, r)
 inv_transform(t::PolyTransform, x::Number) = poly_trans_inv(t.p, t.r0, x)
 
 
-"""
-Implements the distance transform
-```
-r -> ( (1+r0)/(1+r))^p - c0 - c1 (r - rcut)
-```
-
-Constructor:
-```
-PolyTransformCut(p, r0)
-```
-"""
-struct PolyTransformCut{TP, T} <: DistanceTransformCut
-   p::TP
-   r0::T
-   c0::T
-   c1::T
-   rcut::T
-end
-
-Dict(T::PolyTransformCut) =
-   Dict("__id__" => "SHIPs_PolyTransform",
-        "p" => T.p, "r0" => T.r0, "rcut" => rcut)
-
-PolyTransformCut(D::Dict) = PolyTransformCut(D["p"], D["r0"], D["rcut"])
-
-convert(::Val{:SHIPs_PolyTransformCut}, D::Dict) = PolyTransformCut(D)
-
-
-transform(t::PolyTransformCut, r::Number) =
-       (poly_trans(t.p, t.r0, r) + t.c0 + t.c1 * (r - t.rcut)) * (r < t.rcut)
-
-transform_d(t::PolyTransformCut, r::Number) =
-       (poly_trans_d(t.p, t.r0, r) + t.c1) * (r < t.rcut)
-
-function PolyTransformCut(p, r0, rcut)
-   c0 = - poly_trans(p, r0, rcut)
-   c1 = - poly_trans_d(p, r0, rcut)
-   return PolyTransformCut(p, r0, c0, c1, rcut)
-end
-
-cutoff(trans::PolyTransformCut) = trans.rcut
+# """
+# Implements the distance transform
+# ```
+# r -> ( (1+r0)/(1+r))^p - c0 - c1 (r - rcut)
+# ```
+#
+# Constructor:
+# ```
+# PolyTransformCut(p, r0)
+# ```
+# """
+# struct PolyTransformCut{TP, T} <: DistanceTransformCut
+#    p::TP
+#    r0::T
+#    c0::T
+#    c1::T
+#    rcut::T
+# end
+#
+# Dict(T::PolyTransformCut) =
+#    Dict("__id__" => "PolyPairPots_PolyTransform",
+#         "p" => T.p, "r0" => T.r0, "rcut" => rcut)
+#
+# PolyTransformCut(D::Dict) = PolyTransformCut(D["p"], D["r0"], D["rcut"])
+#
+# convert(::Val{:PolyPairPots_PolyTransformCut}, D::Dict) = PolyTransformCut(D)
+#
+#
+# transform(t::PolyTransformCut, r::Number) =
+#        (poly_trans(t.p, t.r0, r) + t.c0 + t.c1 * (r - t.rcut)) * (r < t.rcut)
+#
+# transform_d(t::PolyTransformCut, r::Number) =
+#        (poly_trans_d(t.p, t.r0, r) + t.c1) * (r < t.rcut)
+#
+# function PolyTransformCut(p, r0, rcut)
+#    c0 = - poly_trans(p, r0, rcut)
+#    c1 = - poly_trans_d(p, r0, rcut)
+#    return PolyTransformCut(p, r0, c0, c1, rcut)
+# end
+#
+# cutoff(trans::PolyTransformCut) = trans.rcut
 
 
 
@@ -129,10 +128,10 @@ PolyCutoff1s(p::Integer, ru) = PolyCutoff1s(Val(Int(p)), 0.0, ru)
 PolyCutoff1s(p::Integer, rl, ru) = PolyCutoff1s(Val(Int(p)), rl, ru)
 
 Dict(C::PolyCutoff1s{P}) where {P} =
-   Dict("__id__" => "SHIPs_PolyCutoff1s",
+   Dict("__id__" => "PoSH_PolyCutoff1s",
         "P" => P, "rl" => C.rl, "ru" => C.ru)
 PolyCutoff1s(D::Dict) = PolyCutoff1s(D["P"], D["rl"],  D["ru"])
-convert(::Val{:SHIPs_PolyCutoff1s}, D::Dict) = PolyCutoff1s(D)
+convert(::Val{:PoSH_PolyCutoff1s}, D::Dict) = PolyCutoff1s(D)
 
 # what happened to @pure ??? => not exported anymore
 fcut(C::PolyCutoff1s{P}, r::T, x::T) where {P, T} =
@@ -163,10 +162,10 @@ end
 PolyCutoff2s(p::Integer, rl, ru) = PolyCutoff2s(Val(Int(p)), rl, ru)
 
 Dict(C::PolyCutoff2s{P}) where {P} =
-   Dict("__id__" => "SHIPs_PolyCutoff2s", "P" => P,
+   Dict("__id__" => "PoSH_PolyCutoff2s", "P" => P,
         "rl" => C.rl, "ru" => C.ru)
 PolyCutoff2s(D::Dict) = PolyCutoff2s(D["P"], D["rl"], D["ru"])
-convert(::Val{:SHIPs_PolyCutoff2s}, D::Dict) = PolyCutoff2s(D)
+convert(::Val{:PoSH_PolyCutoff2s}, D::Dict) = PolyCutoff2s(D)
 
 fcut(C::PolyCutoff2s{P}, r::T, x) where {P, T} =
       C.rl < r < C.ru ? @fastmath( (1 - x^2)^P ) : zero(T)
@@ -186,7 +185,7 @@ fcut_d(C::OneCutoff, r, x) = zero(r)
 # ------------------------------
 # these define the radial components of the polynomials
 
-struct TransformedJacobi{T, TT, TM}
+struct TransformedJacobi{T, TT, TM} <: PoSH.IPBasis
    J::Jacobi{T}
    trans::TT      # coordinate transform
    mult::TM       # a multiplier function (cutoff)
@@ -208,7 +207,7 @@ TransformedJacobi(J, trans, mult, rl, ru) =
                      transform(trans, rl), transform(trans, ru) )
 
 Dict(J::TransformedJacobi) = Dict(
-      "__id__" => "SHIPs_TransformedJacobi",
+      "__id__" => "PoSH_TransformedJacobi",
       "a" => J.J.α,
       "b" => J.J.β,
       "deg" => length(J.J) - 1,
@@ -229,7 +228,7 @@ TransformedJacobi(D::Dict) =
       D["ru"]
    )
 
-convert(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
+convert(::Val{:PoSH_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
 
 
 Base.length(J::TransformedJacobi) = length(J.J)
@@ -243,13 +242,15 @@ corr_transform(J::TransformedJacobi, r) =
 fcut(J::TransformedJacobi, r, x) = fcut(J.mult, r, x)
 fcut_d(J::TransformedJacobi, r, x) = fcut_d(J.mult, r, x)
 
-SHIPs.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
+PoSH.alloc_B( J::TransformedJacobi{T}, args...) where {T} =
       Vector{T}(undef, length(J))
 
-SHIPs.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
+PoSH.alloc_dB(J::TransformedJacobi{T}, args...) where {T} =
       Vector{T}(undef, length(J))
 
-function eval_basis!(P, tmp, J::TransformedJacobi, r)
+function evaluate!(P, tmp, J::TransformedJacobi, r)
+   N = length(J)-1
+   @assert length(P) >= N+1
    # transform coordinates
    t = transform(J.trans, r)
    x = -1 + 2 * (t - J.tl) / (J.tu-J.tl)
@@ -267,7 +268,7 @@ function eval_basis!(P, tmp, J::TransformedJacobi, r, x, fc)
       fill!(P, 0.0)
    else
       # evaluate the actual Jacobi polynomials
-      eval_basis!(P, nothing, J.J, x)
+      evaluate!(P, nothing, J.J, x)
       for n = 1:N+1
          @inbounds P[n] *= fc
       end
@@ -275,7 +276,7 @@ function eval_basis!(P, tmp, J::TransformedJacobi, r, x, fc)
    return P
 end
 
-function eval_basis_d!(P, dP, tmp, J::TransformedJacobi, r)
+function evaluate_d!(P, dP, tmp, J::TransformedJacobi, r)
    N = length(J)-1
    @assert length(P) >= N+1
    # transform coordinates
@@ -290,7 +291,7 @@ function eval_basis_d!(P, dP, tmp, J::TransformedJacobi, r)
    else
       fc_d = fcut_d(J, r, x) * sqrt(abs(2 / (J.tu-J.tl)))
       # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-      eval_basis_d!(P, dP, nothing, J.J, x)
+      evaluate_d!(P, dP, nothing, J.J, x)
       for n = 1:N+1
          @inbounds p = P[n]
          @inbounds dp = dP[n]
@@ -320,3 +321,66 @@ TransformedJacobi(maxdeg::Integer,
       TransformedJacobi( Jacobi(0, 0, maxdeg, skip0=true), trans,
                          OneCutoff(cutoff(trans)),
                          rl, cutoff(trans))
+
+
+
+
+struct TransformedPolys{T, TT, TJ} <: IPBasis
+   J::TJ          # the actual basis
+   trans::TT      # coordinate transform
+   rl::T          # lower bound r
+   ru::T          # upper bound r = rcut
+end
+
+==(J1::TransformedPolys, J2::TransformedPolys) = (
+   (J1.J == J2.J) &&
+   (J1.trans == J2.trans) &&
+   (J1.rl == J2.rl) &&
+   (J1.ru == J2.ru) )
+
+TransformedPolys(J, trans, rl, ru) =
+   TransformedPolys(J, trans, rl, ru)
+
+Dict(J::TransformedPolys) = Dict(
+      "__id__" => "PoSH_TransformedPolys",
+      "J" => Dict(J.J),
+      "rl" => J.rl,
+      "ru" => J.ru,
+      "trans" => Dict(J.trans)
+   )
+
+TransformedPolys(D::Dict) =
+   TransformedPolys(
+      decode_dict(D["J"]),
+      decode_dict(D["trans"]),
+      D["rl"],
+      D["ru"]
+   )
+
+convert(::Val{:PoSH_TransformedPolys}, D::Dict) = TransformedPolys(D)
+
+
+Base.length(J::TransformedPolys) = length(J.J)
+
+cutoff(J::TransformedPolys) = J.ru
+
+alloc_B( J::TransformedPolys, args...) = alloc_B( J.J, args...)
+alloc_dB(J::TransformedPolys, args...) = alloc_dB(J.J, args...)
+
+function evaluate!(P, tmp, J::TransformedPolys, r)
+   # transform coordinates
+   t = transform(J.trans, r)
+   # evaluate the actual Jacobi polynomials
+   evaluate!(P, nothing, J.J, t)
+   return P
+end
+
+function evaluate_d!(P, dP, tmp, J::TransformedPolys, r)
+   # transform coordinates
+   t = transform(J.trans, r)
+   dt = transform_d(J.trans, r)
+   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
+   evaluate_d!(P, dP, nothing, J.J, t)
+   @. dP *= dt
+   return dP
+end

@@ -12,11 +12,11 @@
 
 
 @info("-------- TEST 🚢  Multi-Species-Basis ---------")
-using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using SHIPs: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
+using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using PoSH:  PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
-using JuLIP.Potentials: evaluate, evaluate_d
+using JuLIP: evaluate!, evaluate, evaluate_d, evaluate_d!
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -72,6 +72,8 @@ ship4 = SHIPBasis(SparseSHIP([1,2], 4,  6, wL=1.5), trans, cutf)
 ship5 = SHIPBasis(SparseSHIP([1,2], 5,  5, wL=1.5), trans, cutf)
 ships = [ship2, ship3, ship4, ship5]
 
+##
+
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships
    println(@test (decode_dict(Dict(ship)) == ship))
@@ -80,14 +82,14 @@ end
 
 Rs, Zs, iz = randR(20, (1,2))
 🚢 = ship3
-eval_basis(🚢, Rs, Zs, iz)
+evaluate(🚢, Rs, Zs, iz)
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:20
    Rs, Zs, iz = randR(20, (1,2))
-   BB = [ eval_basis(🚢, Rs, Zs, iz) for 🚢 in ships ]
+   BB = [ evaluate(🚢, Rs, Zs, iz) for 🚢 in ships ]
    RsX, ZsX = randiso(Rs, Zs)
-   BBX = [ eval_basis(🚢, RsX, ZsX, iz) for 🚢 in ships ]
+   BBX = [ evaluate(🚢, RsX, ZsX, iz) for 🚢 in ships ]
    for (B, BX) in zip(BB, BBX)
       print_tf(@test B ≈ BX)
    end
@@ -99,20 +101,20 @@ println()
 
 @info("Test gradients for 3-6B 🚢-basis")
 for 🚢 in ships
-   @info("  body-order = $(SHIPs.bodyorder(🚢)):")
+   @info("  body-order = $(PoSH.bodyorder(🚢)):")
    Rs, Zs, z = randR(20, (1,2))
-   tmp = SHIPs.alloc_temp_d(🚢, Rs)
-   # SHIPs.precompute_dA!(tmp, 🚢, Rs, Zs)
-   B = eval_basis(🚢, Rs, Zs, z)
-   dB = SHIPs.alloc_dB(🚢, Rs)
-   SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, z)
+   tmp = PoSH.alloc_temp_d(🚢, Rs)
+   # PoSH.precompute_dA!(tmp, 🚢, Rs, Zs)
+   B = evaluate(🚢, Rs, Zs, z)
+   dB = PoSH.alloc_dB(🚢, Rs)
+   evaluate_d!(dB, tmp, 🚢, Rs, Zs, z)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us, _ = randR(length(Rs))
       errs = Float64[]
       for p = 2:10
          h = 0.1^p
-         Bh = eval_basis(🚢, Rs+h*Us, Zs, z)
+         Bh = evaluate(🚢, Rs+h*Us, Zs, z)
          dBh = (Bh - B) / h
          dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
          push!(errs, norm(dBh - dBxU, Inf))
@@ -131,11 +133,11 @@ end
 randcoeffs(B) = 2 * (rand(length(B)) .- 0.5) .* (1:length(B)).^(-2)
 
 m_naive_energy(basis::SHIPBasis, at) =
-      sum( eval_basis(basis, R, at.Z[j], at.Z[i])
+      sum( evaluate(basis, R, at.Z[j], at.Z[i])
             for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships
-   @info("   body-order = $(SHIPs.bodyorder(basis))")
+   @info("   body-order = $(PoSH.bodyorder(basis))")
    at = bulk(:Si) * 3
    at.Z[:] .= 1
    at.Z[2:2:end] .= 2
@@ -170,18 +172,18 @@ shipsB = ships
 
 @info("Testing correctness of `SHIP` against `SHIPBasis`")
 for B in shipsB
-   @info("   bodyorder = $(SHIPs.bodyorder(B))")
+   @info("   bodyorder = $(PoSH.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   test (de-)dictionisation")
    println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
-   tmp = SHIPs.alloc_temp(ship, 0)
+   tmp = PoSH.alloc_temp(ship, 0)
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
       Rs, Zs, z0 = randR(10, (1,2))
-      Es = SHIPs.evaluate!(tmp, ship, Rs, Zs, z0)
-      Bs = dot(coeffs, SHIPs.eval_basis(B, Rs, Zs, z0))
+      Es = evaluate!(tmp, ship, Rs, Zs, z0)
+      Bs = dot(coeffs, evaluate(B, Rs, Zs, z0))
       print_tf(@test Es ≈ Bs)
    end
    println()
@@ -189,11 +191,11 @@ for B in shipsB
    # @info("      Quick timing test")
    # Nr = 30
    # Rs, Zs, z0 = randR(Nr, (1,2))
-   # b = SHIPs.alloc_B(B)
-   # tmp = SHIPs.alloc_temp(ship, Nr)
-   # tmpB = SHIPs.alloc_temp(B, Nr)
-   # print("       SHIPBasis : "); @btime SHIPs.eval_basis!($b, $tmpB, $B, $Rs, $Zs, $z0)
-   # print("            SHIP : "); @btime SHIPs.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
+   # b = PoSH.alloc_B(B)
+   # tmp = PoSH.alloc_temp(ship, Nr)
+   # tmpB = PoSH.alloc_temp(B, Nr)
+   # print("       SHIPBasis : "); @btime evaluate!($b, $tmpB, $B, $Rs, $Zs, $z0)
+   # print("            SHIP : "); @btime evaluate!($tmp, $ship, $Rs, $Zs, $z0)
    # println()
 end
 
@@ -201,14 +203,14 @@ end
 ##
 @info("Check Correctness of SHIP gradients")
 for B in shipsB
-   @info("   body-order = $(SHIPs.bodyorder(B))")
+   @info("   body-order = $(PoSH.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    Rs, Zs, z0 = randR(10, (1,2))
-   tmp = SHIPs.alloc_temp_d(ship, length(Rs))
+   tmp = PoSH.alloc_temp_d(ship, length(Rs))
    dEs = zeros(JVecF, length(Rs))
-   SHIPs.evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
-   Es = SHIPs.evaluate!(tmp, ship, Rs, Zs, z0)
+   evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
+   Es = evaluate!(tmp, ship, Rs, Zs, z0)
    println(@test Es ≈ evaluate(ship, Rs, Zs, z0))
    println(@test dEs ≈ evaluate_d(ship, Rs, Zs, z0))
    @info("      Correctness of directional derivatives")
@@ -218,7 +220,7 @@ for B in shipsB
       for p = 2:10
          h = 0.1^p
          dEs_U = dot(dEs, U)
-         dEs_h = (SHIPs.evaluate!(tmp, ship, Rs + h * U, Zs, z0) - Es) / h
+         dEs_h = (evaluate!(tmp, ship, Rs + h * U, Zs, z0) - Es) / h
          push!(errs, abs(dEs_h - dEs_U))
       end
       success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
@@ -236,7 +238,7 @@ m_naive_energy(ship::SHIP, at) =
             for (i, j, R) in sites(at, cutoff(ship)) )
 
 for B in shipsB
-   @info("   body-order = $(SHIPs.bodyorder(B))")
+   @info("   body-order = $(PoSH.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    at = bulk(:Si) * 3
@@ -255,6 +257,17 @@ for B in shipsB
                                        x -> mat(site_energy_d(ship, set_dofs!(at, x), 3))[:],
                                        dofs(at) ) )
 end
+
+##
+
+@info("Multi-species filtering test")
+trans = PolyTransform(2, 1.0)
+cutf = PolyCutoff2s(2, 0.5, 3.0)
+ship = SHIPBasis(SparseSHIP((1, 2), 5,  6; wL = 1.0), trans, cutf, filter=false)
+@show maxgrp = maximum(PoSH.alllen_bgrp(ship, 1))
+@time fship = PoSH.alg_filter_rpi_basis(ship)
+@show length(fship), length(ship)
+println(@test length(fship) < length(ship))
 
 ##
 

@@ -7,13 +7,13 @@
 
 
 
-using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra
-using SHIPs: _mrange
+using PoSH, PoSH.SphericalHarmonics, StaticArrays, LinearAlgebra
+using PoSH: _mrange
 
 module RotationCoeffs
 
-   using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra
-   using SHIPs: _mrange
+   using PoSH, PoSH.SphericalHarmonics, StaticArrays, LinearAlgebra
+   using PoSH: _mrange
 
    struct CoeffArray{NMAX}
       vals::SVector{NMAX, Dict}

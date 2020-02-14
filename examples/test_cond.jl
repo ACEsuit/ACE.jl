@@ -9,10 +9,11 @@
 @info("Testing conditioning of non-orth 3B SHIP Basis")
 
 using Test
-using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
-using SHIPs: TransformedJacobi, transform, transform_d, eval_basis!,
+using PoSH, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, PoSH.JacobiPolys
+using PoSH: TransformedJacobi, transform, transform_d, 
              alloc_B, alloc_temp
 
+import JuLIP: evaluate!
 ##
 
 get_IN(N) = collect((shpB.idx_Bll[N][1]+1):(shpB.idx_Bll[N][end]+shpB.len_Bll[N][end]))
@@ -26,8 +27,8 @@ function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000, normalise = false)
    lenB = length(IN)
    G = zeros(Float64, lenB, lenB)
    for n = 1:Nsamples
-      Rs = SHIPs.Utils.rand(shpB.J, N)
-      eval_basis!(B, tmp, shpB, Rs, Zs, 0)
+      Rs = PoSH.Utils.rand(shpB.J, N)
+      evaluate!(B, tmp, shpB, Rs, Zs, 0)
       for j = 1:lenB
          Bj = B[IN[j]]'
          @simd for i = 1:lenB

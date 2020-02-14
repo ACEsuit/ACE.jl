@@ -10,8 +10,8 @@ module Rotations
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
-using SHIPs: _mrange, IntS
-using SHIPs.SphericalHarmonics: index_y
+using PoSH: _mrange, IntS
+using PoSH.SphericalHarmonics: index_y
 
 export ClebschGordan, CoeffArray, single_B
 
@@ -219,8 +219,6 @@ end
 
 
 _len_mrange(ll) = sum(_ -> 1, _mrange(ll))
-_len_mrange_sorted(ll) = sum(mm -> issorted(mm), _mrange(ll))
-
 
 function basis(A::CoeffArray{T}, ll; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
@@ -238,7 +236,8 @@ compute_Al(A::CoeffArray, ll::SVector{N}; ordered = false) where {N} =
 
 # unordered
 function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
-	num_mm_sorted = _len_mrange_sorted(ll)
+	num_mm_sorted = sum(mm -> issorted(mm), _mrange(ll))
+	@show num_mm_sorted
 	num_mm = _len_mrange(ll)
    CC = zeros(T, num_mm, num_mm_sorted)
 	im = 0

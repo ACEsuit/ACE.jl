@@ -5,25 +5,32 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using SHIPs
+using PoSH
 using Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools, Test
 using JuLIP, JuLIP.Testing
-using JuLIP.Potentials: evaluate!, evaluate_d!, evaluate, evaluate_d
-using SHIPs: PolyTransform, PolyCutoff1s, PolyCutoff2s, eval_basis
+using JuLIP: evaluate!, evaluate_d!, evaluate, evaluate_d
+using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s
 
-@testset "SHIPs.jl" begin
-    include("test_jacobi.jl")
-    include("test_transforms.jl")
+##
+
+@testset "PoSH.jl" begin
+    include("pairpots/test_jacobi.jl")
+    include("pairpots/test_transforms.jl")
+    include("pairpots/test_basics.jl")
+    include("pairpots/test_repulsion.jl")
+    include("pairpots/test_orthpolys.jl")
+    # ----------------------
     include("test_ylm.jl")
+    include("test_rylm.jl")
     include("test_cg.jl")
+    # ----------------------
     include("test_basis.jl")
+    include("test_filter_rpi_alg.jl")
     include("test_fast.jl")
+    include("test_real.jl")
     include("test_multispecies.jl")
     include("test_orth.jl")
     include("test_descriptor.jl")
+    # ----------------------
+    include("test_compressA.jl")
 end
-
-# TODO: this test needs to be rewritten!
-#       but maybe it is no longer needed? The rotation-invariance tests
-#       somehow take care of it???
-# include("test_Bcoeffs.jl")

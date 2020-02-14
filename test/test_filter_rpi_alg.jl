@@ -13,7 +13,7 @@ using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using PoSH: PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
-using JuLIP: evaluate!, evaluate,
+using JuLIP: evaluate!, evaluate
 using Printf
 
 function randR()
@@ -37,8 +37,8 @@ end
 @info("Construct a 5B 🚢")
 trans = PolyTransform(2, 1.0)
 cutf = PolyCutoff2s(2, 0.5, 3.0)
-ship = SHIPBasis(SparseSHIP(5,  12; wL = 1.5), trans, cutf,
-                                    filter=false)
+ship = SHIPBasis(SparseSHIP(5,  12; wL = 1.5), trans, cutf, filter=false)
+
 
 ##
 @info("Select a basis group and show it doesn't have full rank:")
@@ -47,6 +47,7 @@ maxgrp = maximum(PoSH.alllen_bgrp(ship, 1))
 igrp = findfirst(PoSH.alllen_bgrp(ship, 1) .== maxgrp)
 Igrp = PoSH.I_bgrp(ship, igrp, 1)
 
+@info("First sample the basis numerically to get the gramian")
 G = zeros(length(Igrp), length(Igrp))
 nsamples = 100 * length(Igrp)
 Zs = zeros(PoSH.IntS, 5)
@@ -59,12 +60,26 @@ end
 
 println(@test rank(G) < maxgrp)
 @show rk = rank(G)
-
 @show svd(G).S
 
-##
-@info("Now filter that basis and show that this basis group has reduced to length 1")
+@info("now do it algebraically:")
+U = ship.A2B[1][Igrp, :]
+zkl = ship.bgrps[1][igrp]
+G_alg = PoSH._algebraic_gramian(ship, zkl, Igrp, U, 1)
+rk_alg = rank(G_alg)
+println(@test rk == rk_alg)
+@show rank(G_alg)
 
-fship = PoSH.filter_rpi_basis(ship, 1_000)
+@info("check that the two schemes give the same space")
+S = svd(G)
+S_alg = svd(G_alg)
+U = S.U[:, 1:rk]
+U_alg = S.U[:, 1:rk]
+println(@test rank([U U_alg]) == rk)
+
+##
+@info("Now filter that basis and show that this basis group has reduced to the correct length")
+
+@time fship = PoSH.alg_filter_rpi_basis(ship)
 println(@test PoSH.len_bgrp(fship, igrp, 1) == rk)
 @show length(ship), length(fship)

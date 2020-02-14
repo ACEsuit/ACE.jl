@@ -11,11 +11,12 @@
 ##
 
 @info("-------- TEST 🚢  BASIS ---------")
-using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using SHIPs: eval_basis!, eval_basis, PolyCutoff1s, PolyCutoff2s
+using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using PoSH: PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
 using Printf
+using JuLIP: evaluate!, evaluate, evaluate_d!, evaluate_d
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -47,15 +48,18 @@ ships = [ship2, ship3, ship4, ship5, ship6]
 
 @info("Test (de-)dictionisation of basis sets")
 for ship in ships
-   println(@test (decode_dict(Dict(ship)) == ship))
+   print_tf(@test (decode_dict(Dict(ship)) == ship))
+   tmpf = tempname() * ".json"
+   save_json(tmpf, Dict(ship))
+   print_tf(@test decode_dict(load_json(tmpf)) == ship)
 end
 
 @info("Test isometry invariance for 3B-6B 🚢 s")
 for ntest = 1:30
    Rs, Zs = randR(20)
-   BB = [ eval_basis(🚢, Rs, Zs, 0) for 🚢 in ships ]
+   BB = [ evaluate(🚢, Rs, Zs, 0) for 🚢 in ships ]
    RsX = randiso(Rs)
-   BBX = [ eval_basis(🚢, RsX, Zs, 0) for 🚢 in ships ]
+   BBX = [ evaluate(🚢, RsX, Zs, 0) for 🚢 in ships ]
    for (B, BX) in zip(BB, BBX)
       print_tf(@test B ≈ BX)
    end
@@ -65,20 +69,20 @@ println()
 ##
 @info("Test gradients for 3-6B 🚢-basis")
 for 🚢 in ships
-   @info("  body-order = $(SHIPs.bodyorder(🚢)):")
+   @info("  body-order = $(PoSH.bodyorder(🚢)):")
    Rs, Zs = randR(20)
-   tmp = SHIPs.alloc_temp_d(🚢, Rs)
-   # SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
-   B = eval_basis(🚢, Rs, Zs, 0)
-   dB = SHIPs.alloc_dB(🚢, Rs)
-   SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
+   tmp = PoSH.alloc_temp_d(🚢, Rs)
+   # PoSH.precompute_grads!(tmp, 🚢, Rs, Zs)
+   B = evaluate(🚢, Rs, Zs, 0)
+   dB = PoSH.alloc_dB(🚢, Rs)
+   evaluate_d!(dB, tmp, 🚢, Rs, Zs, 0)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
       Us, Zs = randR(length(Rs))
       errs = Float64[]
       for p = 2:10
          h = 0.1^p
-         Bh = eval_basis(🚢, Rs+h*Us, Zs, 0)
+         Bh = evaluate(🚢, Rs+h*Us, Zs, 0)
          dBh = (Bh - B) / h
          dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
          push!(errs, norm(dBh - dBxU, Inf))
@@ -94,21 +98,21 @@ end
 verbose=false
 @info("Test gradients for 3B with and R near the pole")
 🚢 = ship2
-@info("  body-order = $(SHIPs.bodyorder(🚢)):")
+@info("  body-order = $(PoSH.bodyorder(🚢)):")
 # Rs = [ randR(5); [SVector(1e-14*rand(), 1e-14*rand(), 1.1+1e-6*rand())] ]
 Rs = [ randR(5)[1]; [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
 _, Zs = randR(length(Rs))
-tmp = SHIPs.alloc_temp_d(🚢, Rs)
-B = eval_basis(🚢, Rs, Zs, 0)
-dB = SHIPs.alloc_dB(🚢, Rs)
-SHIPs.eval_basis_d!(dB, tmp, 🚢, Rs, Zs, 0)
+tmp = PoSH.alloc_temp_d(🚢, Rs)
+B = evaluate(🚢, Rs, Zs, 0)
+dB = PoSH.alloc_dB(🚢, Rs)
+evaluate_d!(dB, tmp, 🚢, Rs, Zs, 0)
 @info("      finite-difference test into random directions")
 for ndirections = 1:30
    Us, _ = randR(length(Rs))
    errs = Float64[]
    for p = 2:10
       h = 0.1^p
-      Bh = eval_basis(🚢, Rs+h*Us, Zs, 0)
+      Bh = evaluate(🚢, Rs+h*Us, Zs, 0)
       dBh = (Bh - B) / h
       dBxU = sum( dot.(Ref(Us[n]), dB[n,:])  for n = 1:length(Rs) )
       push!(errs, norm(dBh - dBxU, Inf))
@@ -126,11 +130,11 @@ println()
 randcoeffs(B) = 2 * (rand(length(B)) .- 0.5) .* (1:length(B)).^(-2)
 
 naive_energy(basis::SHIPBasis, at) =
-      sum( eval_basis(basis, R, zeros(Int16, length(R)), 0)
+      sum( evaluate(basis, R, zeros(Int16, length(R)), 0)
             for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships
-   @info("   body-order = $(SHIPs.bodyorder(basis))")
+   @info("   body-order = $(PoSH.bodyorder(basis))")
    at = bulk(:Si) * 3
    at.Z[:] .= 0   # this set of tests is species-agnostic!
    rattle!(at, 0.1)

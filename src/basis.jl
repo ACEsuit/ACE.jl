@@ -12,8 +12,8 @@ using JuLIP.MLIPs: IPBasis
 using JuLIP.Potentials: SZList, ZList
 import JuLIP: alloc_temp, alloc_temp_d
 
-using SHIPs.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y
-using SHIPs.Rotations: ClebschGordan
+using PoSH.SphericalHarmonics: SHBasis, sizeY, cart2spher, index_y
+using PoSH.Rotations: ClebschGordan
 using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: svd
 
@@ -24,7 +24,7 @@ export SHIPBasis, bodyorder
 
 
 """
-`struct SHIPBasis` : one of the two main types provided by `SHIPs.jl`;
+`struct SHIPBasis` : one of the two main types provided by `PoSH.jl`;
 represents a SHIP basis.
 
 The standard constructor is
@@ -32,8 +32,7 @@ The standard constructor is
 SHIPBasis(spec::BasisSpec, trans::DistanceTransform, fcut::PolyCutoff; kwargs...)
 ```
 Keyword arguments are
-* filter = false
-* Nsamples = 1_000
+* filter = true
 * pure = false
 * T = Float64
 """
@@ -53,21 +52,23 @@ struct SHIPBasis{T, NZ, TJ} <: IPBasis
                                      # last index
 end
 
+JuLIP.cutoff(shipB::SHIPBasis) = cutoff(shipB.J)
+
 # ---------------(de-)dictionisation---------------------------------
 Dict(shipB::SHIPBasis) = Dict(
-      "__id__" => "SHIPs_SHIPBasis_v3",
+      "__id__" => "PoSH_SHIPBasis_v3",
       "J" => Dict(shipB.J),
       "zlist" => Dict(shipB.zlist),
       "bgrps" => bgrp2vecvec.(shipB.bgrps)
    )
-convert(::Val{:SHIPs_SHIPBasis_v3}, D::Dict) = SHIPBasis(D)
+convert(::Val{:PoSH_SHIPBasis_v3}, D::Dict) = SHIPBasis(D)
 SHIPBasis(D::Dict) = SHIPBasis(TransformedJacobi(D["J"]),
                                SZList(D["zlist"]),
                                vecvec2bgrps(D["bgrps"]))
 bgrp2vecvec(bgrp) = [ Vector{Int}(vcat(b...)) for b in bgrp ]
 vecvec2bgrps(Vbs) = convert.(Vector{Tuple}, tuple(vecvec2bgrp.(Vbs)...))
 vecvec2bgrp(Vb) = _vec2b.(Vb)
-_vec2b(v::Vector{<:Integer}) = (
+_vec2b(v::Vector) = (
    N = length(v) ÷ 3; ( SVector{N, Int16}(v[1:N]...),
                         SVector{N,  IntS}(v[N+1:2*N]...),
                         SVector{N,  IntS}(v[2*N+1:3*N]...) ) )
@@ -101,9 +102,10 @@ function SHIPBasis(spec::BasisSpec, J; T=Float64, kwargs...)
 end
 
 function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
-                   filter = false, Nsamples = 1_000, T = Float64,
+                   filter = true, T = Float64, pure = false,
                    Bcoefs = Rotations.CoeffArray(T)
                    ) where {NZ}
+   @assert pure == false
    SH = SHBasis(get_maxL(bgrps))
    alists, aalists = alists_from_bgrps(bgrps)        # zklm tuples, A, AA
    A2B, firstb = A2B_matrices(bgrps, alists, aalists, Bcoefs, T)
@@ -111,7 +113,7 @@ function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
                      bgrps, zlist,
                      alists, aalists, A2B, firstb )
    if filter
-      return filter_rpi_basis(preB, Nsamples)
+      return alg_filter_rpi_basis(preB)
    end
    return preB
 end
@@ -145,7 +147,7 @@ function A2B_matrix(bgrps, alist, aalist, Bcoefs, T=Float64)
       # store the zeroth index for this basis group
       push!(firstb, idxB)
       # get the rotation-coefficients for this basis group
-      Ull = SHIPs.Rotations.basis(Bcoefs, ll)
+      Ull = PoSH.Rotations.basis(Bcoefs, ll)
       # loop over the columns of Ull -> each specifies a basis function
       for ibasis = 1:size(Ull, 2)
          idxB += 1
@@ -247,6 +249,9 @@ function alloc_temp_d(ship::SHIPBasis{T, NZ}, N::Integer) where {T, NZ}
       )
 end
 
+"""
+return all basis indices corresponding to species index iz0
+"""
 function _get_I_iz0(ship::SHIPBasis, iz0)
    idx0 = 0
    for iz = 1:iz0-1
@@ -258,8 +263,11 @@ function _get_I_iz0(ship::SHIPBasis, iz0)
    return I_iz0
 end
 
+# _get_I_iz0(ship::SHIPBasis, iz0) = (ship.firstb[iz0][1]+1):ship.firstb[iz0][end]
 
-function eval_basis!(B, tmp, ship::SHIPBasis{T},
+
+
+function evaluate!(B, tmp, ship::SHIPBasis{T},
                      Rs::AbstractVector{<: JVec},
                      Zs::AbstractVector{<: Integer},
                      z0::Integer ) where {T}
@@ -275,7 +283,7 @@ end
 
 
 
-function eval_basis_d!(dB, tmp, ship::SHIPBasis{T},
+function evaluate_d!(dB, tmp, ship::SHIPBasis{T},
                        Rs::AbstractVector{<: JVec},
                        Zs::AbstractVector{<: Integer},
                        z0::Integer ) where {T}
@@ -326,166 +334,62 @@ alllen_bgrp(shpB::SHIPBasis, iz0) =
 I_bgrp(shpB::SHIPBasis, igrp, iz0) =
       (shpB.firstb[iz0][igrp]+1):shpB.firstb[iz0][igrp+1]
 
-function filter_rpi_basis(preB::SHIPBasis{T, NZ}, nsamples::Integer) where {T, NZ}
-   @assert nspecies(preB) == NZ == 1
-   z = preB.zlist.list[1]  # hack...
-
-   # TODO: later
-   # loop through body-orders??
-   #    or try to just use the largest body-order in the system?
-   # loop through all Zs combinations??
-   #    for now assume there is just one species
-
-   # allocate the gramians for the basis groups
-   GG = Vector{Matrix{T}}(undef, length(preB.bgrps[1]))
-   for igrp = 1:length(GG)
-      len_grp = len_bgrp(preB, igrp, 1)  # 1 = iz0
-      GG[igrp] = zeros(T, len_grp, len_grp)
-   end
-
-   N = maximum( size(preB.aalists[i].i2Aidx, 2) for i = 1:NZ )
-   Zs = z * ones(Int16, N)
-   for n = 1:nsamples
-      # create the next sample
-      Rs = SHIPs.Utils.rand(preB.J, N)
-      # evaluate the basis
-      B = eval_basis(preB, Rs, Zs, z)   # iz0 == 1
-      # add the basis values to the little matrices
-      for igrp = 1:length(GG)
-         Ib_grp =  I_bgrp(preB, igrp, 1)
-         # remember ' = adjoint, not transpose!!
-         GG[igrp] += real.(B[Ib_grp] * B[Ib_grp]') / nsamples
+function _algebraic_gramian(ship, zkl, Igr, U, iz0)
+   izz, kk, ll = zkl
+   N = length(kk)
+   n = length(Igr)
+   @assert size(U, 1) == n
+   G = zeros(n, n)
+   for σ in permutations(1:N)
+      if (izz[σ] != izz) || (kk[σ] != kk) || (ll[σ] != ll); continue; end
+      for mm1 in PoSH._mrange(ll), mm2 in PoSH._mrange(ll)
+         if mm1[σ] == mm2
+            iU1 = ship.aalists[iz0][(izz, kk, ll, mm1)]
+            iU2 = ship.aalists[iz0][(izz, kk, ll, mm2)]
+            for i1 = 1:n, i2 = 1:n
+               G[i1, i2] += conj(U[i1, iU1]) * U[i2, iU2]
+            end
+         end
       end
    end
+   return G
+end
 
-   new_A2B = sparse(IntS[], IntS[], Complex{T}[], 0, size(preB.A2B[1], 2))
+
+function _alg_filter_group(ship::SHIPBasis{T}, zkl, Igr, U, iz0) where {T}
+   G = _algebraic_gramian(ship, zkl, Igr, U, iz0)
+   S = svd(G)
+   rk = rank(G; rtol =  1e-7)
+   UT = convert(SparseMatrixCSC{Complex{T},IntS}, S.U[:, 1:rk]')
+   return Diagonal(sqrt.(S.S[1:rk])) * UT * U
+end
+
+
+function alg_filter_rpi_basis(preB::SHIPBasis{T, NZ}) where {T, NZ}
+
+   new_A2B = [ sparse(IntS[], IntS[], Complex{T}[], 0, size(preB.A2B[1], 2))
+               for iz0 = 1:NZ ]
+   new_firstb = [ IntS[] for iz0 = 1:NZ ]
    bidx0 = 0
-   new_firstb = IntS[]
 
-   for igrp = 1:length(GG)
-      Ggrp = GG[igrp]
-      rk = rank(Ggrp)
-      S = svd(Ggrp)
-      Ugrp = S.U[:, 1:rk] * Diagonal(S.S[1:rk].^(-0.5))
-      # Ugrp' * Ggrp * Ugrp ~ Id
-      # use this to get the new coefficients
-      Ib_grp = I_bgrp(preB, igrp, 1)
-      newcoeffs = Ugrp' * preB.A2B[1][Ib_grp, :]
-      new_A2B = vcat(new_A2B, newcoeffs)
-      push!(new_firstb, bidx0)
-      bidx0 += rk
+   for iz0 = 1:NZ
+      for igrp = 1:length(preB.bgrps[iz0])
+         zkl = preB.bgrps[iz0][igrp]
+         Ib_grp =  I_bgrp(preB, igrp, iz0) .- preB.firstb[iz0][1]
+         U = preB.A2B[iz0][Ib_grp, :]
+         Ufiltered = _alg_filter_group(preB, zkl, Ib_grp, U, iz0)
+         new_A2B[iz0] = vcat(new_A2B[iz0], Ufiltered)
+         push!(new_firstb[iz0], bidx0)
+         bidx0 += size(Ufiltered, 1)
+      end
+      # and then add one more to get the total length of the basis
+      push!(new_firstb[iz0], bidx0)
+      # double-check that we have exactly the right number of firstb entries
+      @assert length(new_firstb[iz0]) == length(preB.firstb[1])
    end
-   # and then add one more to get the total length of the basis
-   push!(new_firstb, bidx0)
-   # check that we have exactly the right number of firstb entries
-   @assert length(new_firstb) == length(preB.firstb[1])
 
    return SHIPBasis(preB.J, preB.SH, preB.bgrps, preB.zlist,
                     preB.alists, preB.aalists,
-                    ntuple(i->new_A2B, 1),
-                    ntuple(i->new_firstb, 1) )
-end
-
-
-
-# -------------------------------------------------------------
-#       JuLIP Calculators: energies and forces
-# -------------------------------------------------------------
-
-# TODO: move all of this into JuLIP.MLIPs
-
-using NeighbourLists: max_neigs, neigs
-using JuLIP: Atoms, sites, neighbourlist
-using JuLIP.Potentials: neigsz!
-import JuLIP: energy, forces, virial, cutoff, site_energy, site_energy_d
-
-cutoff(shipB::SHIPBasis) = cutoff(shipB.J)
-
-
-function energy(shipB::SHIPBasis, at::Atoms{T}) where {T}
-   E = zeros(length(shipB))
-   B = alloc_B(shipB)
-   nlist = neighbourlist(at, cutoff(shipB))
-   maxnR = maxneigs(nlist)
-   tmp = alloc_temp(shipB, maxnR)
-   tmpRZ = (R = zeros(JVec{T}, maxnR), Z = zeros(Int16, maxnR))
-   for i = 1:length(at)
-      j, R, Z = neigsz!(tmpRZ, nlist, at, i)
-      eval_basis!(B, tmp, shipB, R, Z, at.Z[i])
-      E[:] .+= B[:]
-   end
-   return E
-end
-
-
-function forces(shipB::SHIPBasis, at::Atoms{T}) where {T}
-   # precompute the neighbourlist to count the number of neighbours
-   nlist = neighbourlist(at, cutoff(shipB))
-   maxR = max_neigs(nlist)
-   # allocate space accordingly
-   F = zeros(JVec{T}, length(at), length(shipB))
-   dB = alloc_dB(shipB, maxR)
-   tmp = alloc_temp_d(shipB, maxR)
-   tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(Int16, maxR))
-   # assemble site gradients and write into F
-   for i = 1:length(at)
-      j, R, Z = neigsz!(tmpRZ, nlist, at, i)
-      eval_basis_d!(dB, tmp, shipB, R, Z, at.Z[i])
-      for a = 1:length(R)
-         F[j[a], :] .-= dB[a, :]
-         F[i, :] .+= dB[a, :]
-      end
-   end
-   return [ F[:, iB] for iB = 1:length(shipB) ]
-end
-
-
-function virial(shipB::SHIPBasis, at::Atoms{T}) where {T}
-   # precompute the neighbourlist to count the number of neighbours
-   nlist = neighbourlist(at, cutoff(shipB))
-   maxR = max_neigs(nlist)
-   # allocate space accordingly
-   V = zeros(JMat{T}, length(shipB))
-   dB = alloc_dB(shipB, maxR)
-   tmp = alloc_temp_d(shipB, maxR)
-   tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(Int16, maxR))
-   # assemble site gradients and write into F
-   for i = 1:length(at)
-      j, R, Z = neigsz!(tmpRZ, nlist, at, i)
-      eval_basis_d!(dB, tmp, shipB, R, Z, at.Z[i])
-      for iB = 1:length(shipB)
-         V[iB] += JuLIP.Potentials.site_virial(dB[:, iB], R)
-      end
-   end
-   return V
-end
-
-
-function _get_neigs(at::Atoms{T}, i0::Integer, rcut) where {T}
-   nlist = neighbourlist(at, rcut)
-   maxR = maxneigs(nlist)
-   tmpRZ = (R = zeros(JVec{T}, maxR), Z = zeros(Int16, maxR))
-   j, R, Z = neigsz!(tmpRZ, nlist, at, i0)
-   return j, R, Z
-end
-
-function site_energy(basis::SHIPBasis, at::Atoms, i0::Integer)
-   j, Rs, Zs = _get_neigs(at, i0, cutoff(basis))
-   return eval_basis(basis, Rs, Zs, at.Z[i0])
-end
-
-
-function site_energy_d(basis::SHIPBasis, at::Atoms{T}, i0::Integer) where {T}
-   Ineigs, Rs, Zs = _get_neigs(at, i0, cutoff(basis))
-   dEs = [ zeros(JVec{T}, length(at)) for _ = 1:length(basis) ]
-   dB = alloc_dB(basis, length(Rs))
-   tmp = alloc_temp_d(basis, length(Rs))
-   eval_basis_d!(dB, tmp, basis, Rs, Zs, at.Z[i0])
-   @assert dB isa Matrix{JVec{T}}
-   @assert size(dB) == (length(Rs), length(basis))
-   for iB = 1:length(basis), n = 1:length(Ineigs)
-      dEs[iB][Ineigs[n]] += dB[n, iB]
-      dEs[iB][i0] -= dB[n, iB]
-   end
-   return dEs
+                    ntuple(i->new_A2B[i], NZ),
+                    ntuple(i->new_firstb[i], NZ) )
 end

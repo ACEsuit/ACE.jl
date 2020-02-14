@@ -10,6 +10,7 @@
 
 using Combinatorics
 using JuLIP.Chemistry: atomic_number
+import JuLIP.Potentials: z2i, i2z
 
 import Base: ==
 
@@ -137,7 +138,7 @@ function maxL(D::SparseSHIP, k::Integer = 0)
    end
 end
 
-Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIP",
+Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "PoSH_SparseSHIP",
                                 "deg" => D.deg,
                                 "wL" => D.wL,
                                 "csp" => D.csp,
@@ -147,7 +148,7 @@ Dict(D::SparseSHIP{BO}) where {BO} = Dict("__id__" => "SHIPs_SparseSHIP",
                                 "Zs" => D.Zs,
                                 "bo" => BO)
 
-convert(::Val{:SHIPs_SparseSHIP}, D::Dict) =
+convert(::Val{:PoSH_SparseSHIP}, D::Dict) =
       SparseSHIP(D["Zs"], D["bo"], D["deg"],
                  wL = D["wL"], csp = D["csp"],
                  chc = D["chc"], ahc = D["ahc"], bhc = D["bhc"] )
@@ -179,7 +180,7 @@ end
 function generate_ZKL(spec::AnalyticBasisSpec, TI = IntS, TF=Float64)
    allKL, degs = generate_KL(spec, TI, TF)
    allZKL = ntuple( _->copy(allKL), nspecies(spec) )
-   return return allZKL
+   return allZKL
 end
 
 
@@ -359,6 +360,6 @@ function filter_tuple(ll, rotcoefs)
    if isodd(sum(ll))
       return false
    end
-   Bcoefs = SHIPs.Rotations.single_B(rotcoefs, ll)
+   Bcoefs = PoSH.Rotations.single_B(rotcoefs, ll)
    return norm(Bcoefs) > 1e-12
 end

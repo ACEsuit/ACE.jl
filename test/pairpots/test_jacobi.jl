@@ -8,10 +8,11 @@
 
 @testset "Jacobi" begin
 
-using SHIPs, Test
+using PoSH, Test
 
-using SHIPs.JacobiPolys: Jacobi
-using SHIPs: eval_basis, eval_basis_d
+using PoSH.JacobiPolys: Jacobi
+using JuLIP: evaluate, evaluate_d
+using JuLIP.Testing: print_tf
 
 # copy-pasted from
 # https://github.com/pjabardo/Jacobi.jl/blob/master/src/jac_poly.jl
@@ -44,7 +45,9 @@ function jacobi(x, n, a, b)
    return p2
 end
 
+# a standard recursion formula for the derivative of Jacobi Polynomials
 djacobi(x, n, a, b) =  one(x)/2 * (a + b + n + 1) * jacobi(x, n-1, a+1, b+1)
+
 
 @info("--------------  JACOBI TESTS ---------------")
 @info("testing jacobi implementation against reference.")
@@ -53,14 +56,13 @@ for ntest = 1:30
    α, β = rand(), rand()
    N = 30
    J = Jacobi(α, β, N, normalise=false)
-   P = eval_basis(J, x)
-   P1, dP = eval_basis_d(J, x)
+   P = evaluate(J, x)
+   dP = evaluate_d(J, x)
    Ptest = [ jacobi(x, n, α, β) for n = 0:N ]
    dPtest = [ djacobi(x, n, α, β) for n = 0:N ]
-   print_tf((@test P ≈ P1 ≈ Ptest))
+   print_tf((@test P ≈ Ptest))
    print_tf((@test dP ≈ dPtest))
 end
 println()
-
 
 end

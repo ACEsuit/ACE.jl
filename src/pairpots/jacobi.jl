@@ -16,11 +16,11 @@ module JacobiPolys
 
 using QuadGK
 
-import SHIPs: eval_basis,
-              eval_basis!,
-              eval_basis_d!,
-              alloc_B,
-              alloc_dB
+import JuLIP: evaluate,
+              evaluate!,
+              evaluate_d!
+
+import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
 import Base.==
 export Jacobi
@@ -40,9 +40,9 @@ Jacobi(α, β, N)   # N = max degree
 ```
 x = 2*(rand() - 0.5)
 P = zeros(N)
-eval_basis!(P, J, x, N)
+evaluate!(P, J, x)
 dP = zeros(N)
-eval_basis_d!(P, dP, J, x, N)   # evaluates both P, dP
+evaluate_d!(P, dP, J, x)   # evaluates both P, dP
 ```
 
 ### Notes
@@ -54,7 +54,7 @@ is then given by
 P_{n} = (A[n] * x + B[n]) * P_{n-1} + C[n] * P_{n-2}
 ```
 """
-struct Jacobi{T}
+struct Jacobi{T} <: IPBasis
    α::T
    β::T
    A::Vector{T}
@@ -83,7 +83,7 @@ function Jacobi(α, β, N, T=Float64; normalise=true, skip0=false)
    end
    J = Jacobi(T(α), T(β), A, B, C, T[], skip0)
    if normalise
-      integrand = x -> eval_basis(J, x).^2 * ((1-x)^α * (1+x)^β)
+      integrand = x -> evaluate(J, x).^2 * ((1-x)^α * (1+x)^β)
       nrm2 = quadgk(integrand, -1.0, 1.0)[1]
       J = Jacobi(T(α), T(β), A, B, C, nrm2.^(-0.5), skip0)
    end
@@ -96,7 +96,7 @@ maxdegree(J::Jacobi) = length(J.A)
 alloc_B(J::Jacobi{T}, args...) where {T} = zeros(T, length(J))
 alloc_dB(J::Jacobi{T}, args...) where {T} = zeros(T, length(J))
 
-function eval_basis!(P::AbstractVector, tmp, J::Jacobi, x)
+function evaluate!(P::AbstractVector, tmp, J::Jacobi, x)
    N = maxdegree(J) #::Integer = length(P)-1
    @assert (length(P) >= N + 1 - J.skip0)
    @assert 2 <= N <= maxdegree(J)
@@ -120,7 +120,7 @@ function eval_basis!(P::AbstractVector, tmp, J::Jacobi, x)
 end
 
 
-function eval_basis_d!(P::AbstractVector, dP::AbstractVector, tmp,
+function evaluate_d!(P::AbstractVector, dP::AbstractVector, tmp,
                     J::Jacobi, x::Number)
    N = maxdegree(J) #::Integer = length(P)-1
    @assert length(P) >= N+1
@@ -149,6 +149,7 @@ function eval_basis_d!(P::AbstractVector, dP::AbstractVector, tmp,
       dP .= dP .* J.nrm
    end
    # return P, dP
+   return dP
 end
 
 

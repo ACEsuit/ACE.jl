@@ -7,19 +7,19 @@
 
 
 using JuLIP
-using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra,
+using PoSH, PoSH.SphericalHarmonics, StaticArrays, LinearAlgebra,
       Combinatorics
-using SHIPs: _mrange
-using SHIPs.Rotations
+using PoSH: _mrange
+using PoSH.Rotations
 
 ##
 lmax = 3
-A = SHIPs.Rotations.CoeffArray(Float64)
+A = PoSH.Rotations.CoeffArray(Float64)
 for l1 = 0:lmax, l2=0:lmax, l3=0:lmax, l4=0:lmax
    global A
    ll = SVector(l1, l2, l3, l4)
-   Uslim = SHIPs.Rotations.compute_Al(A, ll, ordered=true)
-   Uall = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
+   Uslim = PoSH.Rotations.compute_Al(A, ll, ordered=true)
+   Uall = PoSH.Rotations.compute_Al(A, ll, ordered=false)
    if rank(Uslim) != rank(Uall)
       @show ll, rank(Uslim), rank(Uall)
    end
@@ -28,7 +28,7 @@ end
 <<<<<<< HEAD
 =======
 ll = SVector(1,1,1,0)
-U = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
+U = PoSH.Rotations.compute_Al(A, ll, ordered=false)
 
 
 >>>>>>> 14ee199fe32862737cd306ae0033dac552f4f512
@@ -50,19 +50,19 @@ G = zeros(1000, 3)
 tmp = JuLIP.alloc_temp(ship4, 5)
 for n = 1:1000
    R, Z = randR(5)
-   G[n, :] = SHIPs.eval_basis(ship4, R, Z, 0)[idx]
+   G[n, :] = evaluate(ship4, R, Z, 0)[idx]
 end
 
 rank(G)
 ship4.NuZ[end][end]
-SHIPs._get_ll(ship4.KL[end], ship4.NuZ[end][end])
+PoSH._get_ll(ship4.KL[end], ship4.NuZ[end][end])
 # i.e. ll = (1,1,1,1)
 
 
 
 # --------------------
 
-const SH = SHIPs.SphericalHarmonics.SHBasis(10)
+const SH = PoSH.SphericalHarmonics.SHBasis(10)
 
 ip(t1, t2) = (t1 == t2)
 
