@@ -115,6 +115,7 @@ function evaluate!(tmp, ship::RSHIP{T},
 end
 
 # compute one site energy
+# experimental new code. Not very fast unfortunately ...
 function evaluate_new!(tmp, ship::RSHIP{T},
                    Rs::AbstractVector{JVec{T}},
                    Zs::AbstractVector{<:Integer},
@@ -137,69 +138,68 @@ function evaluate_new!(tmp, ship::RSHIP{T},
 end
 
 
-# alloc_temp_d(ship::RSHIP{T, NZ}, N::Integer) where {T, NZ} =
-#       ( J = alloc_B(ship.J),
-#        dJ = alloc_dB(ship.J),
-#         Y = alloc_B(ship.SH),
-#        dY = alloc_dB(ship.SH),
-#         A = [ zeros(Complex{T}, length(ship.alists[iz])) for iz=1:NZ ],
-#      dAco = [ zeros(Complex{T}, length(ship.alists[iz])) for iz=1:NZ ],
-#      tmpJ = alloc_temp_d(ship.J),
-#      tmpY = alloc_temp_d(ship.SH),
-#        dV = zeros(JVec{T}, N),
-#         R = zeros(JVec{T}, N),
-#         Z = zeros(Int16, N)
-#       )
-#
-# # compute one site energy
-# function evaluate_d!(dEs, tmp, ship::RSHIP{T},
-#                      Rs::AbstractVector{JVec{T}},
-#                      Zs::AbstractVector{<:Integer},
-#                      z0::Integer
-#                      ) where {T}
-#    iz0 = z2i(ship, z0)
-#    alist = ship.alists[iz0]
-#    aalist = ship.aalists[iz0]
-#
-#    # stage 1: precompute all the A values
-#    precompute_A!(tmp.A[iz0], tmp, alist, Rs, Zs, ship)
-#
-#    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
-#    A = tmp.A[iz0]
-#    dAco = tmp.dAco[iz0]
-#    _evaluate_d_stage2!(dAco, A, aalist, ship.coeffs[iz0], ship)
-#
-#    # stage 3: get the gradients
-#    fill!(dEs, zero(JVec{T}))
-#    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-#       R̂ = R / norm(R)
-#       evaluate_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
-#       evaluate_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
-#       iz = z2i(ship, Z)
-#       for iA = alist.firstz[iz]:(alist.firstz[iz+1]-1)
-#          zklm = alist[iA]
-#          ik, iy = zklm.k+1, index_y(zklm.l, zklm.m)
-#          dEs[iR] += real(dAco[iA] * (
-#                          tmp.J[ik] * tmp.dY[iy] + tmp.dJ[ik] * tmp.Y[iy] * R̂) )
-#       end
-#    end
-#    return dEs
-# end
-#
-# function _evaluate_d_stage2!(dAco::AbstractVector{CT}, A, aalist, c, ship
-#                             ) where {CT}
-#    fill!(dAco, 0)
-#    for iAA = 1:length(aalist)
-#       for α = 1:aalist.len[iAA]
-#          CxA_α = CT(c[iAA])
-#          for β = 1:aalist.len[iAA]
-#             if β != α
-#                iAβ = aalist.i2Aidx[iAA, β]
-#                CxA_α *= A[iAβ]
-#             end
-#          end
-#          iAα = aalist.i2Aidx[iAA, α]
-#          dAco[iAα] += CxA_α
-#       end
-#    end
-# end
+alloc_temp_d(ship::RSHIP{T, NZ}, N::Integer) where {T, NZ} =
+      ( J = alloc_B(ship.J),
+       dJ = alloc_dB(ship.J),
+        Y = alloc_B(ship.SH),
+       dY = alloc_dB(ship.SH),
+        A = [ zeros(T, length(ship.alists[iz])) for iz=1:NZ ],
+     dAco = [ zeros(T, length(ship.alists[iz])) for iz=1:NZ ],
+     tmpJ = alloc_temp_d(ship.J),
+     tmpY = alloc_temp_d(ship.SH),
+       dV = zeros(JVec{T}, N),
+        R = zeros(JVec{T}, N),
+        Z = zeros(Int16, N)
+      )
+
+function evaluate_d!(dEs, tmp, ship::RSHIP{T},
+                     Rs::AbstractVector{JVec{T}},
+                     Zs::AbstractVector{<:Integer},
+                     z0::Integer
+                     ) where {T}
+   iz0 = z2i(ship, z0)
+   alist = ship.alists[iz0]
+   aalist = ship.aalists[iz0]
+
+   # stage 1: precompute all the A values
+   precompute_A!(tmp.A[iz0], tmp, alist, Rs, Zs, ship)
+
+   # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+   A = tmp.A[iz0]
+   dAco = tmp.dAco[iz0]
+   _evaluate_d_stage2!(dAco, A, aalist, ship.coeffs[iz0], ship)
+
+   # stage 3: get the gradients
+   fill!(dEs, zero(JVec{T}))
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      R̂ = R / norm(R)
+      evaluate_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
+      evaluate_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
+      iz = z2i(ship, Z)
+      for iA = alist.firstz[iz]:(alist.firstz[iz+1]-1)
+         zklm = alist[iA]
+         ik, iy = zklm.k+1, index_y(zklm.l, zklm.m)
+         dEs[iR] += dAco[iA] * (
+                         tmp.J[ik] * tmp.dY[iy] + tmp.dJ[ik] * tmp.Y[iy] * R̂)
+      end
+   end
+   return dEs
+end
+
+function _evaluate_d_stage2!(dAco::AbstractVector{CT}, A, aalist, c, ship::RSHIP
+                            ) where {CT}
+   fill!(dAco, 0)
+   for iAA = 1:length(aalist)
+      for α = 1:aalist.len[iAA]
+         CxA_α = c[iAA]
+         for β = 1:aalist.len[iAA]
+            if β != α
+               iAβ = aalist.i2Aidx[iAA, β]
+               CxA_α *= A[iAβ]
+            end
+         end
+         iAα = aalist.i2Aidx[iAA, α]
+         dAco[iAα] += CxA_α
+      end
+   end
+end

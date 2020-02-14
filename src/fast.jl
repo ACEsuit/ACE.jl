@@ -181,7 +181,7 @@ function evaluate_d!(dEs, tmp, ship::SHIP{T},
    return dEs
 end
 
-function _evaluate_d_stage2!(dAco::AbstractVector{CT}, A, aalist, c, ship
+function _evaluate_d_stage2!(dAco::AbstractVector{CT}, A, aalist, c, ship::SHIP
                             ) where {CT}
    fill!(dAco, 0)
    for iAA = 1:length(aalist)

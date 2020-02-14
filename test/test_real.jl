@@ -12,7 +12,7 @@
 using SymPy
 using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using JuLIP
-using JuLIP: evaluate, evaluate_d, evaluate!
+using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!
 using JuLIP.Testing
 
 function randR()
@@ -55,7 +55,7 @@ end
 
 ##
 
-@info("Check Correctness of SHIP gradients")
+@info("Check Correctness of RSHIP gradients")
 for B in BB
    @info("   body-order = $(PoSH.bodyorder(B))")
    coeffs = randcoeffs(B)
@@ -80,13 +80,14 @@ for B in BB
          dEs_h = (evaluate!(tmp, rship, Rs + h * U, Zs, z0) - Es) / h
          push!(errs, abs(dEs_h - dEs_U))
       end
-      success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+      success = (minimum(errs[2:end]) < 1e-3 * maximum(errs[1:3])) || (minimum(errs) < 1e-10)
       print_tf(@test success)
    end
    println()
 end
 
-# ##
+##
+
 # @info("Check Correctness of SHIP calculators")
 #
 # naive_energy(ship::SHIP, at) =
