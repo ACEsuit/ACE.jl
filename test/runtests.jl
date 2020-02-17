@@ -33,4 +33,7 @@ using PoSH: PolyTransform, PolyCutoff1s, PolyCutoff2s
     include("test_descriptor.jl")
     # ----------------------
     include("test_compressA.jl")
+    # ---------------------- bonds stuff
+    include("bonds/test_cylindrical.jl")
+    include("bonds/test_fourier.jl") 
 end
