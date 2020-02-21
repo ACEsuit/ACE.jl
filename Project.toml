@@ -16,9 +16,9 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6"
 
 [compat]
-JuLIP = "0.8.7"
+JuLIP = "0.8.12"
 NeighbourLists = "0.5.1"
-julia = "1"
+julia = "1.3"
 
 [extras]
 ASE = "51974c44-a7ed-5088-b8be-3e78c8ba416c"
