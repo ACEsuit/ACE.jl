@@ -8,12 +8,14 @@
 
 @testset "OneOrthogonal" begin
 
+##
 @info("--------- Testing OneOrthogonal ----------")
 
 using SHIPs, Test
 using SHIPs.OrthPolys: OrthPolyBasis
 using SHIPs.OneOrthogonalModule: OneOrthogonal
 
+##
 # Assemble basis
 N = 15
 Nquad = 1000

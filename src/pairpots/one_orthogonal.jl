@@ -7,9 +7,9 @@
 
 module OneOrthogonalModule
 
-using LinearAlgebra
+using LinearAlgebra: norm, dot
 
-import JuLIP: evaluate!, evaluate_d!
+import JuLIP: evaluate!, evaluate_d!, alloc_temp
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
 
@@ -33,6 +33,9 @@ end
 # SIMON : construct the new basis
 function OneOrthogonal(P, tdf=P.tdf, ww = P.ww)
    T = eltype(alloc_B(P)) # CHRISTOPH: is there something like `eltype` for this?
+                          # Yes - alloc_B(P) should always be Vector{T}
+                          # we may want to introduce eltype(P) even...
+                          #                       or fltype(P) ?
    dotw = (f1, f2) -> dot(f1,ww.*f2)
    normw = f->sqrt(dotw(f1,f2))
 
@@ -43,15 +46,15 @@ function OneOrthogonal(P, tdf=P.tdf, ww = P.ww)
    end
 
    rotate! = (qe,p1,p2) -> begin
-      c = (dot(p1,ww),dot(p2,ww))
-      c = c./norm(c)
-      qe .= c[1]*p1 .+ c[2]*p2
+      c = (dot(p1,ww), dot(p2,ww))
+      c = c ./ norm(c)
+      qe .= c[1]*p1 .+ c[2]*p2    # pi are length(tdf), qe is length(P)
       return c
    end
 
    qe = Vector{T}(undef, length(P))
-   c = Matrix{T}(undef, 2,length(P)-1)
-   c[:,1] .= rotate!(qe, p[:,1],p[:,2])
+   c = Matrix{T}(undef, 2, length(P)-1)
+   c[:,1] .= rotate!(qe, p[:,1], p[:,2])
    for j = 2:length(P)
       c[:,j] .= rotate!(qe, p[:,j+1],qe)
    end
@@ -78,7 +81,7 @@ function evaluate!(q, tmp, Q::OneOrthogonal, t)
    return q
 end
 
-function evaluate_d!(q,dq, tmp, Q::OneOrthogonal, t)
+function evaluate_d!(q, dq, tmp, Q::OneOrthogonal, t)
    P = Q.nested
    c = Q.coeffs
    evaluate_d!(q, dq, tmp, P, t)
