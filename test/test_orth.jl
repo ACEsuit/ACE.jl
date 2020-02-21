@@ -11,8 +11,8 @@
 ##
 
 using Test
-using PoSH, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, PoSH.JacobiPolys
-using PoSH: TransformedJacobi, transform, transform_d, alloc_B, alloc_temp
+using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
+using SHIPs: TransformedJacobi, transform, transform_d, alloc_B, alloc_temp
 using JuLIP: evaluate!
 
 ##
@@ -66,7 +66,7 @@ Nsamples = 100_000
 G = let
    G = zeros(length(P), length(P))
    for n = 1:Nsamples
-      evaluate!(B, tmp, P, PoSH.Utils.rand_radial(P))
+      evaluate!(B, tmp, P, SHIPs.Utils.rand_radial(P))
       G += B * B'
    end
    G
@@ -79,15 +79,15 @@ println(@test cond(G) < 1.1)
 
 @info("Testing (near-)orthonormality of Ylm-basis via sampling")
 
-SH = PoSH.SphericalHarmonics.SHBasis(5)
+SH = SHIPs.SphericalHarmonics.SHBasis(5)
 
-function gramian(SH::PoSH.SphericalHarmonics.SHBasis, Nsamples=100_000)
+function gramian(SH::SHIPs.SphericalHarmonics.SHBasis, Nsamples=100_000)
    lenY = length(SH)
    G = zeros(ComplexF64, lenY, lenY)
    Y = alloc_B(SH)
    tmp = alloc_temp(SH)
    for n = 1:Nsamples
-      evaluate!(Y, tmp, SH, PoSH.Utils.rand_sphere())
+      evaluate!(Y, tmp, SH, SHIPs.Utils.rand_sphere())
       for i = 1:lenY, j = 1:lenY
          G[i,j] += Y[i] * Y[j]'
       end
@@ -106,7 +106,7 @@ println(@test cond(G) < 1.1)
 shpB = SHIPBasis( SparseSHIP(3, 5), trans, fcut )
 function evalA(shpB, tmp, Rs)
    Zs = zeros(Int16, length(Rs))
-   PoSH.precompute_A!(tmp, shpB, Rs, Zs, 1)
+   SHIPs.precompute_A!(tmp, shpB, Rs, Zs, 1)
    return tmp.A[1]
 end
 
@@ -115,7 +115,7 @@ function A_gramian(shpB, Nsamples = 100_000)
    lenA = length(tmp.A[1])
    G = zeros(ComplexF64, lenA, lenA)
    for n = 1:Nsamples
-      R = PoSH.Utils.rand(shpB.J)
+      R = SHIPs.Utils.rand(shpB.J)
       A = evalA(shpB, tmp, [R])
       for i = 1:lenA, j = 1:lenA
          G[i,j] +=  A[i] * A[j]'

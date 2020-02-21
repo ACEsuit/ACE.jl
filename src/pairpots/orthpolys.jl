@@ -14,7 +14,7 @@ using LinearAlgebra: dot
 import JuLIP: evaluate!, evaluate_d!
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
-import PoSH: DistanceTransform, transform, transform_d, TransformedPolys
+import SHIPs: DistanceTransform, transform, transform_d, TransformedPolys
 
 import Base: ==, convert
 
@@ -65,7 +65,7 @@ Base.length(P::OrthPolyBasis) = length(P.A)
            for sym in (:pr, :tr, :pl, :tl, :A, :B, :C) )
 
 Dict(J::OrthPolyBasis) = Dict(
-      "__id__" => "PoSH_OrthPolyBasis",
+      "__id__" => "SHIPs_OrthPolyBasis",
       "pr" => J.pr,
       "tr" => J.tr,
       "pl" => J.pl,
@@ -82,7 +82,7 @@ OrthPolyBasis(D::Dict, T=Float64) =
       T[], T[]
    )
 
-convert(::Val{:PoSH_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
+convert(::Val{:SHIPs_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
 
 # rand applied to a J will return a random transformed distance drawn from
 # the measure w.r.t. which the polynomials were constructed.

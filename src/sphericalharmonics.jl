@@ -10,7 +10,7 @@ module SphericalHarmonics
 
 using StaticArrays, LinearAlgebra
 
-import PoSH
+import SHIPs
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
 import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!

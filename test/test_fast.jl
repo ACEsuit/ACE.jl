@@ -9,7 +9,7 @@
 @testset "Fast SHIP Implementation" begin
 
 ##
-using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using JuLIP
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Testing
@@ -38,13 +38,13 @@ BB = [B2, B3, B4, B5]
 
 @info("Testing correctness of `SHIP` against `SHIPBasis`")
 for B in BB
-   @info("   bodyorder = $(PoSH.bodyorder(B))")
+   @info("   bodyorder = $(SHIPs.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   test (de-)dictionisation")
    println(@test decode_dict(Dict(ship)) == ship)
    @show length(B), length(ship)
-   tmp = PoSH.alloc_temp(ship, 10)
+   tmp = SHIPs.alloc_temp(ship, 10)
    @info("      check that SHIPBasis ≈ SHIP")
    for ntest = 1:30
       Rs, Zs, z0 = randR(10)
@@ -57,9 +57,9 @@ for B in BB
    # @info("      Quick timing test")
    # Nr = 30
    # Rs, Zs, z0 = randR(Nr)
-   # b = PoSH.alloc_B(B)
-   # tmp = PoSH.alloc_temp(ship, Nr)
-   # tmpB = PoSH.alloc_temp(B, Nr)
+   # b = SHIPs.alloc_B(B)
+   # tmp = SHIPs.alloc_temp(ship, Nr)
+   # tmpB = SHIPs.alloc_temp(B, Nr)
    # print("       SHIPBasis : "); @btime evaluate!($b, $tmpB, $B, $Rs, $Zs, $z0)
    # print("            SHIP : "); @btime evaluate!($tmp, $ship, $Rs, $Zs, $z0)
    # println()
@@ -69,11 +69,11 @@ end
 ##
 @info("Check Correctness of SHIP gradients")
 for B in BB
-   @info("   body-order = $(PoSH.bodyorder(B))")
+   @info("   body-order = $(SHIPs.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    Rs, Zs, z0 = randR(10)
-   tmp = PoSH.alloc_temp_d(ship, length(Rs))
+   tmp = SHIPs.alloc_temp_d(ship, length(Rs))
    dEs = zeros(JVecF, length(Rs))
    evaluate_d!(dEs, tmp, ship, Rs, Zs, z0)
    Es = evaluate!(tmp, ship, Rs, Zs, z0)
@@ -104,7 +104,7 @@ naive_energy(ship::SHIP, at) =
             for (i, j, R) in sites(at, cutoff(ship)) )
 
 for B in BB
-   @info("   body-order = $(PoSH.bodyorder(B))")
+   @info("   body-order = $(SHIPs.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    at = bulk(:Si) * 3
@@ -125,7 +125,7 @@ end
 
 ##
 
-@info("Test JSON (de-)serialisation of PoSH")
+@info("Test JSON (de-)serialisation of SHIPs")
 coeffs = randcoeffs(B5)
 ship = SHIP(B5, coeffs)
 println(@test decode_dict(Dict(ship)) == ship)

@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using PoSH, JuLIP, BenchmarkTools, LinearAlgebra
+using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra
 
 function randR()
    R = rand(JVecF) .- 0.5
@@ -24,9 +24,9 @@ BB = [ SHIPBasis(SparseSHIP(2, 20, wL=1.0), trans, fcut),
 
 Nat = 30
 Rs, Zs, z0 = randR(Nat)
-btmp = PoSH.alloc_temp(BB[1])
+btmp = SHIPs.alloc_temp(BB[1])
 @info("profile precomputation of A")
-@btime PoSH.precompute_A!($btmp, $(BB[1]), $Rs, $Zs, 1)
+@btime SHIPs.precompute_A!($btmp, $(BB[1]), $Rs, $Zs, 1)
 
 @info("profile ship-basis and fast-ship site energies")
 for n = 2:5
@@ -35,17 +35,17 @@ for n = 2:5
    B = BB[n-1]
    coeffs = randcoeffs(B)
    🚢 = SHIP(B, coeffs)
-   b = PoSH.alloc_B(B)
-   btmp = PoSH.alloc_temp(B, length(Rs))
-   tmp = PoSH.alloc_temp(🚢, length(Rs))
+   b = SHIPs.alloc_B(B)
+   btmp = SHIPs.alloc_temp(B, length(Rs))
+   tmp = SHIPs.alloc_temp(🚢, length(Rs))
    @info("     evaluate a site energy:")
    print("         SHIPBasis: "); @btime evaluate!($b, $btmp, $B, $Rs, $Zs, $z0)
    print("         SHIP     : "); @btime evaluate!($tmp, $🚢, $Rs, $Zs, $z0)
 
    dEs = zeros(JVecF, length(Rs))
-   db = PoSH.alloc_dB(B, length(Rs))
-   dbtmp = PoSH.alloc_temp_d(B, length(Rs))
-   tmp = PoSH.alloc_temp_d(🚢, length(Rs))
+   db = SHIPs.alloc_dB(B, length(Rs))
+   dbtmp = SHIPs.alloc_temp_d(B, length(Rs))
+   tmp = SHIPs.alloc_temp_d(🚢, length(Rs))
 
    @info("     site energy gradient:")
    print("         SHIPBasis: "); @btime evaluate_d!($db, $dbtmp, $B, $Rs, $Zs, $z0)

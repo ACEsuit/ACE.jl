@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using PoSH, LinearAlgebra
+using SHIPs, LinearAlgebra
 
 trans = PolyTransform(2, 1.0)
 fcut = PolyCutoff1s(2, 0.1, 2.0)
@@ -14,7 +14,7 @@ basis = SHIPBasis(SparseSHIP(5, 8, 1.0), trans, fcut)
 
 length(basis)
 
-A = PoSH.Rotations.CoeffArray(20)
+A = SHIPs.Rotations.CoeffArray(20)
 
 for bo = 2:5
    ctr = 0
@@ -27,8 +27,8 @@ for bo = 2:5
          continue
       end
       ll = getfield.(basis.KL[1][ν], :l)
-      U = PoSH.Rotations.basis(A, ll)
-      c = [ PoSH._Bcoeff(ll, mm, A.cg) for mm in PoSH._mrange(ll) ]
+      U = SHIPs.Rotations.basis(A, ll)
+      c = [ SHIPs._Bcoeff(ll, mm, A.cg) for mm in SHIPs._mrange(ll) ]
       def = norm(U * (U' * c) - c) > 1e-12
       if def > 1e-12
          @show ll, def
@@ -54,13 +54,13 @@ for bo = 2:5
       ll = SVector(ill.I...)
       if issorted(ll) && sum(ll) <= 20
          U =  try
-            PoSH.Rotations.basis(A, ll)
+            SHIPs.Rotations.basis(A, ll)
          catch
             println()
             @show ll
             continue
          end
-         c = [ PoSH._Bcoeff(ll, mm, A.cg) for mm in PoSH._mrange(ll) ]
+         c = [ SHIPs._Bcoeff(ll, mm, A.cg) for mm in SHIPs._mrange(ll) ]
          def = norm(U * (U' * c) - c)
          if def > 1e-12
             @show ll, def

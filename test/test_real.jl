@@ -10,7 +10,7 @@
 
 ##
 using SymPy
-using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using JuLIP
 using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!
 using JuLIP.Testing
@@ -38,10 +38,10 @@ for B in BB
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("bo = $(bodyorder(B)); converting to RSHIP ...")
-   rship = PoSH.convertc2r(ship)
+   rship = SHIPs.convertc2r(ship)
 
-   tmp = PoSH.alloc_temp(ship, 10)
-   rtmp = PoSH.alloc_temp(rship, 10)
+   tmp = SHIPs.alloc_temp(ship, 10)
+   rtmp = SHIPs.alloc_temp(rship, 10)
 
    for nsamples = 1:30
       Rs, Zs, z0 = randR(10)
@@ -57,14 +57,14 @@ end
 
 @info("Check Correctness of RSHIP gradients")
 for B in BB
-   @info("   body-order = $(PoSH.bodyorder(B))")
+   @info("   body-order = $(SHIPs.bodyorder(B))")
    coeffs = randcoeffs(B)
    ship = SHIP(B, coeffs)
    @info("   converting to RSHIP ...")
-   rship = PoSH.convertc2r(ship)
+   rship = SHIPs.convertc2r(ship)
 
    Rs, Zs, z0 = randR(10)
-   tmp = PoSH.alloc_temp_d(rship, length(Rs))
+   tmp = SHIPs.alloc_temp_d(rship, length(Rs))
    dEs = zeros(JVecF, length(Rs))
    evaluate_d!(dEs, tmp, rship, Rs, Zs, z0)
    Es = evaluate!(tmp, rship, Rs, Zs, z0)
@@ -95,7 +95,7 @@ end
 #             for (i, j, R) in sites(at, cutoff(ship)) )
 #
 # for B in BB
-#    @info("   body-order = $(PoSH.bodyorder(B))")
+#    @info("   body-order = $(SHIPs.bodyorder(B))")
 #    coeffs = randcoeffs(B)
 #    ship = SHIP(B, coeffs)
 #    at = bulk(:Si) * 3

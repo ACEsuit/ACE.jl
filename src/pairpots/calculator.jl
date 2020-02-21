@@ -40,7 +40,7 @@ JuLIP.cutoff(V::PolyPairPot) = cutoff(V.J)
             ( (V1.J == V2.J) && (V1.coeffs == V2.coeffs) &&  V1.zlist == V2.zlist )
 
 Dict(V::PolyPairPot) = Dict(
-      "__id__" => "PoSH_PolyPairPot",
+      "__id__" => "SHIPs_PolyPairPot",
       "coeffs" => V.coeffs,
       "J" => Dict(V.J),
       "zlist" => V.zlist.list
@@ -53,7 +53,7 @@ function PolyPairPot(D::Dict)
                        J, zlist, get_bidx0(J, zlist) )
 end
 
-convert(::Val{:PoSH_PolyPairPot}, D::Dict) = PolyPairPot(D)
+convert(::Val{:SHIPs_PolyPairPot}, D::Dict) = PolyPairPot(D)
 
 
 alloc_temp(V::PolyPairPot{T}, N::Integer) where {T} =

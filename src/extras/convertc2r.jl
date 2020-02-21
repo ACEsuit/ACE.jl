@@ -9,7 +9,7 @@
 using StaticArrays
 import SymPy
 using SymPy: symbols, simplify
-using PoSH.SphericalHarmonics: RSHBasis
+using SHIPs.SphericalHarmonics: RSHBasis
 
 # These are the expressions we use to test the real SH implementation
 #  Y_l^m    =      1/√2 (Y_{lm} - i Y_{l,-m})

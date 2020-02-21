@@ -10,9 +10,9 @@
 
 @info("--------- Testing OneOrthogonal ----------")
 
-using PoSH, Test
-using PoSH.OrthPolys: OrthPolyBasis
-using PoSH.OneOrthogonalModule: OneOrthogonal
+using SHIPs, Test
+using SHIPs.OrthPolys: OrthPolyBasis
+using SHIPs.OneOrthogonalModule: OneOrthogonal
 
 # Assemble basis
 N = 15

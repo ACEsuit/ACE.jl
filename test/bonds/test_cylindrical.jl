@@ -15,8 +15,8 @@ using StaticArrays, Test
 using LinearAlgebra
 using JuLIP.Testing: print_tf
 
-using PoSH
-using PoSH.Bonds: CylindricalCoordinateSystem, cylindrical,
+using SHIPs
+using SHIPs.Bonds: CylindricalCoordinateSystem, cylindrical,
                   cartesian
 
 ##

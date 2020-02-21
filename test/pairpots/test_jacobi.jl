@@ -8,9 +8,9 @@
 
 @testset "Jacobi" begin
 
-using PoSH, Test
+using SHIPs, Test
 
-using PoSH.JacobiPolys: Jacobi
+using SHIPs.JacobiPolys: Jacobi
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Testing: print_tf
 

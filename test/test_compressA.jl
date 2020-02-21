@@ -9,7 +9,7 @@
 @testset "Compress A" begin
 ##
 
-using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using JuLIP
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Testing
@@ -25,12 +25,12 @@ randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 
 @info("Generate a basis")
-basis = PoSH.Utils.TestBasis(4,9)
+basis = SHIPs.Utils.TestBasis(4,9)
 @show length(basis)
 @info("Convert to the SHIP")
 ship = SHIP(basis, randcoeffs(basis))
 @info("Compress the coefficients")
-shipc = PoSH.compressA(ship)
+shipc = SHIPs.compressA(ship)
 @info("check the lengths")
 length(ship.coeffs[1])
 length(shipc.coeffs[1])
@@ -38,7 +38,7 @@ length(shipc.coeffs[1])
 # need to check now that the two evaluate the same.
 @info("Check correctness")
 for n = 1:50
-   Rs = PoSH.Utils.rand(ship.J, 10)
+   Rs = SHIPs.Utils.rand(ship.J, 10)
    Zs = zeros(Int16, length(Rs))
    z0 = 0
    s1 = evaluate(ship, Rs, Zs, z0)
@@ -49,17 +49,17 @@ println()
 
 
 # @info("Evaluation test")
-# Rs = PoSH.Utils.rand(ship.J, 30)
+# Rs = SHIPs.Utils.rand(ship.J, 30)
 # Zs = zeros(Int16, length(Rs))
 # z0 = 0
-# tmp = PoSH.alloc_temp(ship, length(Rs))
-# tmp_d = PoSH.alloc_temp_d(ship, length(Rs))
+# tmp = SHIPs.alloc_temp(ship, length(Rs))
+# tmp_d = SHIPs.alloc_temp_d(ship, length(Rs))
 # dEs = zeros(JVecF, 30)
 # @info("  evaluate!:")
-# @btime PoSH.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
-# @btime PoSH.evaluate!($tmp, $shipc, $Rs, $Zs, $z0)
+# @btime SHIPs.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
+# @btime SHIPs.evaluate!($tmp, $shipc, $Rs, $Zs, $z0)
 # @info("  evaluate_d!:")
-# @btime PoSH.evaluate_d!($dEs, $tmp_d, $ship, $Rs, $Zs, $z0)
-# @btime PoSH.evaluate_d!($dEs, $tmp_d, $shipc, $Rs, $Zs, $z0)
+# @btime SHIPs.evaluate_d!($dEs, $tmp_d, $ship, $Rs, $Zs, $z0)
+# @btime SHIPs.evaluate_d!($dEs, $tmp_d, $shipc, $Rs, $Zs, $z0)
 
 end 

@@ -9,11 +9,11 @@
 @testset "Real  Ylm" begin
 
 ##
-import PoSH
+import SHIPs
 using JuLIP.Testing
 using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
-using PoSH.SphericalHarmonics
-using PoSH.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
+using SHIPs.SphericalHarmonics
+using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart, RSHBasis, index_y
 using JuLIP: evaluate, evaluate_d, evaluate_ed
 
@@ -46,7 +46,7 @@ cSH = SHBasis(maxL)
 rSH = RSHBasis(maxL)
 
 for nsamples = 1:30
-   R = PoSH.Utils.rand_sphere()
+   R = SHIPs.Utils.rand_sphere()
    cY = evaluate(cSH, R)
    rY = evaluate(rSH, R)
    print_tf(@test test_r2c(maxL, cY, rY))
@@ -89,13 +89,13 @@ println()
 # maxL = 20
 # cSH = SHBasis(maxL)
 # rSH = RSHBasis(maxL)
-# R = PoSH.Utils.rand_sphere()
-# cY = PoSH.alloc_B(cSH)
-# rY  = PoSH.alloc_B(rSH)
-# tY = PoSH.alloc_temp(cSH)
-# PoSH.evaluate!(cY, tY, cSH, R) == evaluate(cSH, R)
-# PoSH.evaluate!(rY, tY, rSH, R) == evaluate(rSH, R)
-# @btime PoSH.evaluate!($cY, $tY, $cSH, $R)
-# @btime PoSH.evaluate!($rY, $tY, $rSH, $R)
+# R = SHIPs.Utils.rand_sphere()
+# cY = SHIPs.alloc_B(cSH)
+# rY  = SHIPs.alloc_B(rSH)
+# tY = SHIPs.alloc_temp(cSH)
+# SHIPs.evaluate!(cY, tY, cSH, R) == evaluate(cSH, R)
+# SHIPs.evaluate!(rY, tY, rSH, R) == evaluate(rSH, R)
+# @btime SHIPs.evaluate!($cY, $tY, $cSH, $R)
+# @btime SHIPs.evaluate!($rY, $tY, $rSH, $R)
 
 end

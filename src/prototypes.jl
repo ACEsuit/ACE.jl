@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-# We use IntS for all index integer types for all PoSH.jl basis types
+# We use IntS for all index integer types for all SHIPs.jl basis types
 # The `S` originates from the previous name of the package, `SHIPs.jl`
 const IntS = Int32
 

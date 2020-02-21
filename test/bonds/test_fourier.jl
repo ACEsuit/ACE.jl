@@ -16,10 +16,10 @@ using StaticArrays, Test
 using LinearAlgebra
 using JuLIP.Testing: print_tf
 
-using PoSH
+using SHIPs
 using JuLIP: evaluate!, evaluate, evaluate_d!
-using PoSH: alloc_B, alloc_dB
-using PoSH.Bonds: CylindricalCoordinateSystem, cylindrical,
+using SHIPs: alloc_B, alloc_dB
+using SHIPs.Bonds: CylindricalCoordinateSystem, cylindrical,
                   cartesian,
                   FourierBasis,
                   CylindricalCoordinates

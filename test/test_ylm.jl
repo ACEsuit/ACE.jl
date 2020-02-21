@@ -9,11 +9,11 @@
 @testset "Ylm" begin
 
 ##
-import PoSH
+import SHIPs
 using JuLIP.Testing
 using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
-using PoSH.SphericalHarmonics
-using PoSH.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
+using SHIPs.SphericalHarmonics
+using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart
 using JuLIP: evaluate, evaluate_d, evaluate_ed
 
@@ -80,12 +80,12 @@ verbose=false
 for nsamples = 1:30
    θ = 0.1+0.4 * pi * rand()
    L = 5
-   P = PoSH.SphericalHarmonics.compute_p(L, θ)
-   P1, dP = PoSH.SphericalHarmonics.compute_dp(L, θ)
+   P = SHIPs.SphericalHarmonics.compute_p(L, θ)
+   P1, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
    # -------------
    P_eq_P1 = true
    for l = 0:L, m = 0:l
-      i = PoSH.SphericalHarmonics.index_p(l, m)
+      i = SHIPs.SphericalHarmonics.index_p(l, m)
       if ((m == 0) && !(P[i] ≈ P1[i])) || ((m > 0) && !(P[i] ≈ P1[i] * sin(θ)))
          P_eq_P1 = false; break;
       end
@@ -96,7 +96,7 @@ for nsamples = 1:30
    verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
-      dPh = (PoSH.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+      dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
       push!(errs, norm(dP - dPh, Inf))
       verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
@@ -111,13 +111,13 @@ println()
 for nsamples = 1:30
    θ = rand() * 1e-8
    L = 5
-   P = PoSH.SphericalHarmonics.compute_p(L, θ)
-   _, dP = PoSH.SphericalHarmonics.compute_dp(L, θ)
+   P = SHIPs.SphericalHarmonics.compute_p(L, θ)
+   _, dP = SHIPs.SphericalHarmonics.compute_dp(L, θ)
    errs = []
    verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
-      dPh = (PoSH.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+      dPh = (SHIPs.SphericalHarmonics.compute_p(L, θ+h) - P) / h
       push!(errs, norm(dP - dPh, Inf))
       verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end

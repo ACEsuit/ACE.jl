@@ -7,7 +7,7 @@
 
 
 import JuLIP: evaluate!, evaluate_d!, SVec
-import PoSH: alloc_B, alloc_dB
+import SHIPs: alloc_B, alloc_dB
 
 # ------------------------------------------------------------
 #   Fourier Basis evaluation
@@ -24,7 +24,7 @@ Base.eltype(::FourierBasis{T}) where {T} = T
 Base.length(fB::FourierBasis) = 2 * fB.deg + 1
 
 # Dict(fB::FourierBasis) = Dict(
-#       "__id__" => "PoSH_FourierBasis",
+#       "__id__" => "SHIPs_FourierBasis",
 #       "deg" => deg,
 #       "fltt" => "$(fG._fltt)"
 #    )
@@ -33,7 +33,7 @@ Base.length(fB::FourierBasis) = 2 * fB.deg + 1
 # FourierBasis(deg::Integer, fltt::AbstractString) =
 #       FourierBasis(deg, eval(Meta.parse(fltt)))
 #
-# convert(::Val{:PoSH_FourierBasis}, D::Dict) = FourierBasis(D)
+# convert(::Val{:SHIPs_FourierBasis}, D::Dict) = FourierBasis(D)
 
 
 alloc_B(fB::FourierBasis{T}) where {T}  = zeros(Complex{T}, length(fB))

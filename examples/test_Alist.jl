@@ -7,9 +7,9 @@
 
 
 using Test
-using PoSH, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, PoSH.JacobiPolys,
+using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys,
       BenchmarkTools
-using PoSH: TransformedJacobi, transform, transform_d,
+using SHIPs: TransformedJacobi, transform, transform_d,
              alloc_B, alloc_temp, alloc_temp_d, alloc_dB, IntS
 
 using JuLIP: evaluate!, evaluate_d!
@@ -39,9 +39,9 @@ bgrp = shpB.bgrps[1]
 Nr = 50
 Rs, Zs = randR(Nr)
 tmp = alloc_temp(shpB, Nr)
-B = PoSH.alloc_B(shpB)
+B = SHIPs.alloc_B(shpB)
 tmp2 = alloc_temp(shpB2, Nr)
-B2 = PoSH.alloc_B(shpB2)
+B2 = SHIPs.alloc_B(shpB2)
 
 evaluate!(B, tmp, shpB, Rs, Zs, 0)
 evaluate!(B2, tmp2, shpB2, Rs, Zs, 0)
@@ -86,18 +86,18 @@ evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # ##
 #
 #
-# # debugging -> shows that PoSH.grad_AA_Rj! is correct...
+# # debugging -> shows that SHIPs.grad_AA_Rj! is correct...
 #
 # _AA(Rs) = (
-#    PoSH.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
-#    PoSH.precompute_AA!(tmp2, shpB2, 1);
+#    SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
+#    SHIPs.precompute_AA!(tmp2, shpB2, 1);
 #    return copy(tmp2.AA[1])
 #    )
 #
 # _dAA(Rs, j) = (
-#    PoSH.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
-#    PoSH.precompute_AA!(tmpd2, shpB2, 1);
-#    PoSH.grad_AA_Rj!(tmpd2, shpB2, j, Rs, Zs, 1);
+#    SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
+#    SHIPs.precompute_AA!(tmpd2, shpB2, 1);
+#    SHIPs.grad_AA_Rj!(tmpd2, shpB2, j, Rs, Zs, 1);
 #    return copy(tmpd2.dAAj[1])
 #    )
 #
@@ -146,17 +146,17 @@ evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 #
 #
 # _A(Rs) = (
-#    PoSH.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
+#    SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
 #    return copy(tmp2.A[1])
 #    )
 #
 # _dA1(Rs) = begin
-#       PoSH.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
+#       SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
 #       alist = shpB2.alists[1]
 #       dA = zeros(JVec{ComplexF64}, length(alist))
 #       for n = 1:length(alist)
 #          zklm = alist[n]
-#          dA[n] = PoSH.grad_phi_Rj(Rs[1], 1, zklm, tmpd2)
+#          dA[n] = SHIPs.grad_phi_Rj(Rs[1], 1, zklm, tmpd2)
 #       end
 #       return dA
 #    end
@@ -181,12 +181,12 @@ evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # R = Rs[1]
 # _phi(R) = _A([R])
 # _dphi(R) = begin
-#       PoSH.precompute_dA!(tmpd2, shpB2, [R], [0], 1);
+#       SHIPs.precompute_dA!(tmpd2, shpB2, [R], [0], 1);
 #       alist = shpB2.alists[1]
 #       dphi = zeros(JVec{ComplexF64}, length(alist))
 #       for n = 1:length(alist)
 #          zklm = alist[n]
-#          dphi[n] = PoSH.grad_phi_Rj(R, 1, zklm, tmpd2)
+#          dphi[n] = SHIPs.grad_phi_Rj(R, 1, zklm, tmpd2)
 #       end
 #       return dphi
 #    end

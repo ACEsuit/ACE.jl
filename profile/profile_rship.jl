@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using JuLIP
 using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!
 using JuLIP.Testing
@@ -28,21 +28,21 @@ coeffs = randcoeffs(B)
 # a complex SHIP potential
 ship = SHIP(B, coeffs)
 # a real SHIP potential with the same length basis
-rship = RSHIP(ship.J, PoSH.SphericalHarmonics.RSHBasis(ship.SH.maxL), ship.zlist,
+rship = RSHIP(ship.J, SHIPs.SphericalHarmonics.RSHBasis(ship.SH.maxL), ship.zlist,
               ship.alists, ship.aalists, real.(ship.coeffs))
 # the honestly converted real SHIP potential
-rship1 = PoSH.convertc2r(ship)
+rship1 = SHIPs.convertc2r(ship)
 # and then compressed to a minimal basis ...
-rship2 = PoSH.compressA(rship1)
+rship2 = SHIPs.compressA(rship1)
 
 ##
 
 # evaluate! benchmark
 Rs, Zs, z0 = randR(10)
-tmp = PoSH.alloc_temp(ship, length(Rs))
-rtmp = PoSH.alloc_temp(rship, length(Rs))
-rtmp1 = PoSH.alloc_temp(rship1, length(Rs))
-rtmp2 = PoSH.alloc_temp(rship2, length(Rs))
+tmp = SHIPs.alloc_temp(ship, length(Rs))
+rtmp = SHIPs.alloc_temp(rship, length(Rs))
+rtmp1 = SHIPs.alloc_temp(rship1, length(Rs))
+rtmp2 = SHIPs.alloc_temp(rship2, length(Rs))
 @info("Profile `evaluate!`")
 print("       complex SHIP: "); @btime evaluate!($tmp, $ship, $Rs, $Zs, $z0)
 print("RSHIP - same length: "); @btime evaluate!($rtmp, $rship, $Rs, $Zs, $z0)
@@ -52,10 +52,10 @@ print("RSHIP -  compressed: "); @btime evaluate!($rtmp2, $rship2, $Rs, $Zs, $z0)
 ##
 
 # evaluate_d! benchmark
-tmpd = PoSH.alloc_temp_d(ship, length(Rs))
-rtmpd = PoSH.alloc_temp_d(rship, length(Rs))
-rtmp1d = PoSH.alloc_temp_d(rship1, length(Rs))
-rtmp2d = PoSH.alloc_temp_d(rship2, length(Rs))
+tmpd = SHIPs.alloc_temp_d(ship, length(Rs))
+rtmpd = SHIPs.alloc_temp_d(rship, length(Rs))
+rtmp1d = SHIPs.alloc_temp_d(rship1, length(Rs))
+rtmp2d = SHIPs.alloc_temp_d(rship2, length(Rs))
 dEs = zeros(JVecF, length(Rs))
 @info("Profile `evaluate_d!`")
 print("       complex SHIP: "); @btime evaluate_d!(dEs, $tmpd, $ship, $Rs, $Zs, $z0)

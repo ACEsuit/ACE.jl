@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using PoSH.SphericalHarmonics: SHBasis, index_y
+using SHIPs.SphericalHarmonics: SHBasis, index_y
 using StaticArrays
 using JuLIP: AbstractCalculator, Atoms, JVec
 using JuLIP.Potentials: MSitePotential, SZList, ZList
@@ -64,7 +64,7 @@ end
 # ------------------------------------------------------------
 
 Dict(ship::SHIP{T,NZ}) where {T, NZ} = Dict(
-      "__id__" => "PoSH_SHIP_v2",
+      "__id__" => "SHIPs_SHIP_v2",
       "J" => Dict(ship.J),
       "SH_maxL" => ship.SH.maxL,   # TODO: replace this with Dict(SH)
       "T" => string(eltype(ship.SH)),
@@ -75,7 +75,7 @@ Dict(ship::SHIP{T,NZ}) where {T, NZ} = Dict(
       "coeffs_im" => [ imag.(ship.coeffs[i]) for i = 1:NZ  ]
    )
 
-convert(::Val{:PoSH_SHIP_v2}, D::Dict) = SHIP(D)
+convert(::Val{:SHIPs_SHIP_v2}, D::Dict) = SHIP(D)
 
 # bodyorder - 1 is because BO is the number of neighbours
 # not the actual body-order

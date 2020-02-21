@@ -23,7 +23,7 @@ struct BondBasisFcnIdx{N}
    mm::SVector{N, Int16}  # z-coord
 end
 
-PoSH.bodyorder(b::BondBasisFcnIdx{N}) where {N} = N
+SHIPs.bodyorder(b::BondBasisFcnIdx{N}) where {N} = N
 
 """
 `Bond1ParticleFcn` : represents the environment part of a single-particle
@@ -57,7 +57,7 @@ struct BondAList
 end
 
 # --------------(de-)serialisation----------------------------------------
-Dict(alist::AList) = Dict("__id__" => "PoSH_AList",
+Dict(alist::AList) = Dict("__id__" => "SHIPs_AList",
                            "i2zklm" => zklm2vec.(alist.i2zklm))
 AList(D::Dict) = AList(vec2zklm.(D["i2zklm"]))
 zklm2vec(t) = [t.z, t.k, t.l, t.m]
@@ -111,7 +111,7 @@ function Dict(aalist::AAList)
    for (zzkkllmm, i) in aalist.zklm2i
       ZKLM_list[i] = zzkkllmm
    end
-   return Dict("__id__" => "PoSH_AAList", "ZKLM_list" => ZKLM_list)
+   return Dict("__id__" => "SHIPs_AAList", "ZKLM_list" => ZKLM_list)
 end
 zzkkllmm2vec(zzkkllmm) = Vector.([zzkkllmm...])
 vec2zzkkllmm(v) = (SVector(Int16.(v[1])...),

@@ -11,13 +11,13 @@
 @info("--------- Testing OrthogonalPolynomials ----------")
 
 ##
-using PoSH, Test
+using SHIPs, Test
 
 using LinearAlgebra: norm, cond
 using ForwardDiff
 
-using PoSH.JacobiPolys: Jacobi
-using PoSH.OrthPolys: OrthPolyBasis
+using SHIPs.JacobiPolys: Jacobi
+using SHIPs.OrthPolys: OrthPolyBasis
 
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Testing: print_tf
@@ -86,9 +86,9 @@ end
 @info("Testing TransformedPolys")
 
 trans = PolyTransform(2, 1.0)
-Pnew = PoSH.OrthPolys.transformed_jacobi(10, trans, 2.0, 0.5; pcut = 2, pin = 2)
+Pnew = SHIPs.OrthPolys.transformed_jacobi(10, trans, 2.0, 0.5; pcut = 2, pin = 2)
 fcut = PolyCutoff2s(2, 0.5, 2.0)
-Pold = PoSH.TransformedJacobi(9, trans, fcut)
+Pold = SHIPs.TransformedJacobi(9, trans, fcut)
 
 # r = 2*rand() + 0.25
 # pnew = evaluate(Pnew, r)
@@ -129,22 +129,22 @@ println()
 @info("Testing the orthogonality (via A-basis)")
 
 spec = SparseSHIP(3, 10)
-P = PoSH.OrthPolys.transformed_jacobi(PoSH.maxK(spec)+1, trans, 2.0, 0.5;
+P = SHIPs.OrthPolys.transformed_jacobi(SHIPs.maxK(spec)+1, trans, 2.0, 0.5;
                                       pcut = 2, pin = 2)
 shpB = SHIPBasis(spec, P)
 
 function evalA(shpB, tmp, Rs)
    Zs = zeros(Int16, length(Rs))
-   PoSH.precompute_A!(tmp, shpB, Rs, Zs, 1)
+   SHIPs.precompute_A!(tmp, shpB, Rs, Zs, 1)
    return tmp.A[1]
 end
 
 function A_gramian(shpB, Nsamples = 100_000)
-   tmp = PoSH.alloc_temp(shpB)
+   tmp = SHIPs.alloc_temp(shpB)
    lenA = length(tmp.A[1])
    G = zeros(ComplexF64, lenA, lenA)
    for n = 1:Nsamples
-      R = PoSH.Utils.rand(shpB.J)
+      R = SHIPs.Utils.rand(shpB.J)
       A = evalA(shpB, tmp, [R])
       for i = 1:lenA, j = 1:lenA
          G[i,j] +=  A[i] * A[j]'
@@ -163,7 +163,7 @@ end
 # ## Quick look at the basis
 # using Plots
 # N = 5
-# Jd = PoSH.OrthPolys.discrete_jacobi(N; pcut = 3, pin = 2)
+# Jd = SHIPs.OrthPolys.discrete_jacobi(N; pcut = 3, pin = 2)
 # tp = range(-1, 1, length=100)
 # Jp = zeros(length(tp), N)
 # for (i,t) in enumerate(tp)

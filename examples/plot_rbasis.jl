@@ -7,10 +7,10 @@
 
 
 
-using PoSH, Printf, Test, LinearAlgebra
-using PoSH: PolyTransform, rbasis,
+using SHIPs, Printf, Test, LinearAlgebra
+using SHIPs: PolyTransform, rbasis,
 using JuLIP: evaluate, evaluate_d
-using PoSH.JacobiPolys: Jacobi
+using SHIPs.JacobiPolys: Jacobi
 using PyPlot
 
 trans = PolyTransform(1, 1)

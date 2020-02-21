@@ -11,8 +11,8 @@
 ##
 
 @info("-------- TEST 🚢  BASIS ---------")
-using PoSH, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
-using PoSH: PolyCutoff1s, PolyCutoff2s
+using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using SHIPs: PolyCutoff1s, PolyCutoff2s
 using JuLIP.MLIPs: IPSuperBasis
 using JuLIP.Testing: print_tf
 using Printf
@@ -69,12 +69,12 @@ println()
 ##
 @info("Test gradients for 3-6B 🚢-basis")
 for 🚢 in ships
-   @info("  body-order = $(PoSH.bodyorder(🚢)):")
+   @info("  body-order = $(SHIPs.bodyorder(🚢)):")
    Rs, Zs = randR(20)
-   tmp = PoSH.alloc_temp_d(🚢, Rs)
-   # PoSH.precompute_grads!(tmp, 🚢, Rs, Zs)
+   tmp = SHIPs.alloc_temp_d(🚢, Rs)
+   # SHIPs.precompute_grads!(tmp, 🚢, Rs, Zs)
    B = evaluate(🚢, Rs, Zs, 0)
-   dB = PoSH.alloc_dB(🚢, Rs)
+   dB = SHIPs.alloc_dB(🚢, Rs)
    evaluate_d!(dB, tmp, 🚢, Rs, Zs, 0)
    @info("      finite-difference test into random directions")
    for ndirections = 1:20
@@ -98,13 +98,13 @@ end
 verbose=false
 @info("Test gradients for 3B with and R near the pole")
 🚢 = ship2
-@info("  body-order = $(PoSH.bodyorder(🚢)):")
+@info("  body-order = $(SHIPs.bodyorder(🚢)):")
 # Rs = [ randR(5); [SVector(1e-14*rand(), 1e-14*rand(), 1.1+1e-6*rand())] ]
 Rs = [ randR(5)[1]; [SVector(0, 0, 1.1+0.5*rand())]; [SVector(1e-14*rand(), 1e-14*rand(), 0.9+0.5*rand())] ]
 _, Zs = randR(length(Rs))
-tmp = PoSH.alloc_temp_d(🚢, Rs)
+tmp = SHIPs.alloc_temp_d(🚢, Rs)
 B = evaluate(🚢, Rs, Zs, 0)
-dB = PoSH.alloc_dB(🚢, Rs)
+dB = SHIPs.alloc_dB(🚢, Rs)
 evaluate_d!(dB, tmp, 🚢, Rs, Zs, 0)
 @info("      finite-difference test into random directions")
 for ndirections = 1:30
@@ -134,7 +134,7 @@ naive_energy(basis::SHIPBasis, at) =
             for (i, j, R) in sites(at, cutoff(basis)) )
 
 for basis in ships
-   @info("   body-order = $(PoSH.bodyorder(basis))")
+   @info("   body-order = $(SHIPs.bodyorder(basis))")
    at = bulk(:Si) * 3
    at.Z[:] .= 0   # this set of tests is species-agnostic!
    rattle!(at, 0.1)

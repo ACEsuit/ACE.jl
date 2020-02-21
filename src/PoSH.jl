@@ -5,7 +5,7 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-module PoSH
+module SHIPs
 
 
 using Reexport

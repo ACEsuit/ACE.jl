@@ -10,11 +10,11 @@ module Utils
 
 using LinearAlgebra: norm
 using JuLIP: JVecF
-using PoSH: TransformedJacobi,  inv_transform,
+using SHIPs: TransformedJacobi,  inv_transform,
             PolyTransform, PolyCutoff1s, SparseSHIP, SHIPBasis,
             TransformedPolys
 
-import PoSH
+import SHIPs
 import Base: rand
 import JuLIP: evaluate
 import JuLIP.MLIPs: IPBasis
@@ -102,8 +102,8 @@ function findall_basis_ll(basis, ll)
    @warn("This code assumes there is only one species. (not checked!)")
    @info(" ll = $(ll)")
    @info("Get the purely rotation-invariant basis:")
-   CA = PoSH.Rotations.CoeffArray()
-   Brot = PoSH.Rotations.basis(CA, ll)
+   CA = SHIPs.Rotations.CoeffArray()
+   Brot = SHIPs.Rotations.basis(CA, ll)
    @info("   ... there are $(size(Brot, 2)) rotation-invariance basis functions")
 
    @info("Find the RPI basis")

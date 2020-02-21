@@ -49,9 +49,9 @@ end
 function _eval_AA(ship::RCSHIP{T,NZ}, alist, aalist, Iaa, Rs) where {T, NZ}
    @assert NZ ==  1
    Zs = zeros(Int16, length(Rs))
-   tmp = PoSH.alloc_temp(ship, length(Rs))
+   tmp = SHIPs.alloc_temp(ship, length(Rs))
    A = tmp.A[1]
-   PoSH.precompute_A!(A, tmp, alist, Rs, Zs, ship)
+   SHIPs.precompute_A!(A, tmp, alist, Rs, Zs, ship)
    AA = ones(celtype(ship), length(Iaa))
    for i = 1:length(Iaa)
       for α = 1:aalist.len[Iaa[i]]
@@ -66,7 +66,7 @@ function _sample_AA(ship::RCSHIP{T,NZ}, alist, aalist, Iaa,
    N = aalist.len[Iaa[1]]
    AA = zeros(celtype(ship), nsamples, length(Iaa))
    for ns = 1:nsamples
-      Rs = PoSH.Utils.rand(ship.J, N)
+      Rs = SHIPs.Utils.rand(ship.J, N)
       AA[ns, :] = _eval_AA(ship, alist, aalist, Iaa, Rs)
    end
    return AA

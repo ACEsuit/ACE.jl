@@ -58,14 +58,14 @@ Base.length(pB::PolyPairBasis) = length(pB.J) * (nz(pB) * (nz(pB) + 1)) ÷ 2
 JuLIP.cutoff(pB::PolyPairBasis) = cutoff(pB.J)
 
 Dict(pB::PolyPairBasis) = Dict(
-      "__id__" => "PoSH_PolyPairBasis",
+      "__id__" => "SHIPs_PolyPairBasis",
       "J" => Dict(pB.J),
       "zlist" => pB.zlist.list )
 
 PolyPairBasis(D::Dict) = PolyPairBasis( TransformedJacobi(D["J"]),
                                         ZList(D["zlist"]; static=true) )
 
-convert(::Val{:PoSH_PolyPairBasis}, D::Dict) = PolyPairBasis(D)
+convert(::Val{:SHIPs_PolyPairBasis}, D::Dict) = PolyPairBasis(D)
 
 
 
