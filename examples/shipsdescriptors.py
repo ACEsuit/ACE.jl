@@ -11,12 +11,12 @@ from ase.build import bulk
 
 # this generates a new descriptor; make sure to store this in `Main` (i.e.
 # inside of Julia) - see help text to see the complete set of options
-Main.eval("using PoSH")
-Main.eval("desc = PoSH.Descriptors.SHIPDescriptor(:Si, deg=6, rcut=4.0)");
+Main.eval("using SHIPs")
+Main.eval("desc = SHIPs.Descriptors.SHIPDescriptor(:Si, deg=6, rcut=4.0)");
 # create an ase.Atoms object by whatever means
 Main.at = bulk("Si", cubic=True) * (2,2,2)
 # compute the corresponding descriptors ...
-D = Main.eval("PoSH.Descriptors.descriptors(desc, at)")
+D = Main.eval("SHIPs.Descriptors.descriptors(desc, at)")
 
 Nx = Main.length(Main.desc)
 Nat = Main.at.positions.shape[0]

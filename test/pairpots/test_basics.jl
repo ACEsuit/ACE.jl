@@ -5,7 +5,7 @@
 ##
 
 using Test
-using PoSH, JuLIP, LinearAlgebra, Test
+using SHIPs, JuLIP, LinearAlgebra, Test
 using JuLIP.Testing, JuLIP.MLIPs
 randr() = 1.0 + rand()
 randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
@@ -57,7 +57,7 @@ end
 
 ##
 
-using PoSH, JuLIP, LinearAlgebra, Test
+using SHIPs, JuLIP, LinearAlgebra, Test
 using JuLIP.Testing, LinearAlgebra
 using JuLIP.MLIPs
 randr() = 1.0 + rand()

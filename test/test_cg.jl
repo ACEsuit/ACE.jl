@@ -1,10 +1,10 @@
 
 @testset "Clebsch-Gordan" begin
 
-using PyCall, Test, PoSH.SphericalHarmonics
+using PyCall, Test, SHIPs.SphericalHarmonics
 using JuLIP: evaluate
-using PoSH.SphericalHarmonics: index_y
-using PoSH.Rotations: ClebschGordan, clebschgordan
+using SHIPs.SphericalHarmonics: index_y
+using SHIPs.Rotations: ClebschGordan, clebschgordan
 
 sympy = pyimport("sympy")
 spin = pyimport("sympy.physics.quantum.spin")

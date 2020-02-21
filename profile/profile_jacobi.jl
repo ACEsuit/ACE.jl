@@ -1,5 +1,5 @@
-using PoSH, BenchmarkTools
-using PoSH.JacobiPolys: Jacobi
+using SHIPs, BenchmarkTools
+using SHIPs.JacobiPolys: Jacobi
 using JuLIP: evaluate
 
 

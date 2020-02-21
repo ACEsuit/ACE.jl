@@ -4,7 +4,7 @@ module Descriptors
 
 using JuLIP
 
-using PoSH: SparseSHIP, PolyTransform, PolyCutoff1s, SHIPBasis
+using SHIPs: SparseSHIP, PolyTransform, PolyCutoff1s, SHIPBasis
 
 export SHIPDescriptor, descriptors
 

@@ -3,8 +3,8 @@
 # l : θ-degree
 # m : z-degree
 
-import PoSH: alloc_B, alloc_dB
-using PoSH: AList
+import SHIPs: alloc_B, alloc_dB
+using SHIPs: AList
 
 import JuLIP: evaluate!, evaluate_d!,
               alloc_temp, alloc_temp_d

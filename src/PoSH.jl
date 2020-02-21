@@ -1,4 +1,4 @@
-module PoSH
+module SHIPs
 
 
 using Reexport

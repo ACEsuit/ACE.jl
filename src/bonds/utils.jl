@@ -1,5 +1,5 @@
 
-using PoSH: PolyTransform, IdTransform
+using SHIPs: PolyTransform, IdTransform
 # ------ Basis generation
 
 function envpairbasis(species, bo, deg0, rcut0, degenv;
