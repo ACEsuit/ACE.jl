@@ -68,6 +68,6 @@ include("extras/compressA.jl")
 
 # ------ polynomials with cylindrical synmmetry (bonds)
 
-# include("bonds/bonds.jl")
+include("bonds/bonds.jl")
 
 end # module
