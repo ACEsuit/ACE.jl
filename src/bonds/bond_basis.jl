@@ -11,27 +11,28 @@
 # m : z-degree
 
 import SHIPs: alloc_B, alloc_dB
-using SHIPs: AList
 
 import JuLIP: evaluate!, evaluate_d!,
-              alloc_temp, alloc_temp_d
+              alloc_temp, alloc_temp_d,
+              read_dict, write_dict
 
 
-struct EnvPairBasis{T0, TR, TZ, TT}
-   P0::T0                # basis for the bond-length coordinate
-   Pr::TR                # specifies the radial basis  / n
-   Pθ::TT                # the angular basis           / l
-   Pz::TZ                # specifies the z-basis       / m
-   alist::BondAList         # datastructure to assemble A
-   aalist::BondAAList       # datastructure to assemble AA
+struct EnvPairBasis{T0, TR, TZ, TT, TI}
+   P0::T0                # basis for the bond-length coordinate / m0 = k0
+   Pr::TR                # specifies the radial basis  / n = kr
+   Pθ::TT                # the angular basis           / l = kθ
+   Pz::TZ                # specifies the z-basis       / m = kz
+   aalist::BondAAList{TI}    # datastructure specifying the basis
 end
 
 Base.eltype(basis::EnvPairBasis) = eltype(basis.Pr)
 
-alloc_B(basis::EnvPairBasis) = zeros(eltype(basis.Pr), length(basis))
+alloc_B(basis::EnvPairBasis) = zeros(eltype(basis), length(basis))
 
 alloc_temp(basis::EnvPairBasis) =
-   ( Pr = alloc_B(basis.Pr),
+   ( P0 = alloc_B(basis.P0),
+     tmp_P0 = alloc_temp(basis.P0),
+     Pr = alloc_B(basis.Pr),
      tmp_Pr = alloc_temp(basis.Pr),
      Pθ = alloc_B(basis.Pθ),
      tmp_Pθ = alloc_temp(basis.Pθ),
@@ -39,20 +40,27 @@ alloc_temp(basis::EnvPairBasis) =
      tmp_Pz = alloc_temp(basis.Pz)
     )
 
-function precompute_A!(A, tmp, alist, R1, Z1, Rs, Zs, basis::EnvPairBasis)
+function precompute_A!(A, tmp, basis::EnvPairBasis, R0, Rs)
+   alist = basis.aalist.alist
    # construct the coordinate system, and convert
-   C = CylindricalCoordinateSystem(R1)
+   cylcoords = CylindricalCoordinateSystem(R0)
    # loop through the environment to assemble the As
-   for (R, Z) in zip(Rs, Zs)
-      rθz = cylindrical(C, R)
+   for R in Rs
+      rθz = cylcoords(R)
       evaluate!(tmp.Pr, tmp.tmp_Pr, basis.Pr, rθz.r)
       evaluate!(tmp.Pz, tmp.tmp_Pz, basis.Pz, rθz.z)
       evaluate!(tmp.Pθ, tmp.tmp_Pθ, basis.Pθ, rθz)
-      iz = z2i(ship, Z)
-      for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
-         zklm = alist[i]
-         A[i] += tmp.Pr[zklm.k+1] * tmp.Pθ[cyl_l2i(zklm.l)] * tmp.Pz[zklm.m+1]
+      for i = 1:length(alist)
+         krθz = alist[i]
+         A[i] += tmp.Pr[krθz.kr+1] *
+                 tmp.Pθ[cyl_l2i(krθz.kθ)] *
+                 tmp.Pz[krθz.kz+1]
       end
+      # iz = z2i(ship, Z)
+      # for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
+      #    zklm = alist[i]
+      #    A[i] += tmp.Pr[zklm.k+1] * tmp.Pθ[cyl_l2i(zklm.l)] * tmp.Pz[zklm.m+1]
+      # end
    end
 end
 
