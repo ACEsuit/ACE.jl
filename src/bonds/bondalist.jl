@@ -48,6 +48,7 @@ end
 _inttype(b::BondAList{TI}) where {TI} = TI
 
 
+
 # --------------(de-)serialisation----------------------------------------
 Dict(alist::BondAList{TI}) where {TI} =
       Dict( "__id__" => "SHIPs_BondAList",
@@ -104,6 +105,14 @@ BondBasisFcnIdx(k0::Integer, ainds::AbstractVector) =
 
 Base.getindex(b::BondBasisFcnIdx, n::Integer) = b.kkrθz[n]
 
+vec(b::BondBasisFcnIdx{N}) where {N} =
+   vcat([b.k0], [ vec(b.kkrθz[n]) for n = 1:N ]...)
+
+_tuple(b::BondBasisFcnIdx) = tuple( vec(b)... )
+BondBasisFcnIdx(t::Tuple) =
+      BondBasisFcnIdx( t[1],
+                       [ Bond1ParticleFcn((t[i], t[i+1], t[i+3]))
+                         for i = 2:3:length(t) ] )
 
 """
 `BondAAList` : represents a basis functions for an EnvPairPot

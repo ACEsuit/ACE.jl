@@ -6,19 +6,16 @@
 # --------------------------------------------------------------------------
 
 
-# Auxiliary functions to generate sparse grid type stuff
 
-# gensparse(N::Integer, deg, degfun, filter = _->true, TI = Int16) =
-#       gensparse(N, ν -> ((degfun(ν) <= deg) && filter(ν)), TI)
 
-gensparse(N::Integer;
-         admissible = _->false,
-         filter = _-> true,
-         converter = identity,
-         TI = Int16) =
+gensparseordered(N::Integer;
+                 admissible = _->false,
+                 filter = _-> true,
+                 converter = identity,
+                 TI = Int16) =
    _gensparse(Val(N), admissible, filter, converter, TI)
 
-function _gensparse(::Val{N},
+function _gensparseordered(::Val{N},
                     admissible,
                     filter,
                     converter,

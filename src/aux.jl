@@ -114,7 +114,7 @@ end
    end
 end
 
-
+# TODO: move this to JuLIP?
 # (de-)serialize a sparse matric
 Base.Dict(A::SparseMatrixCSC) =
    Dict("__id__" => "SparseMatrixCSC",

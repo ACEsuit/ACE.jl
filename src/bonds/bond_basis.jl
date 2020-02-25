@@ -37,7 +37,8 @@ alloc_temp(basis::EnvPairBasis) =
      Pθ = alloc_B(basis.Pθ),
      tmp_Pθ = alloc_temp(basis.Pθ),
      Pz = alloc_B(basis.Pz),
-     tmp_Pz = alloc_temp(basis.Pz)
+     tmp_Pz = alloc_temp(basis.Pz),
+     A = alloc_A(basis.aalist.alist)
     )
 
 function precompute_A!(A, tmp, basis::EnvPairBasis, R0, Rs)
@@ -64,23 +65,21 @@ function precompute_A!(A, tmp, basis::EnvPairBasis, R0, Rs)
    end
 end
 
-
+# R0   : typically SVector{T}
+# Renv : typically Vector{SVector{T}} or a view into Vector{SVector{T}}
 function evaluate!(B::AbstractVector{Complex{T}},
-                   tmp,
-                   basis::EnvPairBasis{T},
-                   R0::SVector{T},
-                   Renv::AbstractVector)
+                   tmp,  basis::EnvPairBasis, R0, Renv)  where {T}
 
    # construct the basis for the r1-variable
    r0 = norm(R0)
    P0 = evaluate!(tmp.P0, tmp.tmp_P0, basis.P0, r0)
 
    # evaluate the A-basis, i.e. the density projections of the environment
-   A = precompute_A!(tmp, basis, Renv) # TODO
+   A = precompute_A!(tmp.A, tmp, basis, R0, Renv)
 
    # loop over all basis functions
    for i = 1:length(aalist)
-      B[i] = P0[aalist.i2m0[i] + 1]
+      B[i] = P0[aalist.i2k0[i] + 1]
       for α = 1:aalist.len[i]
          B[i] *= A[aalist.i2Aidx[i, α]]  # TODO: reverse i, α
       end
