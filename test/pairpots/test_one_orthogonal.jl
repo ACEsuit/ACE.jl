@@ -5,14 +5,13 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using Test
+
 
 @testset "OneOrthogonal" begin
 
 ##
 @info("--------- Testing OneOrthogonal ----------")
-
-using LinearAlgebra
+using LinearAlgebra, Test
 using SHIPs
 using SHIPs.OrthPolys: OrthPolyBasis
 using SHIPs.OneOrthogonalModule: OneOrthogonal
@@ -20,12 +19,12 @@ using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!
 
 ##
 # Assemble basis
-N = 10
+N = 10  # degree
 Nquad = 1000
 dt =  2 / Nquad
 tdf = range(-1.0+dt/2, 1.0-dt/2, length=Nquad)
 ww = ones(Nquad) / Nquad
-P = OrthPolyBasis(N,  0, 1.0, 2, -1.0, tdf,ww)
+P = OrthPolyBasis(N,  0, 1.0, 2, -1.0, tdf, ww)
 Q = OneOrthogonal(P)
 
 # Evaluate basis
@@ -49,5 +48,11 @@ q1 = evaluate(Q, -ε/2)
 q2 = evaluate(Q, ε/2)
 dq = evaluate_d(Q,0.0)
 @test (q2.-q1)./ε ≈ dq
+
+##
+
+
+
+##
 
 end
