@@ -21,6 +21,8 @@ export SparseSHIP
 abstract type BasisSpec{BO, NZ} end
 abstract type AnalyticBasisSpec{BO, NZ} <: BasisSpec{BO, NZ} end
 
+get_filter(::AnalyticBasisSpec) = (_ -> true)
+
 """
 `get_basisspec(<: BasisSpec) -> allKL, Nu`
 """
@@ -72,11 +74,14 @@ struct SparseSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
    chc::Float64
    ahc::Float64
    bhc::Float64
+   filterfcn
    # --------------------
    Zs::NTuple{NZ, Int16}
    valbo::Val{BO}
    z2i::Dict{Int16, Int16}
 end
+
+get_filter(spec::SparseSHIP) = spec.filterfcn
 
 ==(s1::SparseSHIP, s2::SparseSHIP) =
       all( getfield(s1, i) == getfield(s2, i)
@@ -90,7 +95,8 @@ function SparseSHIP(Zs, bo::Integer, deg::Integer;
                     csp = 1.0,
                     chc = 0.0,
                     ahc = 0.0,
-                    bhc = 0.0)
+                    bhc = 0.0,
+                    filter = _ -> true)
    @assert wL > 0
    @assert deg > 0
    @assert bo >= 0
@@ -98,6 +104,7 @@ function SparseSHIP(Zs, bo::Integer, deg::Integer;
    z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
    return SparseSHIP(IntS(deg), Float64(wL), Float64(csp),
                      Float64(chc), Float64(ahc), Float64(bhc),
+                     filter,
                      Zs, Val(bo), z2i)
 end
 
@@ -223,7 +230,8 @@ function generate_ZKL_tuples(spec::AnalyticBasisSpec{BO}, rotcoefs;
    # separate arrays for all body-orders and species
    NuZ = _init_NuZ(BO, nspecies(spec))
    for N = 1:BO
-      _generate_ZKL_tuples!(NuZ[N,1], spec, rotcoefs, allZKL, Val(N); filter=filter)
+      _generate_ZKL_tuples!(NuZ[N,1], spec, rotcoefs, allZKL, Val(N);
+                            filter=filter, filterfcn=get_filter(spec))
       for iz = 2:nspecies(spec)
          append!(NuZ[N, iz], NuZ[N, 1])
       end
@@ -259,7 +267,7 @@ end
 
 
 function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, rotcoefs, ZKL, ::Val{BO};
-                               filter=true) where {BO}
+                               filter=true, filterfcn = _->true) where {BO}
    nz = nspecies(spec)
    izz = @MVector ones(Int16, BO)
    izz_tmp = SVector{BO, Int16}[]
@@ -296,8 +304,12 @@ function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, rotcoefs, ZKL, ::Va
          push!(NuZ, (izz = izz, ν = ν))
          for izzp in unique(permutations(izz))
             if !any( _iseqB(SVector(izzp...), ν, izz1, ν)  for izz1 in izz_tmp )
-               push!(izz_tmp, izzp)
-               push!(NuZ, (izz = izzp, ν = ν))
+               # and finally a user-defined filter, this is currently used
+               # for the orth-to-zero basis, but could be used in many ways...
+               if filterfcn(ν)
+                  push!(izz_tmp, izzp)
+                  push!(NuZ, (izz = izzp, ν = ν))
+               end
             end
          end
       end
