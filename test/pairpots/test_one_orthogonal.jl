@@ -74,15 +74,19 @@ B2 = SHIPs.Utils.SubBasis(shpB, I2)
 
 ##
 
+pureB = SHIPs.PureBasis(shpB, 2)
+
+##
+
 
 Rs = SHIPs.rand_vec(shpB.J, 3)
 Zs = zeros(Int16, 5)
 b = evaluate(shpB, Rs, Zs, 0)
 bp = pureB(Rs)
-@assert length(b) == length(shpB) == length(bp)
+# @assert length(b) == length(shpB) == length(bp)
 
 G, A_dot_1 = let nsamples = 10_000
-   G = zeros(length(shpB), length(shpB))
+   G = zeros(length(pureB), length(pureB))
    A_dot_1 = zeros(length(I2))
    for _ = 1:nsamples
       Rs = SHIPs.rand_vec(shpB.J, 2)

@@ -11,9 +11,20 @@ import JuLIP: evaluate
 
 struct PureBasis{TB}
    basis::TB
+   Ibas::Vector{Int}
 end
 
+Base.length(b::PureBasis) = length(b.Ibas)
+
 (b::PureBasis)(args...) = evaluate(b, args...)
+
+PureBasis(ship::SHIPBasis) = PureBasis(ship, collect(1:length(ship)))
+
+function PureBasis(ship::SHIPBasis, N::Integer)
+   @assert length(ship.zlist) == 1
+   Ibas = SHIPs.Utils.findall_basis_N(ship, N)
+   return PureBasis(ship, Ibas)
+end
 
 function evaluate(b::PureBasis, Rs::AbstractVector)
    N = length(Rs)
@@ -31,7 +42,7 @@ function evaluate(b::PureBasis, Rs::AbstractVector)
 
    # get B via the same rotation-symmetrisation as in the density trick case
    _my_mul!(tmp.Bc[1], ship.A2B[1], Phi)
-   return real.(tmp.Bc[1])
+   return real.(tmp.Bc[1])[b.Ibas]
 end
 
 
@@ -52,19 +63,22 @@ function precompute_phi(tmp, Rs, Zs, ship)
    return phi
 end
 
+
 function precompute_prod_phi(tmp, phi, ship)
    aalist = ship.aalists[1]
    N = size(phi, 2)
    factN = factorial(N)
-   Phi = fill!(tmp.AA[1], 1)
+   Phi = fill!(tmp.AA[1], 0)
    for i = 1:length(aalist)
+      if aalist.len[i] != N; continue; end
       for σ in permutations(1:N)
+         phi_temp = one(eltype(Phi))
          for α = 1:aalist.len[i]
             iphi = aalist.i2Aidx[i, α]
-            Phi[i] *= phi[iphi, σ[α]]
+            phi_temp *= phi[iphi, σ[α]]
          end
+         Phi[i] += phi_temp / factN
       end
-      Phi[i] /= factN
    end
    return Phi
 end

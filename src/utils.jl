@@ -59,9 +59,10 @@ function findall_basis(basis; N = nothing, ll = nothing,
 end
 
 
-function findall_basis_N(basis, N; verbose=true)
+function findall_basis_N(basis, N; verbose=true)::Vector{Int} 
    verbose && @warn("This code assumes there is only one species. (not checked!)")
    I1 = findall(b -> length(b[end]) == N, basis.bgrps[1])
+   if isempty(I1); return Int[]; end
    verbose && @info("There are $(length(I1)) basis groups with N = $N:")
    Ib = mapreduce(i -> (basis.firstb[1][i]+1):basis.firstb[1][i+1],
                   vcat, I1)
