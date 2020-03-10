@@ -30,7 +30,7 @@ using SHIPs: PolyTransform, PolyCutoff1s, PolyCutoff2s
     include("test_real.jl")
     include("test_multispecies.jl")
     include("test_orth.jl")
-    include("test_descriptor.jl")
+    # include("test_descriptor.jl")
     # ----------------------
     include("test_compressA.jl")
     # ---------------------- bonds stuff

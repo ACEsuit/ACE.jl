@@ -74,18 +74,19 @@ struct SparseSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
    chc::Float64
    ahc::Float64
    bhc::Float64
-   filterfcn
    # --------------------
    Zs::NTuple{NZ, Int16}
    valbo::Val{BO}
    z2i::Dict{Int16, Int16}
+   # --------------------
+   filterfcn
 end
 
 get_filter(spec::SparseSHIP) = spec.filterfcn
 
 ==(s1::SparseSHIP, s2::SparseSHIP) =
       all( getfield(s1, i) == getfield(s2, i)
-           for i = 1:fieldcount(SparseSHIP) )
+           for i = 1:fieldcount(SparseSHIP)-1 )
 
 SparseSHIP(bo::Integer, deg::Integer; kwargs...) =
       SparseSHIP(:X, bo, deg; kwargs...)
@@ -96,7 +97,7 @@ function SparseSHIP(Zs, bo::Integer, deg::Integer;
                     chc = 0.0,
                     ahc = 0.0,
                     bhc = 0.0,
-                    filter = _ -> true)
+                    filterfcn = _ -> true)
    @assert wL > 0
    @assert deg > 0
    @assert bo >= 0
@@ -104,8 +105,8 @@ function SparseSHIP(Zs, bo::Integer, deg::Integer;
    z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
    return SparseSHIP(IntS(deg), Float64(wL), Float64(csp),
                      Float64(chc), Float64(ahc), Float64(bhc),
-                     filter,
-                     Zs, Val(bo), z2i)
+                     Zs, Val(bo), z2i,
+                     filterfcn )
 end
 
 
@@ -207,6 +208,11 @@ function _kl(ν::StaticVector{N}, izz::StaticVector{N}, KLZ) where {N}
    return kk, ll
 end
 
+function _kl2tup(args...)
+   kk, ll = _kl(args...)
+   return (kk = kk, ll = ll)
+end
+
 
 """
 create a vector of Nu arrays with the right type information
@@ -300,13 +306,15 @@ function _generate_ZKL_tuples!(NuZ, spec::AnalyticBasisSpec, rotcoefs, ZKL, ::Va
          # but
          #   A[1,n] A[2,m] != A[2,n] A[1,m]
          empty!(izz_tmp)
-         push!(izz_tmp, izz)
-         push!(NuZ, (izz = izz, ν = ν))
+         if filterfcn(_kl2tup(ν, izz, ZKL))
+            push!(izz_tmp, izz)
+            push!(NuZ, (izz = izz, ν = ν))
+         end
          for izzp in unique(permutations(izz))
             if !any( _iseqB(SVector(izzp...), ν, izz1, ν)  for izz1 in izz_tmp )
                # and finally a user-defined filter, this is currently used
                # for the orth-to-zero basis, but could be used in many ways...
-               if filterfcn(ν)
+               if filterfcn(_kl2tup(ν, izz, ZKL))
                   push!(izz_tmp, izzp)
                   push!(NuZ, (izz = izzp, ν = ν))
                end

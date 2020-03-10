@@ -5,7 +5,6 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-module OneOrthogonalModule
 
 using LinearAlgebra: norm, dot
 
@@ -24,10 +23,8 @@ end
 
 Base.length(P::OneOrthogonal) = length(P.nested)
 
-function Base.rand(J::OneOrthogonal)
-   @assert maximum(abs, diff(J.ww)) == 0
-   return rand(J.tdf)
-end
+SHIPs.rand_radial(J::OneOrthogonal) = SHIPs.rand_radial(J.nested)
+
 
 """
     OneOrthogonal(P, tdf = P.tdf, ww = P.ww)
@@ -97,4 +94,12 @@ function evaluate_d!(q, dq, tmp, Q::OneOrthogonal, t)
    return dq
 end
 
-end # module OneOrthogonalModule
+
+# ------------------------------------------------------------------
+#   a filtering mechanism to sort out the non-orthogonal functions
+
+function filter_oneorth(ν, P::OneOrthogonal)
+   degP = length(P)-1
+   # accept all ν with ki < degP, i.e., don't allow the last function
+   return maximum(ν.kk) < degP
+end
