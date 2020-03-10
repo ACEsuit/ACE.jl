@@ -68,6 +68,9 @@ spec = SparseSHIP(2, deg; wL = 1.5,
                   filterfcn = ν -> SHIPs.OrthPolys.filter_oneorth(ν, J1))
 shpB = SHIPBasis(spec, P)
 
+I2 = findall(shpB.aalists[1].len .== 1)
+B2 = SHIPs.Utils.SubBasis(shpB, I2)
+
 ##
 
 Rs = SHIPs.rand_vec(shpB.J, 5)
@@ -75,19 +78,23 @@ Zs = zeros(Int16, 5)
 b = evaluate(shpB, Rs, Zs, 0)
 @assert length(b) == length(shpB)
 
-G = let nsamples = 100_000
+G, A_dot_1 = let nsamples = 10_000
    G = zeros(length(shpB), length(shpB))
+   A_dot_1 = zeros(length(I2))
    for _ = 1:nsamples
-      Rs = SHIPs.rand_vec(shpB.J, 5)
+      Rs = SHIPs.rand_vec(shpB.J, 2)
       b = evaluate(shpB, Rs, Zs, 0)
       G += b * b' / nsamples
+      A_dot_1 += b[I2] / nsamples
    end
-   G
+   G, A_dot_1
 end
 
 ##
 D = Diagonal( diag(G).^(-0.5) )
 Gsc = D * G * D
-cond(Gsc[1:9,1:9])  # this shows the A-basis is orthogonal
-cond(Gsc)           # but not the ∏A basis
+@show cond(Gsc[1:9,1:9])  # this shows the A-basis is orthogonal
+@show cond(Gsc)           # but not the ∏A basis
+@show norm(A_dot_1, Inf)
+
 end
