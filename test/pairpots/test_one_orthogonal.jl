@@ -67,23 +67,26 @@ P = SHIPs.TransformedPolys(J1, trans, r0, rcut)
 spec = SparseSHIP(2, deg; wL = 1.5,
                   filterfcn = ν -> SHIPs.OrthPolys.filter_oneorth(ν, J1))
 shpB = SHIPBasis(spec, P)
+pureB = SHIPs.PureBasis(shpB)
 
 I2 = findall(shpB.aalists[1].len .== 1)
 B2 = SHIPs.Utils.SubBasis(shpB, I2)
 
 ##
 
-Rs = SHIPs.rand_vec(shpB.J, 5)
+
+Rs = SHIPs.rand_vec(shpB.J, 3)
 Zs = zeros(Int16, 5)
 b = evaluate(shpB, Rs, Zs, 0)
-@assert length(b) == length(shpB)
+bp = pureB(Rs)
+@assert length(b) == length(shpB) == length(bp)
 
 G, A_dot_1 = let nsamples = 10_000
    G = zeros(length(shpB), length(shpB))
    A_dot_1 = zeros(length(I2))
    for _ = 1:nsamples
       Rs = SHIPs.rand_vec(shpB.J, 2)
-      b = evaluate(shpB, Rs, Zs, 0)
+      b = pureB(Rs)
       G += b * b' / nsamples
       A_dot_1 += b[I2] / nsamples
    end
