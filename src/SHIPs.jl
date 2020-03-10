@@ -29,6 +29,7 @@ include("Alist.jl")
 
 # SHIPBasis definition
 include("basis.jl")
+include("purebasis.jl")
 
 # SHIP interatomic potential definition
 include("fast.jl")
