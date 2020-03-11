@@ -28,13 +28,14 @@ t0, tcut = trans(r0), trans(rcut)
 tdf = range(t0, tcut, length=1000)
 ww = ones(length(tdf))
 J = OrthPolyBasis(deg,  0, trans(r0), 2, trans(rcut), tdf, ww)
-# J1 = OneOrthogonal(J)
 P = SHIPs.TransformedPolys(J, trans, r0, rcut)
 
 spec = SparseSHIP(2, deg-1; wL = 1.5)
 shpB = SHIPBasis(spec, P)
-pureB2 = SHIPs.PureBasis(shpB, 2)
+
+pureB = SHIPs.PureBasis(shpB)
 pureB1 = SHIPs.PureBasis(shpB, 1)
+pureB2 = SHIPs.PureBasis(shpB, 2)
 
 ##
 
@@ -47,33 +48,76 @@ norm(bp)
 
 ##
 
-G1 = let nsamples = 10_000
-   G = zeros(length(pureB1), length(pureB1))
+function condtest(basis, nneigs;
+                  nsamples = 10_000,
+                  randfun = ()->SHIPs.rand_vec(shpB.J, nneigs) )
+   G = zeros(length(basis), length(basis))
    for _ = 1:nsamples
-      Rs = SHIPs.rand_vec(shpB.J, 1)
-      b = pureB1(Rs)
+      Rs = randfun()
+      b = basis(Rs)
       G += b * b' / nsamples
    end
-   G
+   D = Diagonal( diag(G).^(-0.5) )
+   Gscal = D * G * D
+   return cond(Gscal)
 end
 
-cond(G1)
 
 ##
 
-G2 = let nsamples = 100_000
-   G = zeros(length(pureB2), length(pureB2))
-   for _ = 1:nsamples
-      Rs = SHIPs.rand_vec(shpB.J, 2)
-      b = pureB2(Rs)
-      G += b * b' / nsamples
-   end
-   G
-end
+@info("Conditioning of a pure 1N basis, 1 neig")
+@show condtest(pureB1, 1)
 
-D = Diagonal( diag(G2).^(-0.5) )
-Gsc = D * G2 * D
-@show cond(Gsc)           # but not the ∏A basis
+@info("Conditioning of a pure 1N basis, 5 neighbours")
+@show condtest(pureB1, 5)
+
+@info("Conditioning of a pure 2N basis, 2 neigs")
+@show condtest(pureB2, 2; nsamples=100_000)
+
+@info("Conditioning of a pure 2N basis, 5 neigs")
+@show condtest(pureB2, 5; nsamples=100_000)
+
+@info("Conditioning of the full basis, 2 neigs")
+@show condtest(pureB, 2; nsamples=100_000)
+
+@info("Conditioning of the full basis, 5 neigs")
+@show condtest(pureB, 5; nsamples=100_000)
+
 
 ## 
+
+# now we try the same with a 1-orthogonal basis
+@info("Construct 1-orthogonal basis")
+J1 = OneOrthogonal(J)
+P1 = SHIPs.TransformedPolys(J1, trans, r0, rcut)
+spec = SparseSHIP(2, deg-1; wL = 1.5,
+                  filterfcn = ν -> SHIPs.OrthPolys.filter_oneorth(ν, J1))
+shpBoo = SHIPBasis(spec, P1)
+
+pureB1oo = SHIPs.PureBasis(shpBoo, 1)
+pureB2oo = SHIPs.PureBasis(shpBoo, 2)
+pureBoo = SHIPs.PureBasis(shpBoo)
+
+##
+
+@info("Conditioning of One-Orth pure 1N basis, 1 neig")
+@show condtest(pureB1oo, 1)
+
+@info("Conditioning of  One-Orth pure 1N basis, 5 neigs")
+@show condtest(pureB1oo, 5)
+
+@info("Conditioning of  One-Orth pure 2N basis, 2 neigs")
+@show condtest(pureB2oo, 2; nsamples=100_000)
+
+@info("Conditioning of  One-Orth pure 2N basis, 5 neigs")
+@show condtest(pureB2oo, 5; nsamples=100_000)
+
+@info("Conditioning of the full One-Orth basis, 2 neigs")
+@show condtest(pureBoo, 2; nsamples=100_000)
+
+@info("Conditioning of the full One-Orth basis, 5 neigs")
+@show condtest(pureBoo, 5; nsamples=100_000)
+
+##
+
 end

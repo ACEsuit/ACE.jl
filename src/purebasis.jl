@@ -66,19 +66,19 @@ end
 
 function precompute_prod_phi(tmp, phi, ship)
    aalist = ship.aalists[1]
-   N = size(phi, 2)
-   factN = factorial(N)
    Phi = fill!(tmp.AA[1], 0)
    for i = 1:length(aalist)
-      if aalist.len[i] != N; continue; end
-      for σ in permutations(1:N)
-         phi_temp = one(eltype(Phi))
-         for α = 1:aalist.len[i]
-            iphi = aalist.i2Aidx[i, α]
-            phi_temp *= phi[iphi, σ[α]]
-         end
-         Phi[i] += phi_temp / factN
-      end
+      Phi[i] = _VN(phi, (@view aalist.i2Aidx[i, 1:aalist.len[i]]))
    end
    return Phi
+end
+
+function _VN(phi, phiidx)
+   nR = size(phi, 2)     # number of neighbours
+   N  = length(phiidx)   # order of the basis function
+   Phi = zero(ComplexF64)
+   for A in combinations(1:nR, N), σA in permutations(A)
+      Phi += prod( phi[phiidx[α], σα]  for (α, σα) in enumerate(σA) )
+   end
+   return Phi / factorial(N)
 end
