@@ -34,7 +34,7 @@ length(ship.coeffs[1])
 length(shipc.coeffs[1])
 
 @info("Evaluation test")
-Rs = SHIPs.Utils.rand(ship.J, 30)
+Rs = SHIPs.rand_vec(ship.J, 30)
 Zs = zeros(Int16, length(Rs))
 z0 = 0
 tmp = SHIPs.alloc_temp(ship, length(Rs))

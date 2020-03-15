@@ -66,7 +66,7 @@ function _sample_AA(ship::RCSHIP{T,NZ}, alist, aalist, Iaa,
    N = aalist.len[Iaa[1]]
    AA = zeros(celtype(ship), nsamples, length(Iaa))
    for ns = 1:nsamples
-      Rs = SHIPs.Utils.rand(ship.J, N)
+      Rs = SHIPs.rand_vec(ship.J, N)
       AA[ns, :] = _eval_AA(ship, alist, aalist, Iaa, Rs)
    end
    return AA

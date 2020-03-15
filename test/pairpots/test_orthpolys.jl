@@ -144,7 +144,7 @@ function A_gramian(shpB, Nsamples = 100_000)
    lenA = length(tmp.A[1])
    G = zeros(ComplexF64, lenA, lenA)
    for n = 1:Nsamples
-      R = SHIPs.Utils.rand(shpB.J)
+      R = SHIPs.rand_vec(shpB.J)
       A = evalA(shpB, tmp, [R])
       for i = 1:lenA, j = 1:lenA
          G[i,j] +=  A[i] * A[j]'

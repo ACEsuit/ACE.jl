@@ -58,6 +58,7 @@ transform_d(t::PolyTransform, r::Number) = poly_trans_d(t.p, t.r0, r)
 
 inv_transform(t::PolyTransform, x::Number) = poly_trans_inv(t.p, t.r0, x)
 
+(t::PolyTransform)(x) = transform(t, x)
 
 """
 `IdTransform`: Implements the distance transform `z -> z`;
@@ -205,8 +206,15 @@ TransformedJacobi(D::Dict) =
 
 convert(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
 
-
 Base.length(J::TransformedJacobi) = length(J.J)
+
+function SHIPs.rand_radial(J::TransformedJacobi)
+   # uniform sample from [tl, tu]
+   x = J.tl + rand() * (J.tu - J.tl)
+   # transform back
+   return inv_transform(J.trans, x)
+end
+
 
 cutoff(J::TransformedJacobi) = J.ru
 transform(J::TransformedJacobi, r) = transform(J.trans, r)
@@ -334,8 +342,12 @@ TransformedPolys(D::Dict) =
 
 convert(::Val{:SHIPs_TransformedPolys}, D::Dict) = TransformedPolys(D)
 
-
 Base.length(J::TransformedPolys) = length(J.J)
+
+function SHIPs.rand_radial(J::TransformedPolys)
+   t = SHIPs.rand_radial(J.J)
+   return inv_transform(J.trans, t)
+end
 
 cutoff(J::TransformedPolys) = J.ru
 

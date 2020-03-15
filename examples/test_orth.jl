@@ -30,7 +30,7 @@ function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000, normalise = false)
    lenB = length(IN)
    G = zeros(Float64, lenB, lenB)
    for n = 1:Nsamples
-      Rs = SHIPs.Utils.rand(shpB.J, N)
+      Rs = SHIPs.rand_vec(shpB.J, N)
       evaluate!(B, tmp, shpB, Rs, Zs, 0)
       for j = 1:lenB
          Bj = B[IN[j]]'

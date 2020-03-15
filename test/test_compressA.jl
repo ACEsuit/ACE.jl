@@ -38,7 +38,7 @@ length(shipc.coeffs[1])
 # need to check now that the two evaluate the same.
 @info("Check correctness")
 for n = 1:50
-   Rs = SHIPs.Utils.rand(ship.J, 10)
+   Rs = SHIPs.rand_vec(ship.J, 10)
    Zs = zeros(Int16, length(Rs))
    z0 = 0
    s1 = evaluate(ship, Rs, Zs, z0)
@@ -49,7 +49,7 @@ println()
 
 
 # @info("Evaluation test")
-# Rs = SHIPs.Utils.rand(ship.J, 30)
+# Rs = SHIPs.rand_vec(ship.J, 30)
 # Zs = zeros(Int16, length(Rs))
 # z0 = 0
 # tmp = SHIPs.alloc_temp(ship, length(Rs))
@@ -62,4 +62,4 @@ println()
 # @btime SHIPs.evaluate_d!($dEs, $tmp_d, $ship, $Rs, $Zs, $z0)
 # @btime SHIPs.evaluate_d!($dEs, $tmp_d, $shipc, $Rs, $Zs, $z0)
 
-end 
+end
