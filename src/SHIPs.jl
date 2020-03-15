@@ -16,7 +16,6 @@ include("pairpots/calculator.jl")
 include("pairpots/repulsion.jl")
 
 include("pairpots/orthpolys.jl")
-# include("pairpots/one_orthogonal.jl")
 
 # specification of the angular basis
 include("sphericalharmonics.jl")
@@ -30,6 +29,7 @@ include("Alist.jl")
 
 # SHIPBasis definition
 include("basis.jl")
+include("purebasis.jl")
 
 # SHIP interatomic potential definition
 include("fast.jl")

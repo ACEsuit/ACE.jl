@@ -7,6 +7,7 @@ using LinearAlgebra: dot
 import JuLIP: evaluate!, evaluate_d!
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
+import SHIPs
 import SHIPs: DistanceTransform, transform, transform_d, TransformedPolys
 
 import Base: ==, convert
@@ -79,7 +80,7 @@ convert(::Val{:SHIPs_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
 
 # rand applied to a J will return a random transformed distance drawn from
 # the measure w.r.t. which the polynomials were constructed.
-function Base.rand(J::OrthPolyBasis)
+function SHIPs.rand_radial(J::OrthPolyBasis)
    @assert maximum(abs, diff(J.ww)) == 0
    return rand(J.tdf)
 end
@@ -199,5 +200,6 @@ end
 
 
 
+include("one_orthogonal.jl")
 
 end
