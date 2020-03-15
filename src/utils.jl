@@ -8,6 +8,7 @@
 
 module Utils
 
+using StaticArrays
 using LinearAlgebra: norm
 using JuLIP: JVecF
 using SHIPs: TransformedJacobi,  inv_transform,
@@ -15,38 +16,10 @@ using SHIPs: TransformedJacobi,  inv_transform,
             TransformedPolys
 
 import SHIPs
+import SHIPs: rand_sphere, rand_radial
 import Base: rand
 import JuLIP: evaluate
 import JuLIP.MLIPs: IPBasis
-using StaticArrays
-
-function rand_sphere()
-   R = randn(JVecF)
-   return R / norm(R)
-end
-
-function rand_radial(J::TransformedJacobi)
-   # uniform sample from [tl, tu]
-   x = J.tl + rand() * (J.tu - J.tl)
-   # transform back
-   return inv_transform(J.trans, x)
-end
-
-function rand_radial(J::TransformedPolys)
-   # sample from the polynomial orth. measure
-   t = rand(J.J)
-   # transform back
-   return inv_transform(J.trans, t)
-end
-
-
-rand_radial(J::TransformedJacobi, N::Integer) = [ rand_radial(J) for _=1:N ]
-
-rand(J::TransformedJacobi) = rand_radial(J) *  rand_sphere()
-rand(J::TransformedPolys) = rand_radial(J) *  rand_sphere()
-
-rand(J::TransformedJacobi, N::Integer) =  [ rand(J) for _ = 1:N ]
-rand(J::TransformedPolys, N::Integer) =  [ rand(J) for _ = 1:N ]
 
 
 _get_ll(KL, νz) = getfield.(KL[νz.ν], :l)
@@ -86,9 +59,10 @@ function findall_basis(basis; N = nothing, ll = nothing,
 end
 
 
-function findall_basis_N(basis, N; verbose=true)
+function findall_basis_N(basis, N; verbose=true)::Vector{Int} 
    verbose && @warn("This code assumes there is only one species. (not checked!)")
    I1 = findall(b -> length(b[end]) == N, basis.bgrps[1])
+   if isempty(I1); return Int[]; end
    verbose && @info("There are $(length(I1)) basis groups with N = $N:")
    Ib = mapreduce(i -> (basis.firstb[1][i]+1):basis.firstb[1][i+1],
                   vcat, I1)

@@ -25,3 +25,13 @@ function transform end
 function transform_d end
 function fcut end
 function fcut_d end
+
+function rand_radial end
+
+function rand_sphere()
+   R = randn(JVecF)
+   return R / norm(R)
+end
+
+rand_vec(J) = rand_radial(J) *  rand_sphere()
+rand_vec(J, N::Integer) = [ rand_vec(J) for _ = 1:N ]
