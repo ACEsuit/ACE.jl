@@ -25,6 +25,8 @@ struct EnvPairBasis{T0, TR, TZ, TT, TI}
    aalist::BondAAList{TI}    # datastructure specifying the basis
 end
 
+Base.length(basis::EnvPairBasis) = length(basis.aalist)
+
 Base.eltype(basis::EnvPairBasis) = eltype(basis.Pr)
 
 alloc_B(basis::EnvPairBasis) = zeros(eltype(basis), length(basis))

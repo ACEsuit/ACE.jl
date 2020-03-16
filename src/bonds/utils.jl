@@ -6,7 +6,11 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs: PolyTransform, IdTransform
+using SHIPs: PolyTransform,
+             IdTransform,
+             TransformedJacobi,
+             PolyCutoff1s,
+             PolyCutoff2s
 
 # ------ Basis generation
 
@@ -14,79 +18,76 @@ totaldegree(b::Bond1ParticleFcn, wr, wθ, wz) =
             wr * b.kr + wθ * b.kθ + wz * b.kz
 
 totaldegree(b::BondBasisFcnIdx, wr, wθ, wz) =
-            b.k0 + sum(degree(b1, wr, wθ, wz) for b1 in b.kkrθz)
+            b.k0 + sum(totaldegree(b1, wr, wθ, wz) for b1 in b.kkrθz)
 
 envpairbasis(species, N, args...; kwargs...) =
       envpairbasis(species, Val(N), args...; kwargs...)
 
-function  envpairbasis(species, ::Val{N}, rcut0;
+function  envpairbasis(species, ::Val{N};
              rcut0 = nothing,
              degree = nothing,
              rnn = species == :X ? 2.7 : JuLIP.rnn(species),
              rcutenvfact = 1.9,
-             rinenvfact =
+             rinenvfact = 0.66,
+             rinr0 = rcutenvfact * rnn,
              rcutr = rcutenvfact * rnn,
-             rinr = 0.66 * rnn,
+             rinr = rinenvfact * rnn,
              rcutz = rcutenvfact * rnn + 0.5 * rcut0,
              wenv = 4.0, wr = 1.0, wz = 1.0, wθ = 1.0,
              r0trans = PolyTransform(2, rnn),
              rtrans = PolyTransform(2, rnn),
              ztrans = IdTransform(),
+             r0fcut = PolyCutoff1s(2, rinr0, rcut0),
+             rfcut = PolyCutoff1s(2, rinr, rcutr),
+             zfcut = PolyCutoff2s(2, -rcutz, rcutz)
              ) where {N}
 
    # some basic health checks.
    @assert (degree isa Integer) && (degree > 0)
    @assert (rcut0 isa Real) && (rcut0 > 0)
+   @assert (wr >= 1) && (wz >= 1) && (wθ >= 1)
+
+   degenv = degree / wenv
 
    # put together the basis specification
    # -------------------------------------
    # first generate a list of 1-particle functions
-   atuples = gensparse(3, degenv; ordered = false)
-   Abasis = BondBasisFcnIdx.(atuples)
-   # now to generate products of As we get take N-tuples
-   #   t = (t1, ..., tN)  where ti is an index pointing into Abasis
-   aabfcn = t -> BondBasisFcnIdx(0, ntuple(i -> Abasis[t[i]], N))
+   degfunA = t -> wr * t[1] + wθ * t[2] + wz * t[3]
+   atuples = gensparse(3; ordered = false,
+                          admissible = t -> (degfunA(t) <= degenv + 1))
+   sort!(atuples; by = degfunA)
+   Abasis = Bond1ParticleFcn.(atuples)
+
+   # now to generate products of As we take N-tuples
+   #     t = (t1, ..., tN)  where ti is an index pointing into Abasis
+   aabfcn = t -> BondBasisFcnIdx(0, ntuple(i -> Abasis[t[i]+1], N))
    degreefunenv = t -> totaldegree(aabfcn(t), wr, wθ, wz)
    aatuples = gensparse(N; ordered = true,
                            admissible = t -> (degreefunenv(t) <= degenv))
-   AAbasis = aabfcn.(aatuples)
+   # redo this with correct indexing into the atuples array
+   aatuples = [ ntuple(i -> t[i]+1, N) for t in aatuples ]
 
+   # --------
    # filter =  ... TODO, leave it identity for now
    #           but should incorporate z-symmetry somewhere...
-   # Now put
+   # --------
 
-   # extract the maximum degrees
+   # Now generate the aalist datastructure
+   aalist = BondAAList(atuples, aatuples)
 
-
-   # generate the scalar polynoials
-   P0 = transformed_jacobi(deg0, r0trans, rcut0)
-   Pr = transformed_jacobi(degr, rtrans, rcutr, rinr; pin = 2)
+   # generate the scalar polynomials
+   deg0 = degree
+   P0 = TransformedJacobi(deg0, r0trans, r0fcut)
+   degr = maximum(t -> t[1], atuples)
+   Pr = TransformedJacobi(degr, rtrans, rfcut)
+   degθ = maximum(t -> t[2], atuples)
    Pθ = FourierBasis(degθ, Float64)
-   Pz = transformed_jacobi(degz, ztrans, rcutz, -rcutz; pin = 2)
+   degz = maximum(t -> t[3], atuples)
+   Pz = TransformedJacobi(degz, ztrans, zfcut)
 
    # put together the basis
    return EnvPairBasis(P0, Pr, Pθ, Pz, aalist)
 end
-
-# ##
-#
-# ctr = 0
-# deg = 30
-# for n1 = 0:deg, n2 = 0:deg-n1, n3=0:deg-n1-n2, n4=0:deg-n1-n2-n3, n5=0:deg-n1-n2-n3-n4
-#       global ctr += 1
-# end
-# @show ctr
-#
-# ##
-#
-# ctr = 0
-# deg = 15
-# for n1=0:deg, n2=n1:deg-n1, n3=n2:deg-n1-n2, n4=n3:deg-n1-n2-n3, n5=n4:deg-n1-n2-n3-n4
-#       global ctr += 1
-# end
-# @show ctr
-#
-# ##
 
 
 
@@ -99,9 +100,6 @@ end
 
 
 
-"""
-
-"""
 gensparse(N::Integer, deg::Integer; degfun = ν -> sum(ν), kwargs...) =
    gensparse(N; admissible = (degfun(ν) <= deg), kwargs...)
 

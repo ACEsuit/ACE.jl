@@ -34,9 +34,12 @@ function Bond1ParticleFcn(krθz::Union{AbstractVector, Tuple}, INT=Int16)
    return Bond1ParticleFcn(INT(krθz[1]), INT(krθz[2]), INT(krθz[3]))
 end
 
+Bond1ParticleFcn(b::Bond1ParticleFcn, INT=Int16) =
+   Bond1ParticleFcn(INT(b.kr), INT(b.kθ), INT(b.kz))
+
 
 """
-`BondAList` : datastructure for strong the density projection onto the
+`BondAList` : datastructure for storing the density projection onto the
 1-particle basis functions.
 """
 struct BondAList{TI}
@@ -46,6 +49,9 @@ struct BondAList{TI}
 end
 
 _inttype(b::BondAList{TI}) where {TI} = TI
+
+_inttype(b::NTuple{N, TI}) where {N, TI <: Integer} = TI
+_inttype(b::StaticArray{DIMS, TI}) where {DIMS, TI <: Integer} = TI
 
 
 
@@ -68,9 +74,8 @@ Base.getindex(alist::BondAList, krθz::Bond1ParticleFcn) = alist.krθz2i[krθz]
 alloc_A(alist::BondAList, T=Float64) = zeros(Complex{T}, length(alist))
 
 function BondAList(krθzlist::AbstractVector)
-   # sort the tuples - by z, then k, then l, then m
    INT = _inttype(krθzlist[1])
-   i2krθz = Bond1ParticleFcn.( sort(_tuple.(krθzlist)), INT )
+   i2krθz = Bond1ParticleFcn.(krθzlist, INT)
    # create the inverse mapping
    krθz2i = Dict{Bond1ParticleFcn{INT}, INT}()
    for i = 1:length(i2krθz)
@@ -81,7 +86,7 @@ function BondAList(krθzlist::AbstractVector)
    # zmax = maximum( a.z for a in i2krθz )
    # firstz = [ findfirst([a.z == iz for a in i2krθz])
    #            for iz = 1:zmax ]
-   return AList( i2krθz, krθz2i ) # , [firstz; length(i2krθz)+1] )
+   return BondAList( i2krθz, krθz2i ) # , [firstz; length(i2krθz)+1] )
 end
 
 
@@ -96,6 +101,11 @@ in terms of polynomial degrees in each coordinate direction.
 struct BondBasisFcnIdx{N, TI}
    k0::TI
    kkrθz::NTuple{N, Bond1ParticleFcn{TI}}
+
+   function BondBasisFcnIdx(k0::TI1, kkrθz::NTuple{N, Bond1ParticleFcn{TI2}}
+            ) where {TI1 <: Integer, N, TI2 <: Integer}
+      return new{N, TI2}(TI2(k0), kkrθz)
+   end
 end
 
 SHIPs.bodyorder(b::BondBasisFcnIdx{N}) where {N} = N
@@ -122,7 +132,7 @@ mutable struct BondAAList{TI}
    i2Aidx::Matrix{TI}    # where in A can we find the ith basis function
    i2k0::Vector{TI}      # where in P0 can we find the ith basis function
    len::Vector{TI}       # body-order of ith basis function
-   kkrθz2i::Dict{BondBasisFcnIdx, TI}   # inverse mapping
+   kkrθz2i::Dict{BondBasisFcnIdx, Int}   # inverse mapping
 end
 
 kkrθz2i(aalist::BondAAList, kkrθz::BondBasisFcnIdx) = aalist.kkrθz2i[kkrθz]
@@ -138,6 +148,26 @@ i2kkrθz(alist::BondAList, i2Aidx::AbstractMatrix, len::AbstractVector,
         i::Integer) = [ alist.i2krθz[ i2Aidx[i, j] ] for j = 1:len[i] ]
 
 Base.length(aalist::BondAAList) = length(aalist.len)
+
+function BondAAList(atuples, aatuples::AbstractVector{<: NTuple{N}}) where {N}
+   INT = _inttype(atuples[1])
+   len = length(aatuples)
+   alist = BondAList(atuples)
+   # assemble the aalist elements
+   i2Aidx = zeros(INT, length(aatuples), maximum(length, aatuples))
+   len = zeros(INT, length(aatuples))
+   kkrθz2i = Dict{BondBasisFcnIdx, Int}()
+   for (i, aa) in enumerate(aatuples)
+      i2Aidx[i, 1:length(aa)] .= aa
+      len[i] = length(aa)
+      b1 = BondBasisFcnIdx(0, ntuple(i -> alist[aa[i]], N))
+      kkrθz2i[b1] = i
+   end
+   i2k0 =  zeros(INT, length(aatuples))
+   # wrap up...
+   return BondAAList(alist, i2Aidx, i2k0, len, kkrθz2i)
+end
+
 
 
 # --------------(de-)serialisation----------------------------------------

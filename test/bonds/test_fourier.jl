@@ -8,7 +8,7 @@
 
 @testset "Fourier  Basis" begin
 
-@info("Testset FourierBasis") 
+@info("Testset FourierBasis")
 
 ##
 
@@ -74,5 +74,7 @@ for ntest = 1:30
    end
    print_tf(@test minimum(errs[2:end]) < 1e-3 * maximum(errs[1:3]))
 end
+
+##
 
 end

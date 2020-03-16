@@ -15,6 +15,8 @@ import SHIPs: alloc_B, alloc_dB
 struct FourierBasis{T}
    deg::Int
    _fltt::Type{T}
+   FourierBasis(deg::Integer, _fltt::Type{T}) where {T <: AbstractFloat} =
+      new{T}(Int(deg), _fltt)
 end
 
 FourierBasis(deg::Integer) = FourierBasis(deg, Float64)
