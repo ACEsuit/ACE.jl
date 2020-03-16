@@ -16,8 +16,10 @@ import JuLIP: evaluate!, evaluate_d!,
               alloc_temp, alloc_temp_d,
               read_dict, write_dict
 
+import JuLIP.MLIPs: IPBasis
 
-struct EnvPairBasis{T0, TR, TZ, TT, TI}
+
+struct EnvPairBasis{T0, TR, TZ, TT, TI} <: IPBasis
    P0::T0                # basis for the bond-length coordinate / m0 = k0
    Pr::TR                # specifies the radial basis  / n = kr
    Pθ::TT                # the angular basis           / l = kθ
@@ -27,11 +29,11 @@ end
 
 Base.length(basis::EnvPairBasis) = length(basis.aalist)
 
-Base.eltype(basis::EnvPairBasis) = eltype(basis.Pr)
+Base.eltype(basis::EnvPairBasis) = Complex{Float64}   # eltype(basis.Pr)
 
-alloc_B(basis::EnvPairBasis) = zeros(eltype(basis), length(basis))
+alloc_B(basis::EnvPairBasis, args...) = zeros(eltype(basis), length(basis))
 
-alloc_temp(basis::EnvPairBasis) =
+alloc_temp(basis::EnvPairBasis, args...) =
    ( P0 = alloc_B(basis.P0),
      tmp_P0 = alloc_temp(basis.P0),
      Pr = alloc_B(basis.Pr),
@@ -56,7 +58,7 @@ function precompute_A!(A, tmp, basis::EnvPairBasis, R0, Rs)
       for i = 1:length(alist)
          krθz = alist[i]
          A[i] += tmp.Pr[krθz.kr+1] *
-                 tmp.Pθ[cyl_l2i(krθz.kθ)] *
+                 tmp.Pθ[cyl_l2i(krθz.kθ, basis.Pθ)] *
                  tmp.Pz[krθz.kz+1]
       end
       # iz = z2i(ship, Z)
@@ -65,13 +67,14 @@ function precompute_A!(A, tmp, basis::EnvPairBasis, R0, Rs)
       #    A[i] += tmp.Pr[zklm.k+1] * tmp.Pθ[cyl_l2i(zklm.l)] * tmp.Pz[zklm.m+1]
       # end
    end
+   return A
 end
 
 # R0   : typically SVector{T}
 # Renv : typically Vector{SVector{T}} or a view into Vector{SVector{T}}
 function evaluate!(B::AbstractVector{Complex{T}},
-                   tmp,  basis::EnvPairBasis, R0, Renv)  where {T}
-
+                   tmp, basis::EnvPairBasis, R0, Renv)  where {T}
+   aalist = basis.aalist
    # construct the basis for the r1-variable
    r0 = norm(R0)
    P0 = evaluate!(tmp.P0, tmp.tmp_P0, basis.P0, r0)

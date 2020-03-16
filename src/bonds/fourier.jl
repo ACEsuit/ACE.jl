@@ -19,6 +19,9 @@ struct FourierBasis{T}
       new{T}(Int(deg), _fltt)
 end
 
+cyl_l2i(l, b::FourierBasis) = cyl_l2i(l, b.deg)
+cyl_i2l(i, b::FourierBasis) = cyl_l2i(i, b.deg)
+
 FourierBasis(deg::Integer) = FourierBasis(deg, Float64)
 
 

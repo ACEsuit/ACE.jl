@@ -66,11 +66,22 @@ function  envpairbasis(species, ::Val{N};
                            admissible = t -> (degreefunenv(t) <= degenv))
    # redo this with correct indexing into the atuples array
    aatuples = [ ntuple(i -> t[i]+1, N) for t in aatuples ]
+   aatuples1 = copy(aatuples)
 
+   # -------------
+   # Filtering ...
+   # -------------
+   empty!(aatuples)
+   for aa in aatuples1
+      AA = aabfcn(aa)
+      sumkθ = sum( A.kθ for A in AA.kkrθz )
+      sumkz = sum( A.kz for A in AA.kkrθz )
+      if sumkθ == 0 &&  iseven(sumkz)
+         push!(aatuples, aa)
+      end
+   end
    # --------
-   # filter =  ... TODO, leave it identity for now
-   #           but should incorporate z-symmetry somewhere...
-   # --------
+
 
    # Now generate the aalist datastructure
    aalist = BondAAList(atuples, aatuples)
