@@ -32,22 +32,23 @@ end
 
 function rand_env(Nneigs, rnn)
    R0 = randR(0.8*rnn, 1.2*rnn)
-   Renv = [ ((0.5*R0) +  randR(0.6*rnn, 2.0 * rnn)) for _=1:Nneigs ]
+   Renv = [ ((0.66*R0) +  randR(0.6*rnn, 2.0 * rnn)) for _=1:Nneigs ]
    return  R0, Renv
 end
 
 function randiso(R0, Renv)
    t = 0.0 # rand() * 2*pi
    σ = rand([-1,1])
+   σ = -1
    Q =  [ cos(t) sin(t) 0; -sin(t) cos(t) 0; 0 0 σ ]
    v = (R0/norm(R0) - [0,0,1])
    v /= norm(v)
    H = I - 2 * v * v'
    Rot = H * Q * H
    iso = R -> Rot * (R - R0/2) + R0/2
-   @show Q[3,3], iso(R0)
    @assert Rot' * Rot ≈ I
-   # @assert (iso(R0) ≈ (σ == 1 ? R0 : 0*R0))
+   @assert (norm(iso(R0)) < 1e-12)
+   @assert iso.(iso.(Renv)) ≈ Renv
    Renv_ = shuffle(iso.(Renv))
    return Renv_
 end
@@ -72,9 +73,11 @@ B2 = evaluate(Benv, R0, Renv)
 println(@test B1 ≈ B2)
 
 ##
+
 Renv_ = randiso(R0, Renv)
 norm(B1, Inf)
 @show norm(evaluate(Benv, R0, Renv_) - B1, Inf) / norm(B1, Inf)
+
 # @info("Rotation-invariance test")
 # for ntest = 1:30
 #    Renv_ = randiso(R0, Renv)
