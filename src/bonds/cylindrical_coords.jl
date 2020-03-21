@@ -7,6 +7,7 @@ struct CylindricalCoordinateSystem{T}
    ez::SVector{3, T}
    ex::SVector{3, T}
    ey::SVector{3, T}
+   o::SVector{3, T}
 end
 
 struct CylindricalCoordinates{T}
@@ -17,7 +18,8 @@ struct CylindricalCoordinates{T}
 end
 
 
-function CylindricalCoordinateSystem(R::AbstractVector{T}) where {T}
+function CylindricalCoordinateSystem(R::AbstractVector{T},
+                                     o=zero(SVector{3,T})) where {T}
    @assert length(R) == 3
    # first coordinate
    ez = R / norm(R)
@@ -31,7 +33,7 @@ function CylindricalCoordinateSystem(R::AbstractVector{T}) where {T}
    ex /= norm(ex)
    # third coordinate
    ey = cross(ex, ez)
-   return CylindricalCoordinateSystem(ez, ex, ey)
+   return CylindricalCoordinateSystem(ez, ex, ey, o)
 end
 
 
@@ -40,9 +42,10 @@ end
 function cylindrical(C::CylindricalCoordinateSystem{T},
                      R::AbstractVector{T}) where {T}
    @assert length(R) == 3
-   x = dot(R, C.ex)
-   y = dot(R, C.ey)
-   z = dot(R, C.ez)
+   Rc = R - C.o
+   x = dot(Rc, C.ex)
+   y = dot(Rc, C.ey)
+   z = dot(Rc, C.ez)
    r = sqrt(x^2 + y^2)
    cosθ = x / r
    sinθ = y / r
@@ -51,4 +54,4 @@ end
 
 cartesian(C::CylindricalCoordinateSystem{T},
           c::CylindricalCoordinates{T}) where {T} =
-      c.r * c.cosθ * C.ex + c.r * c.sinθ * C.ey + c.z * C.ez
+      C.o + (c.r * c.cosθ * C.ex + c.r * c.sinθ * C.ey + c.z * C.ez)
