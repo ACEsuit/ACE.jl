@@ -37,32 +37,40 @@ function rand_env(Nneigs, rnn)
 end
 
 function randiso(R0, Renv)
-   t = 0.0 # rand() * 2*pi
-   σ = rand([-1,1])
-   σ = -1
-   Q =  [ cos(t) sin(t) 0; -sin(t) cos(t) 0; 0 0 σ ]
-   v = (R0/norm(R0) - [0,0,1])
+   r̂ = R0 / norm(R0)
+   o = R0 / 2
+   t = rand() * 2*pi
+   Q =  [ cos(t) sin(t) 0; -sin(t) cos(t) 0; 0 0 1 ]
+   v = (r̂ - [0,0,1])
    v /= norm(v)
    H = I - 2 * v * v'
    Rot = H * Q * H
-   iso = R -> Rot * (R - R0/2) + R0/2
+   iso = R -> Rot * (R - o) + o
+   isot = R -> Rot' * (R - o) + o
    @assert Rot' * Rot ≈ I
-   @assert (norm(iso(R0)) < 1e-12)
-   @assert iso.(iso.(Renv)) ≈ Renv
-   Renv_ = shuffle(iso.(Renv))
-   return Renv_
+   @assert iso(R0) ≈ R0
+   @assert isot.(iso.(Renv)) ≈ Renv
+   return randglobalrot(randiso_z(R0, shuffle(iso.(Renv)))...)
 end
 
-   # r = [ norm(R - dot(R, R0)/norm(R0)^2 * R0) for R in Renv ]
-   # r_ = [ norm(R - dot(R, R0)/norm(R0)^2 * R0) for R in Renv_ ]
-   # @assert sort(r) ≈ sort(r_)
+function randglobalrot(R0, Renv)
+   Q = qr(randn(3,3)).Q
+   iso = R -> SVector((Q * R)...)
+   return iso(R0), iso.(Renv)
+end
 
+function randiso_z(R0, Renv)
+   σ = rand([0, 1])
+   r̂ = R0 / norm(R0)
+   iso = R -> SVector( R - σ * 2 * dot(r̂, R-R0/2) * r̂  )
+   return R0, shuffle(iso.(Renv))
+end
 
 ##
 
 @info("Basic setup and evaluation test")
 r0 = 1.0
-Benv = envpairbasis(:X, 3; rnn = r0, rcut0 = 2.0, degree = 5, wenv = 1
+Benv = envpairbasis(:X, 3; rnn = r0, rcut0 = 2.0, degree = 4, wenv = 1
    )
 @show length(Benv)
 tmp = alloc_temp(Benv)
@@ -74,16 +82,17 @@ println(@test B1 ≈ B2)
 
 ##
 
-Renv_ = randiso(R0, Renv)
-norm(B1, Inf)
-@show norm(evaluate(Benv, R0, Renv_) - B1, Inf) / norm(B1, Inf)
+R0_, Renv_ = randiso(R0, Renv)
+Bsym = evaluate(Benv, R0_, Renv_)
+@show norm(Bsym - B1, Inf) / norm(B1, Inf)
 
-# @info("Rotation-invariance test")
-# for ntest = 1:30
-#    Renv_ = randiso(R0, Renv)
-#    # print_tf(@test evaluate(Benv, R0, Renv_) ≈ B1)
-#    @show norm(evaluate(Benv, R0, Renv_) - B1, Inf)
-# end
+##
+
+@info("Symmetry-invariance test")
+for ntest = 1:50
+   R0_, Renv_ = randiso(R0, Renv)
+   print_tf(@test evaluate(Benv, R0_, Renv_) ≈ B1)
+end
 
 
 ##

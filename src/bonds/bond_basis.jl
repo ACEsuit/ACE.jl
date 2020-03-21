@@ -48,7 +48,7 @@ alloc_temp(basis::EnvPairBasis, args...) =
 function precompute_A!(A, tmp, basis::EnvPairBasis, R0, Rs)
    alist = basis.aalist.alist
    # construct the coordinate system, and convert
-   cylcoords = CylindricalCoordinateSystem(R0)
+   cylcoords = CylindricalCoordinateSystem(R0, R0/2)
    # loop through the environment to assemble the As
    for R in Rs
       rθz = cylcoords(R)

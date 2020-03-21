@@ -24,7 +24,6 @@ cyl_i2l(i, b::FourierBasis) = cyl_l2i(i, b.deg)
 
 FourierBasis(deg::Integer) = FourierBasis(deg, Float64)
 
-
 Base.eltype(::FourierBasis{T}) where {T} = T
 Base.length(fB::FourierBasis) = 2 * fB.deg + 1
 
@@ -45,8 +44,18 @@ alloc_B(fB::FourierBasis{T}) where {T}  = zeros(Complex{T}, length(fB))
 alloc_dB(fB::FourierBasis{T}, args...) where {T} = zeros(SVec{2,Complex{T}}, length(fB))
 
 # specify ordering
-cyl_l2i(l, maxL) = maxL + 1 + l  # = i
-cyl_i2l(i, maxL) = i - maxL - 1
+# 0, 1, -1, 2, -2, 3, -3
+# cyl_l2i(l, maxL) = maxL + 1 + l  # = i
+# cyl_i2l(i, maxL) = i - maxL - 1
+
+cyl_l2i(l, args...) = 2*abs(l) + (sign(l)<=0)
+
+function cyl_i2l(i, args...)
+   absk = i ÷ 2
+   r = mod(i, 2)
+   sigk = 1-2*(r==1)
+   return sigk * absk
+end
 
 function evaluate!(P, _::Nothing, fB::FourierBasis,
                    c::CylindricalCoordinates{T}) where {T}

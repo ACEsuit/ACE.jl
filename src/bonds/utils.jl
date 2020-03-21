@@ -15,7 +15,7 @@ using SHIPs: PolyTransform,
 # ------ Basis generation
 
 totaldegree(b::Bond1ParticleFcn, wr, wθ, wz) =
-            wr * b.kr + wθ * b.kθ + wz * b.kz
+            wr * b.kr + wθ * abs(b.kθ) + wz * b.kz
 
 totaldegree(b::BondBasisFcnIdx, wr, wθ, wz) =
             b.k0 + sum(totaldegree(b1, wr, wθ, wz) for b1 in b.kkrθz)
@@ -52,11 +52,11 @@ function  envpairbasis(species, ::Val{N};
    # put together the basis specification
    # -------------------------------------
    # first generate a list of 1-particle functions
-   degfunA = t -> wr * t[1] + wθ * t[2] + wz * t[3]
+   degfunA = t -> wr * t[1] + wθ * abs(cyl_i2l(t[2]+1)) + wz * t[3]
    atuples = gensparse(3; ordered = false,
                           admissible = t -> (degfunA(t) <= degenv + 1))
    sort!(atuples; by = degfunA)
-   Abasis = Bond1ParticleFcn.(atuples)
+   Abasis = map( t -> Bond1ParticleFcn((t[1], cyl_i2l(t[2]+1), t[3])), atuples )
 
    # now to generate products of As we take N-tuples
    #     t = (t1, ..., tN)  where ti is an index pointing into Abasis
@@ -66,25 +66,29 @@ function  envpairbasis(species, ::Val{N};
                            admissible = t -> (degreefunenv(t) <= degenv))
    # redo this with correct indexing into the atuples array
    aatuples = [ ntuple(i -> t[i]+1, N) for t in aatuples ]
-   aatuples1 = copy(aatuples)
 
    # -------------
    # Filtering ...
    # -------------
-   empty!(aatuples)
-   for aa in aatuples1
+   AAbasis = BondBasisFcnIdx[]
+   for aa in aatuples
       AA = aabfcn(aa)
       sumkθ = sum( A.kθ for A in AA.kkrθz )
       sumkz = sum( A.kz for A in AA.kkrθz )
-      if sumkθ == 0 &&  iseven(sumkz)
-         push!(aatuples, aa)
+      if sumkθ == 0 && iseven(sumkz)
+         # @show [A.kz for A in AA.kkrθz]
+         # @show [A.kθ for A in AA.kkrθz]
+         push!(AAbasis, AA)
+      else
+         # @show [A.kθ for A in AA.kkrθz]
+         # @show sumkθ
       end
    end
    # --------
 
 
    # Now generate the aalist datastructure
-   aalist = BondAAList(atuples, aatuples)
+   aalist = BondAAList(Abasis, AAbasis)
 
    # generate the scalar polynomials
    deg0 = degree

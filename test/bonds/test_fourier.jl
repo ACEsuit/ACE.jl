@@ -31,6 +31,16 @@ deg = 10
 fB = FourierBasis(10, Float64)
 
 ##
+
+@info("test cyl_l2i ∘ cyl_i2l = id")
+is = sort([ SHIPs.Bonds.cyl_l2i(k) for k = -deg:deg ])
+println(@test is == 1:(2*deg+1))
+for i = 1:(2*deg+1)
+   k = SHIPs.Bonds.cyl_i2l(i)
+   print_tf(@test SHIPs.Bonds.cyl_l2i(k) == i)
+end
+
+##
 # choose a few random angles, then confirm that the fourier basis
 # does the right thing against an explicit expression using a
 # comprehension
@@ -42,7 +52,10 @@ for ntest = 1:30
    c = CylindricalCoordinates(cosθ, sinθ, 0.0, 0.0)
 
    P = evaluate!(alloc_B(fB), nothing, fB, c)
-   Px = [ exp(im * l * θ) for l = -deg:deg ]
+   Px = zeros(ComplexF64, 2*deg+1)
+   for l = -deg:deg
+      Px[SHIPs.Bonds.cyl_l2i(l)] = exp(im * l * θ)
+   end
    print_tf(@test P ≈ Px)
 end
 

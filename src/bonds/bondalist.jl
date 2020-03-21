@@ -48,8 +48,7 @@ struct BondAList{TI}
    # firstz::Vector{TI}
 end
 
-_inttype(b::BondAList{TI}) where {TI} = TI
-
+_inttype(b::BondAList{TI}) where {TI} = TIs
 _inttype(b::NTuple{N, TI}) where {N, TI <: Integer} = TI
 _inttype(b::StaticArray{DIMS, TI}) where {DIMS, TI <: Integer} = TI
 
@@ -89,6 +88,21 @@ function BondAList(krθzlist::AbstractVector)
    return BondAList( i2krθz, krθz2i ) # , [firstz; length(i2krθz)+1] )
 end
 
+function BondAList(krθzlist::AbstractVector{<: Bond1ParticleFcn})
+   INT = _inttype(krθzlist[1])
+   i2krθz = collect(krθzlist)
+   # create the inverse mapping
+   krθz2i = Dict{Bond1ParticleFcn{INT}, INT}()
+   for i = 1:length(i2krθz)
+      krθz2i[i2krθz[i]] = INT(i)
+   end
+   # TODO: z dependence
+   # # find the first index for each z
+   # zmax = maximum( a.z for a in i2krθz )
+   # firstz = [ findfirst([a.z == iz for a in i2krθz])
+   #            for iz = 1:zmax ]
+   return BondAList( i2krθz, krθz2i ) # , [firstz; length(i2krθz)+1] )
+end
 
 
 
@@ -107,6 +121,8 @@ struct BondBasisFcnIdx{N, TI}
       return new{N, TI2}(TI2(k0), kkrθz)
    end
 end
+
+Base.length(b::BondBasisFcnIdx) = length(b.kkrθz)
 
 SHIPs.bodyorder(b::BondBasisFcnIdx{N}) where {N} = N
 
@@ -169,6 +185,26 @@ function BondAAList(atuples, aatuples::AbstractVector{<: NTuple{N}}) where {N}
 end
 
 
+function BondAAList( Abasis::AbstractVector{<: Bond1ParticleFcn},
+                    AAbasis::AbstractVector{<: BondBasisFcnIdx} )
+   INT = _inttype(Abasis[1])
+   alist = BondAList(Abasis)
+   # assemble the aalist elements
+   i2Aidx = zeros(INT, length(AAbasis), maximum(length, AAbasis))
+   len = zeros(INT, length(AAbasis))
+   kkrθz2i = Dict{BondBasisFcnIdx, Int}()
+   for (i, AA) in enumerate(AAbasis)
+      kkrθz2i[AA] = i
+      len[i] = length(AA)
+      for j = 1:length(AA)
+         i2Aidx[i, j] = alist.krθz2i[AA.kkrθz[j]]
+      end
+   end
+   i2k0 =  zeros(INT, length(AAbasis))
+   # wrap up...
+   return BondAAList(alist, i2Aidx, i2k0, len, kkrθz2i)
+
+end
 
 # --------------(de-)serialisation----------------------------------------
 
