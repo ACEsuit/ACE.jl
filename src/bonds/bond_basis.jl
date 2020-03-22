@@ -19,7 +19,35 @@ import JuLIP: evaluate!, evaluate_d!,
 import JuLIP.MLIPs: IPBasis
 
 """
-write some documentation!!!!
+`struct EnvPairBasis`
+
+The basis type for environment-dependent pair potentials. This models functions
+of the form
+```
+   V(R; {Rⱼ})
+```
+where `R` is the bond-direction and `{Rⱼ}` the environment. V has the following
+symmetries:
+ - permutations of the environment
+ - rotation of the environment about the R axis
+ - rotation or reflection of the entire configuration
+
+### Construction
+
+Use `SHIPs.Bonds.envpairbasis` to construct a basis.
+
+### Evaluation
+
+To evaluate a basis with bond-direction `R` and environment
+`Renv = [R1, R2,...]` use
+```
+evaluate(basis, R, Renv)            # allocating
+evaluate!(B, tmp, basis, R, Renv)   # non-allocating
+```
+
+### After fitting parameters, to evaluate the resulting potential
+
+<!!!TODO!!!>
 """
 struct EnvPairBasis{T0, TR, TZ, TT, TI} <: IPBasis
    P0::T0                # basis for the bond-length coordinate / m0 = k0
