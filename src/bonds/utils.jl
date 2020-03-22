@@ -59,13 +59,11 @@ function  envpairbasis(species, ::Val{N};
    Abasis = map( t -> Bond1ParticleFcn((t[1], cyl_i2l(t[2]+1), t[3])), atuples )
 
    # now to generate products of As we take N-tuples
-   #     t = (t1, ..., tN)  where ti is an index pointing into Abasis
+   #     t = (t0, t1, ..., tN)  where ti is an index pointing into Abasis
    aabfcn = t -> BondBasisFcnIdx(0, ntuple(i -> Abasis[t[i]+1], N))
    degreefunenv = t -> totaldegree(aabfcn(t), wr, wθ, wz)
    aatuples = gensparse(N; ordered = true,
                            admissible = t -> (degreefunenv(t) <= degenv))
-   # redo this with correct indexing into the atuples array
-   aatuples = [ ntuple(i -> t[i]+1, N) for t in aatuples ]
 
    # -------------
    # Filtering ...
@@ -76,19 +74,23 @@ function  envpairbasis(species, ::Val{N};
       sumkθ = sum( A.kθ for A in AA.kkrθz )
       sumkz = sum( A.kz for A in AA.kkrθz )
       if sumkθ == 0 && iseven(sumkz)
-         # @show [A.kz for A in AA.kkrθz]
-         # @show [A.kθ for A in AA.kkrθz]
          push!(AAbasis, AA)
-      else
-         # @show [A.kθ for A in AA.kkrθz]
-         # @show sumkθ
       end
    end
-   # --------
 
+   # -------------------------
+   # Combine with P0 basis ...
+   # -------------------------
+   k0AAbasis = BondBasisFcnIdx[]
+   for k0 = 0:degree, iAA = 1:length(AAbasis)
+      AA = AAbasis[iAA]
+      if k0 + wenv * totaldegree(AA, wr, wθ, wz) <= degree
+         push!(k0AAbasis, BondBasisFcnIdx(k0, AA.kkrθz))
+      end
+   end
 
    # Now generate the aalist datastructure
-   aalist = BondAAList(Abasis, AAbasis)
+   aalist = BondAAList(Abasis, k0AAbasis)
 
    # generate the scalar polynomials
    deg0 = degree
@@ -119,7 +121,7 @@ gensparse(N::Integer, deg::Integer; degfun = ν -> sum(ν), kwargs...) =
    gensparse(N; admissible = (degfun(ν) <= deg), kwargs...)
 
 gensparse(N::Integer;
-          admissible = _->false,
+          admissible = _-> false,
           filter = _-> true,
           INT = Int16,
           ordered = false) =

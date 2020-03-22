@@ -36,6 +36,14 @@ function rand_env(Nneigs, rnn)
    return  R0, Renv
 end
 
+"""
+This applies several random symmetry operations to the bond configuration
+(R0, Renv) :
+  - rotate it about the R0 axis
+  - reflect along the z axis
+  - rotate the entire configuration (R0, Renv) -> (Q R0, Q Renv)
+  - random permutatio of Renv
+"""
 function randiso(R0, Renv)
    r̂ = R0 / norm(R0)
    o = R0 / 2
@@ -70,7 +78,7 @@ end
 
 @info("Basic setup and evaluation test")
 r0 = 1.0
-Benv = envpairbasis(:X, 3; rnn = r0, rcut0 = 2.0, degree = 4, wenv = 1
+Benv = envpairbasis(:X, 3; rnn = r0, rcut0 = 2.0, degree = 5, wenv = 1
    )
 @show length(Benv)
 tmp = alloc_temp(Benv)
@@ -79,12 +87,6 @@ B = alloc_B(Benv)
 B1 = evaluate!(B, tmp, Benv, R0, Renv)
 B2 = evaluate(Benv, R0, Renv)
 println(@test B1 ≈ B2)
-
-##
-
-R0_, Renv_ = randiso(R0, Renv)
-Bsym = evaluate(Benv, R0_, Renv_)
-@show norm(Bsym - B1, Inf) / norm(B1, Inf)
 
 ##
 
