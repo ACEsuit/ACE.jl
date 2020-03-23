@@ -99,5 +99,20 @@ end
 
 ##
 
+@info("Generate and test an EnvPairPot")
+c = rand(ComplexF64, length(Benv))
+V = JuLIP.MLIPs.combine(Benv, c)
+tmp = alloc_temp(V)
+
+R0, Renv = rand_env(10, r0)
+evaluate!(tmp, V, R0, Renv)
+
+for ntest = 1:30
+   R0, Renv = rand_env(10, r0)
+   B = evaluate(Benv, R0, Renv)
+   print_tf(@test evaluate!(tmp, V, R0, Renv) ≈ real(sum(c .* B)))
+end
+
+##
 
 end

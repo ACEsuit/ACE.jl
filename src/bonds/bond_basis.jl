@@ -77,6 +77,7 @@ alloc_temp(basis::EnvPairBasis, args...) =
 
 function precompute_A!(A, tmp, basis::EnvPairBasis, R0, Rs)
    alist = basis.aalist.alist
+   fill!(A, 0)
    # construct the coordinate system, and convert
    cylcoords = CylindricalCoordinateSystem(R0, R0/2)
    # loop through the environment to assemble the As
@@ -121,4 +122,49 @@ function evaluate!(B::AbstractVector{Complex{T}},
    end
 
    return B
+end
+
+
+# ------------------------------------------------------------
+
+
+using JuLIP: @pot, AbstractCalculator
+import JuLIP.MLIPs: combine
+
+"""
+A rudimentary implementation of an environment-dependent pair potential.
+"""
+struct EnvPairPot{T, T0, TR, TZ, TT, TI} <: AbstractCalculator
+   basis::EnvPairBasis{T0, TR, TZ, TT, TI}
+   c::Vector{T}
+end
+
+@pot EnvPairPot
+
+combine(b::EnvPairBasis, c::AbstractVector{<: Number}) = EnvPairPot(b, c)
+
+alloc_temp(V::EnvPairPot, args...) = alloc_temp(V.basis, args...)
+
+# R0   : typically SVector{T}
+# Renv : typically Vector{SVector{T}} or a view into Vector{SVector{T}}
+function evaluate!(tmp, V::EnvPairPot, R0, Renv)
+   val = zero(ComplexF64)
+
+   aalist = V.basis.aalist
+   # construct the basis for the r1-variable
+   r0 = norm(R0)
+   P0 = evaluate!(tmp.P0, tmp.tmp_P0, V.basis.P0, r0)
+   # evaluate the A-basis, i.e. the density projections of the environment
+   A = precompute_A!(tmp.A, tmp, V.basis, R0, Renv)
+
+   # loop over all basis functions
+   for i = 1:length(aalist)
+      b = P0[aalist.i2k0[i] + 1]
+      for α = 1:aalist.len[i]
+         b *= A[aalist.i2Aidx[i, α]]
+      end
+      val += V.c[i] * b
+   end
+
+   return real(val)
 end
