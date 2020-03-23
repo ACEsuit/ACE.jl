@@ -11,7 +11,7 @@
 # m : z-degree
 
 import SHIPs: alloc_B, alloc_dB
-
+import Base: ==
 import JuLIP: evaluate!, evaluate_d!,
               alloc_temp, alloc_temp_d,
               read_dict, write_dict
@@ -173,3 +173,34 @@ end
 # --------------(de-)serialisation----------------------------------------
 
 import JuLIP: write_dict, read_dict
+
+write_dict(b::EnvPairBasis) =
+      Dict( "__id__" => "SHIPs_EnvPairBasis",
+            "P0"     => write_dict(b.P0),
+            "Pr"     => write_dict(b.Pr),
+            "Ptheta" => write_dict(b.Pθ),
+            "Pz"     => write_dict(b.Pz),
+            "aalist" => write_dict(b.aalist) )
+
+read_dict(::Val{:SHIPs_EnvPairBasis}, D::Dict) =
+      EnvPairBasis(read_dict(D["P0"]),
+                   read_dict(D["Pr"]),
+                   read_dict(D["Ptheta"]),
+                   read_dict(D["Pz"]),
+                   read_dict(D["aalist"]))
+
+write_dict(V::EnvPairPot) =
+      Dict( "__id__" => "SHIPs_EnvPairPot",
+            "basis" => write_dict(V.basis),
+            "cr" => real.(V.c),
+            "ci" => imag.(V.c) )
+
+read_dict(::Val{:SHIPs_EnvPairPot}, D::Dict) =
+      EnvPairPot( read_dict(D["basis"]),
+                  D["cr"] + im * D["ci"] )
+
+==(B1::EnvPairBasis, B2::EnvPairBasis) =
+         all(getfield(B1, x) == getfield(B2, x) for x in fieldnames(EnvPairBasis))
+
+==(B1::EnvPairPot, B2::EnvPairPot) =
+         all(getfield(B1, x) == getfield(B2, x) for x in fieldnames(EnvPairPot))

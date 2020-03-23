@@ -8,7 +8,7 @@
 
 
 import SHIPs
-import Base: ==, convert, Dict
+import Base: ==, convert, Dict, vec
 import JuLIP.FIO: read_dict, write_dict
 
 # ---------
@@ -48,20 +48,22 @@ struct BondAList{TI}
    # firstz::Vector{TI}
 end
 
-_inttype(b::BondAList{TI}) where {TI} = TIs
+_inttype(b::BondAList{TI}) where {TI} = TI
 _inttype(b::NTuple{N, TI}) where {N, TI <: Integer} = TI
 _inttype(b::StaticArray{DIMS, TI}) where {DIMS, TI <: Integer} = TI
 
 
 
 # --------------(de-)serialisation----------------------------------------
-Dict(alist::BondAList{TI}) where {TI} =
+write_dict(alist::BondAList{TI}) where {TI} =
       Dict( "__id__" => "SHIPs_BondAList",
             "TI"     => string(TI),
             "i2krθz" => vec.(alist.i2krθz))
-BondAList(D::Dict) = BondAList(
-      Bond1ParticleFcn.(D["i2krθz"],
-                        Meta.eval(Meta.parse(D["TI"])))  )
+
+read_dict(::Val{:SHIPs_BondAList}, D::Dict) =
+      BondAList( Bond1ParticleFcn.(D["i2krθz"],
+                 Meta.eval(Meta.parse(D["TI"])))  )
+
 ==(al1::BondAList, al2::BondAList) = (al1.i2krθz == al2.i2krθz)
 # ------------------------------------------------------------------------
 
@@ -165,7 +167,8 @@ i2kkrθz(aalist::BondAAList, i::Integer) =
       i2kkrθz(alist, aalist.i2Aidx, aalist.len, i)
 
 i2kkrθz(alist::BondAList, i2Aidx::AbstractMatrix, len::AbstractVector,
-        i::Integer) = [ alist.i2krθz[ i2Aidx[i, j] ] for j = 1:len[i] ]
+        i::Integer) =
+   [ alist.i2krθz[ i2Aidx[i, j] ] for j = 1:len[i] ]
 
 Base.length(aalist::BondAAList) = length(aalist.len)
 
@@ -212,23 +215,24 @@ end
 
 # --------------(de-)serialisation----------------------------------------
 
-Dict(aalist::BondAAList) =
+write_dict(aalist::BondAAList) =
       Dict( "__id__" => "SHIPs_BondAAList",
-            "alist"  => Dict(aalist.alist),
+            "alist"  => write_dict(aalist.alist),
             "i2Aidx" => write_dict(aalist.i2Aidx),
             "i2k0"   => aalist.i2k0,
             "len"    => aalist.len )
 
 function read_dict(::Val{:SHIPs_BondAAList}, D::Dict)
-   alist = BondAList(D["alist"])
+   alist = read_dict(D["alist"])
    TI = _inttype(alist)
    i2Aidx = read_dict(D["i2Aidx"])::Matrix{TI}
    i2k0 = convert(Vector{TI}, D["i2k0"])
    len = convert(Vector{TI}, D["len"])
-   kkrθz2i = Dict{BondBasisFcnIdx, TI}
+   kkrθz2i = Dict{BondBasisFcnIdx, Int}()
    for i = 1:length(len)
-      kkrθz = i2i2kkrθz(alist, i2Aidx, len, i)
-      kkrθz2i[kkrθz] = TI(i)
+      kkrθz = i2kkrθz(alist, i2Aidx, len, i)
+      bfcn = BondBasisFcnIdx(i2k0[i], kkrθz)
+      kkrθz2i[bfcn] = Int(i)
    end
    return BondAAList(alist, i2Aidx, i2k0, len, kkrθz2i)
 end

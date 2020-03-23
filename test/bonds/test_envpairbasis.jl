@@ -17,6 +17,7 @@ using StaticArrays, Test, Random
 using LinearAlgebra
 using JuLIP.Testing: print_tf
 using JuLIP: alloc_temp
+using JuLIP.FIO: read_dict, write_dict, load_json, save_json
 
 using SHIPs
 using JuLIP: evaluate!, evaluate, evaluate_d!
@@ -116,6 +117,13 @@ end
 ##
 
 @info("Test (de-)serialisation")
+DV = write_dict(V)
+V1 = read_dict(DV)
+println(@test V1 == V)
+tmpname = tempname()
+save_json(tmpname, DV)
+V2 = read_dict(load_json(tmpname))
+println(@test V == V2)
 
-
+##
 end

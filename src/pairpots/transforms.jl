@@ -12,6 +12,7 @@ using SHIPs.JacobiPolys:   Jacobi
 
 import Base:   Dict, convert, ==
 import JuLIP:  cutoff
+import JuLIP.FIO: read_dict, write_dict
 
 export PolyTransform, PolyCutoff1s, PolyCutoff2s, IdTransform
 
@@ -206,6 +207,9 @@ TransformedJacobi(D::Dict) =
 
 convert(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
 
+write_dict(J::TransformedJacobi) = Dict(J)
+read_dict(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
+
 Base.length(J::TransformedJacobi) = length(J.J)
 
 function SHIPs.rand_radial(J::TransformedJacobi)
@@ -341,6 +345,10 @@ TransformedPolys(D::Dict) =
    )
 
 convert(::Val{:SHIPs_TransformedPolys}, D::Dict) = TransformedPolys(D)
+
+write_dict(J::TransformedPolys) = Dict(J)
+read_dict(::Val{:SHIPs_TransformedPolys}, D::Dict) = TransformedPolys(D)
+
 
 Base.length(J::TransformedPolys) = length(J.J)
 

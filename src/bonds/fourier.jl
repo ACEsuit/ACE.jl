@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-import JuLIP: evaluate!, evaluate_d!, SVec
+import JuLIP: evaluate!, evaluate_d!, SVec, write_dict, read_dict
 import SHIPs: alloc_B, alloc_dB
 
 # ------------------------------------------------------------
@@ -26,6 +26,12 @@ FourierBasis(deg::Integer) = FourierBasis(deg, Float64)
 
 Base.eltype(::FourierBasis{T}) where {T} = T
 Base.length(fB::FourierBasis) = 2 * fB.deg + 1
+
+write_dict(b::FourierBasis) =
+      Dict("__id__" => "SHIPs_FourierBasis",
+              "deg" => b.deg)
+read_dict(::Val{:SHIPs_FourierBasis}, D::Dict) =
+      FourierBasis(D["deg"], Float64)
 
 # Dict(fB::FourierBasis) = Dict(
 #       "__id__" => "SHIPs_FourierBasis",
