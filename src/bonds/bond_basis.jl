@@ -168,3 +168,8 @@ function evaluate!(tmp, V::EnvPairPot, R0, Renv)
 
    return real(val)
 end
+
+
+# --------------(de-)serialisation----------------------------------------
+
+import JuLIP: write_dict, read_dict

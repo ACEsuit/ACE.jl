@@ -120,6 +120,10 @@ struct BondBasisFcnIdx{N, TI}
             ) where {TI1 <: Integer, N, TI2 <: Integer}
       return new{N, TI2}(TI2(k0), kkrθz)
    end
+   function BondBasisFcnIdx(k0::TI1, kkrθz::Tuple{}
+            ) where {TI1 <: Integer}
+      return new{0, TI1}(TI1(k0), kkrθz)
+   end
 end
 
 Base.length(b::BondBasisFcnIdx) = length(b.kkrθz)

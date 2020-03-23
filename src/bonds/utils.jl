@@ -20,6 +20,9 @@ totaldegree(b::Bond1ParticleFcn, wr, wθ, wz) =
 totaldegree(b::BondBasisFcnIdx, wr, wθ, wz) =
             b.k0 + sum(totaldegree(b1, wr, wθ, wz) for b1 in b.kkrθz)
 
+totaldegree(b::BondBasisFcnIdx{0}, wr, wθ, wz) =
+            b.k0
+
 envpairbasis(species, N, args...; kwargs...) =
       envpairbasis(species, Val(N), args...; kwargs...)
 
@@ -60,7 +63,10 @@ function  envpairbasis(species, ::Val{N};
 
    # now to generate products of As we take N-tuples
    #     t = (t0, t1, ..., tN)  where ti is an index pointing into Abasis
-   aabfcn = t -> BondBasisFcnIdx(0, ntuple(i -> Abasis[t[i]+1], N))
+   function aabfcn(t)
+      tnz = t[findall(t .!= 0)] # tuple
+      return BondBasisFcnIdx(0, Abasis[[tnz...]])
+   end
    degreefunenv = t -> totaldegree(aabfcn(t), wr, wθ, wz)
    aatuples = gensparse(N; ordered = true,
                            admissible = t -> (degreefunenv(t) <= degenv))
@@ -71,6 +77,7 @@ function  envpairbasis(species, ::Val{N};
    AAbasis = BondBasisFcnIdx[]
    for aa in aatuples
       AA = aabfcn(aa)
+      if length(AA) == 0; continue; end    # get rid of the constant
       sumkθ = sum( A.kθ for A in AA.kkrθz )
       sumkz = sum( A.kz for A in AA.kkrθz )
       if sumkθ == 0 && iseven(sumkz)
