@@ -192,17 +192,16 @@ Dict(J::TransformedJacobi) = Dict(
       "ru" => J.ru,
       "trans" => Dict(J.trans),
       "cutoff" => Dict(J.mult),
-      "skip0" => J.J.skip0
    )
 
 TransformedJacobi(D::Dict) =
    TransformedJacobi(
-      Jacobi(D["a"], D["b"], D["deg"],
-             skip0 = haskey(D, "skip0")  ? D["skip0"]  : false),
+      Jacobi(D["a"], D["b"], D["deg"]),
       decode_dict(D["trans"]),
       decode_dict(D["cutoff"]),
       D["rl"],
       D["ru"]
+
    )
 
 convert(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)

@@ -164,23 +164,30 @@ alloc_B( J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(TX, length(J))
 alloc_dB(J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(TX, length(J))
 
 function evaluate!(P, tmp, J::OrthPolyBasis, t)
+   @assert length(J) <= length(P)
    P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+   if length(J) == 1; return P; end
    P[2] = (J.A[2] * t + J.B[2]) * P[1]
-   for n = 3:length(J)
+   if length(J) == 2; return P; end
+   @inbounds for n = 3:length(J)
       P[n] = (J.A[n] * t + J.B[n]) * P[n-1] + J.C[n] * P[n-2]
    end
    return P
 end
 
 function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t)
+   @assert length(J) <= min(length(P), length(dP))
+
    P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
    dP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
+   if length(J) == 1; return dP; end
 
    α = J.A[2] * t + J.B[2]
    P[2] = α * P[1]
    dP[2] = α * dP[1] + J.A[2] * P[1]
+   if length(J) == 2; return dP; end
 
-   for n = 3:length(J)
+   @inbounds for n = 3:length(J)
       α = J.A[n] * t + J.B[n]
       P[n] = α * P[n-1] + J.C[n] * P[n-2]
       dP[n] = α * dP[n-1] + J.C[n] * dP[n-2] + J.A[n] * P[n-1]

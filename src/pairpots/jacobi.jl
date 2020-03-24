@@ -61,7 +61,6 @@ struct Jacobi{T} <: IPBasis
    B::Vector{T}
    C::Vector{T}
    nrm::Vector{T}
-   skip0::Bool
 end
 
 ==(J1::Jacobi, J2::Jacobi) = (
@@ -69,7 +68,7 @@ end
    )
 
 
-function Jacobi(α, β, N, T=Float64; normalise=true, skip0=false)
+function Jacobi(α, β, N, T=Float64; normalise=true)
    # precompute the recursion coefficients
    A = zeros(T, N)
    B = zeros(T, N)
@@ -81,38 +80,37 @@ function Jacobi(α, β, N, T=Float64; normalise=true, skip0=false)
       B[n] = T( big(α^2 - β^2) * c2 / c1 )
       C[n] = T( big(-2*(n+α-1)*(n+β-1)*(2n+α+β)) / c1 )
    end
-   J = Jacobi(T(α), T(β), A, B, C, T[], skip0)
+   J = Jacobi(T(α), T(β), A, B, C, T[])
    if normalise
       integrand = x -> evaluate(J, x).^2 * ((1-x)^α * (1+x)^β)
       nrm2 = quadgk(integrand, -1.0, 1.0)[1]
-      J = Jacobi(T(α), T(β), A, B, C, nrm2.^(-0.5), skip0)
+      J = Jacobi(T(α), T(β), A, B, C, nrm2.^(-0.5))
    end
    return J
 end
 
 
-Base.length(J::Jacobi) = J.skip0 ? maxdegree(J) : maxdegree(J) + 1
+Base.length(J::Jacobi) = maxdegree(J) + 1
 maxdegree(J::Jacobi) = length(J.A)
 alloc_B(J::Jacobi{T}, args...) where {T} = zeros(T, length(J))
 alloc_dB(J::Jacobi{T}, args...) where {T} = zeros(T, length(J))
 
 function evaluate!(P::AbstractVector, tmp, J::Jacobi, x)
-   N = maxdegree(J) #::Integer = length(P)-1
-   @assert (length(P) >= N + 1 - J.skip0)
-   @assert 2 <= N <= maxdegree(J)
+   N = maxdegree(J)
+   @assert length(P) >= N + 1
+   @assert N+1 <= length(P)
    α, β = J.α, J.β
-   @inbounds begin
-      if J.skip0
-         i0 = -1
-      else
-         P[1] = 1
-         i0 = 0
-      end
-      P[i0+2] = (α+1) + 0.5 * (α+β+2) * (x-1)
-      for n = 2:N
-         P[i0+n+1] = (J.A[n] * x + J.B[n]) * P[i0+n] + J.C[n] * P[i0+n-1]
+   P[1] = 1
+   if N > 0
+      P[2] = (α+1) + 0.5 * (α+β+2) * (x-1)
+      if N > 1
+         # 3-pt recursion
+         @inbounds for n = 2:N
+            P[n+1] = (J.A[n] * x + J.B[n]) * P[n] + J.C[n] * P[n-1]
+         end
       end
    end
+   # normalise
    if !isempty(J.nrm)  # if we want an orthonormal basis
       P .= P .* J.nrm
    end
@@ -122,28 +120,25 @@ end
 
 function evaluate_d!(P::AbstractVector, dP::AbstractVector, tmp,
                     J::Jacobi, x::Number)
-   N = maxdegree(J) #::Integer = length(P)-1
+   N = maxdegree(J)
    @assert length(P) >= N+1
    @assert length(dP) >= N+1
-   @assert 2 <= N <= maxdegree(J)
+   @assert N+1 <= min(length(P), length(dP))
    α, β = J.α, J.β
-   @inbounds begin
-      if J.skip0
-         i0 = -1
-      else
-         P[1] = 1
-         dP[1] = 0
-         i0 = 0
+   P[1] = 1
+   dP[1] = 0
+   if N > 0
+      P[2] = (α+1) + 0.5 * (α+β+2) * (x-1)
+      dP[2] = 0.5 * (α+β+2)
+      if N > 1
+         @inbounds for n = 2:N
+            c1 = J.A[n] * x + J.B[n]
+            c2 = J.C[n]
+            P[n+1] = c1 * P[n] + c2 * P[n-1]
+            dP[n+1] = J.A[n] * P[n] + c1 * dP[n] + J.C[n] * dP[n-1]
+         end
       end
-      P[i0+2] = (α+1) + 0.5 * (α+β+2) * (x-1)
-      dP[i0+2] = 0.5 * (α+β+2)
-      for n = 2:N
-         c1 = J.A[n] * x + J.B[n]
-         c2 = J.C[n]
-         P[i0+n+1] = c1 * P[i0+n] + c2 * P[i0+n-1]
-         dP[i0+n+1] = J.A[n] * P[i0+n] + c1 * dP[n] + J.C[n] * dP[i0+n-1]
-      end
-   end # @inbounds
+   end
    if !isempty(J.nrm)  # if we want an orthonormal basis
       P .= P .* J.nrm
       dP .= dP .* J.nrm
