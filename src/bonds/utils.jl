@@ -57,7 +57,11 @@ function  envpairbasis(species, ::Val{N};
    # now to generate products of As we take N-tuples
    #     t = (t0, t1, ..., tN)  where ti is an index pointing into Abasis
    function aabfcn(t)
-      tnz = t[findall(t .!= 0)] # tuple
+      if isempty(t)
+         tnz = t
+      else
+         tnz = t[findall(t .!= 0)] # tuple
+      end 
       return BondBasisFcnIdx(0, Abasis[[tnz...]])
    end
    degreefunenv = t -> totaldegree(aabfcn(t), wr, wθ, wz)
@@ -70,9 +74,13 @@ function  envpairbasis(species, ::Val{N};
    AAbasis = BondBasisFcnIdx[]
    for aa in aatuples
       AA = aabfcn(aa)
-      if length(AA) == 0; continue; end    # get rid of the constant
-      sumkθ = sum( A.kθ for A in AA.kkrθz )
-      sumkz = sum( A.kz for A in AA.kkrθz )
+      if length(AA) == 0
+         sumkθ = 0
+         sumkz = 0
+      else
+         sumkθ = sum( A.kθ for A in AA.kkrθz )
+         sumkz = sum( A.kz for A in AA.kkrθz )
+      end
       if sumkθ == 0 && iseven(sumkz)
          push!(AAbasis, AA)
       end
@@ -129,11 +137,15 @@ gensparse(N::Integer;
 
 function _gensparse(::Val{N}, admissible, filter, INT, ordered) where {N}
    @assert INT <: Integer
-   @assert N > 0
 
    lastidx = 0
    ν = @MVector zeros(INT, N)
    Nu = SVector{N, INT}[]
+
+   if N == 0
+      push!(Nu, SVector{N, INT}())
+      return Nu
+   end
 
    while true
       # check whether the current ν tuple is admissible
