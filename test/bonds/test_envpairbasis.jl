@@ -89,6 +89,7 @@ B1 = evaluate!(B, tmp, Benv, R0, Renv)
 B2 = evaluate(Benv, R0, Renv)
 println(@test B1 ≈ B2)
 
+
 ##
 
 @info("Symmetry-invariance test")
