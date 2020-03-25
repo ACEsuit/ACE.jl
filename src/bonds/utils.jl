@@ -120,7 +120,7 @@ function  envpairbasis(species, ::Val{N};
    for k0 = 0:degree, iAA = 1:length(AAbasis)
       AA = AAbasis[iAA]
       if k0 + wenv * totaldegree(AA, wr, wθ, wz) <= degree
-         @show k0, AA.kkrθz
+         # @show k0, AA.kkrθz
          push!(k0AAbasis, BondBasisFcnIdx(k0, AA.kkrθz))
       end
    end
