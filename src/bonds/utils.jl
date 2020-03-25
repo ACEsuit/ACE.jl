@@ -23,6 +23,26 @@ totaldegree(b::BondBasisFcnIdx, wr, wθ, wz) =
 totaldegree(b::BondBasisFcnIdx{0}, wr, wθ, wz) =
             b.k0
 
+"""
+envpairbasis(species, N;
+             rcut0 = nothing,
+             degree = nothing,
+             rnn = species == :X ? 2.7 : JuLIP.rnn(species),
+             rcutenvfact = 1.9,
+             rinenvfact = 0.66,
+             rinr0 = rcutenvfact * rnn,
+             rcutr = rcutenvfact * rnn,
+             rinr = 0.0,
+             rcutz = rcutenvfact * rnn + 0.5 * rcut0,
+             wenv = 4.0, wr = 1.0, wz = 1.0, wθ = 1.0,
+             r0trans = PolyTransform(2, rnn),
+             rtrans = PolyTransform(2, rnn),
+             ztrans = IdTransform(),
+             r0fcut = PolyCutoff1s(2, rinr0, rcut0),
+             rfcut = PolyCutoff1s(2, 0.0, rcutr),
+             zfcut = PolyCutoff2s(2, -rcutz, rcutz)
+             )
+"""
 envpairbasis(species, N, args...; kwargs...) =
       envpairbasis(species, Val(N), args...; kwargs...)
 
@@ -68,7 +88,7 @@ function  envpairbasis(species, ::Val{N};
          tnz = t
       else
          tnz = t[findall(t .!= 0)] # tuple
-      end 
+      end
       return BondBasisFcnIdx(0, Abasis[[tnz...]])
    end
    degreefunenv = t -> totaldegree(aabfcn(t), wr, wθ, wz)
@@ -100,6 +120,7 @@ function  envpairbasis(species, ::Val{N};
    for k0 = 0:degree, iAA = 1:length(AAbasis)
       AA = AAbasis[iAA]
       if k0 + wenv * totaldegree(AA, wr, wθ, wz) <= degree
+         @show k0, AA.kkrθz
          push!(k0AAbasis, BondBasisFcnIdx(k0, AA.kkrθz))
       end
    end

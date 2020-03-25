@@ -200,14 +200,15 @@ function BondAAList( Abasis::AbstractVector{<: Bond1ParticleFcn},
    i2Aidx = zeros(INT, length(AAbasis), maximum(length, AAbasis))
    len = zeros(INT, length(AAbasis))
    kkrθz2i = Dict{BondBasisFcnIdx, Int}()
+   i2k0 =  zeros(INT, length(AAbasis))
    for (i, AA) in enumerate(AAbasis)
       kkrθz2i[AA] = i
       len[i] = length(AA)
+      i2k0[i] = AA.k0
       for j = 1:length(AA)
          i2Aidx[i, j] = alist.krθz2i[AA.kkrθz[j]]
       end
    end
-   i2k0 =  zeros(INT, length(AAbasis))
    # wrap up...
    return BondAAList(alist, i2Aidx, i2k0, len, kkrθz2i)
 
