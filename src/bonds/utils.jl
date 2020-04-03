@@ -58,11 +58,12 @@ function  envpairbasis(species, ::Val{N};
              rcutz = rcutenvfact * rnn + 0.5 * rcut0,
              wenv = 4.0, wr = 1.0, wz = 1.0, wθ = 1.0,
              r0trans = PolyTransform(2, rnn),
-             rtrans = PolyTransform(2, rnn),
+             rtrans = IdTransform(),
              ztrans = IdTransform(),
              r0fcut = PolyCutoff1s(2, rinr0, rcut0),
              rfcut = PolyCutoff1s(2, 0.0, rcutr),
-             zfcut = PolyCutoff2s(2, -rcutz, rcutz)
+             zfcut = PolyCutoff2s(2, -rcutz, rcutz),
+             zsymm = true,
              ) where {N}
 
    # some basic health checks.
@@ -108,7 +109,7 @@ function  envpairbasis(species, ::Val{N};
          sumkθ = sum( A.kθ for A in AA.kkrθz )
          sumkz = sum( A.kz for A in AA.kkrθz )
       end
-      if sumkθ == 0 && iseven(sumkz)
+      if sumkθ == 0 && (iseven(sumkz) || !zsymm)
          push!(AAbasis, AA)
       end
    end
@@ -120,7 +121,6 @@ function  envpairbasis(species, ::Val{N};
    for k0 = 0:degree, iAA = 1:length(AAbasis)
       AA = AAbasis[iAA]
       if k0 + wenv * totaldegree(AA, wr, wθ, wz) <= degree
-         @show k0, AA.kkrθz
          push!(k0AAbasis, BondBasisFcnIdx(k0, AA.kkrθz))
       end
    end
