@@ -63,4 +63,9 @@ include("extras/compressA.jl")
 
 include("bonds/bonds.jl")
 
+
+# ------ polynomials with cylindrical synmmetry (bonds)
+
+include("PIBasis.jl")
+
 end # module
