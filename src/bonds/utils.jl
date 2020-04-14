@@ -10,7 +10,8 @@ using SHIPs: PolyTransform,
              IdTransform,
              TransformedJacobi,
              PolyCutoff1s,
-             PolyCutoff2s
+             PolyCutoff2s,
+             gensparse
 
 # ------ Basis generation
 
@@ -141,73 +142,3 @@ function  envpairbasis(species, ::Val{N};
    # put together the basis
    return EnvPairBasis(P0, Pr, Pθ, Pz, aalist)
 end
-
-
-
-## ----------- Some general utility functions that we should move elsewhere...
-
-# Auxiliary functions to generate sparse grid type stuff
-
-# gensparse(N::Integer, deg, degfun, filter = _->true, TI = Int16) =
-#       gensparse(N, ν -> ((degfun(ν) <= deg) && filter(ν)), TI)
-
-
-
-gensparse(N::Integer, deg::Integer; degfun = ν -> sum(ν), kwargs...) =
-   gensparse(N; admissible = (degfun(ν) <= deg), kwargs...)
-
-gensparse(N::Integer;
-          admissible = _-> false,
-          filter = _-> true,
-          INT = Int16,
-          ordered = false) =
-      _gensparse(Val(N), admissible, filter, INT, ordered)
-
-function _gensparse(::Val{N}, admissible, filter, INT, ordered) where {N}
-   @assert INT <: Integer
-
-   lastidx = 0
-   ν = @MVector zeros(INT, N)
-   Nu = SVector{N, INT}[]
-
-   if N == 0
-      push!(Nu, SVector{N, INT}())
-      return Nu
-   end
-
-   while true
-      # check whether the current ν tuple is admissible
-      # the first condition is that its max index is small enough
-      # we want to increment `curindex`, but if we've reach the maximum degree
-      # then we need to move to the next index down
-      if admissible(ν)
-         # ... then we add it to the stack  ...
-         # (unless some filtering mechanism prevents it)
-         if filter(ν)
-            push!(Nu, SVector(ν))
-         end
-         # ... and increment it
-         lastidx = N
-         ν[lastidx] += 1
-      else
-         # we have overshot, e.g. degfun(ν) > deg; we must go back down, by
-         # decreasing the index at which we increment
-         if lastidx == 1
-            # if we have gone all the way down to lastindex==1 and are still
-            # inadmissible then this means we are done
-            break
-         end
-         # reset
-         ν[lastidx-1] += 1
-         if ordered   #   ordered tuples (permutation symmetry)
-            ν[lastidx:end] .= ν[lastidx-1]
-         else         # unordered tuples (no permutation symmetry)
-            ν[lastidx:end] .= 0
-         end
-         lastidx -= 1
-      end
-   end
-
-   return Nu
-end
- 

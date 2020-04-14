@@ -114,18 +114,88 @@ end
    end
 end
 
-# TODO: move this to JuLIP?
-# (de-)serialize a sparse matric
-Base.Dict(A::SparseMatrixCSC) =
-   Dict("__id__" => "SparseMatrixCSC",
-        "colptr" => A.colptr,
-        "rowval" => A.rowval,
-        "nzval" => A.nzval,
-        "m" => m,
-        "n" => n )
 
-Base.convert(::Val{:SparseMatrixCSC}, D::Dict) =
-   SparseMatrixCSC(D)
 
-SparseMatrixCSC(D::Dict) =
-   SparseMatrixCSC(D["m"], D["n"], D["colptr"], D["rowval"], D["nzval"])
+# ----------------------------------------------------------------------
+# sparse matrix multiplication with weaker type restrictions
+
+
+function _my_mul!(C::AbstractVector, A::SparseMatrixCSC, B::AbstractVector)
+   A.n == length(B) || throw(DimensionMismatch())
+   A.m == length(C) || throw(DimensionMismatch())
+   nzv = A.nzval
+   rv = A.rowval
+   fill!(C, zero(eltype(C)))
+   @inbounds for col = 1:A.n
+      b = B[col]
+      for j = A.colptr[col]:(A.colptr[col + 1] - 1)
+         C[rv[j]] += nzv[j] * b
+      end
+   end
+   return C
+end
+
+
+
+
+##
+# ----------- Auxiliary functions to generate sparse grid type stuff
+
+
+gensparse(N::Integer, deg::Integer; degfun = ν -> sum(ν), kwargs...) =
+   gensparse(N; admissible = (degfun(ν) <= deg), kwargs...)
+
+gensparse(N::Integer;
+          admissible = _-> false,
+          filter = _-> true,
+          INT = Int16,
+          ordered = false) =
+      _gensparse(Val(N), admissible, filter, INT, ordered)
+
+function _gensparse(::Val{N}, admissible, filter, INT, ordered) where {N}
+   @assert INT <: Integer
+
+   lastidx = 0
+   ν = @MVector zeros(INT, N)
+   Nu = SVector{N, INT}[]
+
+   if N == 0
+      push!(Nu, SVector{N, INT}())
+      return Nu
+   end
+
+   while true
+      # check whether the current ν tuple is admissible
+      # the first condition is that its max index is small enough
+      # we want to increment `curindex`, but if we've reach the maximum degree
+      # then we need to move to the next index down
+      if admissible(ν)
+         # ... then we add it to the stack  ...
+         # (unless some filtering mechanism prevents it)
+         if filter(ν)
+            push!(Nu, SVector(ν))
+         end
+         # ... and increment it
+         lastidx = N
+         ν[lastidx] += 1
+      else
+         # we have overshot, e.g. degfun(ν) > deg; we must go back down, by
+         # decreasing the index at which we increment
+         if lastidx == 1
+            # if we have gone all the way down to lastindex==1 and are still
+            # inadmissible then this means we are done
+            break
+         end
+         # reset
+         ν[lastidx-1] += 1
+         if ordered   #   ordered tuples (permutation symmetry)
+            ν[lastidx:end] .= ν[lastidx-1]
+         else         # unordered tuples (no permutation symmetry)
+            ν[lastidx:end] .= 0
+         end
+         lastidx -= 1
+      end
+   end
+
+   return Nu
+end

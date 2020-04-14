@@ -114,7 +114,7 @@ end
 * `i2Aidx` : indices in AList of the zklms to avoid the Dict lookup
 * `len`    : len[i] is the number of relevant entries of i2zklm[i,:]
              i.e. the body-order of this entry
-* `zklm2i` : dictionary of all (z,k,l,m) tuples to compute  the
+* `zklm2i` : dictionary of all (zz,kk,ll,mm) tuples to compute  the
              map `(zz,kk,ll,mm) -> i`
 * `firstz` : `firstz[iz]` stores the first index in the A_zklm array for with
              z = zi. This can be used to iterate over all A entries for which
@@ -281,24 +281,4 @@ function alists_from_bgrps(bgrps::Tuple)
    alist =  ntuple(iz0 -> AList([ zklm for zklm in collect(zklm_set[iz0]) ]), NZ)
    aalist = ntuple(iz0 -> AAList(zzkkllmm_list[iz0], alist[iz0]), NZ)
    return alist, aalist
-end
-
-
-# --------------------------------------------------------
-
-using SparseArrays: SparseMatrixCSC
-
-function _my_mul!(C::AbstractVector, A::SparseMatrixCSC, B::AbstractVector)
-   A.n == length(B) || throw(DimensionMismatch())
-   A.m == length(C) || throw(DimensionMismatch())
-   nzv = A.nzval
-   rv = A.rowval
-   fill!(C, zero(eltype(C)))
-   @inbounds for col = 1:A.n
-      b = B[col]
-      for j = A.colptr[col]:(A.colptr[col + 1] - 1)
-         C[rv[j]] += nzv[j] * b
-      end
-   end
-   return C
 end

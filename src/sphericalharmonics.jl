@@ -101,6 +101,10 @@ for the given indices ``(l,m)``.
 Base.@pure index_y(l::Int, m::Int) = m + l + (l*l) + 1
 index_y(l::Integer, m::Integer) = index_y(Int(l), Int(m))
 
+# # i = m + l + l^2 + 1
+# # m = i - l - l^2 - 1
+# _li2m(l, i) = i - l - l^2 - 1
+
 # --------------------------------------------------------
 #     Associated Legendre Polynomials
 #     TODO: rewrite within general interface?
