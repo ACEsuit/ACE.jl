@@ -55,13 +55,6 @@ function Base.iterate(mr::MRange, args...)
 end
 
 
-# _mrange_prefilter(ll) = (
-#                   _mvec(mpre) for mpre in CartesianIndices(
-#                                 ntuple(i -> -ll[i]:ll[i], length(ll)-1) )
-#               )
-
-
-
 
 """
 `@generated function nfcalls(::Val{N}, f)`

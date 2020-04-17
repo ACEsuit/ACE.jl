@@ -12,6 +12,7 @@ using Reexport
 @reexport using JuLIP
 
 include("aux.jl")
+
 include("prototypes.jl")
 
 # specification of the radial basis
@@ -75,6 +76,6 @@ include("PIBasis.jl")
 
 
 # ---------------------- experimental
-include("experimental.jl") 
+include("experimental.jl")
 
 end # module
