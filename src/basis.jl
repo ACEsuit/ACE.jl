@@ -190,6 +190,7 @@ end
 nspecies(B::SHIPBasis{T, NZ}) where {T, NZ} = NZ
 
 bodyorder(ship::SHIPBasis) = maximum(bodyorder, ship.aalists)
+order(ship::SHIPBasis) = maximum(order, ship.aalists)
 
 # get_maxL(allKL) = maximum( maximum( kl.l for kl in allKL_ )
 #                            for allKL_ in allKL )

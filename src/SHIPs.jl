@@ -67,12 +67,14 @@ include("extras/compressA.jl")
 
 
 # ------ polynomials with cylindrical synmmetry (bonds)
-
 include("bonds/bonds.jl")
 
 
-# ------ polynomials with cylindrical synmmetry (bonds)
-
+# ------ pure permutation invariance
 include("PIBasis.jl")
+
+
+# ---------------------- experimental
+include("experimental.jl") 
 
 end # module

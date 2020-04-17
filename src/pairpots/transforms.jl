@@ -154,9 +154,9 @@ fcut_d(C::PolyCutoff2s{P}, r::T, x) where {P, T} =
 struct OneCutoff
    rcut::Float64
 end
-fcut(C::OneCutoff, r, x) = r < rcut ? one(r) : zero(r)
+fcut(C::OneCutoff, r, x) = r < C.rcut ? one(r) : zero(r)
 fcut_d(C::OneCutoff, r, x) = zero(r)
-
+cutoff(C::OneCutoff) = C.rcut
 
 # Transformed Jacobi Polynomials
 # ------------------------------
@@ -302,11 +302,11 @@ TransformedJacobi(maxdeg::Integer,
 
 
 TransformedJacobi(maxdeg::Integer,
-                  trans::DistanceTransformCut,
-                  rl = 0.0) =
-      TransformedJacobi( Jacobi(0, 0, maxdeg, skip0=true), trans,
-                         OneCutoff(cutoff(trans)),
-                         rl, cutoff(trans))
+                  trans::DistanceTransform,
+                  rl, ru) =
+      TransformedJacobi( Jacobi(0, 0, maxdeg), trans,
+                         OneCutoff(ru),
+                         rl, ru)
 
 
 

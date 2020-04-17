@@ -147,6 +147,7 @@ AAList(D::Dict, alist) = AAList(vec2zzkkllmm.(D["ZKLM_list"]), alist)
 
 
 bodyorder(aalist::AAList) = maximum(aalist.len) + 1
+order(aalist::AAList) = maximum(aalist.len)
 
 Base.length(aalist::AAList) = length(aalist.len)
 
