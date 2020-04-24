@@ -6,14 +6,15 @@
 # --------------------------------------------------------------------------
 
 
+# We use IntS for all index integer types for all SHIPs.jl basis types
+# The `S` originates from the previous name of the package, `SHIPs.jl`
+const IntS = Int32
 
 import JuLIP.Potentials: z2i
 
-import JuLIP: alloc_temp, alloc_temp_d,
-              cutoff,
+import JuLIP: energy, forces, virial, alloc_temp, alloc_temp_d, cutoff,
               evaluate, evaluate_d,
-              evaluate!, evaluate_d!,
-              SitePotential
+              energy!, forces!, virial!, evaluate!, evaluate_d!
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
 
@@ -25,13 +26,6 @@ function transform_d end
 function fcut end
 function fcut_d end
 
-
-abstract type RadialBasis end
-
-abstract type OneParticleBasis end
-
-
-# Some methods for generating random samples
 function rand_radial end
 
 function rand_sphere()
@@ -39,5 +33,5 @@ function rand_sphere()
    return R / norm(R)
 end
 
-rand_vec(J::RadialBasis) = rand_radial(J) *  rand_sphere()
-rand_vec(J::RadialBasis, N::Integer) = [ rand_vec(J) for _ = 1:N ]
+rand_vec(J) = rand_radial(J) *  rand_sphere()
+rand_vec(J, N::Integer) = [ rand_vec(J) for _ = 1:N ]

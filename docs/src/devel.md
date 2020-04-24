@@ -4,6 +4,11 @@
 !!! warning "WARNING"
     This documentation described what will be implemented on the `rewrite` branch, and not what is currently implemented!
 
+## General Notes
+
+ * Always use `Int` for indexing, never `Int16, Int32`, etc.
+ *
+
 ## Type Hierarchy
 
 ### One Particle Basis
