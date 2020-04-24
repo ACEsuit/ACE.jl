@@ -1,5 +1,5 @@
 
-module Rotations
+module Rotations3D
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
