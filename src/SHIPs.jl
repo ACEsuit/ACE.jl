@@ -1,3 +1,4 @@
+
 module SHIPs
 
 
@@ -8,39 +9,41 @@ include("aux.jl")
 
 include("prototypes.jl")
 
-# specification of the radial basis
-include("pairpots/jacobi.jl")
-include("pairpots/transforms.jl")
+include("harmonics/sphericalharmonics.jl")
 
-include("pairpots/basis.jl")
-include("pairpots/calculator.jl")
-include("pairpots/repulsion.jl")
+include("oneparticlebasis.jl")
 
-include("pairpots/orthpolys.jl")
-
-# specification of the angular basis
-include("sphericalharmonics.jl")
-include("rotations.jl")
-
-# basis specification: subsets of the full expansion
-include("basisspecs.jl")
-
-# implements the A functions ∏A functions
-include("Alist.jl")
-
-# SHIPBasis definition
-include("basis.jl")
-include("purebasis.jl")
-
-# SHIP interatomic potential definition
-include("fast.jl")
-include("real.jl")
-
-include("regularisers.jl")
-
-include("descriptors.jl")
-
-include("utils.jl")
+# # specification of the radial basis
+# include("pairpots/jacobi.jl")
+# include("pairpots/transforms.jl")
+# include("pairpots/basis.jl")
+# include("pairpots/calculator.jl")
+# include("pairpots/repulsion.jl")
+# include("pairpots/orthpolys.jl")
+#
+# # specification of the angular basis
+# include("sphericalharmonics.jl")
+# include("rotations.jl")
+#
+# # basis specification: subsets of the full expansion
+# include("basisspecs.jl")
+#
+# # implements the A functions ∏A functions
+# include("Alist.jl")
+#
+# # SHIPBasis definition
+# include("basis.jl")
+# include("purebasis.jl")
+#
+# # SHIP interatomic potential definition
+# include("fast.jl")
+# include("real.jl")
+#
+# include("regularisers.jl")
+#
+# include("descriptors.jl")
+#
+# include("utils.jl")
 
 # ===== NEW STUFF
 # bond energies
@@ -56,19 +59,19 @@ include("utils.jl")
 # end
 #  TODO: make conertc2r load only conditionally. The above seems to be
 #        incorrect, probably used Requires incorrectly?
-include("extras/convertc2r.jl")
-include("extras/compressA.jl")
+# include("extras/convertc2r.jl")
+# include("extras/compressA.jl")
 
 
-# ------ polynomials with cylindrical synmmetry (bonds)
-include("bonds/bonds.jl")
+# # ------ polynomials with cylindrical synmmetry (bonds)
+# include("bonds/bonds.jl")
 
 
-# ------ pure permutation invariance
-include("PIBasis.jl")
-
-
-# ---------------------- experimental
-include("experimental.jl")
+# # ------ pure permutation invariance
+# include("PIBasis.jl")
+#
+#
+# # ---------------------- experimental
+# include("experimental.jl")
 
 end # module

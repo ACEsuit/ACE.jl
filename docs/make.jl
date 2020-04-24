@@ -6,6 +6,7 @@ makedocs(sitename="SHIPs.jl Documentation",
         "Home" => "index.md",
         "Introduction" => "intro.md",
         "Developer Docs" => "devel.md",
+        "ED-Bonds" => "envpairbasis.md"
         # "Subsection" => [
         #     ...
         # ]
