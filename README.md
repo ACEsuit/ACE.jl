@@ -4,7 +4,7 @@
 
 [![Codecov](https://codecov.io/gh/JuliaMolSim/SHIPs.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMolSim/SHIPs.jl)
 
-[Preliminary Documentation](https://juliamolsim.github.io/SHIPs.jl/latest/)
+[Preliminary Documentation](https://juliamolsim.github.io/SHIPs.jl/dev/)
 
 This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, imposing permutation and isometry invariance. Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance.
 
