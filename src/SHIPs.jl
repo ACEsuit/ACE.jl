@@ -16,7 +16,10 @@ include("aux.jl")
 
 include("prototypes.jl")
 
+# spherical harmonics, and codes related to 3d rotations
 include("harmonics/sphericalharmonics.jl")
+# include("harmonics/rotations.jl")
+
 
 include("oneparticlebasis.jl")
 
@@ -28,9 +31,6 @@ include("oneparticlebasis.jl")
 # include("pairpots/repulsion.jl")
 # include("pairpots/orthpolys.jl")
 #
-# # specification of the angular basis
-# include("sphericalharmonics.jl")
-# include("rotations.jl")
 #
 # # basis specification: subsets of the full expansion
 # include("basisspecs.jl")

@@ -20,6 +20,19 @@ const JVec = SVector{3}
 export SHBasis, RSHBasis
 
 
+
+# --------------------------------------------------------
+#     Coordinates
+# --------------------------------------------------------
+
+
+"""
+`struct PseudoSpherical` : a simple datatype storing spherical coordinates
+of a point (x,y,z) in the format (r, cosφ, sinφ, cosθ, sinθ).
+
+Use `spher2cart` and `cart2spher` to convert between cartesian and spherical
+coordinates.
+"""
 struct PseudoSpherical{T}
 	r::T
 	cosφ::T
@@ -31,6 +44,7 @@ end
 spher2cart(S::PseudoSpherical) = S.r * JVec(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
 
 function cart2spher(R::AbstractVector)
+	@assert length(R) == 3
 	r = norm(R)
 	φ = atan(R[2], R[1])
 	sinφ, cosφ = sincos(φ)
@@ -51,11 +65,6 @@ function dspher_to_dcart(S, f_φ_div_sinθ, f_θ)
 			            (S.cosφ * f_φ_div_sinθ) + (S.sinφ * S.cosθ * f_θ),
 			 			                                 - (   S.sinθ * f_θ) ) / r
 end
-
-# function dspher_to_dcart_m0(S, f_θ)
-# 	r = S.r + eps()
-#    return SVector(S.cosφ * S.cosθ, S.sinφ * S.cosθ, S.sinθ) * (f_θ / r)
-# end
 
 
 
@@ -283,7 +292,9 @@ compute_dp(L::Integer, θ::Real) =
 #                  Spherical Harmonics
 # ------------------------------------------------------------------------
 
-
+"""
+evaluate complex spherical harmonics
+"""
 function cYlm!(Y, L, S::PseudoSpherical, P)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
@@ -311,7 +322,9 @@ function cYlm!(Y, L, S::PseudoSpherical, P)
 end
 
 
-
+"""
+evaluate gradients of complex spherical harmonics
+"""
 function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
@@ -348,7 +361,9 @@ function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
 end
 
 
-
+"""
+evaluate real spherical harmonics
+"""
 function rYlm!(Y::AbstractVector{T}, L, S::PseudoSpherical, P) where {T <: Real}
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
@@ -379,6 +394,9 @@ function rYlm!(Y::AbstractVector{T}, L, S::PseudoSpherical, P) where {T <: Real}
 end
 
 
+"""
+evaluate gradients of real spherical harmonics
+"""
 function rYlm_d!(Y::AbstractVector{T}, dY,
 					  L, S::PseudoSpherical, P, dP) where {T <: Real}
 	@assert length(P) >= sizeP(L)
@@ -422,13 +440,13 @@ end
 
 
 # ---------------------------------------------
-#      Nicer interface
+#      The nice basis interface
 # ---------------------------------------------
 
 abstract type AbstractSHBasis{T} <: IPBasis end
 
 """
-complext spherical harmonics
+complex spherical harmonics
 """
 struct SHBasis{T} <: AbstractSHBasis{T}
 	maxL::Int

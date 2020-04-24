@@ -8,6 +8,7 @@
 
 using StaticArrays
 using SparseArrays: SparseMatrixCSC
+using LinearAlgebra: norm, dot 
 
 # -----------------------------------
 # iterating over an m collection
