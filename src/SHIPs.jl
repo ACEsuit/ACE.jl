@@ -6,23 +6,26 @@ using Reexport
 @reexport using JuLIP
 
 include("aux.jl")
-
 include("prototypes.jl")
 
-# spherical harmonics, and codes related to 3d rotations
-include("harmonics/sphericalharmonics.jl")
-# include("harmonics/rotations.jl")
+# basic polynomial building blocks
+include("polynomials/sphericalharmonics.jl")
+include("polynomials/transforms.jl"); @reexport using SHIPs.Transforms
+include("polynomials/orthpolys.jl"); @reexport using SHIPs.OrthPolys
 
-
+# The One-particle basis is the first proper building block
 include("oneparticlebasis.jl")
 
-# # specification of the radial basis
-# include("pairpots/jacobi.jl")
-# include("pairpots/transforms.jl")
+# the permutation-invariant basis is the second main building block
+# and at the same time already a useful export
+# include("PIBasis.jl")
+
+
+# include("harmonics/rotations.jl")
+# specification of the radial basis
 # include("pairpots/basis.jl")
 # include("pairpots/calculator.jl")
 # include("pairpots/repulsion.jl")
-# include("pairpots/orthpolys.jl")
 #
 #
 # # basis specification: subsets of the full expansion
