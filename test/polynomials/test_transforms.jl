@@ -9,25 +9,20 @@
 
 @testset "Transforms" begin
 
-using SHIPs, Printf, Test, LinearAlgebra
-using SHIPs: PolyTransform, TransformedJacobi
-using SHIPs.JacobiPolys: Jacobi
-using SHIPs.SphericalHarmonics
-using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
-               cart2spher, spher2cart
-
+using SHIPs, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 
-
 verbose = false
+maxdeg = 10
 
+@info("Testing Transforms and TransformedPolys") 
 for p in 2:4
    @info("p = $p, random transform")
    trans = PolyTransform(1+rand(), 1+rand())
    @info("      test (de-)dictionisation")
-   println(@test decode_dict(Dict(trans)) == trans)
-   B1 = TransformedJacobi(10, trans, PolyCutoff1s(2, 3.0))
-   B2 = TransformedJacobi(10, trans, PolyCutoff2s(2, 0.5, 3.0))
+   println(@test read_dict(write_dict(trans)) == trans)
+   B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = p)
+   B2 = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = p, pcut = p)
    for B in [B1, B2]
       B == B1 && @info("basis = 1s")
       B == B2 && @info("basis = 2s")

@@ -46,7 +46,7 @@ cSH = SHBasis(maxL)
 rSH = RSHBasis(maxL)
 
 for nsamples = 1:30
-   R = SHIPs.Utils.rand_sphere()
+   R = SHIPs.rand_sphere()
    cY = evaluate(cSH, R)
    rY = evaluate(rSH, R)
    print_tf(@test test_r2c(maxL, cY, rY))
@@ -80,22 +80,5 @@ for nsamples = 1:30
 end
 println()
 
-
-
-##
-
-# basic benchmark : the real SH are marginally faster
-# using BenchmarkTools
-# maxL = 20
-# cSH = SHBasis(maxL)
-# rSH = RSHBasis(maxL)
-# R = SHIPs.Utils.rand_sphere()
-# cY = SHIPs.alloc_B(cSH)
-# rY  = SHIPs.alloc_B(rSH)
-# tY = SHIPs.alloc_temp(cSH)
-# SHIPs.evaluate!(cY, tY, cSH, R) == evaluate(cSH, R)
-# SHIPs.evaluate!(rY, tY, rSH, R) == evaluate(rSH, R)
-# @btime SHIPs.evaluate!($cY, $tY, $cSH, $R)
-# @btime SHIPs.evaluate!($rY, $tY, $rSH, $R)
 
 end

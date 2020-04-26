@@ -12,12 +12,15 @@ using SparseArrays
 using LinearAlgebra: dot
 
 import JuLIP: evaluate!, evaluate_d!
+import JuLIP.FIO: read_dict, write_dict
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
 import SHIPs
-import SHIPs: DistanceTransform, transform, transform_d, TransformedPolys
+using SHIPs.Transforms: DistanceTransform, transform, transform_d
 
-import Base: ==, convert
+import Base: ==
+
+export transformed_jacobi
 
 # this is a hack to prevent a weird compiler error that I don't understand
 # at all yet
@@ -40,16 +43,14 @@ function _fcut_d_(pl, tl, pr, tr, t)
    return df
 end
 
-# TODO: At the moment, the cutoff is hard-coded; we could
-#       weaken this again.
 
 struct OrthPolyBasis{T} <: IPBasis
    # ----------------- the parameters for the cutoff function
-   pl::Int
-   tl::T
-   pr::Int
-   tr::T
-   # ----------------- the main polynomial parameters
+   pl::Int        # cutoff power left
+   tl::T          # cutoff left (transformed variable)
+   pr::Int        # cutoff power right
+   tr::T          # cutoff right (transformed variable)
+   # ----------------- the recursion coefficients
    A::Vector{T}
    B::Vector{T}
    C::Vector{T}
@@ -65,8 +66,9 @@ Base.length(P::OrthPolyBasis) = length(P.A)
       all( getfield(J1, sym) == getfield(J2, sym)
            for sym in (:pr, :tr, :pl, :tl, :A, :B, :C) )
 
-Dict(J::OrthPolyBasis) = Dict(
+write_dict(J::OrthPolyBasis{T}) where {T} = Dict(
       "__id__" => "SHIPs_OrthPolyBasis",
+      "T" => write_dict(T),
       "pr" => J.pr,
       "tr" => J.tr,
       "pl" => J.pl,
@@ -76,17 +78,18 @@ Dict(J::OrthPolyBasis) = Dict(
       "C" => J.C
    )
 
-OrthPolyBasis(D::Dict, T=Float64) =
+OrthPolyBasis(D::Dict, T=read_dict(D["T"])) =
    OrthPolyBasis(
       D["pl"], D["tl"], D["pr"], D["tr"],
       Vector{T}(D["A"]), Vector{T}(D["B"]), Vector{T}(D["C"]),
       T[], T[]
    )
 
-convert(::Val{:SHIPs_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
+read_dict(::Val{:SHIPs_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
 
 # rand applied to a J will return a random transformed distance drawn from
 # the measure w.r.t. which the polynomials were constructed.
+# TODO: allow non-constant weights!
 function SHIPs.rand_radial(J::OrthPolyBasis)
    @assert maximum(abs, diff(J.ww)) == 0
    return rand(J.tdf)
@@ -195,25 +198,113 @@ function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t)
    return dP
 end
 
-function discrete_jacobi(N; pcut=2, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)
+"""
+`discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)`
+
+A utility function to generate a jacobi-type basis
+"""
+function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)
    tl, tr = minmax(tin, tcut)
    dt = (tr - tl) / Nquad
    tdf = range(tl + dt/2, tr - dt/2, length=Nquad)
    return OrthPolyBasis(N, pcut, tcut, pin, tin, tdf)
 end
 
+
+# ----------------------------------------------------------------
+#   Transformed Polynomials Basis
+# ----------------------------------------------------------------
+
+
+struct TransformedPolys{T, TT, TJ} <: IPBasis
+   J::TJ          # the actual basis
+   trans::TT      # coordinate transform
+   rl::T          # lower bound r
+   ru::T          # upper bound r = rcut
+end
+
+==(J1::TransformedPolys, J2::TransformedPolys) = (
+   (J1.J == J2.J) &&
+   (J1.trans == J2.trans) &&
+   (J1.rl == J2.rl) &&
+   (J1.ru == J2.ru) )
+
+TransformedPolys(J, trans, rl, ru) =
+   TransformedPolys(J, trans, rl, ru)
+
+write_dict(J::TransformedPolys) = Dict(
+      "__id__" => "SHIPs_TransformedPolys",
+      "J" => write_dict(J.J),
+      "rl" => J.rl,
+      "ru" => J.ru,
+      "trans" => write_dict(J.trans)
+   )
+
+TransformedPolys(D::Dict) =
+   TransformedPolys(
+      read_dict(D["J"]),
+      read_dict(D["trans"]),
+      D["rl"],
+      D["ru"]
+   )
+
+read_dict(::Val{:SHIPs_TransformedPolys}, D::Dict) = TransformedPolys(D)
+
+Base.length(J::TransformedPolys) = length(J.J)
+
+function SHIPs.rand_radial(J::TransformedPolys)
+   t = SHIPs.rand_radial(J.J)
+   return inv_transform(J.trans, t)
+end
+
+cutoff(J::TransformedPolys) = J.ru
+
+alloc_B( J::TransformedPolys, args...) = alloc_B( J.J, args...)
+alloc_dB(J::TransformedPolys, args...) = alloc_dB(J.J, args...)
+
+function evaluate!(P, tmp, J::TransformedPolys, r)
+   # transform coordinates
+   t = transform(J.trans, r)
+   # evaluate the actual polynomials
+   evaluate!(P, nothing, J.J, t)
+   return P
+end
+
+function evaluate_d!(P, dP, tmp, J::TransformedPolys, r)
+   # transform coordinates
+   t = transform(J.trans, r)
+   dt = transform_d(J.trans, r)
+   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
+   evaluate_d!(P, dP, nothing, J.J, t)
+   @. dP *= dt
+   return dP
+end
+
+
+"""
+`transformed_jacobi(maxdeg, trans, rcut, rin = 0.0; kwargs...)` : construct
+a `TransformPolys` basis with an inner polynomial basis of `OrthPolys` type.
+
+* `maxdeg` : maximum degree
+* `trans` : distance transform; normally `PolyTransform(...)`
+* `rin, rcut` : inner and outer cutoff
+
+**Keyword arguments:**
+
+* `pcut = 2` : cutoff parameter
+* `pin = 0` : inner cutoff parameter
+* `Nquad = 1000` : number of quadrature points
+"""
 function transformed_jacobi(maxdeg::Integer,
                             trans::DistanceTransform,
                             rcut::Real, rin::Real = 0.0;
                             kwargs...)
    J =  discrete_jacobi(maxdeg; tcut = transform(trans, rcut),
                                 tin = transform(trans, rin),
+                                pcut = 2,
                                 kwargs...)
    return TransformedPolys(J, trans, rin, rcut)
 end
 
-
-
-include("one_orthogonal.jl")
 
 end
