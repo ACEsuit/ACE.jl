@@ -44,7 +44,7 @@ function _fcut_d_(pl, tl, pr, tr, t)
 end
 
 
-struct OrthPolyBasis{T} <: IPBasis
+struct OrthPolyBasis{T}
    # ----------------- the parameters for the cutoff function
    pl::Int        # cutoff power left
    tl::T          # cutoff left (transformed variable)
@@ -216,7 +216,7 @@ end
 # ----------------------------------------------------------------
 
 
-struct TransformedPolys{T, TT, TJ} <: IPBasis
+struct TransformedPolys{T, TT, TJ} <: SHIPs.ScalarBasis{T}
    J::TJ          # the actual basis
    trans::TT      # coordinate transform
    rl::T          # lower bound r

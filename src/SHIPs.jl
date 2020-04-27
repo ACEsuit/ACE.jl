@@ -12,16 +12,25 @@ module SHIPs
 using Reexport
 @reexport using JuLIP
 
+using Parameters
+
 include("aux.jl")
 include("prototypes.jl")
+
 
 # basic polynomial building blocks
 include("polynomials/sphericalharmonics.jl")
 include("polynomials/transforms.jl"); @reexport using SHIPs.Transforms
 include("polynomials/orthpolys.jl"); @reexport using SHIPs.OrthPolys
 
+
+# this includes some utilities to specify different notion of degree
+include("degrees.jl")
+
 # The One-particle basis is the first proper building block
 include("oneparticlebasis.jl")
+
+
 
 # the permutation-invariant basis is the second main building block
 # and at the same time already a useful export

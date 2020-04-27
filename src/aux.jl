@@ -60,26 +60,28 @@ end
 ##
 # ----------- Auxiliary functions to generate sparse grid type stuff
 
-
-gensparse(N::Integer, deg::Integer; degfun = ν -> sum(ν), kwargs...) =
-   gensparse(N; admissible = (degfun(ν) <= deg), kwargs...)
+gensparse(N::Integer, deg::Real; degfun = ν -> sum(ν), kwargs...) =
+   gensparse(N; admissible = ν -> (degfun(ν) <= deg), kwargs...)
 
 gensparse(N::Integer;
           admissible = _-> false,
           filter = _-> true,
+          tup2b = ν -> SVector(ν),
           INT = Int16,
           ordered = false) =
-      _gensparse(Val(N), admissible, filter, INT, ordered)
+      _gensparse(Val(N), admissible, filter, tup2b, INT, ordered)
 
-function _gensparse(::Val{N}, admissible, filter, INT, ordered) where {N}
+function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered
+                   ) where {N}
    @assert INT <: Integer
 
    lastidx = 0
    ν = @MVector zeros(INT, N)
-   Nu = SVector{N, INT}[]
+   b = tup2b(ν)
+   Nu = Vector{typeof(b)}(undef, 0)
 
    if N == 0
-      push!(Nu, SVector{N, INT}())
+      push!(Nu, b)
       return Nu
    end
 
@@ -88,11 +90,12 @@ function _gensparse(::Val{N}, admissible, filter, INT, ordered) where {N}
       # the first condition is that its max index is small enough
       # we want to increment `curindex`, but if we've reach the maximum degree
       # then we need to move to the next index down
-      if admissible(ν)
+      b = tup2b(ν)
+      if admissible(b)
          # ... then we add it to the stack  ...
          # (unless some filtering mechanism prevents it)
-         if filter(ν)
-            push!(Nu, SVector(ν))
+         if filter(b)
+            push!(Nu, b)
          end
          # ... and increment it
          lastidx = N

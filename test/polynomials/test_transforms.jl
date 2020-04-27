@@ -15,7 +15,7 @@ using JuLIP: evaluate, evaluate_d
 verbose = false
 maxdeg = 10
 
-@info("Testing Transforms and TransformedPolys") 
+@info("Testing Transforms and TransformedPolys")
 for p in 2:4
    @info("p = $p, random transform")
    trans = PolyTransform(1+rand(), 1+rand())

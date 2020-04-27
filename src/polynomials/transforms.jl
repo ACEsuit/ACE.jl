@@ -24,10 +24,13 @@ poly_trans_d(p, r0, r) = @fastmath((-p/(1+r0)) * ((1+r0)/(1+r))^(p+1))
 poly_trans_inv(p, r0, x) = ( (1+r0)/(x^(1/p)) - 1 )
 
 
-"""
+# TODO: generalise the distance transform to allow
+#       ((a + r0) / (a + r) )^p
+
+@doc raw"""
 Implements the distance transform
-```
-r -> ( (1+r0)/(1+r))^p
+```math
+   x(r) = \Big(\frac{1 + r_0}{1 + r}\Big)^p
 ```
 
 Constructor:
