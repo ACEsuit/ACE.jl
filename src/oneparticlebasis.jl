@@ -9,7 +9,7 @@
 using StaticArrays
 
 using SHIPs.SphericalHarmonics: SHBasis, index_y
-using JuLIP.Potentials: ZList, SZList
+using JuLIP.Potentials: ZList, SZList, numz
 
 
 
@@ -18,15 +18,15 @@ function evaluate!(A, tmp, basis::OneParticleBasis, Rs, Zs::AbstractVector, z0)
    iz0 = z2i(basis, z0)
    for (R, Z) in zip(Rs, Zs)
       iz = z2i(basis, Z)
-      add_into_A!(A[iz], tmp.tmpPhi, basis, R, iz, iz0)
+      add_into_A!(A[iz], tmp, basis, R, iz, iz0)
    end
    return A
 end
 
-function evaluate!(A, tmp, basis::OneParticleBasis, Rs, Zs::Number, z0)
+function evaluate!(A, tmp, basis::OneParticleBasis, R, z::Number, z0)
    fill!.(A, 0)
    iz0, iz = z2i(basis, z0), z2i(basis, z)
-   add_into_A!(A[iz], tmp.tmpPhi, basis, R, iz, iz0)
+   add_into_A!(A[iz], tmp, basis, R, iz, iz0)
    return A
 end
 
@@ -76,6 +76,7 @@ function BasicPSH1pBasis(J::ScalarBasis{T};
    return BasicPSH1pBasis(J, SH, ZList(species; static=true), spec)
 end
 
+
 Base.length(basis::BasicPSH1pBasis) = length(basis.spec)
 Base.length(basis::BasicPSH1pBasis, iz::Integer) = length(basis.spec)
 
@@ -85,18 +86,18 @@ reltype(basis::BasicPSH1pBasis{T}) where T = T
 
 alloc_temp(basis::BasicPSH1pBasis, args...) =
       ( BJ = alloc_B(basis.J, args...),
-        tmpJ = alloc_tmp(basis.J, args...),
+        tmpJ = alloc_temp(basis.J, args...),
         BY = alloc_B(basis.SH, args...),
-        tmpY = alloc_tmp(basis.SH, args...),
+        tmpY = alloc_temp(basis.SH, args...),
        )
 
 function add_into_A!(A, tmp, basis::BasicPSH1pBasis, R, iz, iz0)
    # evaluate the r-basis and the R̂-basis for the current neighbour at R
-   evaluate!(tmp.J, tmp.tmpJ, basis.J, norm(R))
-   evaluate!(tmp.Y, tmp.tmpY, basis.SH, R)
+   evaluate!(tmp.BJ, tmp.tmpJ, basis.J, norm(R))
+   evaluate!(tmp.BY, tmp.tmpY, basis.SH, R)
    # add the contributions to the A_zklm
    for (i, nlm) in enumerate(basis.spec)
-      A[i] += tmp.J[nlm.n+1] * tmp.Y[index_y(nlm.l, nlm.m)]
+      A[i] += tmp.BJ[nlm.n] * tmp.BY[index_y(nlm.l, nlm.m)]
    end
    return nothing
 end

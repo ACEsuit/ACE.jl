@@ -16,7 +16,8 @@ import JuLIP.FIO: read_dict, write_dict
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
 import SHIPs
-using SHIPs.Transforms: DistanceTransform, transform, transform_d
+using SHIPs.Transforms: DistanceTransform, transform, transform_d,
+                        inv_transform
 
 import Base: ==
 
@@ -163,8 +164,9 @@ end
 alloc_B( J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 alloc_dB(J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 
-alloc_B( J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(TX, length(J))
-alloc_dB(J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(TX, length(J))
+# TODO: revisit this to allow type genericity!!!
+alloc_B( J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(T, length(J))
+alloc_dB(J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(T, length(J))
 
 function evaluate!(P, tmp, J::OrthPolyBasis, t)
    @assert length(J) <= length(P)

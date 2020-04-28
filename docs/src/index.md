@@ -6,6 +6,6 @@ This package implements approximation schemes for permutation and isometry invar
 
 
 ```@contents
-Pages = ["intro.md", "devel.md", "envpairbasis.md"]
+Pages = ["intro.md", "gettingstarted.md", "devel.md", "envpairbasis.md"]
 Depth = 3
 ```
