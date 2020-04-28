@@ -9,6 +9,7 @@ import JuLIP: alloc_temp, alloc_temp_d,
               SitePotential
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
+using JuLIP.Potentials: ZList
 
 import Base: Dict, convert, ==
 
@@ -24,9 +25,9 @@ function fcut_d end
 const VecOrTup = Union{AbstractVector, Tuple}
 
 
-abstract type ScalarBasis{T} end
+abstract type ScalarBasis{T} <: IPBasis end
 
-abstract type OneParticleBasis{T} end
+abstract type OneParticleBasis{T} <: IPBasis end
 
 
 # ------------------------------------------------------------
@@ -47,6 +48,7 @@ the `arg` argument.
 function degree end
 
 
+# ----------------------------------------------------------------------
 
 # TODO: put type information to the random stuff
 
@@ -60,3 +62,11 @@ end
 
 rand_vec(J::ScalarBasis) where T = rand_radial(J) *  rand_sphere()
 rand_vec(J::ScalarBasis, N::Integer) = [ rand_vec(J) for _ = 1:N ]
+
+function rand_nhd(Nat, J::ScalarBasis, species = :X)
+   zlist = ZList(species)
+   Rs = [ rand_vec(J) for _ = 1:Nat ]
+   Zs = [ rand(zlist.list) for _ = 1:Nat ]
+   z0 = rand(zlist.list)
+   return Rs, Zs, z0
+end
