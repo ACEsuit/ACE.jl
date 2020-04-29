@@ -15,11 +15,11 @@ registry add https://github.com/JuliaMolSim/MolSim.git
 add PyCall IJulia     # add more important packages from General registry
 add JuLIP SHIPs ASE   # maybe add other packages from MolSim registry
 ```
-4. For fitting, need to install also [`IPFitting.jl`](https://github.com/cortner/IPFitting.jl), which is not yet registered, so we install it via
+4. For fitting, need to install also [`IPFitting.jl`](https://github.com/cortner/IPFitting.jl),
 ```julia
-add https://github.com/cortner/IPFitting.jl
+add IPFitting
 ```
-this will just clone the latest master. Keep fingers crossed and hope it will be compatible :).
+(Keep fingers crossed and hope it will be compatible with the current version of `SHIPs.jl`...)
 
 
 ## Workflow

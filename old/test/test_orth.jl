@@ -4,7 +4,7 @@
 ##
 
 using Test
-using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
+using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra
 using SHIPs: TransformedJacobi, transform, transform_d, alloc_B, alloc_temp
 using JuLIP: evaluate!
 
