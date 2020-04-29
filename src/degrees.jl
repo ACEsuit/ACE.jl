@@ -7,22 +7,26 @@
 
 
 @doc raw"""
-`struct PSH1pBasisFunction` : 1-particle basis function specification
+`struct PSH1pBasisFcn` : 1-particle basis function specification
 for bases of the type ``P \otimes Y`` with `P::ScalarBasis` and `Y::SHBasis`
 """
-struct PSH1pBasisFunction
+struct PSH1pBasisFcn <: OnepBasisFcn
    n::Int
    l::Int
    m::Int
+   z::AtomicNumber
 end
 
-PSH1pBasisFunction(t::VecOrTup) = (
-      @assert length(t) == 3;
-      PSH1pBasisFunction(t[1], t[2], t[3])
-   )
+function PSH1pBasisFcn(t::VecOrTup)
+   if length(t) == 3
+      return PSH1pBasisFcn(t[1], t[2], t[3], 0)
+   elseif length(t) == 4
+      return PSH1pBasisFcn(t...)
+   end
+   error("`PSH1pBasisFcn(t::VecOrTup)` : `t` must have length 3 or 4")
+end
 
-Base.show(io::IO, b::PSH1pBasisFunction) = print(io, "nlm[$(b.n),$(b.l),$(b.m)]")
-
+Base.show(io::IO, b::PSH1pBasisFcn) = print(io, "znlm[$(b.z.z)|$(b.n),$(b.l),$(b.m)]")
 
 
 @doc raw"""
@@ -47,8 +51,41 @@ SparsePSHDegree(wL = 1.5, csp = 1.0, chc = 0.0, ahc = 0.0, bhc = 0.0)
    bhc::Float64  = 0.0
 end
 
-degree(d::SparsePSHDegree, phi::PSH1pBasisFunction) = phi.n + d.wL * phi.l
+degree(d::SparsePSHDegree, phi::PSH1pBasisFcn) = phi.n + d.wL * phi.l
 
 degree(d::SparsePSHDegree, pphi::VecOrTup) =
          d.csp * sum(  d(phi) for phi in pphi ) +
          d.chc * prod( max(d.ahc, d.bhc + d(phi)) for phi in pphi )
+
+
+"""
+`function _get_1p_spec`: Construct the specification for a general 1-particle basis.
+"""
+function _get_1p_spec(J::ScalarBasis, D::AbstractDegree)
+   error("not implemented")
+end
+
+
+
+@doc raw"""
+`function _get_PSH_1p_spec`
+
+Construct the specification for a ``P \otimes Y`` type 1-particle basis.
+These must be treated differently because of the requirements that complete
+``l``-blocks are represented in the basis.
+
+See also: `_get_1p_spec`.
+"""
+function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
+   # find out what the largest degree is that we can allow:
+   maxdeg = maximum(D(PSH1pBasisFcn(n, 0, 0, 0)) for n = 1:length(J))
+
+   # generate the `spec::Vector{PSH1pBasisFcn}` using length(J)
+   specnl = gensparse(2, maxdeg;
+                      tup2b = t -> PSH1pBasisFcn(t[1]+1, t[2], 0, 0),
+                      degfun = t -> D(t),
+                      ordered = false)
+   # add the m-parameters
+   return [ PSH1pBasisFcn(b.n, b.l, b.m, 0)
+              for b in specnl for m = -b.l:b.l ]
+end

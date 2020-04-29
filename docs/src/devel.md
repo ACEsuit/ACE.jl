@@ -19,8 +19,8 @@ abstract type OneParticleBasis end
 ```
 Concrete subtypes must be able to compute the projection of the atom density onto the one-particle basis:
 ```math
-  A_{zk}^{z_0}( \{ ({\bm r}_j, z_j) \}_{j = 1}^J, z_0 )
-   = \sum_{j : z_j = z} \phi_k({\bm r}_j; z_j, z_0),
+  A_{k}^{z z_0}( \{ ({\bm r}_j, z_j) \}_{j = 1}^J, z_0 )
+   = \sum_{j : z_j = z} \phi_k^{z_j z_0}({\bm r}_j),
 ```
 where ``z_0`` is the atom number of the centre-atom, and ``({\bm r}_j, z_j)`` are relative positions and atom numbers of neighbours.
 
@@ -28,33 +28,42 @@ The "standard" evaluation of a single ``\phi_k({\bm r}; z, z_0)`` is of course a
 
 Assuming that `basis isa OneParticleBasis`, this is done with the following interface:
 ```julia
-A = alloc_B(basis)                      # allocate storage for A = (A_k)
+A = alloc_B(basis)                # allocate storage for A = [ A_z for iz=1:NZ ]
 tmp = alloc_temp(basis, args...)        # allocate temporary arrays
-evaluate!(A, tmp, basis, Rs, Zs, z0)    # evaluate A = (A_k)
+evaluate!(A, tmp, basis, Rs, Zs, z0)    # fill A = [ A_z for iz=1:NZ ]
 ```
 For the gradients the following must be provided:
 ```julia
 dPhi = alloc_dB(basis)                     # storage for (∇ϕ_k)_k
 tmpd = alloc_temp_d(basis, args...)        # temporary storage
-evaluate_d!(dPhi, tmpd, basis, r, z, z0)   # fill dPhi with (∇ϕ_k)_k
+evaluate_d!(dPhi, tmpd, basis, R, z, z0)   # fill dPhi with (∇ϕ_k)_k
 ```
+The interface does not require `evaluate_d!(dPhi, tmpd, basis, Rs, Zs, z0)`.
 
-!!! warning "Concrete subtypes of `OneParticleBasis`"
+There is a lot of code duplication in the implementation of `OneParticleBasis`, which we can avoid by a generic implementation of `evaluate!` which loops through all `(R, z) in zip(Rs, Zs)` and then calls
+```julia
+add_into_A!(A[iz], tmp, basis, R, iz, iz0)
+```
+an implementation of `OneParticleBasis` then only needs to overload `add_into_A!` which should evaluate ``\phi_k^{z z_0}({\bm r})`` (where `R` represents ``{\bm r}``) and *add* these values into `A[k]`.
+For this to work, the type of the 1-particle basis must contain a field `zlist` which implements the interface defined by `JuLIP.Potentials.ZList` and `JuLIP.Potentials.SZList`.
+
+
+!!! note "Concrete subtypes of `OneParticleBasis`"
     Concrete subtypes of `OneParticleBasis` are
 
-    * `PSH1PBasis`
-    * `BondEnv1PBasis`
-    * `Tensor1PBasis`
+    * `BasicPSH1PBasis` : implemented and tested
+    * `PSH1PBasis` : under construction
+    * `BondEnv1PBasis` : implemented in old code, needs to be ported
+    * `Tensor1PBasis` : not yet done
 
-    Should revisit this and maybe add another abstract layer in-between
-    since all of these are really tensor product bases! (Reference relevant sections below)
+    Should revisit this and maybe add another abstract layer in-between since all of these are really tensor product bases! (Reference relevant sections below)
 
 
 ### Permutation-Invariant Basis
 
 The permutation-invariant basis is a *concrete* type
 ```julia
-struct PIBasis end
+struct PermInvariantBasis end
 ```
 which implements the tensor-product like basis functions
 ```math
@@ -70,11 +79,11 @@ as well as the gradients
 ```
 The interface for this is as follows:
 ```julia
-alloc_B(aabasis::PIBasis)
-alloc_tmp(aabasis::PIBasis)
+alloc_B(aabasis::PermInvariantBasis)
+alloc_tmp(aabasis::PermInvariantBasis)
 evaluate!(AA, tmp, aabasis, Rs, Zs, z0)
-alloc_dB(aabasis::PIBasis)
-alloc_tmp_d(aabasis::PIBasis)
+alloc_dB(aabasis::PermInvariantBasis)
+alloc_tmp_d(aabasis::PermInvariantBasis)
 evaluate_d!(dAA, tmp, aabasis, Rs, Zs, z0)
 ```
 where the storage arrays are
@@ -84,7 +93,7 @@ where the storage arrays are
 
 ### Concrete Bases
 
-A concrete basis will be built from `OneParticleBasis` and `PIBasis` objects.
+A concrete basis will be built from `OneParticleBasis` and `PermInvariantBasis` objects.
 
 
 ### Derived Potentials
@@ -102,7 +111,7 @@ A concrete basis will be built from `OneParticleBasis` and `PIBasis` objects.
 ## ACE Basis
 
 The ACE basis (Atomic Cluster Expansion; Drautz 2019) is one of the main user-facing objects provided by `SHIPs.jl`.
-It is constructed by reducing a permutation invariant `PIBasis` to a permutation and rotation invariant basis through a single sparse matrix-vector multiplication.
+It is constructed by reducing a permutation invariant `PermInvariantBasis` to a permutation and rotation invariant basis through a single sparse matrix-vector multiplication.
 ```math
  B = C \cdot {\bm A},
 ```

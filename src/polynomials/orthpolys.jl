@@ -11,7 +11,7 @@ module OrthPolys
 using SparseArrays
 using LinearAlgebra: dot
 
-import JuLIP: evaluate!, evaluate_d!
+import JuLIP: evaluate!, evaluate_d!, JVec
 import JuLIP.FIO: read_dict, write_dict
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
@@ -45,7 +45,7 @@ function _fcut_d_(pl, tl, pr, tr, t)
 end
 
 
-struct OrthPolyBasis{T}
+struct OrthPolyBasis{T} <: SHIPs.ScalarBasis{T}
    # ----------------- the parameters for the cutoff function
    pl::Int        # cutoff power left
    tl::T          # cutoff left (transformed variable)
@@ -165,10 +165,17 @@ alloc_B( J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 alloc_dB(J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 
 # TODO: revisit this to allow type genericity!!!
-alloc_B( J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(T, length(J))
-alloc_dB(J::OrthPolyBasis{T}, x::TX) where {T, TX} = zeros(T, length(J))
+alloc_B( J::OrthPolyBasis, ::TX) where {TX} = zeros(TX, length(J))
+alloc_dB(J::OrthPolyBasis, ::TX) where {TX} = zeros(TX, length(J))
+alloc_B( J::OrthPolyBasis,
+         ::Union{JVec{TX}, AbstractVector{JVec{TX}}}) where {TX} =
+   zeros(TX, length(J))
+alloc_dB( J::OrthPolyBasis,
+         ::Union{JVec{TX}, AbstractVector{JVec{TX}}}) where {TX} =
+   zeros(TX, length(J))
 
 function evaluate!(P, tmp, J::OrthPolyBasis, t)
+   @show eltype(P)
    @assert length(J) <= length(P)
    P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
    if length(J) == 1; return P; end

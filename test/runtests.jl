@@ -18,7 +18,7 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     include("polynomials/test_transforms.jl")
     include("polynomials/test_orthpolys.jl")
     # ----------------------
-    
+    include("test_1pbasis.jl")
 
     # include("test_cg.jl")
     # include("pairpots/test_basics.jl")

@@ -36,6 +36,7 @@ abstract type ScalarBasis{T} <: IPBasis end
 
 abstract type OneParticleBasis{T} <: IPBasis end
 
+abstract type OnepBasisFcn end
 
 # ------------------------------------------------------------
 #  Abstract polynomial degree business
