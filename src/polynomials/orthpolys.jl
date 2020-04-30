@@ -175,7 +175,6 @@ alloc_dB( J::OrthPolyBasis,
    zeros(TX, length(J))
 
 function evaluate!(P, tmp, J::OrthPolyBasis, t)
-   @show eltype(P)
    @assert length(J) <= length(P)
    P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
    if length(J) == 1; return P; end

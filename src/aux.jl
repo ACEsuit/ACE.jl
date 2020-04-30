@@ -67,7 +67,7 @@ gensparse(N::Integer;
           admissible = _-> false,
           filter = _-> true,
           tup2b = ν -> SVector(ν),
-          INT = Int16,
+          INT = Int,
           ordered = false) =
       _gensparse(Val(N), admissible, filter, tup2b, INT, ordered)
 

@@ -30,6 +30,10 @@ include("degrees.jl")
 # The One-particle basis is the first proper building block
 include("oneparticlebasis.jl")
 
+# the permutation-invariant basis: this is a key building block
+# for other bases but can also be a useful export itself
+# include("pibasis.jl")
+
 
 
 # the permutation-invariant basis is the second main building block

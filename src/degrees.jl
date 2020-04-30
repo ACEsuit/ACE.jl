@@ -89,3 +89,47 @@ function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
    return [ PSH1pBasisFcn(b.n, b.l, b.m, 0)
               for b in specnl for m = -b.l:b.l ]
 end
+
+
+
+"""
+`PIBasisFcn{N, TOP}` : represents a single multivariate basis function
+in terms of 1-particle pasis functions in each coordinate direction. Crucially,
+this function will be interpreted as a *permutation invariant* basis function!
+"""
+struct PIBasisFcn{N, TOP <: OneParticleBasisFcn}
+   z0::AtomicNumber
+   oneps::NTuple{N, TOP}
+end
+
+order(b::PIBasisFcn{N}) where {N} = N
+
+function PIBasisFcn(Aspec, t, z0)
+   if isempty(t)
+      return PIBasisFcn{0, eltype(Aspec)}(z0, t)
+   end
+   # zeros stand for reduction in body-order
+   tnz = t[findall(t .!= 0)]
+   return PIBasisFcn(z0, Aspec[[tnz...]])
+end
+
+
+
+function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
+                     D::AbstractDegree, maxdeg::Real,
+                     z0::AtomicNumber)
+   iz0 = z2i(P, z0)
+   # get the basis spec of the one-particle basis
+   Aspec = get_basis_spec(basis1p, iz0)
+   # next we need to sort it. `p` is the permutation that puts Aspec_iz0 into
+   # sorted order by degree
+   p = sortperm(Aspec, by = D)
+   # now an index νi corresponds to the basis function Aspec_iz0[p[νi]]
+   # and a tuple ν = (ν1,...,νN) to the following basis function
+   tup2b = ν -> PIBasisFcn(Aspec, p[ν], z0)
+   # we can now construct the basis specification; the `ordered = true`
+   # keyword signifies that this is a permutation-invariant basis
+   AAspec = gensparse(N, maxdeg;
+                      tup2b = tup2b, degfun = D, ordered = true)
+   return Aspec, AAspec
+end

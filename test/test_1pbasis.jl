@@ -36,8 +36,8 @@ for species in (:X, :Si, [:C, :O, :H])
    for ntest = 1:10
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       A = evaluate(P1, Rs, Zs, z0)
-      A_ = sum( evaluate(P1, R, Z, z0).A for (R, Z) in zip(Rs, Zs) )
-      print_tf(@test A.A ≈ A_)
+      A_ = sum( evaluate(P1, R, Z, z0) for (R, Z) in zip(Rs, Zs) )
+      print_tf(@test A ≈ A_)
    end
 end
 

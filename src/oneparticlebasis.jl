@@ -14,57 +14,29 @@ using JuLIP.Potentials: ZList, SZList, numz
 
 
 function evaluate!(A, tmp, basis::OneParticleBasis, Rs, Zs::AbstractVector, z0)
-   fill!(A.A, 0)
+   fill!(A, 0)
    iz0 = z2i(basis, z0)
    for (R, Z) in zip(Rs, Zs)
       iz = z2i(basis, Z)
-      add_into_A!(A[iz, iz0], tmp, basis, R, iz, iz0)
+      add_into_A!((@view A[basis.Aindices[iz, iz0]]), tmp, basis, R, iz, iz0)
    end
    return A
 end
 
 function evaluate!(A, tmp, basis::OneParticleBasis, R, z::AtomicNumber, z0)
-   fill!(A.A, 0)
+   fill!(A, 0)
    iz0, iz = z2i(basis, z0), z2i(basis, z)
-   add_into_A!(A[iz, iz0], tmp, basis, R, iz, iz0)
+   add_into_A!((@view A[basis.Aindices[iz, iz0]]), tmp, basis, R, iz, iz0)
    return A
 end
 
-
-const _ViewIntoA{T} = SubArray{T,1,Vector{T},Tuple{UnitRange{Int}},true}
-
-"""
-`struct AwithViews{T}` : a helper datastructure for convenient access to the
-density projection. It is stored as a linear array for fast access, but the
-views allows interpreting it as an array of arrays.
-
-```
-A::AwithViews
-A[i] = A.A[i]                   # i.e. linear indexing into A.A
-A[iz, iz0] = A.views[iz, iz0]   # return the density projection for (z, z0)
-A[iz, iz0][k]                   # projection of ρ^z onto kth 1-p basis fcn
-```
-
-To obtain the linear indices with A belonging to the ρ^{z,z0} density, use
-the `kz2iA` function.
-"""
-struct AwithViews{T}
-   A::Vector{T}
-   views::Matrix{_ViewIntoA{T}}
-end
-
-Base.getindex(A::AwithViews, i::Integer) = A.A[i]
-Base.getindex(A::AwithViews, iz::Integer, iz0::Integer) = A.views[iz, iz0]
 
 function alloc_B(basis::OneParticleBasis, args...)
    NZ = numz(basis)
    maxlen = maximum( sum( length(basis, iz, iz0) for iz = 1:NZ )
                      for iz0 = 1:NZ )
    T = eltype(basis)
-   A = zeros(T, maxlen)
-   views = _ViewIntoA{T}[ @view A[basis.Aindices[iz, iz0]]
-                          for iz = 1:NZ, iz0 = 1:NZ ]
-   return AwithViews(A, views)
+   return zeros(T, maxlen)
 end
 
 
@@ -81,7 +53,7 @@ function set_Aindices!(basis::OneParticleBasis)
 end
 
 
-kz2iA(A::AwithViews, k, iz::Integer, iz0::Integer) = A.indices[iz, iz0][k]
+# kz2iA(A::AwithViews, k, iz::Integer, iz0::Integer) = A.indices[iz, iz0][k]
 
 
 
@@ -121,7 +93,21 @@ function BasicPSH1pBasis(J::ScalarBasis{T};
    return P
 end
 
-Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) = length(basis.spec)
+Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) =
+      length(basis.spec)
+
+
+function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
+   iz0 = z2i(basis, iz0)
+   len_iz0 = sum(length(basis, iz) for iz = 1:numz(basis))
+   spec = Vector{PSH1pBasisFcn}(undef, len_iz0)
+   for iz = 1:numz(basis)
+      spec[basis.Aindices[iz, iz0]] =
+               [ PSH1pBasisFcn(b.n, b.l, b.m, iz)   for b in basis.spec ]
+   end
+   return spec
+end
+
 
 Base.eltype(basis::BasicPSH1pBasis{T}) where T = Complex{T}
 reltype(basis::BasicPSH1pBasis{T}) where T = T
