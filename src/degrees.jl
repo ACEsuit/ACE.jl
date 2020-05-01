@@ -53,9 +53,16 @@ end
 
 degree(d::SparsePSHDegree, phi::PSH1pBasisFcn) = phi.n + d.wL * phi.l
 
-degree(d::SparsePSHDegree, pphi::VecOrTup) =
+function degree(d::SparsePSHDegree, pphi::VecOrTup)
+   if length(pphi) == 0
+      return 0
+   else
+      return (
          d.csp * sum(  d(phi) for phi in pphi ) +
          d.chc * prod( max(d.ahc, d.bhc + d(phi)) for phi in pphi )
+      )
+   end
+end
 
 
 """
@@ -97,16 +104,21 @@ end
 in terms of 1-particle pasis functions in each coordinate direction. Crucially,
 this function will be interpreted as a *permutation invariant* basis function!
 """
-struct PIBasisFcn{N, TOP <: OneParticleBasisFcn}
+struct PIBasisFcn{N, TOP <: OnepBasisFcn}
    z0::AtomicNumber
    oneps::NTuple{N, TOP}
 end
 
+PIBasisFcn(z0::AtomicNumber, oneps::AbstractVector) =
+   PIBasisFcn(z0, tuple(oneps...))
+
 order(b::PIBasisFcn{N}) where {N} = N
 
-function PIBasisFcn(Aspec, t, z0)
-   if isempty(t)
-      return PIBasisFcn{0, eltype(Aspec)}(z0, t)
+degree(d::AbstractDegree, pphi::PIBasisFcn) = degree(d, pphi.oneps)
+
+function PIBasisFcn(Aspec, t, z0::AtomicNumber)
+   if isempty(t) || sum(abs, t) == 0
+      return PIBasisFcn{0, eltype(Aspec)}(z0, tuple())
    end
    # zeros stand for reduction in body-order
    tnz = t[findall(t .!= 0)]
@@ -118,18 +130,23 @@ end
 function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
                      D::AbstractDegree, maxdeg::Real,
                      z0::AtomicNumber)
-   iz0 = z2i(P, z0)
+   iz0 = z2i(basis1p, z0)
    # get the basis spec of the one-particle basis
-   Aspec = get_basis_spec(basis1p, iz0)
-   # next we need to sort it. `p` is the permutation that puts Aspec_iz0 into
-   # sorted order by degree
-   p = sortperm(Aspec, by = D)
-   # now an index νi corresponds to the basis function Aspec_iz0[p[νi]]
-   # and a tuple ν = (ν1,...,νN) to the following basis function
-   tup2b = ν -> PIBasisFcn(Aspec, p[ν], z0)
+   #  Aspec[i] described the basis function that will get written into A[i]
+   #  but we don't care here since we will just map back and forth in the
+   #  pre-computation stage. note AAspec below will not store indices to Aspec
+   #  but the actual basis functions themselves.
+   Aspec = get_basis_spec(basis1p, z0)
+   # next we need to sort it by degree so that gensparse doesn't get confused.
+   Aspec_p = sort(Aspec, by = D)
+   # now an index νi corresponds to the basis function
+   # Aspec[p[νi]] = Aspec_p[νi] and a tuple ν = (ν1,...,νN) to the following
+   # basis function
+   tup2b = ν -> PIBasisFcn(Aspec_p, ν, z0)
    # we can now construct the basis specification; the `ordered = true`
    # keyword signifies that this is a permutation-invariant basis
    AAspec = gensparse(N, maxdeg;
-                      tup2b = tup2b, degfun = D, ordered = true)
+                      tup2b = tup2b, degfun = D, ordered = true,
+                      maxν = length(Aspec_p))
    return Aspec, AAspec
 end

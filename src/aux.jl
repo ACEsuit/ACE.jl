@@ -68,17 +68,18 @@ gensparse(N::Integer;
           filter = _-> true,
           tup2b = ν -> SVector(ν),
           INT = Int,
-          ordered = false) =
-      _gensparse(Val(N), admissible, filter, tup2b, INT, ordered)
+          ordered = false,
+          maxν = Inf) =
+      _gensparse(Val(N), admissible, filter, tup2b, INT, ordered, maxν)
 
-function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered
+function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
                    ) where {N}
    @assert INT <: Integer
 
    lastidx = 0
    ν = @MVector zeros(INT, N)
    b = tup2b(ν)
-   Nu = Vector{typeof(b)}(undef, 0)
+   Nu = Vector{Any}(undef, 0)
 
    if N == 0
       push!(Nu, b)
@@ -90,8 +91,15 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered
       # the first condition is that its max index is small enough
       # we want to increment `curindex`, but if we've reach the maximum degree
       # then we need to move to the next index down
-      b = tup2b(ν)
-      if admissible(b)
+      isadmissible = true
+      if maximum(ν) > maxν
+         isadmissible = false
+      else
+         b = tup2b(ν)
+         isadmissible = admissible(b)
+      end
+
+      if isadmissible
          # ... then we add it to the stack  ...
          # (unless some filtering mechanism prevents it)
          if filter(b)
@@ -119,5 +127,5 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered
       end
    end
 
-   return Nu
+   return identity.(Nu)
 end

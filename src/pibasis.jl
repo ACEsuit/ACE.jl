@@ -8,7 +8,6 @@
 
 
 
-
 """
 `mutable struct InnerPIBasis` : this type is just an auxilary type to
 make the implementation of `PermInvariantBasis` clearer. It implements the
@@ -28,15 +27,24 @@ Base.length(basis::InnerPIBasis) = length(basis.order)
 
 function InnerPIBasis(Aspec, AAspec, AAindices, z0)
    len = length(AAspec)
-   maxorder = maximum(AAspec, order)
+   maxorder = maximum(order, AAspec)
 
    # construct the b2iA mapping
    b2iA = Dict{Any, Int}()
-   for (b, iA) in enumerate(Aspec)
+   for (iA, b) in enumerate(Aspec)
+      if haskey(b2iA, b)
+         @show b
+         error("b2iA already has the key b")
+      end
       b2iA[b] = iA
    end
    # construct the b2iAA mapping
-   for (b, iAA) in enumerate(AAspec)
+   b2iAA = Dict{PIBasisFcn, Int}()
+   for (iAA, b) in enumerate(AAspec)
+      if haskey(b2iAA, b)
+         @show b
+         error("b2iAA already has the key b")
+      end
       b2iAA[b] = iAA
    end
 
@@ -44,7 +52,7 @@ function InnerPIBasis(Aspec, AAspec, AAindices, z0)
    orders = zeros(Int, len)
    iAA2iA = zeros(Int, len, maxorder)
    # ... and fill them up with the cross-indices
-   for (b, iAA) in enumerate(AAspec)
+   for (iAA, b) in enumerate(AAspec)
       @assert b2iAA[b] == iAA
       @assert b.z0 == z0
       orders[iAA] = order(b)
@@ -105,7 +113,7 @@ function PermInvariantBasis(basis1p::OneParticleBasis,
    idx = 0
    # now for each iz0 (i.e. for each z0) construct an "inner basis".
    for iz0 = 1:numz(basis1p)
-      z0 = i2z(iz0)
+      z0 = i2z(basis1p, iz0)
       # get a list of 1-p basis function
       Aspec_z0, AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0)
       AAindices = (idx+1):(idx+length(AAspec_z0))

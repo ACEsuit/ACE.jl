@@ -32,13 +32,9 @@ include("oneparticlebasis.jl")
 
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
-# include("pibasis.jl")
+include("pibasis.jl")
 
 
-
-# the permutation-invariant basis is the second main building block
-# and at the same time already a useful export
-# include("PIBasis.jl")
 
 
 # include("harmonics/rotations.jl")

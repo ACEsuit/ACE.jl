@@ -16,7 +16,7 @@ import JuLIP: alloc_temp, alloc_temp_d,
               SitePotential
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
-using JuLIP.Potentials: ZList
+using JuLIP.Potentials: ZList, z2i, i2z
 
 import Base: Dict, convert, ==
 

@@ -98,8 +98,8 @@ Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) =
 
 
 function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
-   iz0 = z2i(basis, iz0)
-   len_iz0 = sum(length(basis, iz) for iz = 1:numz(basis))
+   iz0 = z2i(basis, z0)
+   len_iz0 = sum(length(basis, iz, iz0) for iz = 1:numz(basis))
    spec = Vector{PSH1pBasisFcn}(undef, len_iz0)
    for iz = 1:numz(basis)
       spec[basis.Aindices[iz, iz0]] =
