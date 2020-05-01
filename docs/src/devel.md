@@ -63,7 +63,7 @@ For this to work, the type of the 1-particle basis must contain a field `zlist` 
 
 The permutation-invariant basis is a *concrete* type
 ```julia
-struct PermInvariantBasis end
+struct PIBasis end
 ```
 which implements the tensor-product like basis functions
 ```math
@@ -79,11 +79,11 @@ as well as the gradients
 ```
 The interface for this is as follows:
 ```julia
-alloc_B(aabasis::PermInvariantBasis)
-alloc_tmp(aabasis::PermInvariantBasis)
+alloc_B(aabasis::PIBasis)
+alloc_tmp(aabasis::PIBasis)
 evaluate!(AA, tmp, aabasis, Rs, Zs, z0)
-alloc_dB(aabasis::PermInvariantBasis)
-alloc_tmp_d(aabasis::PermInvariantBasis)
+alloc_dB(aabasis::PIBasis)
+alloc_tmp_d(aabasis::PIBasis)
 evaluate_d!(dAA, tmp, aabasis, Rs, Zs, z0)
 ```
 where the storage arrays are
@@ -93,7 +93,7 @@ where the storage arrays are
 
 ### Concrete Bases
 
-A concrete basis will be built from `OneParticleBasis` and `PermInvariantBasis` objects.
+A concrete basis will be built from `OneParticleBasis` and `PIBasis` objects.
 
 
 ### Derived Potentials
@@ -111,7 +111,7 @@ A concrete basis will be built from `OneParticleBasis` and `PermInvariantBasis` 
 ## ACE Basis
 
 The ACE basis (Atomic Cluster Expansion; Drautz 2019) is one of the main user-facing objects provided by `SHIPs.jl`.
-It is constructed by reducing a permutation invariant `PermInvariantBasis` to a permutation and rotation invariant basis through a single sparse matrix-vector multiplication.
+It is constructed by reducing a permutation invariant `PIBasis` to a permutation and rotation invariant basis through a single sparse matrix-vector multiplication.
 ```math
  B = C \cdot {\bm A},
 ```
