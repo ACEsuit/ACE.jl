@@ -80,6 +80,7 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
    ν = @MVector zeros(INT, N)
    b = tup2b(ν)
    Nu = Vector{Any}(undef, 0)
+   orig_Nu = []
 
    if N == 0
       push!(Nu, b)
@@ -104,6 +105,7 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
          # (unless some filtering mechanism prevents it)
          if filter(b)
             push!(Nu, b)
+            push!(orig_Nu, copy(ν))
          end
          # ... and increment it
          lastidx = N
@@ -125,6 +127,12 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
          end
          lastidx -= 1
       end
+   end
+
+   if ordered
+      # @info("sanity test")
+      @assert all(issorted, orig_Nu)
+      @assert length(unique(orig_Nu)) == length(orig_Nu)
    end
 
    return identity.(Nu)

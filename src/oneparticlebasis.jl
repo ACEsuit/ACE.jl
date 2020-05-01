@@ -53,9 +53,6 @@ function set_Aindices!(basis::OneParticleBasis)
 end
 
 
-# kz2iA(A::AwithViews, k, iz::Integer, iz0::Integer) = A.indices[iz, iz0][k]
-
-
 
 @doc raw"""
 `struct BasicPSH1pBasis <: OneParticleBasis`
@@ -102,8 +99,9 @@ function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
    len_iz0 = sum(length(basis, iz, iz0) for iz = 1:numz(basis))
    spec = Vector{PSH1pBasisFcn}(undef, len_iz0)
    for iz = 1:numz(basis)
+      z = i2z(basis, iz)
       spec[basis.Aindices[iz, iz0]] =
-               [ PSH1pBasisFcn(b.n, b.l, b.m, iz)   for b in basis.spec ]
+               [ PSH1pBasisFcn(b.n, b.l, b.m, z)   for b in basis.spec ]
    end
    return spec
 end

@@ -26,17 +26,13 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = SHIPs.SparsePSHDegree()
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 
-pib = SHIPs.PermInvariantBasis(P1, 2, D, maxdeg
-   )
+basis = SHIPs.PIBasis(P1, 2, D, maxdeg)
 
 Nat = 15
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
-evaluate(P1, Rs, Zs, z0)
+evaluate(basis, Rs, Zs, z0)
+length(basis, z0)
 
 ##
 
 end
-
-
-Aspec = SHIPs.get_basis_spec(P1, AtomicNumber(0))
-length(Aspec)

@@ -93,7 +93,7 @@ function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
                       degfun = t -> D(t),
                       ordered = false)
    # add the m-parameters
-   return [ PSH1pBasisFcn(b.n, b.l, b.m, 0)
+   return [ PSH1pBasisFcn(b.n, b.l, m, 0)
               for b in specnl for m = -b.l:b.l ]
 end
 
