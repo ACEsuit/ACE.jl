@@ -59,6 +59,7 @@ for species in (:X, :Si, [:C, :O, :H])
                      evaluate(basis, Rs[p], Zs[p], z0)))
    end
 end
+println()
 
 ##
 

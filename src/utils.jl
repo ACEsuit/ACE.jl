@@ -8,9 +8,7 @@
 
 module Utils
 
-
-function simple_radialbasis()
-
-end
+# - simple ways to construct a radial basis
+# - 
 
 end

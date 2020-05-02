@@ -24,15 +24,15 @@ include("polynomials/transforms.jl"); @reexport using SHIPs.Transforms
 include("polynomials/orthpolys.jl"); @reexport using SHIPs.OrthPolys
 
 
-# this includes some utilities to specify different notion of degree
-include("degrees.jl")
-
 # The One-particle basis is the first proper building block
 include("oneparticlebasis.jl")
 
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
+
+# the ACE model
+include("ace/ace.jl")
 
 
 
