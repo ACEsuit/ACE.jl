@@ -30,12 +30,16 @@ include("oneparticlebasis.jl")
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
+# -> pipotential
+# -> realpipotential
 
 # the ACE model
 include("ace/ace.jl")
 
 
-
+# - pair potentials
+# - bond model
+# - repulsion?
 
 # include("harmonics/rotations.jl")
 # specification of the radial basis

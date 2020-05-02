@@ -10,7 +10,6 @@ module Rotations3D
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
-using SHIPs: _mrange, IntS
 using SHIPs.SphericalHarmonics: index_y
 
 export ClebschGordan, CoeffArray, single_B
@@ -21,9 +20,7 @@ export ClebschGordan, CoeffArray, single_B
 `?clebschgordan` for the convention that is use.
 """
 struct ClebschGordan{T}
-	# maxL::Int
-	# cg::Array{T, 3}   # rewrite as Dict!
-	vals::Dict{Tuple{IntS, IntS, IntS}, T}
+	vals::Dict{Tuple{Int, Int, Int, Int, Int, Int}, T}
 end
 
 """
@@ -36,23 +33,71 @@ struct CoeffArray{T}
 end
 
 
+
+# -----------------------------------
+# iterating over an m collection
+# -----------------------------------
+
+_mvec(::CartesianIndex{0}) = SVector(Int(0))
+
+_mvec(mpre::CartesianIndex) = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+
+struct MRange{N, T2}
+   ll::SVector{N, Int}
+   cartrg::T2
+end
+
+Base.length(mr::MRange) = sum(_->1, _mrange(mr.ll))
+
+"""
+Given an l-vector `ll` iterate over all combinations of `mm` vectors  of
+the same length such that `sum(mm) == 0`
+"""
+_mrange(ll) = MRange(ll, Iterators.Stateful(
+                     CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll)-1))))
+
+function Base.iterate(mr::MRange{1}, args...)
+   if isempty(mr.cartrg)
+      return nothing
+   end
+   while !isempty(mr.cartrg)
+      popfirst!(mr.cartrg)
+   end
+   return SVector{1, Int}(0), nothing
+end
+
+function Base.iterate(mr::MRange, args...)
+   while true
+      if isempty(mr.cartrg)
+         return nothing
+      end
+      mpre = popfirst!(mr.cartrg)
+      if abs(sum(mpre.I)) <= mr.ll[end]
+         return _mvec(mpre), nothing
+      end
+   end
+   error("we should never be here")
+end
+
+
+
 # ----------------------------------------------------------------------
 #     ClebschGordan code
 # ----------------------------------------------------------------------
 
 
-cg_conditions(j1,m1,j2,m2,j3,m3) =
-	cg_l_condition(j1, j2, j3)   &&
-	cg_m_condition(m1, m2, m3)   &&
-	(abs(m1) <= j1) && (abs(m2) <= j2) && (abs(m3) <= j3)
+cg_conditions(j1,m1, j2,m2, J,M) =
+	cg_l_condition(j1, j2, J)   &&
+	cg_m_condition(m1, m2, M)   &&
+	(abs(m1) <= j1) && (abs(m2) <= j2) && (abs(M) <= J)
 
-cg_l_condition(j1, j2, j3) = (abs(j1-j2) <= j3 <= j1 + j2)
+cg_l_condition(j1, j2, J) = (abs(j1-j2) <= J <= j1 + j2)
 
-cg_m_condition(m1, m2, m3) = (m3 == m1 + m2)
+cg_m_condition(m1, m2, M) = (M == m1 + m2)
 
 
 """
-`clebschgordan(j1, m1, j2, m2, j3, m3, T=Float64)` :
+`clebschgordan(j1, m1, j2, m2, J, M, T=Float64)` :
 
 A reference implementation of Clebsch-Gordon coefficients based on
 
@@ -60,11 +105,11 @@ https://hal.inria.fr/hal-01851097/document
 Equation (4-6)
 
 This heavily uses BigInt and BigFloat and should therefore not be employed
-for performance critical tasks.
+for performance critical tasks, but only precomputation.
 
 The ordering of parameters corresponds to the following convention:
 ```
-clebschgordan(j1, m1, j2, m2, j3, m3) = C_{j1m1j2m2}^{j3m3}
+clebschgordan(j1, m1, j2, m2, J, M) = C_{j1m1j2m2}^{JM}
 ```
 where
 ```
@@ -73,32 +118,32 @@ where
 	∑_j  C_{l1m1l2m2}^{j(m1+m2)} C_{l1k1l2k2}^{j2(k1+k2)} D_{(m1+m2)(k1+k2)}^{j}
 ```
 """
-function clebschgordan(j1, m1, j2, m2, j3, m3, T=Float64)
-	if !cg_conditions(j1, m1, j2, m2, j3, m3)
+function clebschgordan(j1, m1, j2, m2, J, M, T=Float64)
+	if !cg_conditions(j1, m1, j2, m2, J, M)
 		return zero(T)
 	end
 
-   N = (2*j3+1) *
+   N = (2*J+1) *
        factorial(big(j1+m1)) * factorial(big(j1-m1)) *
        factorial(big(j2+m2)) * factorial(big(j2-m2)) *
-       factorial(big(j3+m3)) * factorial(big(j3-m3)) /
-       factorial(big( j1+j2-j3)) /
-       factorial(big( j1-j2+j3)) /
-       factorial(big(-j1+j2+j3)) /
-       factorial(big(j1+j2+j3+1))
+       factorial(big(J+M)) * factorial(big(J-M)) /
+       factorial(big( j1+j2-J)) /
+       factorial(big( j1-j2+J)) /
+       factorial(big(-j1+j2+J)) /
+       factorial(big(j1+j2+J+1))
 
    G = big(0)
-   # 0 ≦ k ≦ j1+j2-j3
-   # 0 ≤ j1-m1-k ≤ j1-j2+j3   <=>   j2-j3-m1 ≤ k ≤ j1-m1
-   # 0 ≤ j2+m2-k ≤ -j1+j2+j3  <=>   j1-j3+m2 ≤ k ≤ j2+m2
-   lb = (0, j2-j3-m1, j1-j3+m2)
-   ub = (j1+j2-j3, j1-m1, j2+m2)
+   # 0 ≦ k ≦ j1+j2-J
+   # 0 ≤ j1-m1-k ≤ j1-j2+J   <=>   j2-J-m1 ≤ k ≤ j1-m1
+   # 0 ≤ j2+m2-k ≤ -j1+j2+J  <=>   j1-J+m2 ≤ k ≤ j2+m2
+   lb = (0, j2-J-m1, j1-J+m2)
+   ub = (j1+j2-J, j1-m1, j2+m2)
    for k in maximum(lb):minimum(ub)
       bk = big(k)
       G += (-1)^k *
-           binomial(big( j1+j2-j3), big(k)) *
-           binomial(big( j1-j2+j3), big(j1-m1-k)) *
-           binomial(big(-j1+j2+j3), big(j2+m2-k))
+           binomial(big( j1+j2-J), big(k)) *
+           binomial(big( j1-j2+J), big(j1-m1-k)) *
+           binomial(big(-j1+j2+J), big(j2+m2-k))
    end
 
    return T(sqrt(N) * G)
@@ -106,33 +151,36 @@ end
 
 
 ClebschGordan(T=Float64) =
-	ClebschGordan(Dict{Tuple{IntS,IntS,IntS}, T}())
+	ClebschGordan{T}(Dict{Tuple{Int,Int,Int,Int,Int,Int}, T}())
 
-_cg_key(j1, m1, j2, m2, j3, m3) =
-	IntS.((index_y(j1,m1), index_y(j2,m2), index_y(j3,m3)))
+_cg_key(j1, m1, j2, m2, J, M) = (j1, m1, j2, m2, J, M)
+	# Int.((index_y(j1,m1), index_y(j2,m2), index_y(J,M)))
 
-function (cg::ClebschGordan{T})(j1, m1, j2, m2, j3, m3) where {T}
-	if !cg_conditions(j1,m1,j2,m2,j3,m3)
+function (cg::ClebschGordan{T})(j1, m1, j2, m2, J, M) where {T}
+	if !cg_conditions(j1,m1, j2,m2, J,M)
 		return zero(T)
 	end
-	key = _cg_key(j1, m1, j2, m2, j3, m3)
+	key = _cg_key(j1, m1, j2, m2, J, M)
 	if haskey(cg.vals, key)
 		return cg.vals[key]
 	end
-	val = clebschgordan(j1, m1, j2, m2, j3, m3, T)
+	val = clebschgordan(j1, m1, j2, m2, J, M, T)
 	cg.vals[key] = val
 	return val
 end
 
 
 # ----------------------------------------------------------------------
-#     CoeffArray code
+#     CoeffArray code: generalized cg coefficients
+#
+#  Note: in this section kk is a tuple of m-values, it is not
+#        related to the k index in the 1-p basis (or radial basis)
 # ----------------------------------------------------------------------
 
 dicttype(N::Integer) = dicttype(Val(N))
 
 dicttype(::Val{N}) where {N} =
-   Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
+   Dict{Tuple{SVector{N,Int}, SVector{N,Int}, SVector{N,Int}}, Float64}
 
 CoeffArray(T=Float64) = CoeffArray(Dict[], ClebschGordan(T))
 
@@ -147,16 +195,16 @@ function get_vals(A::CoeffArray, valN::Val{N}) where {N}
 end
 
 _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
-      (SVector{N, Int8}(ll), SVector{N, Int8}(mm), SVector{N, Int8}(kk))
+      (SVector{N, Int}(ll), SVector{N, Int}(mm), SVector{N, Int}(kk))
 
-function (A::CoeffArray)(ll::StaticVector{N},
-                         mm::StaticVector{N},
-                         kk::StaticVector{N}) where {N}
+function (A::CoeffArray{T})(ll::StaticVector{N},
+                            mm::StaticVector{N},
+                            kk::StaticVector{N}) where {T, N}
    if       sum(mm) != 0 ||
             sum(kk) != 0 ||
             !all(abs.(mm) .<= ll) ||
             !all(abs.(kk) .<= ll)
-      return 0.0
+      return T(0)
    end
    vals = get_vals(A, Val(N))  # this should infer the type!
    key = _key(ll, mm, kk)
@@ -169,31 +217,37 @@ function (A::CoeffArray)(ll::StaticVector{N},
    return val
 end
 
-function (A::CoeffArray)(ll::StaticVector{1},
-                         mm::StaticVector{1},
-                         kk::StaticVector{1})
+# the recursion has two steps so we need to define the
+# generalised CG coefficients for N = 1, 2
+# TODO: actually this seems false; it is only one recursion step, and a bit
+#       or reshuffling should allow us to get rid of the {N = 2} case.
+
+function (A::CoeffArray{T})(ll::StaticVector{1},
+                            mm::StaticVector{1},
+                            kk::StaticVector{1}) where {T}
    if ll[1] == mm[1] == kk[1] == 0
-      return 1.0
+      return T(1)
    else
-      return 0.0
+      return T(0)
    end
 end
 
-function (A::CoeffArray)(ll::StaticVector{2},
-                         mm::StaticVector{2},
-                         kk::StaticVector{2})
+function (A::CoeffArray{T})(ll::StaticVector{2},
+                            mm::StaticVector{2},
+                            kk::StaticVector{2}) where {T}
    if ll[1] != ll[2] || sum(mm) != 0 || sum(kk) != 0
-      return 0.0
+      return T(0)
    else
-      return 8 * pi^2 / (2*ll[1]+1) * (-1)^(mm[1]-kk[1])
+      return T( 8 * pi^2 / (2*ll[1]+1) * (-1)^(mm[1]-kk[1]) )
    end
 end
 
+# next comes the recursion step for N ≧ 3
 
-function _compute_val(A::CoeffArray, ll::StaticVector{N},
-                                     mm::StaticVector{N},
-                                     kk::StaticVector{N}) where {N}
-	val = 0.0
+function _compute_val(A::CoeffArray{T}, ll::StaticVector{N},
+                                        mm::StaticVector{N},
+                                        kk::StaticVector{N}) where {T, N}
+	val = T(0)
    llp = ll[1:N-2]
    mmp = mm[1:N-2]
    kkp = kk[1:N-2]
@@ -205,7 +259,7 @@ function _compute_val(A::CoeffArray, ll::StaticVector{N},
 			A.cg(ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
 		catch
 			@show (ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
-			0.0
+			T(0)
 		end
 		cgm = A.cg(ll[N-1], mm[N-1], ll[N], mm[N], j, mm[N-1]+mm[N])
 		if cgk * cgm  != 0
@@ -218,7 +272,12 @@ function _compute_val(A::CoeffArray, ll::StaticVector{N},
 end
 
 
-_len_mrange(ll) = sum(_ -> 1, _mrange(ll))
+# ----------------------------------------------------------------------
+#   construction of a possible set of generalised CG coefficient;
+#   numerically via SVD
+# ----------------------------------------------------------------------
+
+
 
 function basis(A::CoeffArray{T}, ll; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
@@ -228,21 +287,26 @@ function basis(A::CoeffArray{T}, ll; ordered=false) where {T}
 end
 
 
-compute_Al(ll::SVector{N}; ordered = false) where {N} =
-		compute_Al(CoeffArray(N, sum(ll)), ll; ordered=ordered)
-
-compute_Al(A::CoeffArray, ll::SVector{N}; ordered = false) where {N} =
-		compute_Al(A, ll, Val(ordered))
-
 # unordered
+function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
+	len = length(_mrange(ll))
+   CC = zeros(T, len, len)
+   for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+      CC[ik, im] = A(ll, mm, kk)
+   end
+   return CC
+end
+
+
+# ordered; TODO: check this out, clean it up and test it!!!
 function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
 	num_mm_sorted = sum(mm -> issorted(mm), _mrange(ll))
-	@show num_mm_sorted
-	num_mm = _len_mrange(ll)
+	# @show num_mm_sorted
+	num_mm = length(_mrange(ll))
    CC = zeros(T, num_mm, num_mm_sorted)
 	im = 0
    for mm in _mrange(ll)
-		if issorted(mm)
+		if issorted(mm) # -> make this sorted relative to ll!!!
 			im += 1
 			for (ik, kk) in enumerate(_mrange(ll))
 		      CC[ik, im] = A(ll, mm, kk)
@@ -252,33 +316,15 @@ function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
    return CC
 end
 
-# ordered
-function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
-	len = _len_mrange(ll)
-   CC = zeros(T, len, len)
-   for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
-      CC[ik, im] = A(ll, mm, kk)
-   end
-   return CC
-end
 
 
-function single_B(A::CoeffArray{T}, ll::SVector) where {T}
-	MM = collect(_mrange(ll))
-	Is = sortperm([ (sum(mm .!= 0), norm(mm)) for mm in MM ])
-	MM = MM[Is]
-	CC = zeros(T, length(MM))
-	for mm in MM
-		for (ik, kk) in enumerate(_mrange(ll))
-			CC[ik] = A(ll, mm, kk)
-		end
-		if norm(CC) > 0
-			CC ./= norm(CC)
-			break
-		end
-	end
-	return CC
-end
+# two utility functions which are probably never used!
+
+compute_Al(ll::SVector{N}; ordered = false) where {N} =
+		compute_Al(CoeffArray(N, sum(ll)), ll; ordered=ordered)
+
+compute_Al(A::CoeffArray, ll::SVector{N}; ordered = false) where {N} =
+		compute_Al(A, ll, Val(ordered))
 
 
 end
