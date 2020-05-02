@@ -41,6 +41,9 @@ for species in (:X, :Si, [:C, :O, :H])
    end
 end
 
+P1 = SHIPs.BasicPSH1pBasis(Pr; species = [:C, :O, :H])
+@show SHIPs.get_basis_spec(P1, atomic_number(:H))
+
 ##
 
 

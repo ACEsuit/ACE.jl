@@ -47,6 +47,7 @@ function set_Aindices!(basis::OneParticleBasis)
       for iz = 1:NZ
          len = length(basis, iz, iz0)
          basis.Aindices[iz, iz0] = (idx+1):(idx+len)
+         idx += len
       end
    end
    return basis
@@ -93,6 +94,11 @@ end
 Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) =
       length(basis.spec)
 
+get_basis_spec(basis::OneParticleBasis, iz0::Integer) =
+      get_basis_spec(basis, i2z(iz0))
+
+get_basis_spec(basis::OneParticleBasis, s::Symbol) =
+      get_basis_spec(basis, atomic_number(s))
 
 function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
    iz0 = z2i(basis, z0)
