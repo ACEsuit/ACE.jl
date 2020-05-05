@@ -6,19 +6,19 @@
 # --------------------------------------------------------------------------
 
 
-@testset "PIBasis"  begin
+@testset "RPIBasis"  begin
 
 ##
 
 
-using SHIPs, Random
-using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
+using SHIPs
+using Random, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 
 
 ##
 
-@info("Basic test of PIBasis construction and evaluation")
+@info("Basic test of RPIBasis construction and evaluation")
 maxdeg = 10
 r0 = 1.0
 rcut = 3.0
@@ -27,7 +27,8 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = SHIPs.SparsePSHDegree()
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 
-basis = SHIPs.PIBasis(P1, 2, D, maxdeg)
+pibasis = SHIPs.PIBasis(P1, 2, D, maxdeg)
+rpibasis = SHIPs.RPIBasis(P1, 2, D, maxdeg)
 
 # check single-species
 Nat = 15

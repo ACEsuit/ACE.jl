@@ -15,7 +15,7 @@ module RotationCoeffs
    using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra
    using SHIPs: _mrange
 
-   struct CoeffArray{NMAX}
+   struct Rot3DCoeffs{NMAX}
       vals::SVector{NMAX, Dict}
       cg::ClebschGordan{Float64}
    end
@@ -25,21 +25,21 @@ module RotationCoeffs
          Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
 
 
-   function CoeffArray(Nmax, Lmax)
+   function Rot3DCoeffs(Nmax, Lmax)
       vals = SVector{Nmax, Dict}([ dicttype(N)() for N = 1:Nmax ]...)
       cg = ClebschGordan(Lmax)
-      return CoeffArray(vals, cg)
+      return Rot3DCoeffs(vals, cg)
    end
 
 
-   function get_vals(A::CoeffArray, ::Val{N}) where {N}
+   function get_vals(A::Rot3DCoeffs, ::Val{N}) where {N}
       return A.vals[N]::Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
    end
 
    _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
          (SVector{N, Int8}(ll), SVector{N, Int8}(mm), SVector{N, Int8}(kk))
 
-   function (A::CoeffArray)(ll::StaticVector{N},
+   function (A::Rot3DCoeffs)(ll::StaticVector{N},
                             mm::StaticVector{N},
                             kk::StaticVector{N}) where {N}
       if       sum(mm) != 0 ||
@@ -59,7 +59,7 @@ module RotationCoeffs
       return val
    end
 
-   function _compute_val(A::CoeffArray, ll::StaticVector{N},
+   function _compute_val(A::Rot3DCoeffs, ll::StaticVector{N},
                                         mm::StaticVector{N},
                                         kk::StaticVector{N}) where {N}
       val = 0.0
@@ -79,7 +79,7 @@ module RotationCoeffs
       return val
    end
 
-   function _compute_val(A::CoeffArray, ll::StaticVector{2},
+   function _compute_val(A::Rot3DCoeffs, ll::StaticVector{2},
                                         mm::StaticVector{2},
                                         kk::StaticVector{2})
       if ll[1] != ll[2] || sum(mm) != 0 || sum(kk) != 0
@@ -90,9 +90,9 @@ module RotationCoeffs
    end
 
    compute_Al(ll::SVector{N}) where {N} =
-      compute_Al(CoeffArray(N, sum(ll)), ll)
+      compute_Al(Rot3DCoeffs(N, sum(ll)), ll)
 
-   function compute_Al(A::CoeffArray, ll::SVector)
+   function compute_Al(A::Rot3DCoeffs, ll::SVector)
       len = 0
       for mm in _mrange(ll)
          len += 1
@@ -105,10 +105,10 @@ module RotationCoeffs
    end
 
    compute_Al_symm(ll::SVector{N}) where {N} =
-      compute_Al_symm(CoeffArray(N, sum(ll)), ll)
+      compute_Al_symm(Rot3DCoeffs(N, sum(ll)), ll)
 
 
-   function compute_Al_symm(A::CoeffArray, ll::SVector)
+   function compute_Al_symm(A::Rot3DCoeffs, ll::SVector)
       len = 0
       for mm in _mrange(ll)
          len += 1
@@ -186,7 +186,7 @@ function Alkm_old(ll::SVector{4}, mm, kk, cg)
 end
 
 ##
-A = RotationCoeffs.CoeffArray(5, 12)
+A = RotationCoeffs.Rot3DCoeffs(5, 12)
 cg = ClebschGordan(12)
 
 ## len-2
@@ -219,7 +219,7 @@ ll = SVector(5,3,2,2)
 @time RotationCoeffs.compute_Al(A, ll)
 
 ll = SVector(3,2,4)
-A = RotationCoeffs.CoeffArray(5, 12)
+A = RotationCoeffs.Rot3DCoeffs(5, 12)
 ll = SVector(3,2)
 @time Cl = RotationCoeffs.compute_Al(A, ll)
 ll = SVector(4,3,3,2)
@@ -340,7 +340,7 @@ for l = 1:6
 end
 
 using Profile
-A = RotationCoeffs.CoeffArray(5, 12)
+A = RotationCoeffs.Rot3DCoeffs(5, 12)
 ll = SVector(1,1,1,1,1)
 ll = SVector(4,4,2,1,1)
 @profile Al = RotationCoeffs.compute_Al(A, ll)

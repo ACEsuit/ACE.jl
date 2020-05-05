@@ -14,7 +14,7 @@ using SHIPs.Rotations
 
 ##
 lmax = 3
-A = SHIPs.Rotations.CoeffArray(Float64)
+A = SHIPs.Rotations.Rot3DCoeffs(Float64)
 for l1 = 0:lmax, l2=0:lmax, l3=0:lmax, l4=0:lmax
    global A
    ll = SVector(l1, l2, l3, l4)
@@ -139,7 +139,7 @@ function Alkm_old(ll::SVector{4}, mm, kk, cg)
 end
 
 ##
-A = RotationCoeffs.CoeffArray(5, 12)
+A = RotationCoeffs.Rot3DCoeffs(5, 12)
 cg = ClebschGordan(12)
 
 ## len-2
@@ -172,7 +172,7 @@ ll = SVector(5,3,2,2)
 @time RotationCoeffs.compute_Al(A, ll)
 
 ll = SVector(3,2,4)
-A = RotationCoeffs.CoeffArray(5, 12)
+A = RotationCoeffs.Rot3DCoeffs(5, 12)
 ll = SVector(3,2)
 @time Cl = RotationCoeffs.compute_Al(A, ll)
 ll = SVector(4,3,3,2)
@@ -293,7 +293,7 @@ for l = 1:6
 end
 
 using Profile
-A = RotationCoeffs.CoeffArray(5, 12)
+A = RotationCoeffs.Rot3DCoeffs(5, 12)
 ll = SVector(1,1,1,1,1)
 ll = SVector(4,4,2,1,1)
 @profile Al = RotationCoeffs.compute_Al(A, ll)

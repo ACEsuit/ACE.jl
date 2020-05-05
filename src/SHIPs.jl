@@ -33,8 +33,8 @@ include("pibasis.jl")
 # -> pipotential
 # -> realpipotential
 
-# the ACE model
-include("ace/ace.jl")
+# rotation-invariant site potentials (incl the ACE model)
+include("rpi/rpi.jl")
 
 
 # - pair potentials

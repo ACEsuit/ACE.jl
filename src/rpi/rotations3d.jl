@@ -11,8 +11,9 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
 using SHIPs.SphericalHarmonics: index_y
+using Combinatorics: permutations
 
-export ClebschGordan, CoeffArray, single_B
+export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis
 
 
 """
@@ -24,10 +25,10 @@ struct ClebschGordan{T}
 end
 
 """
-`CoeffArray: ` storing recursively precomputed coefficients for a
+`Rot3DCoeffs: ` storing recursively precomputed coefficients for a
 rotation-invariant basis.
 """
-struct CoeffArray{T}
+struct Rot3DCoeffs{T}
    vals::Vector{Dict}
    cg::ClebschGordan{T}
 end
@@ -171,7 +172,7 @@ end
 
 
 # ----------------------------------------------------------------------
-#     CoeffArray code: generalized cg coefficients
+#     Rot3DCoeffs code: generalized cg coefficients
 #
 #  Note: in this section kk is a tuple of m-values, it is not
 #        related to the k index in the 1-p basis (or radial basis)
@@ -182,10 +183,10 @@ dicttype(N::Integer) = dicttype(Val(N))
 dicttype(::Val{N}) where {N} =
    Dict{Tuple{SVector{N,Int}, SVector{N,Int}, SVector{N,Int}}, Float64}
 
-CoeffArray(T=Float64) = CoeffArray(Dict[], ClebschGordan(T))
+Rot3DCoeffs(T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T))
 
 
-function get_vals(A::CoeffArray, valN::Val{N}) where {N}
+function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
 	if length(A.vals) < N
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n)())
@@ -197,7 +198,7 @@ end
 _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
       (SVector{N, Int}(ll), SVector{N, Int}(mm), SVector{N, Int}(kk))
 
-function (A::CoeffArray{T})(ll::StaticVector{N},
+function (A::Rot3DCoeffs{T})(ll::StaticVector{N},
                             mm::StaticVector{N},
                             kk::StaticVector{N}) where {T, N}
    if       sum(mm) != 0 ||
@@ -218,11 +219,11 @@ function (A::CoeffArray{T})(ll::StaticVector{N},
 end
 
 # the recursion has two steps so we need to define the
-# generalised CG coefficients for N = 1, 2
+# coupling coefficients for N = 1, 2
 # TODO: actually this seems false; it is only one recursion step, and a bit
 #       or reshuffling should allow us to get rid of the {N = 2} case.
 
-function (A::CoeffArray{T})(ll::StaticVector{1},
+function (A::Rot3DCoeffs{T})(ll::StaticVector{1},
                             mm::StaticVector{1},
                             kk::StaticVector{1}) where {T}
    if ll[1] == mm[1] == kk[1] == 0
@@ -232,7 +233,7 @@ function (A::CoeffArray{T})(ll::StaticVector{1},
    end
 end
 
-function (A::CoeffArray{T})(ll::StaticVector{2},
+function (A::Rot3DCoeffs{T})(ll::StaticVector{2},
                             mm::StaticVector{2},
                             kk::StaticVector{2}) where {T}
    if ll[1] != ll[2] || sum(mm) != 0 || sum(kk) != 0
@@ -244,7 +245,7 @@ end
 
 # next comes the recursion step for N ≧ 3
 
-function _compute_val(A::CoeffArray{T}, ll::StaticVector{N},
+function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
                                         mm::StaticVector{N},
                                         kk::StaticVector{N}) where {T, N}
 	val = T(0)
@@ -278,17 +279,17 @@ end
 # ----------------------------------------------------------------------
 
 
-
-function basis(A::CoeffArray{T}, ll; ordered=false) where {T}
+function ri_basis(A::Rot3DCoeffs{T}, ll; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))
-	return svdC.U[:, 1:rk]
+	@show ll, rk, size(CC)
+	return svdC.U[:, 1:rk]'
 end
 
 
 # unordered
-function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
+function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
 	len = length(_mrange(ll))
    CC = zeros(T, len, len)
    for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
@@ -297,34 +298,72 @@ function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
    return CC
 end
 
+# # ordered; TODO: check this out, clean it up and test it!!!
+# function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{true}) where {T}
+# 	num_mm_sorted = sum(mm -> issorted(mm), _mrange(ll))
+# 	# @show num_mm_sorted
+# 	num_mm = length(_mrange(ll))
+#    CC = zeros(T, num_mm, num_mm_sorted)
+# 	im = 0
+#    for mm in _mrange(ll)
+# 		if issorted(mm) # -> make this sorted relative to ll!!!
+# 			im += 1
+# 			for (ik, kk) in enumerate(_mrange(ll))
+# 		      CC[ik, im] = A(ll, mm, kk)
+# 			end
+# 		end
+# 	end
+#    return CC
+# end
+#
+#
+# # two utility functions which are probably never used!
+#
+# compute_Al(ll::SVector{N}; ordered = false) where {N} =
+# 		compute_Al(Rot3DCoeffs(N, sum(ll)), ll; ordered=ordered)
+#
+# compute_Al(A::Rot3DCoeffs, ll::SVector{N}; ordered = false) where {N} =
+# 		compute_Al(A, ll, Val(ordered))
 
-# ordered; TODO: check this out, clean it up and test it!!!
-function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
-	num_mm_sorted = sum(mm -> issorted(mm), _mrange(ll))
-	# @show num_mm_sorted
-	num_mm = length(_mrange(ll))
-   CC = zeros(T, num_mm, num_mm_sorted)
-	im = 0
-   for mm in _mrange(ll)
-		if issorted(mm) # -> make this sorted relative to ll!!!
-			im += 1
-			for (ik, kk) in enumerate(_mrange(ll))
-		      CC[ik, im] = A(ll, mm, kk)
-			end
-		end
-	end
-   return CC
+
+# TODO: this could use some documentation
+
+rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
+			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
+
+function rpi_basis(A::Rot3DCoeffs,
+						 zz::SVector{N},
+						 nn::SVector{N, Int},
+						 ll::SVector{N, Int}) where {N}
+	Uri = ri_basis(A, ll)
+	@show Uri
+	Mri = collect( _mrange(ll) )   # rows...
+	G = _gramian(zz, nn, ll, Uri, Mri)
+   S = svd(G)
+   rk = rank(G; rtol =  1e-7)
+	Urpi = S.U[:, 1:rk]'
+	return Diagonal(sqrt.(S.S[1:rk])) * Urpi * Uri, Mri
 end
 
 
+function _gramian(zz, nn, ll, Uri, Mri)
+   N = length(nn)
+   nri = size(Uri, 1)
+   @assert size(Uri, 1) == nri
+   G = zeros(nri, nri)
+   for σ in permutations(1:N)
+      if (zz[σ] != zz) || (nn[σ] != nn) || (ll[σ] != ll); continue; end
+      for (iU1, mm1) in enumerate(Mri), (iU2, mm2) in enumerate(Mri)
+         if mm1[σ] == mm2
+            for i1 = 1:nri, i2 = 1:nri
+               G[i1, i2] += conj(Uri[i1, iU1]) * Uri[i2, iU2]
+            end
+         end
+      end
+   end
+   return G
+end
 
-# two utility functions which are probably never used!
-
-compute_Al(ll::SVector{N}; ordered = false) where {N} =
-		compute_Al(CoeffArray(N, sum(ll)), ll; ordered=ordered)
-
-compute_Al(A::CoeffArray, ll::SVector{N}; ordered = false) where {N} =
-		compute_Al(A, ll, Val(ordered))
 
 
 end

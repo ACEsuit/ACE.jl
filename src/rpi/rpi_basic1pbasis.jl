@@ -59,6 +59,16 @@ function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
    return spec
 end
 
+get_basis_spec(basis::BasicPSH1pBasis, iz0::Integer, i::Integer) =
+   get_basis_spec(basis, i2z(basis, iz0), i)
+
+function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber, i::Integer)
+   iz = (i ÷ length(basis.spec)) + 1
+   inew = mod1(length(basis.spec), i)
+   b = basis.spec[inew]
+   return PSH1pBasisFcn(b.n, b.l, b.m, i2z(basis, iz))
+end
+
 
 Base.eltype(basis::BasicPSH1pBasis{T}) where T = Complex{T}
 reltype(basis::BasicPSH1pBasis{T}) where T = T

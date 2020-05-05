@@ -76,7 +76,7 @@ function findall_basis_ll(basis, ll)
    @warn("This code assumes there is only one species. (not checked!)")
    @info(" ll = $(ll)")
    @info("Get the purely rotation-invariant basis:")
-   CA = SHIPs.Rotations.CoeffArray()
+   CA = SHIPs.Rotations.Rot3DCoeffs()
    Brot = SHIPs.Rotations.basis(CA, ll)
    @info("   ... there are $(size(Brot, 2)) rotation-invariance basis functions")
 

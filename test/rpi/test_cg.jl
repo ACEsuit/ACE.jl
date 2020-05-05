@@ -61,7 +61,7 @@ println()
 # expansion coefficients of a product of two spherical harmonics in terms a
 # single spherical harmonic
 # see e.g. https://en.wikipedia.org/wiki/Clebsch–Gordan_coefficients
-# this is the magic formula that we need, on which everything else is based 
+# this is the magic formula that we need, on which everything else is based
 for ntest = 1:200
    # two random Ylm  ...
    l1, l2 = rand(1:10), rand(1:10)

@@ -13,7 +13,7 @@ using LinearAlgebra: norm, rank, svd, Diagonal
 using SHIPs: _mrange, IntS
 using SHIPs.SphericalHarmonics: index_y
 
-export ClebschGordan, CoeffArray, single_B
+export ClebschGordan, Rot3DCoeffs, single_B
 
 
 """
@@ -27,10 +27,10 @@ struct ClebschGordan{T}
 end
 
 """
-`CoeffArray: ` storing recursively precomputed coefficients for a
+`Rot3DCoeffs: ` storing recursively precomputed coefficients for a
 rotation-invariant basis.
 """
-struct CoeffArray{T}
+struct Rot3DCoeffs{T}
    vals::Vector{Dict}
    cg::ClebschGordan{T}
 end
@@ -126,7 +126,7 @@ end
 
 
 # ----------------------------------------------------------------------
-#     CoeffArray code
+#     Rot3DCoeffs code
 # ----------------------------------------------------------------------
 
 dicttype(N::Integer) = dicttype(Val(N))
@@ -134,10 +134,10 @@ dicttype(N::Integer) = dicttype(Val(N))
 dicttype(::Val{N}) where {N} =
    Dict{Tuple{SVector{N,Int8}, SVector{N,Int8}, SVector{N,Int8}}, Float64}
 
-CoeffArray(T=Float64) = CoeffArray(Dict[], ClebschGordan(T))
+Rot3DCoeffs(T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T))
 
 
-function get_vals(A::CoeffArray, valN::Val{N}) where {N}
+function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
 	if length(A.vals) < N
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n)())
@@ -149,7 +149,7 @@ end
 _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
       (SVector{N, Int8}(ll), SVector{N, Int8}(mm), SVector{N, Int8}(kk))
 
-function (A::CoeffArray)(ll::StaticVector{N},
+function (A::Rot3DCoeffs)(ll::StaticVector{N},
                          mm::StaticVector{N},
                          kk::StaticVector{N}) where {N}
    if       sum(mm) != 0 ||
@@ -169,7 +169,7 @@ function (A::CoeffArray)(ll::StaticVector{N},
    return val
 end
 
-function (A::CoeffArray)(ll::StaticVector{1},
+function (A::Rot3DCoeffs)(ll::StaticVector{1},
                          mm::StaticVector{1},
                          kk::StaticVector{1})
    if ll[1] == mm[1] == kk[1] == 0
@@ -179,7 +179,7 @@ function (A::CoeffArray)(ll::StaticVector{1},
    end
 end
 
-function (A::CoeffArray)(ll::StaticVector{2},
+function (A::Rot3DCoeffs)(ll::StaticVector{2},
                          mm::StaticVector{2},
                          kk::StaticVector{2})
    if ll[1] != ll[2] || sum(mm) != 0 || sum(kk) != 0
@@ -190,7 +190,7 @@ function (A::CoeffArray)(ll::StaticVector{2},
 end
 
 
-function _compute_val(A::CoeffArray, ll::StaticVector{N},
+function _compute_val(A::Rot3DCoeffs, ll::StaticVector{N},
                                      mm::StaticVector{N},
                                      kk::StaticVector{N}) where {N}
 	val = 0.0
@@ -220,7 +220,7 @@ end
 
 _len_mrange(ll) = sum(_ -> 1, _mrange(ll))
 
-function basis(A::CoeffArray{T}, ll; ordered=false) where {T}
+function basis(A::Rot3DCoeffs{T}, ll; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))
@@ -229,13 +229,13 @@ end
 
 
 compute_Al(ll::SVector{N}; ordered = false) where {N} =
-		compute_Al(CoeffArray(N, sum(ll)), ll; ordered=ordered)
+		compute_Al(Rot3DCoeffs(N, sum(ll)), ll; ordered=ordered)
 
-compute_Al(A::CoeffArray, ll::SVector{N}; ordered = false) where {N} =
+compute_Al(A::Rot3DCoeffs, ll::SVector{N}; ordered = false) where {N} =
 		compute_Al(A, ll, Val(ordered))
 
 # unordered
-function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
+function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{true}) where {T}
 	num_mm_sorted = sum(mm -> issorted(mm), _mrange(ll))
 	@show num_mm_sorted
 	num_mm = _len_mrange(ll)
@@ -253,7 +253,7 @@ function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{true}) where {T}
 end
 
 # ordered
-function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
+function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
 	len = _len_mrange(ll)
    CC = zeros(T, len, len)
    for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
@@ -263,7 +263,7 @@ function compute_Al(A::CoeffArray{T}, ll::SVector, ::Val{false}) where {T}
 end
 
 
-function single_B(A::CoeffArray{T}, ll::SVector) where {T}
+function single_B(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	MM = collect(_mrange(ll))
 	Is = sortperm([ (sum(mm .!= 0), norm(mm)) for mm in MM ])
 	MM = MM[Is]

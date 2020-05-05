@@ -9,9 +9,14 @@
  * Always use `Int` for indexing, never `Int16, Int32`, etc.
  *
 
-## Type Hierarchy
+## Types and type hierarchy
 
-### One Particle Basis
+TODO: summarize the main types and how they connect up...
+
+A concrete basis will be built from `OneParticleBasis` and `PIBasis` objects.
+
+
+## One Particle Basis
 
 A one-particle basis is a basis of functions ``\phi_k : \mathbb{R}^3 \to \mathbb{R}`` defined through a subtype of
 ```julia
@@ -52,14 +57,14 @@ For this to work, the type of the 1-particle basis must contain a field `zlist` 
     Concrete subtypes of `OneParticleBasis` are
 
     * `BasicPSH1PBasis` : implemented and tested
-    * `PSH1PBasis` : under construction
+    * `PSH1PBasis` : parameterised version of `BasicPSH1Basis`; under construction
     * `BondEnv1PBasis` : implemented in old code, needs to be ported
     * `Tensor1PBasis` : not yet done
 
     Should revisit this and maybe add another abstract layer in-between since all of these are really tensor product bases! (Reference relevant sections below)
 
 
-### Permutation-Invariant Basis
+## Permutation-Invariant Basis
 
 The permutation-invariant basis is a *concrete* type
 ```julia
@@ -69,7 +74,7 @@ which implements the tensor-product like basis functions
 ```math
    {\bm A}_{\bm z \bm k}^{z_0}
    =
-   \prod_{\alpha = 1}^N A_{z_\alpha k_\alpha}^{z_0},
+   \prod_{\alpha = 1}^N A_{k_\alpha}^{z_\alpha z_0},
    \qquad \text{where} \quad
    {\bm z} \in \mathbb{Z}^N, {\bm k} \in \mathbb{N}^N
 ```
@@ -79,44 +84,37 @@ as well as the gradients
 ```
 The interface for this is as follows:
 ```julia
-alloc_B(aabasis::PIBasis)
-alloc_tmp(aabasis::PIBasis)
-evaluate!(AA, tmp, aabasis, Rs, Zs, z0)
-alloc_dB(aabasis::PIBasis)
-alloc_tmp_d(aabasis::PIBasis)
-evaluate_d!(dAA, tmp, aabasis, Rs, Zs, z0)
+alloc_B(pibasis::PIBasis)
+alloc_tmp(pibasis::PIBasis)
+evaluate!(AA, tmp, pibasis, Rs, Zs, z0)
+alloc_dB(pibasis::PIBasis)
+alloc_tmp_d(pibasis::PIBasis)
+evaluate_d!(dAA, tmp, pibasis, Rs, Zs, z0)
 ```
 where the storage arrays are
-* `AA::Vector{<: Number}` of the same length as the basis
+* `AA::Vector{<: Number}` : to store any AA_kk^{zz, z0} with z0 fixed, i.e. the AA vector for a single site only. To use a PIBasis as the *actual* basis rather than an auxiliary one should wrap it (see bonds -- TODO!)
 * `dAA::Matrix{<: JVec}` with dimension basis-length x number of particles
 
 
-### Concrete Bases
-
-A concrete basis will be built from `OneParticleBasis` and `PIBasis` objects.
-
-
-### Derived Potentials
+## Generating a `PIBasis`
 
 
 
-## Generating a Basis
+## Derived Potentials
 
 
 
-## Generic Permutation-Invariant Polynomials
+## RPI Basis (ACE and Extensions)
 
-
-
-## ACE Basis
-
-The ACE basis (Atomic Cluster Expansion; Drautz 2019) is one of the main user-facing objects provided by `SHIPs.jl`.
+The ACE basis (Atomic Cluster Expansion; Drautz 2019) and its modifications and extensions is one of the main user-facing objects provided by `SHIPs.jl`.
 It is constructed by reducing a permutation invariant `PIBasis` to a permutation and rotation invariant basis through a single sparse matrix-vector multiplication.
 ```math
  B = C \cdot {\bm A},
 ```
-where ``B`` is the new RPI basis, ``{\bm A}`` the "inner" PI basis and ``C`` the generalised Clebsch-Gordan coefficients that achieve the rotation-invariance. This relies on a specific choice of the one-particle basis.
+where ``B`` is the new RPI basis, ``{\bm A}`` the "inner" PI basis and ``C`` the coupling coefficients that achieve the rotation-invariance. This relies on a specific choice of the one-particle basis. This construction is outlined in (Atomic Cluster Expansion; Drautz 2019) and an extended derivation with full details in (Bachmayr, Drautz, Dusson, Etter, Van der Oort, Csanyi, Ortner, arXiv:19..). The implementation of the ``C`` coefficients in `rpi/rotations3d.jl` is based on a numerical SVD as opposed to an analytic SVD.
 
+The `RPIBasis` type stores only two fields, the `PIBasis` and the coefficients ``C``.
 
+TODO: discuss the classes of 1-particle bases that are allowed.
 
 ## Bond-Environment Potentials
