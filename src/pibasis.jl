@@ -17,6 +17,7 @@ order(b::PIBasisFcn{N}) where {N} = N
 
 degree(d::AbstractDegree, pphi::PIBasisFcn) = degree(d, pphi.oneps)
 
+# TODO: can we replace this with get_basis_spec?
 function PIBasisFcn(Aspec, t, z0::AtomicNumber)
    if isempty(t) || sum(abs, t) == 0
       return PIBasisFcn{0, eltype(Aspec)}(z0, tuple())
@@ -30,7 +31,7 @@ end
 
 function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
                      D::AbstractDegree, maxdeg::Real,
-                     z0::AtomicNumber)
+                     z0::AtomicNumber; filter = _->true)
    iz0 = z2i(basis1p, z0)
    # get the basis spec of the one-particle basis
    #  Aspec[i] described the basis function that will get written into A[i]
@@ -48,7 +49,8 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
    # keyword signifies that this is a permutation-invariant basis
    AAspec = gensparse(N, maxdeg;
                       tup2b = tup2b, degfun = D, ordered = true,
-                      maxν = length(Aspec_p))
+                      maxν = length(Aspec_p),
+                      filter = filter)
    return Aspec, AAspec
 end
 
@@ -154,7 +156,8 @@ Base.length(basis::PIBasis, z0::AtomicNumber) = length(basis, z2i(basis, z0))
 function PIBasis(basis1p::OneParticleBasis,
                  N::Integer,
                  D::AbstractDegree,
-                 maxdeg::Real)
+                 maxdeg::Real;
+                 filter = _->true)
    zlist = basis1p.zlist
    inner = InnerPIBasis[]
    idx = 0
@@ -162,7 +165,7 @@ function PIBasis(basis1p::OneParticleBasis,
    for iz0 = 1:numz(basis1p)
       z0 = i2z(basis1p, iz0)
       # get a list of 1-p basis function
-      Aspec_z0, AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0)
+      Aspec_z0, AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0; filter=filter)
       AAindices = (idx+1):(idx+length(AAspec_z0))
       push!(inner, InnerPIBasis(Aspec_z0, AAspec_z0, AAindices, z0))
       idx += length(AAspec_z0)
@@ -186,4 +189,15 @@ function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
    evaluate!(AA, tmp, basis.inner[iz0], A)
    return @view(AA[1:length(basis.inner[iz0])])
+end
+
+
+
+function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
+   N = basis.inner[iz0].orders[i]
+   iAA2iA = basis.inner[iz0].iAA2iA[i, 1:N]
+   # @show i2z(basis, iz0)
+   # @show ntuple(n -> get_basis_spec(basis.basis1p, iz0, iAA2iA[n]), N)
+   return PIBasisFcn( i2z(basis, iz0),
+                  [ get_basis_spec(basis.basis1p, iz0, iAA2iA[n]) for n = 1:N] )
 end

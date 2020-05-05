@@ -79,7 +79,7 @@ end
 
 function SHIPBasis(spec::BasisSpec, J; T=Float64, kwargs...)
    # precompute the rotation-coefficients
-   Bcoefs = Rotations.CoeffArray(T)
+   Bcoefs = Rotations.Rot3DCoeffs(T)
    # instantiate the basis specification
    allKL, NuZ = generate_ZKL_tuples(spec, Bcoefs)
    # # get the Ylm basis coefficients
@@ -96,7 +96,7 @@ end
 
 function SHIPBasis(J, zlist::SZList, bgrps::NTuple{NZ, Vector{Tuple}};
                    filter = true, T = Float64, pure = false,
-                   Bcoefs = Rotations.CoeffArray(T)
+                   Bcoefs = Rotations.Rot3DCoeffs(T)
                    ) where {NZ}
    @assert pure == false
    SH = SHBasis(get_maxL(bgrps))

@@ -1,3 +1,4 @@
+export SparsePSHDegree
 
 @doc raw"""
 `struct PSH1pBasisFcn` : 1-particle basis function specification

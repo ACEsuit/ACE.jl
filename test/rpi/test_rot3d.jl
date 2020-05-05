@@ -1,4 +1,8 @@
 
+
+A = SHIPs.Rotations3D.Rot3DCoeffs()
+SHIPs.Rotations3D.basis(A, SVector(2, 2, 1, 1))
+
 using SHIPs, LinearAlgebra
 
 trans = PolyTransform(2, 1.0)
@@ -7,7 +11,7 @@ basis = SHIPBasis(SparseSHIP(5, 8, 1.0), trans, fcut)
 
 length(basis)
 
-A = SHIPs.Rotations.CoeffArray(20)
+A = SHIPs.Rotations.Rot3DCoeffs(20)
 
 for bo = 2:5
    ctr = 0
