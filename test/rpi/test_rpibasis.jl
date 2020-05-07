@@ -19,7 +19,7 @@ using JuLIP: evaluate, evaluate_d
 ##
 
 @info("Basic test of RPIBasis construction and evaluation")
-maxdeg = 6
+maxdeg = 4
 N =  2
 r0 = 1.0
 rcut = 3.0
@@ -45,28 +45,52 @@ println(@test(length(rpibasis) == length(B)))
 # check multi-species
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-species = [:C, :O, :H]
-P1 = SHIPs.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
-basis = SHIPs.PIBasis(P1, 3, D, maxdeg)
+species = [:O, :H]
+P1 = SHIPs.BasicPSH1pBasis(Pr; species = species, D = D)
+basis = SHIPs.RPIBasis(P1, N, D, maxdeg
+   )
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
-AA = evaluate(basis, Rs, Zs, z0)
-println(@test(length(basis, z0) == length(AA)))
+B = evaluate(basis, Rs, Zs, z0)
+println(@test(length(basis, z0) == length(B)))
 
 ##
 
-@info("Check permutation invariance")
-for species in (:X, :Si, [:C, :O, :H])
+spec = collect(keys(basis.pibasis.inner[1].b2iAA))
+spec = filter( b -> ((length(b.oneps) == 2) &&
+                      all(b1.n in [2,1] for b1 in b.oneps)), spec)
+display(spec)
+
+basis.pibasis.inner[1].iAA2iA |> display
+
+##
+# D = SparsePSHDegree()
+# P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X)
+# basis = SHIPs.RPIBasis(P1, N, D, degrees[N])
+# Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
+# Rsp, Zsp = SHIPs.rand_sym(Rs, Zs)
+# evaluate(basis, Rs, Zs, z0)
+# evaluate(basis, Rsp, Zsp, z0)
+
+
+degrees = [ 8, 7, 6 ]
+# degrees = [ 12, 10, 8, 8, 7, 7 ]
+
+@info("Check isometry and permutation invariance")
+# for species in (:X, :Si) # , [:C, :O, :H])
+for species in (:X, :Si), N = 1:length(degrees)
+   @info("   species = $species; N = $N; degree = $(degrees[N])")
    Nat = 15
+   D = SparsePSHDegree()
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
-   basis = SHIPs.PIBasis(P1, 3, D, maxdeg)
-   for ntest = 1:10
+   basis = SHIPs.RPIBasis(P1, N, D, degrees[N])
+   for ntest = 1:30
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
-      p = randperm(length(Rs))
+      Rsp, Zsp = SHIPs.rand_sym(Rs, Zs)
       print_tf(@test(evaluate(basis, Rs, Zs, z0) ≈
-                     evaluate(basis, Rs[p], Zs[p], z0)))
+                     evaluate(basis, Rsp, Zsp, z0)))
    end
+   println()
 end
-println()
 
 ##
 

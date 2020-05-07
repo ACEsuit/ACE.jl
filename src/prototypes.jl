@@ -18,6 +18,8 @@ import JuLIP: alloc_temp, alloc_temp_d,
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
 using JuLIP.Potentials: ZList, z2i, i2z
 
+using LinearAlgebra: mul
+
 using Random: shuffle
 
 import Base: Dict, convert, ==
@@ -91,12 +93,12 @@ end
 
 function rand_rot(Rs, Zs)
    @assert length(Rs) == length(Zs)
-   K = rand(3,3) .- 0.5
+   K = (@SMatrix rand(3,3)) .- 0.5
    K = K - K'
    Q = exp(K)
-   return mul.(Ref(Q), Rs), Zs
+   return [ Q * R for R in Rs ], Zs
 end
 
-rand_refl(Rs, Zs) = (-1) * Rs, Zs
+rand_refl(Rs, Zs) = (-1) .* Rs, Zs
 
-rand_sym(Rs, Zs) = rand_iso(rand_rot(rand_perm(Rs, Zs)))
+rand_sym(Rs, Zs) = rand_refl(rand_rot(rand_perm(Rs, Zs)...)...)

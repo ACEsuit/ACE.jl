@@ -35,7 +35,11 @@ function PIBasisFcn(Aspec, t, z0::AtomicNumber)
 end
 
 
-
+"""
+note this function doesn't return an ordered specification, this is due
+to the fact that we don't require the Aspec to be ordered by degree.
+Instead the ordering is achieved in the InnerPIBasis constructor
+"""
 function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
                      D::AbstractDegree, maxdeg::Real,
                      z0::AtomicNumber; filter = _->true)
@@ -55,11 +59,13 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
    # we can now construct the basis specification; the `ordered = true`
    # keyword signifies that this is a permutation-invariant basis
    AAspec = gensparse(N, maxdeg;
-                      tup2b = tup2b, degfun = D, ordered = true,
-                      maxν = length(Aspec_p),
-                      filter = filter)
+                       tup2b = tup2b, degfun = D, ordered = true,
+                       maxν = length(Aspec_p),
+                       filter = filter)
    return Aspec, AAspec
 end
+
+
 
 
 
@@ -96,6 +102,8 @@ function InnerPIBasis(Aspec, AAspec, AAindices, z0)
    # construct the b2iAA mapping
    b2iAA = Dict{PIBasisFcn, Int}()
    for (iAA, b) in enumerate(AAspec)
+      b = _get_ordered(b2iA, b)
+      AAspec[iAA] = b
       if haskey(b2iAA, b)
          @show b
          error("b2iAA already has the key b. This means the basis spec is invalid.")
@@ -205,4 +213,16 @@ function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
    iAA2iA = basis.inner[iz0].iAA2iA[i, 1:N]
    return PIBasisFcn( i2z(basis, iz0),
                   [ get_basis_spec(basis.basis1p, iz0, iAA2iA[n]) for n = 1:N] )
+end
+
+
+function _get_ordered(pibasis::PIBasis, pib::PIBasisFcn)
+   inner = pibasis.inner[z2i(pibasis, pib.z0)]
+   return _get_ordered(inner.b2iA, pib)
+end
+
+function _get_ordered(b2iA::Dict, pib::PIBasisFcn{N}) where {N}
+   iAs = [ b2iA[b] for b in pib.oneps ]
+   p = sortperm(iAs)
+   return PIBasisFcn(pib.z0, ntuple(i -> pib.oneps[p[i]], N))
 end

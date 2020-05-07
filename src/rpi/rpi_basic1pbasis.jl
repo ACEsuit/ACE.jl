@@ -44,11 +44,20 @@ function BasicPSH1pBasis(J::ScalarBasis{T};
    return P
 end
 
+Base.length(basis::BasicPSH1pBasis, z0::AtomicNumber) =
+      numz(basis) *  length(basis.spec)
+
+Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) =
+      length(basis.spec)
+
+
 Base.length(basis::BasicPSH1pBasis, iz0::Integer) =
       numz(basis) *  length(basis.spec)
 
 Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) =
       length(basis.spec)
+
+
 
 function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
    iz0 = z2i(basis, z0)

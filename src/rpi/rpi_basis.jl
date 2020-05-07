@@ -7,7 +7,7 @@
 
 
 using SparseArrays: SparseMatrixCSC, sparse, sprand
-using LinearAlgebra: mul! 
+using LinearAlgebra: mul!
 
 """
 `struct RPIBasis`
@@ -39,6 +39,10 @@ function RPIBasis(basis1p::OneParticleBasis, N::Integer,
    # construct the cg matrices
    rotc = Rot3DCoeffs()
    A2Bmaps = ntuple(iz0 -> _rpi_A2B_matrix(rotc, pibasis, iz0), numz(pibasis))
+   # try
+   # catch e
+   #    print(e)
+   # end
    # A2Bmaps = ntuple(iz0 -> sprand(10,10, 0.1), numz(pibasis))
 
    return RPIBasis(pibasis, A2Bmaps)
@@ -46,7 +50,9 @@ end
 
 _rpi_filter(pib::PIBasisFcn{0}) = false
 _rpi_filter(pib::PIBasisFcn{1}) = (pib.oneps[1].l == 0)
-_rpi_filter(pib::PIBasisFcn) = iseven( sum(b.l for b in pib.oneps) )
+_rpi_filter(pib::PIBasisFcn) = (
+      iseven( sum(b.l for b in pib.oneps) ) &&
+      (sum(b.m for b in pib.oneps) == 0) )
 
 function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
                          pibasis::PIBasis,
@@ -116,12 +122,6 @@ _znlms2b(zz, nn, ll, mm = zero(ll), z0 = AtomicNumber(0)) =
    PIBasisFcn( z0, ntuple(i -> PSH1pBasisFcn(nn[i], ll[i], mm[i], zz[i]),
                           length(zz)) )
 
-function _get_ordered(pibasis, pib::PIBasisFcn{N}) where {N}
-   inner = pibasis.inner[z2i(pibasis, pib.z0)]
-   iAs = [ inner.b2iA[b] for b in pib.oneps ]
-   p = sortperm(iAs)
-   return PIBasisFcn(pib.z0, ntuple(i -> pib.oneps[p[i]], N))
-end
 
 # ------------------------------------------------------------------------
 #    Evaluation code
@@ -134,6 +134,7 @@ alloc_temp(basis::RPIBasis, args...) =
 
 function evaluate!(B, tmp, basis::RPIBasis, Rs, Zs, z0)
    AA = evaluate!(tmp.AA, tmp.tmp_pibasis, basis.pibasis, Rs, Zs, z0)
+   Bview = @view 
    mul!(B, basis.A2Bmaps[z2i(basis.pibasis, z0)], AA)
    return B
 end
