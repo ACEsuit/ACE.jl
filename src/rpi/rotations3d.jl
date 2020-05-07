@@ -279,11 +279,10 @@ end
 # ----------------------------------------------------------------------
 
 
-function ri_basis(A::Rot3DCoeffs{T}, ll; ordered=false) where {T}
+function ri_basis(A::Rot3DCoeffs{T}, ll::SVector; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))
-	@show ll, rk, size(CC)
 	return svdC.U[:, 1:rk]'
 end
 
@@ -336,7 +335,6 @@ function rpi_basis(A::Rot3DCoeffs,
 						 nn::SVector{N, Int},
 						 ll::SVector{N, Int}) where {N}
 	Uri = ri_basis(A, ll)
-	@show Uri
 	Mri = collect( _mrange(ll) )   # rows...
 	G = _gramian(zz, nn, ll, Uri, Mri)
    S = svd(G)

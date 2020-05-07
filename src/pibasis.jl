@@ -203,8 +203,6 @@ end
 function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
    N = basis.inner[iz0].orders[i]
    iAA2iA = basis.inner[iz0].iAA2iA[i, 1:N]
-   # @show i2z(basis, iz0)
-   # @show ntuple(n -> get_basis_spec(basis.basis1p, iz0, iAA2iA[n]), N)
    return PIBasisFcn( i2z(basis, iz0),
                   [ get_basis_spec(basis.basis1p, iz0, iAA2iA[n]) for n = 1:N] )
 end

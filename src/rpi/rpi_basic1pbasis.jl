@@ -63,7 +63,7 @@ get_basis_spec(basis::BasicPSH1pBasis, iz0::Integer, i::Integer) =
    get_basis_spec(basis, i2z(basis, iz0), i)
 
 function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber, i::Integer)
-   iz = (i ÷ length(basis.spec)) + 1
+   iz = ((i-1) ÷ length(basis.spec)) + 1
    inew = mod1(length(basis.spec), i)
    b = basis.spec[inew]
    return PSH1pBasisFcn(b.n, b.l, b.m, i2z(basis, iz))
