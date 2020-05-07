@@ -44,6 +44,9 @@ function BasicPSH1pBasis(J::ScalarBasis{T};
    return P
 end
 
+Base.length(basis::BasicPSH1pBasis, iz0::Integer) =
+      numz(basis) *  length(basis.spec)
+
 Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) =
       length(basis.spec)
 
@@ -64,7 +67,7 @@ get_basis_spec(basis::BasicPSH1pBasis, iz0::Integer, i::Integer) =
 
 function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber, i::Integer)
    iz = ((i-1) ÷ length(basis.spec)) + 1
-   inew = mod1(length(basis.spec), i)
+   inew = mod1(i, length(basis.spec))
    b = basis.spec[inew]
    return PSH1pBasisFcn(b.n, b.l, b.m, i2z(basis, iz))
 end

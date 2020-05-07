@@ -39,6 +39,8 @@ for species in (:X, :Si, [:C, :O, :H])
       A_ = sum( evaluate(P1, R, Z, z0) for (R, Z) in zip(Rs, Zs) )
       print_tf(@test A ≈ A_)
    end
+   # TODO: test that the specification is reproduced correctly!
+   
 end
 println()
 

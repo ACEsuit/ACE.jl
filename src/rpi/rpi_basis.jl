@@ -7,19 +7,22 @@
 
 
 using SparseArrays: SparseMatrixCSC, sparse, sprand
+using LinearAlgebra: mul! 
 
 """
 `struct RPIBasis`
 """
-struct RPIBasis{T, BOP, NZ}
+struct RPIBasis{T, BOP, NZ} <: IPBasis
    pibasis::PIBasis{BOP, NZ}
    A2Bmaps::NTuple{NZ, SparseMatrixCSC{T, Int}}
 end
 
-Base.length(basis::RPIBasis, iz0::Integer) = size(basis.cgmat[iz0], 1)
+Base.length(basis::RPIBasis, iz0::Integer) = size(basis.A2Bmaps[iz0], 1)
+
 Base.length(basis::RPIBasis) = sum(length(basis, iz0)
                                     for iz0 = 1:numz(basis.pibasis))
 
+Base.eltype(::RPIBasis{T}) where {T}  = T
 
 
 # ------------------------------------------------------------------------
@@ -67,9 +70,6 @@ function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
       # loop over the rows of Ull -> each specifies a basis function
       for irow = 1:size(U, 1)
          idxB += 1
-         println("========================================")
-         @show idxB
-         println("========================================")
          # loop over the columns of U / over brows
          for (icol, bcol) in enumerate(bcols)
             # this is a subtle step: bcol and bcol_ordered are equivalent
@@ -78,13 +78,6 @@ function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
             # `sparse` the values will just be added.
             bcol_ordered = _get_ordered(pibasis, bcol)
             idxAA = pibasis.inner[iz0].b2iAA[bcol_ordered]
-            println("----------------------------")
-            @show idxAA
-            zz, nn, ll, mm = _b2znlms(bcol)
-            @show zz, nn, ll, mm
-            zz, nn, ll, mm = _b2znlms(bcol_ordered)
-            @show zz, nn, ll, mm
-            println("----------------------------")
             push!(Irow, idxB)
             push!(Jcol, idxAA)
             push!(vals, U[irow, icol])
@@ -134,9 +127,13 @@ end
 #    Evaluation code
 # ------------------------------------------------------------------------
 
+alloc_temp(basis::RPIBasis, args...) =
+   ( AA = alloc_B(basis.pibasis, args...),
+     tmp_pibasis = alloc_temp(basis.pibasis, args...)
+   )
+
 function evaluate!(B, tmp, basis::RPIBasis, Rs, Zs, z0)
-   iz0 = i2z(basis.pibasis, z0)
    AA = evaluate!(tmp.AA, tmp.tmp_pibasis, basis.pibasis, Rs, Zs, z0)
-   mul!(B, basis.A2Bmaps[iz0], AA)
+   mul!(B, basis.A2Bmaps[z2i(basis.pibasis, z0)], AA)
    return B
 end
