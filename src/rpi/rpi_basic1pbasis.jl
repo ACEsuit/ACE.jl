@@ -47,10 +47,6 @@ end
 Base.length(basis::BasicPSH1pBasis, z0::AtomicNumber) =
       numz(basis) *  length(basis.spec)
 
-Base.length(basis::BasicPSH1pBasis, iz::Integer, iz0::Integer) =
-      length(basis.spec)
-
-
 Base.length(basis::BasicPSH1pBasis, iz0::Integer) =
       numz(basis) *  length(basis.spec)
 

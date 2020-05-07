@@ -18,8 +18,6 @@ import JuLIP: alloc_temp, alloc_temp_d,
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
 using JuLIP.Potentials: ZList, z2i, i2z
 
-using LinearAlgebra: mul
-
 using Random: shuffle
 
 import Base: Dict, convert, ==

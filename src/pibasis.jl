@@ -216,10 +216,14 @@ function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
 end
 
 
+
 function _get_ordered(pibasis::PIBasis, pib::PIBasisFcn)
    inner = pibasis.inner[z2i(pibasis, pib.z0)]
    return _get_ordered(inner.b2iA, pib)
 end
+
+_get_ordered(::Dict, pib::PIBasisFcn{0}) = pib
+_get_ordered(::Dict, pib::PIBasisFcn{1}) = pib
 
 function _get_ordered(b2iA::Dict, pib::PIBasisFcn{N}) where {N}
    iAs = [ b2iA[b] for b in pib.oneps ]

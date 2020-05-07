@@ -41,48 +41,29 @@ Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 B = evaluate(rpibasis, Rs, Zs, z0)
 println(@test(length(rpibasis) == length(B)))
 
-##
 # check multi-species
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-species = [:O, :H]
+species = [:C, :O, :H]
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = species, D = D)
-basis = SHIPs.RPIBasis(P1, N, D, maxdeg
-   )
+basis = SHIPs.RPIBasis(P1, N, D, maxdeg)
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
 B = evaluate(basis, Rs, Zs, z0)
-println(@test(length(basis, z0) == length(B)))
+println(@test(length(basis) == length(B)))
 
 ##
 
-spec = collect(keys(basis.pibasis.inner[1].b2iAA))
-spec = filter( b -> ((length(b.oneps) == 2) &&
-                      all(b1.n in [2,1] for b1 in b.oneps)), spec)
-display(spec)
-
-basis.pibasis.inner[1].iAA2iA |> display
-
-##
-# D = SparsePSHDegree()
-# P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X)
-# basis = SHIPs.RPIBasis(P1, N, D, degrees[N])
-# Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
-# Rsp, Zsp = SHIPs.rand_sym(Rs, Zs)
-# evaluate(basis, Rs, Zs, z0)
-# evaluate(basis, Rsp, Zsp, z0)
-
-
-degrees = [ 8, 7, 6 ]
-# degrees = [ 12, 10, 8, 8, 7, 7 ]
+degrees = [ 12, 10, 8, 8, 8, 8 ]
 
 @info("Check isometry and permutation invariance")
 # for species in (:X, :Si) # , [:C, :O, :H])
-for species in (:X, :Si), N = 1:length(degrees)
+for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    @info("   species = $species; N = $N; degree = $(degrees[N])")
    Nat = 15
    D = SparsePSHDegree()
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
    basis = SHIPs.RPIBasis(P1, N, D, degrees[N])
+   @info("   length(basis) = $(length(basis))")
    for ntest = 1:30
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       Rsp, Zsp = SHIPs.rand_sym(Rs, Zs)

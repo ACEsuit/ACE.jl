@@ -15,6 +15,7 @@ using LinearAlgebra: mul!
 struct RPIBasis{T, BOP, NZ} <: IPBasis
    pibasis::PIBasis{BOP, NZ}
    A2Bmaps::NTuple{NZ, SparseMatrixCSC{T, Int}}
+   Bz0inds::NTuple{NZ, UnitRange{Int}}
 end
 
 Base.length(basis::RPIBasis, iz0::Integer) = size(basis.A2Bmaps[iz0], 1)
@@ -45,7 +46,16 @@ function RPIBasis(basis1p::OneParticleBasis, N::Integer,
    # end
    # A2Bmaps = ntuple(iz0 -> sprand(10,10, 0.1), numz(pibasis))
 
-   return RPIBasis(pibasis, A2Bmaps)
+   # construct the indices within the B vector to which the A2Bmaps map.
+   Bz0inds = UnitRange{Int}[]
+   idx0 = 0
+   for i = 1:length(A2Bmaps)
+      len = size(A2Bmaps[i], 1)
+      push!(Bz0inds, (idx0+1):(idx0+len))
+      idx0 += len
+   end
+
+   return RPIBasis(pibasis, A2Bmaps, tuple(Bz0inds...))
 end
 
 _rpi_filter(pib::PIBasisFcn{0}) = false
@@ -133,8 +143,9 @@ alloc_temp(basis::RPIBasis, args...) =
    )
 
 function evaluate!(B, tmp, basis::RPIBasis, Rs, Zs, z0)
+   iz0 = z2i(basis.pibasis, z0)
    AA = evaluate!(tmp.AA, tmp.tmp_pibasis, basis.pibasis, Rs, Zs, z0)
-   Bview = @view 
-   mul!(B, basis.A2Bmaps[z2i(basis.pibasis, z0)], AA)
+   Bview = @view B[basis.Bz0inds[iz0]]
+   mul!(Bview, basis.A2Bmaps[iz0], AA)
    return B
 end
