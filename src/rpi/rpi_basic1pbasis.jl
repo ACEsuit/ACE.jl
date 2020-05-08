@@ -124,3 +124,28 @@ function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
    return [ PSH1pBasisFcn(b.n, b.l, m, 0)
               for b in specnl for m = -b.l:b.l ]
 end
+
+
+
+
+# function precompute_dA!(A, dA, tmp, alist, Rs, Zs, ship)
+#    fill!(A, 0)
+#    fill!(dA, zero(eltype(dA)))
+#    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+#       # precompute the derivatives of the Jacobi polynomials and Ylms
+#       evaluate_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
+#       evaluate_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
+#       # deduce the A and dA values
+#       iz = z2i(ship, Z)
+#       R̂ = R / norm(R)
+#       for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
+#          zklm = alist[i]
+#          ik = zklm.k+1; iy = index_y(zklm.l, zklm.m)
+#          A[i] += tmp.J[ik] * tmp.Y[iy]
+#          # and into dA # grad_phi_Rj(R, iR, zklm, tmp)
+#          ∇ϕ_zklm = tmp.dJ[ik] * tmp.Y[iy] * R̂ + tmp.J[ik] * tmp.dY[iy]
+#          dA[iR, i] = ∇ϕ_zklm
+#       end
+#    end
+#    return dA
+# end

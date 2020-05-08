@@ -149,3 +149,23 @@ function evaluate!(B, tmp, basis::RPIBasis, Rs, Zs, z0)
    mul!(Bview, basis.A2Bmaps[iz0], AA)
    return B
 end
+
+# ------- gradient
+
+alloc_temp_d(basis::RPIBasis, args...) =
+   (
+    dAAj = alloc_dB(basis.pibasis, args...),
+    tmpd_pibasis = alloc_temp_d(basis.pibasis, args...),
+    )
+
+function evaluate_d!(B, tmpd, basis::RPIBasis, Rs, Zs, z0)
+   A, dA = _precompute_grads!(tmpd.tmpd_pibasis, basis.pibasis, Rs, Zs, z0)
+   for j = 1:length(Rs)
+      # ∂∏A / ∂𝐫ⱼ
+      dAAj = evaluate_d_Rj!(tmpd.dAAj, basis.pibasis, A, dA, z0, j)
+      # copy into B
+      Bview = @view B[basis.Bz0inds[iz0], j]
+      mul!(Bview, basis.A2Bmaps[iz0], dAAj)
+   end
+   return B
+end

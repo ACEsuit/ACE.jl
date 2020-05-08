@@ -19,8 +19,8 @@ using JuLIP: evaluate, evaluate_d
 ##
 
 @info("Basic test of RPIBasis construction and evaluation")
-maxdeg = 4
-N =  2
+maxdeg = 15
+N = 3
 r0 = 1.0
 rcut = 3.0
 trans = PolyTransform(1, r0)
@@ -33,6 +33,9 @@ P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 pibasis = SHIPs.PIBasis(P1, N, D, maxdeg)
 rpibasis = SHIPs.RPIBasis(P1, N, D, maxdeg)
 
+length(rpibasis)
+sum(length.(rpibasis.pibasis.inner))
+# sum(length.(pibasis.inner))
 
 ##
 # check single-species

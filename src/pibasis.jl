@@ -129,16 +129,6 @@ function InnerPIBasis(Aspec, AAspec, AAindices, z0)
 end
 
 
-function evaluate!(AA, tmp, basis::InnerPIBasis, A)
-   fill!(AA, 1)
-   for i = 1:length(basis)
-      for α = 1:basis.orders[i]
-         iA = basis.iAA2iA[i, α]
-         AA[i] *= A[iA]
-      end
-   end
-   return AA
-end
 
 
 
@@ -189,24 +179,6 @@ function PIBasis(basis1p::OneParticleBasis,
 end
 
 
-alloc_B(basis::PIBasis, args...) =
-      zeros( eltype(basis.basis1p), maximum(length.(basis.inner)) )
-
-alloc_temp(basis::PIBasis, args...) =
-      ( A = alloc_B(basis.basis1p, args...),
-        tmp_basis1p = alloc_temp(basis.basis1p, args...)
-      )
-
-function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
-   # compute the (multi-variate) density projection
-   A = evaluate!(tmp.A, tmp.tmp_basis1p, basis.basis1p, Rs, Zs, z0)
-   # now evaluate the correct inner basis (this one doesn't know about z0)
-   iz0 = z2i(basis, z0)
-   evaluate!(AA, tmp, basis.inner[iz0], A)
-   return @view(AA[1:length(basis.inner[iz0])])
-end
-
-
 
 function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
    N = basis.inner[iz0].orders[i]
@@ -214,8 +186,6 @@ function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
    return PIBasisFcn( i2z(basis, iz0),
                   [ get_basis_spec(basis.basis1p, iz0, iAA2iA[n]) for n = 1:N] )
 end
-
-
 
 function _get_ordered(pibasis::PIBasis, pib::PIBasisFcn)
    inner = pibasis.inner[z2i(pibasis, pib.z0)]
@@ -229,4 +199,117 @@ function _get_ordered(b2iA::Dict, pib::PIBasisFcn{N}) where {N}
    iAs = [ b2iA[b] for b in pib.oneps ]
    p = sortperm(iAs)
    return PIBasisFcn(pib.z0, ntuple(i -> pib.oneps[p[i]], N))
+end
+
+
+# -------------------------------------------------
+# Evaluation codes
+
+alloc_B(basis::PIBasis, args...) =
+      zeros( eltype(basis.basis1p), maximum(length.(basis.inner)) )
+
+alloc_temp(basis::PIBasis, args...) =
+      ( A = alloc_B(basis.basis1p, args...),
+        tmp_basis1p = alloc_temp(basis.basis1p, args...)
+      )
+
+function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
+   # compute the (multi-variate) density projection
+   A = evaluate!(tmp.A, tmp.tmp_basis1p, basis.basis1p, Rs, Zs, z0)
+   # now evaluate the correct inner basis, which doesn't know about z0, but
+   # only ever sees A
+   iz0 = z2i(basis, z0)
+   evaluate!(AA, tmp, basis.inner[iz0], A)
+   return @view(AA[1:length(basis.inner[iz0])])
+end
+
+function evaluate!(AA, tmp, basis::InnerPIBasis, A)
+   fill!(AA, 1)
+   for i = 1:length(basis)
+      for α = 1:basis.orders[i]
+         iA = basis.iAA2iA[i, α]
+         AA[i] *= A[iA]
+      end
+   end
+   return AA
+end
+
+
+# --------------------------------------------------------
+# gradients: this section of functions is for computing
+#  ∂∏A / ∂R_j
+
+
+alloc_dB(basis::PIBasis, args...) =
+      zeros( JVec{eltype(basis.basis1p)}, maximum(length.(basis.inner)) )
+
+alloc_temp_d(basis::PIBasis, args...) =
+      (
+        A = alloc_B(basis.basis1p, args...),
+        dA = alloc_dB(basis.basis1p, args...),
+        tmp_basis1p = alloc_temp(basis.basis1p, args...),
+        tmpd_basis1p = alloc_temp(basis.basis1p, args...)
+      )
+
+
+"""
+Compute ∂∏A_a / ∂A_b = ∏_{a ≂̸ b} A_a
+"""
+function grad_AAi_Ab(iAA, b, inner, A)
+   g = one(eltype(A))
+   for a = 1:inner.orders[iAA]
+      if a != b
+         g *= A[inner.iAA2iA[iAA, a]]
+      end
+   end
+   return g
+end
+
+@doc raw"""
+Compuate ∂∏A_a / ∂Rⱼ:
+```math
+   \frac{\partial \prod_a A_a}{\partial \bm r_j}
+   =
+   \sum_b \frac{\prod_{a} A_a}{\partial A_b} \cdot \frac{\partial A_b}{\partial \bm r_j}
+   =
+   \sum_b \prod_{a \neq b} A_a \cdot \frac{\partial \phi_b}{\partial \bm r_j}
+```
+"""
+function grad_AAi_Rj(iAA, j, inner, A, dA) where {T}
+   g = zero(JVec{Complex{T}})
+   for b = 1:inner.orders[iAA] # interaction order
+      # A_{k_b} = A[iA]
+      iA = inner.iAA2iA[iAA, b]
+      # dAAi_dAb = ∂(∏A_{n_a}) / ∂A_{n_b}
+      dAAi_dAb = grad_AAi_Ab(iAA, b, inner, A)
+      g += dAAi_dAb * dA[iA, j]
+   end
+   return g
+end
+
+
+"""
+evaluate ∂AA / ∂Rⱼ
+"""
+function evaluate_d_Rj!(dAAj, inner::InnerPIBasis, A, dA, j) where {T}
+   for iAA = 1:length(inner)
+      dAAj[iAA] = grad_AAi_Rj(iAA, j, inner, A, dA)
+   end
+   return dAAj
+end
+
+"""
+evaluate ∂AA[z0] / ∂Rⱼ
+"""
+evaluate_d_Rj!(dAAj, pibasis::PIBasis, A, dA, z0, j) =
+      evaluate_d_Rj!(dAAj, pibasis.inner[z2i(pibasis, z0)], A, dA, j)
+
+"""
+precompute the 1-particle business for subsequent efficient evaluation of
+the derivatives of AA
+"""
+function _precompute_grads!(tmpd, pibasis::PIBasis, Rs, Zs, z0)
+   A = evaluate!(tmpd.A, tmpd.tmp_basis1p, pibasis.basis1p, Rs, Zs, z0)
+   dA = evaluate_d!(tmpd.dA, tmpd.tmpd_basis1p, pibasis.basis1p, Rs, Zs, z0)
+   return A, dA
 end
