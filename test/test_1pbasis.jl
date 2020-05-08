@@ -29,6 +29,10 @@ Nat = 15
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X)
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 evaluate(P1, Rs, Zs, z0)
+evaluate_d(P1, Rs[1], Zs[1], z0)
+
+
+##
 
 for species in (:X, :Si, [:C, :O, :H])
    @info("species = $species")
@@ -49,13 +53,28 @@ for species in (:X, :Si, [:C, :O, :H])
       P1_spec_2 = [ SHIPs.get_basis_spec(P1, z0, i) for i = 1:length(P1, z0) ]
       println(@test P1_spec == P1_spec_2)
    end
+   # Check gradients
+   @info("Check gradients")
+   for ntest = 1:30
+      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      R, Z = Rs[1], Zs[1]
+      U = rand(JVecF) .- 0.5; U /= norm(U)
+      A = evaluate(P1, R, Z, z0)
+      dA = dot.(Ref(U), evaluate_d(P1, R, Z, z0))
+      errs = []
+      for p = 2:10
+         h = 0.1^p
+         Ah = evaluate(P1, R + h * U, Z, z0)
+         dAh = (Ah - A) / h
+         # @show norm(dA - dAh, Inf)
+         push!(errs, norm(dA - dAh, Inf))
+      end
+      success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+      print_tf(@test success)
+   end
+   println()
 end
 println()
-
-
-##
-
-
 
 ##
 

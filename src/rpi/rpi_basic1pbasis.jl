@@ -78,30 +78,6 @@ function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber, i::Integer)
 end
 
 
-Base.eltype(basis::BasicPSH1pBasis{T}) where T = Complex{T}
-reltype(basis::BasicPSH1pBasis{T}) where T = T
-# eltype and length should provide automatic allocation of alloc_B, alloc_dB
-
-alloc_temp(basis::BasicPSH1pBasis, args...) =
-      ( BJ = alloc_B(basis.J, args...),
-        tmpJ = alloc_temp(basis.J, args...),
-        BY = alloc_B(basis.SH, args...),
-        tmpY = alloc_temp(basis.SH, args...),
-       )
-
-function add_into_A!(A, tmp, basis::BasicPSH1pBasis,
-                     R, iz::Integer, iz0::Integer)
-   # evaluate the r-basis and the R̂-basis for the current neighbour at R
-   evaluate!(tmp.BJ, tmp.tmpJ, basis.J, norm(R))
-   evaluate!(tmp.BY, tmp.tmpY, basis.SH, R)
-   # add the contributions to the A_zklm
-   for (i, nlm) in enumerate(basis.spec)
-      A[i] += tmp.BJ[nlm.n] * tmp.BY[index_y(nlm.l, nlm.m)]
-   end
-   return nothing
-end
-
-
 @doc raw"""
 `function _get_PSH_1p_spec`
 
@@ -125,27 +101,57 @@ function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
               for b in specnl for m = -b.l:b.l ]
 end
 
+# ------------------------------------------------------
+#  Evaluation code
 
 
+Base.eltype(basis::BasicPSH1pBasis{T}) where T = Complex{T}
+reltype(basis::BasicPSH1pBasis{T}) where T = T
+# eltype and length should provide automatic allocation of alloc_B, alloc_dB
 
-# function precompute_dA!(A, dA, tmp, alist, Rs, Zs, ship)
-#    fill!(A, 0)
-#    fill!(dA, zero(eltype(dA)))
-#    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-#       # precompute the derivatives of the Jacobi polynomials and Ylms
-#       evaluate_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
-#       evaluate_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
-#       # deduce the A and dA values
-#       iz = z2i(ship, Z)
-#       R̂ = R / norm(R)
-#       for i = alist.firstz[iz]:(alist.firstz[iz+1]-1)
-#          zklm = alist[i]
-#          ik = zklm.k+1; iy = index_y(zklm.l, zklm.m)
-#          A[i] += tmp.J[ik] * tmp.Y[iy]
-#          # and into dA # grad_phi_Rj(R, iR, zklm, tmp)
-#          ∇ϕ_zklm = tmp.dJ[ik] * tmp.Y[iy] * R̂ + tmp.J[ik] * tmp.dY[iy]
-#          dA[iR, i] = ∇ϕ_zklm
-#       end
-#    end
-#    return dA
-# end
+alloc_temp(basis::BasicPSH1pBasis, args...) =
+      (
+        BJ = alloc_B(basis.J, args...),
+        tmpJ = alloc_temp(basis.J, args...),
+        BY = alloc_B(basis.SH, args...),
+        tmpY = alloc_temp(basis.SH, args...),
+       )
+
+function add_into_A!(A, tmp, basis::BasicPSH1pBasis,
+                     R, iz::Integer, iz0::Integer)
+   # evaluate the r-basis and the R̂-basis for the current neighbour at R
+   evaluate!(tmp.BJ, tmp.tmpJ, basis.J, norm(R))
+   evaluate!(tmp.BY, tmp.tmpY, basis.SH, R)
+   # add the contributions to the A_zklm
+   for (i, nlm) in enumerate(basis.spec)
+      A[i] += tmp.BJ[nlm.n] * tmp.BY[index_y(nlm.l, nlm.m)]
+   end
+   return nothing
+end
+
+alloc_temp_d(basis::BasicPSH1pBasis, args...) =
+      (
+        BJ = alloc_B(basis.J, args...),
+        tmpJ = alloc_temp(basis.J, args...),
+        BY = alloc_B(basis.SH, args...),
+        tmpY = alloc_temp(basis.SH, args...),
+        dBJ = alloc_dB(basis.J, args...),
+        tmpdJ = alloc_temp_d(basis.J, args...),
+        dBY = alloc_dB(basis.SH, args...),
+        tmpdY = alloc_temp_d(basis.SH, args...),
+       )
+
+function add_into_A_dA!(A, dA, tmpd, basis::BasicPSH1pBasis, R, iz::Integer, iz0::Integer)
+   r = norm(R)
+   R̂ = R / r
+   # evaluate the r-basis and the R̂-basis for the current neighbour at R
+   evaluate_d!(tmpd.BJ, tmpd.dBJ, tmpd.tmpdJ, basis.J, r)
+   evaluate_d!(tmpd.BY, tmpd.dBY, tmpd.tmpdY, basis.SH, R)
+   # add the contributions to the A_zklm, ∇A
+   for (i, nlm) in enumerate(basis.spec)
+      iY = index_y(nlm.l, nlm.m)
+      A[i] += tmpd.BJ[nlm.n] * tmpd.BY[iY]
+      dA[i] = (tmpd.dBJ[nlm.n] * tmpd.BY[iY]) * R̂ + tmpd.BJ[nlm.n] * tmpd.dBY[iY]
+   end
+   return nothing
+end
