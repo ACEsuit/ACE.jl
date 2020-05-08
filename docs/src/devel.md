@@ -7,14 +7,16 @@
 ## General Notes
 
  * Always use `Int` for indexing, never `Int16, Int32`, etc.
- *
+ * There is a lot of switching between a species given by an `AtomicNumber` type and the index of that species in a list, given by an `Int`. Functions dispatch on `Int` vs `AtomicNumber` to make sure there is no confusion.
 
 ## Types and type hierarchy
 
-TODO: summarize the main types and how they connect up...
+The `SHIPs.jl` package heavily utilizes composition (as opposed to inheritance), which is well aligned with Julia's type system and recommended style. Basis sets and calculators are built from the following two base types:
 
-A concrete basis will be built from `OneParticleBasis` and `PIBasis` objects.
+* `OneParticleBasis` : abstract supertype of a 1-particle basis
+* `PIBasis` : concrete implementation of a permutation-invariant basis
 
+For example, a rotation-invariant site energy basis set (ACE and extensions) `RPIBasis` is built from a `PIBasis` and the coupling coefficients. The `PIBasis` itself is specified in terms of the `OneParticleBasis`.
 
 ## One Particle Basis
 
@@ -52,6 +54,12 @@ add_into_A!(A[iz], tmp, basis, R, iz, iz0)
 an implementation of `OneParticleBasis` then only needs to overload `add_into_A!` which should evaluate ``\phi_k^{z z_0}({\bm r})`` (where `R` represents ``{\bm r}``) and *add* these values into `A[k]`.
 For this to work, the type of the 1-particle basis must contain a field `zlist` which implements the interface defined by `JuLIP.Potentials.ZList` and `JuLIP.Potentials.SZList`.
 
+To build a `PIBasis` (see below) the `OneParticleBasis` musts also provide methods that specify it:
+```
+get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
+get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber, i::Integer)
+```
+The first of these should return a `Vector` containing `OnepBasisFcn` objects that specify the list of 1-particle basis functions for a centre atom of species `z0`. The second method should return precisely the ith element of this vector. A concrete `OneParticleBasis` may either simply keep these specifications stored throughout its lifetime, or generate them on the fly, whichever is most convenient.
 
 !!! note "Concrete subtypes of `OneParticleBasis`"
     Concrete subtypes of `OneParticleBasis` are
@@ -95,9 +103,13 @@ where the storage arrays are
 * `AA::Vector{<: Number}` : to store any AA_kk^{zz, z0} with z0 fixed, i.e. the AA vector for a single site only. To use a PIBasis as the *actual* basis rather than an auxiliary one should wrap it (see bonds -- TODO!)
 * `dAA::Matrix{<: JVec}` with dimension basis-length x number of particles
 
+We don't provide a detailed description here of the implementation, since it is already the final product. But we can summarize the functionality that is provided that can be used to construct further basis sets from it.
 
-## Generating a `PIBasis`
+TODO
 
+## Generating a `OneParticleBasis` and `PIBasis` via `gen_sparse`
+
+TODO
 
 
 ## Derived Potentials
@@ -113,8 +125,10 @@ It is constructed by reducing a permutation invariant `PIBasis` to a permutation
 ```
 where ``B`` is the new RPI basis, ``{\bm A}`` the "inner" PI basis and ``C`` the coupling coefficients that achieve the rotation-invariance. This relies on a specific choice of the one-particle basis. This construction is outlined in (Atomic Cluster Expansion; Drautz 2019) and an extended derivation with full details in (Bachmayr, Drautz, Dusson, Etter, Van der Oort, Csanyi, Ortner, arXiv:19..). The implementation of the ``C`` coefficients in `rpi/rotations3d.jl` is based on a numerical SVD as opposed to an analytic SVD.
 
-The `RPIBasis` type stores only two fields, the `PIBasis` and the coefficients ``C``.
+The `RPIBasis` type stores only three fields: the `PIBasis`, the coefficients ``C``, and some index management to map the local site basis into a global basis (only needed for multiple species).
 
 TODO: discuss the classes of 1-particle bases that are allowed.
+
+
 
 ## Bond-Environment Potentials
