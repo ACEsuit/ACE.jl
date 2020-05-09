@@ -482,11 +482,13 @@ alloc_B( S::SHBasis{T}, args...) where {T} =
 alloc_B( S::RSHBasis{T}, args...) where {T} =
 		Vector{T}(undef, length(S))
 
-alloc_dB(S::SHBasis{T}, N::Integer) where {T} =
+alloc_dB(S::SHBasis{T}) where {T} =
 		Vector{JVec{Complex{T}}}(undef, length(S))
 
-alloc_dB(S::RSHBasis{T}, N::Integer) where {T} =
+alloc_dB(S::RSHBasis{T}) where {T} =
 		Vector{JVec{T}}(undef, length(S))
+
+alloc_dB(S::AbstractSHBasis, N::Integer) = alloc_dB(S)
 
 alloc_temp(SH::AbstractSHBasis{T}, args...) where {T} = (
 		P = Vector{T}(undef, sizeP(SH.maxL)), )

@@ -26,11 +26,10 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     include("rpi/test_cg.jl")
     include("rpi/test_rpibasis.jl")
 
-    # include("test_cg.jl")
+
     # include("pairpots/test_basics.jl")
     # include("pairpots/test_repulsion.jl")
-    # include("test_basis.jl")
-    # include("test_filter_rpi_alg.jl")
+
     # include("test_fast.jl")
     # include("test_real.jl")
     # include("test_multispecies.jl")
@@ -43,5 +42,3 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     # include("bonds/test_fourier.jl")
     # include("bonds/test_envpairbasis.jl")
 end
-
-# *

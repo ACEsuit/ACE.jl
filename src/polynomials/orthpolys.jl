@@ -165,8 +165,8 @@ alloc_B( J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 alloc_dB(J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 
 # TODO: revisit this to allow type genericity!!!
-alloc_B( J::OrthPolyBasis, ::TX) where {TX} = zeros(TX, length(J))
-alloc_dB(J::OrthPolyBasis, ::TX) where {TX} = zeros(TX, length(J))
+alloc_B( J::OrthPolyBasis, ::TX) where {TX <: Number} = zeros(TX, length(J))
+alloc_dB(J::OrthPolyBasis, ::TX) where {TX <: Number} = zeros(TX, length(J))
 alloc_B( J::OrthPolyBasis,
          ::Union{JVec{TX}, AbstractVector{JVec{TX}}}) where {TX} =
    zeros(TX, length(J))
@@ -267,7 +267,7 @@ end
 
 cutoff(J::TransformedPolys) = J.ru
 
-alloc_B( J::TransformedPolys, args...) = alloc_B(J.J)
+alloc_B( J::TransformedPolys, args...) = alloc_B(J.J, args...)
 alloc_dB(J::TransformedPolys) = alloc_dB(J.J)
 alloc_dB(J::TransformedPolys, N::Integer) = alloc_dB(J.J)
 
