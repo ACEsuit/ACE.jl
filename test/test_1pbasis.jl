@@ -67,7 +67,7 @@ for species in (:X, :Si, [:C, :O, :H])
    end
    println()
 end
-println()
+
 
 ##
 
