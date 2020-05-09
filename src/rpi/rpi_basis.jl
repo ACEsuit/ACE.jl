@@ -25,6 +25,9 @@ Base.length(basis::RPIBasis) = sum(length(basis, iz0)
 
 Base.eltype(::RPIBasis{T}) where {T}  = T
 
+JuLIP.Potentials.i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
+JuLIP.Potentials.z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
+
 
 # ------------------------------------------------------------------------
 #    Basis construction code
@@ -40,11 +43,6 @@ function RPIBasis(basis1p::OneParticleBasis, N::Integer,
    # construct the cg matrices
    rotc = Rot3DCoeffs()
    A2Bmaps = ntuple(iz0 -> _rpi_A2B_matrix(rotc, pibasis, iz0), numz(pibasis))
-   # try
-   # catch e
-   #    print(e)
-   # end
-   # A2Bmaps = ntuple(iz0 -> sprand(10,10, 0.1), numz(pibasis))
 
    # construct the indices within the B vector to which the A2Bmaps map.
    Bz0inds = UnitRange{Int}[]
@@ -138,13 +136,13 @@ _znlms2b(zz, nn, ll, mm = zero(ll), z0 = AtomicNumber(0)) =
 # ------------------------------------------------------------------------
 
 alloc_temp(basis::RPIBasis, args...) =
-   ( AA = alloc_B(basis.pibasis, args...),
+   ( AA = site_alloc_B(basis.pibasis, args...),
      tmp_pibasis = alloc_temp(basis.pibasis, args...)
    )
 
 function evaluate!(B, tmp, basis::RPIBasis, Rs, Zs, z0)
-   iz0 = z2i(basis.pibasis, z0)
-   AA = evaluate!(tmp.AA, tmp.tmp_pibasis, basis.pibasis, Rs, Zs, z0)
+   iz0 = z2i(basis, z0)
+   AA = site_evaluate!(tmp.AA, tmp.tmp_pibasis, basis.pibasis, Rs, Zs, z0)
    Bview = @view B[basis.Bz0inds[iz0]]
    mul!(Bview, basis.A2Bmaps[iz0], AA)
    return B
@@ -154,18 +152,29 @@ end
 
 alloc_temp_d(basis::RPIBasis, args...) =
    (
-    dAAj = alloc_dB(basis.pibasis, args...),
+    AA = site_alloc_B(basis.pibasis, args...),
+    tmp_pibasis = alloc_temp(basis.pibasis, args...),
+    dAAj = site_alloc_dB(basis.pibasis, args...),
     tmpd_pibasis = alloc_temp_d(basis.pibasis, args...),
     )
 
-function evaluate_d!(B, tmpd, basis::RPIBasis, Rs, Zs, z0)
-   A, dA = _precompute_grads!(tmpd.tmpd_pibasis, basis.pibasis, Rs, Zs, z0)
+# TODO: evaluate also B??? the interface seems to command it.
+function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
+   iz0 = z2i(basis, z0)
+   # fill B. TODO: do this as part of evaluating dB?
+   evaluate!(B, tmpd, basis, Rs, Zs, z0)
+   # now move to dB; here we are unfortunately computing A twice.
+   # but timings suggest this makes almost no difference
+   A = tmpd.tmpd_pibasis.A
+   dA = tmpd.tmpd_pibasis.dA
+   evaluate_d!(A, dA, tmpd.tmpd_pibasis.tmpd_basis1p, basis.pibasis.basis1p,
+               Rs, Zs, z0)
    for j = 1:length(Rs)
       # ∂∏A / ∂𝐫ⱼ
       dAAj = evaluate_d_Rj!(tmpd.dAAj, basis.pibasis, A, dA, z0, j)
       # copy into B
-      Bview = @view B[basis.Bz0inds[iz0], j]
-      mul!(Bview, basis.A2Bmaps[iz0], dAAj)
+      dBview = @view dB[basis.Bz0inds[iz0], j]
+      mul!(dBview, basis.A2Bmaps[iz0], dAAj)
    end
-   return B
+   return dB
 end

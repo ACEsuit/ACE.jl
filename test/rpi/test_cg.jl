@@ -27,14 +27,6 @@ pycg(j1, m1, j2, m2, j3, m3, T=Float64) =
 
 cg = SHIPs.Rotations3D.ClebschGordan()
 
-j1 = 3
-j2 = 4
-m1 = -3
-m2 = 2
-J = 4
-M = m1 + m2
-cg(j1, j2, m1, m2, J, M)
-
 ##
 
 @info("compare implementation against `sympy`")

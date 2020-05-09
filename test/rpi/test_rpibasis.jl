@@ -13,7 +13,7 @@
 
 using SHIPs
 using Random, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
-using JuLIP: evaluate, evaluate_d
+using JuLIP: evaluate, evaluate_d, evaluate_ed
 
 
 ##
@@ -33,18 +33,19 @@ P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 pibasis = SHIPs.PIBasis(P1, N, D, maxdeg)
 rpibasis = SHIPs.RPIBasis(P1, N, D, maxdeg)
 
-length(rpibasis)
-sum(length.(rpibasis.pibasis.inner))
-# sum(length.(pibasis.inner))
-
 ##
-# check single-species
+@info("Basis construction and evaluation checks")
+@info("check single species")
 Nat = 15
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 B = evaluate(rpibasis, Rs, Zs, z0)
 println(@test(length(rpibasis) == length(B)))
+dB = evaluate_d(rpibasis, Rs, Zs, z0)
+println(@test(size(dB) == (length(rpibasis), length(Rs))))
+B_, dB_ = evaluate_ed(rpibasis, Rs, Zs, z0)
+println(@test (B_ == B) && (dB_ == dB))
 
-# check multi-species
+@info("check multi-species")
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
@@ -53,25 +54,48 @@ basis = SHIPs.RPIBasis(P1, N, D, maxdeg)
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
 B = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(B)))
+dB = evaluate_d(basis, Rs, Zs, z0)
+println(@test(size(dB) == (length(basis), length(Rs))))
+B_, dB_ = evaluate_ed(basis, Rs, Zs, z0)
+println(@test (B_ == B) && (dB_ == dB))
 
 ##
 
 degrees = [ 12, 10, 8, 8, 8, 8 ]
 
-@info("Check isometry and permutation invariance")
+@info("Check a few basis properties ")
 # for species in (:X, :Si) # , [:C, :O, :H])
 for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
-   @info("   species = $species; N = $N; degree = $(degrees[N])")
    Nat = 15
    D = SparsePSHDegree()
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
    basis = SHIPs.RPIBasis(P1, N, D, degrees[N])
-   @info("   length(basis) = $(length(basis))")
+   @info("species = $species; N = $N; deg = $(degrees[N]); len = $(length(basis))")
+   @info("   isometry and permutation invariance")
    for ntest = 1:30
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       Rsp, Zsp = SHIPs.rand_sym(Rs, Zs)
       print_tf(@test(evaluate(basis, Rs, Zs, z0) ≈
                      evaluate(basis, Rsp, Zsp, z0)))
+   end
+   println()
+   @info("   check derivatives")
+   for ntest = 1:30
+      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      B = evaluate(basis, Rs, Zs, z0)
+      dB = evaluate_d(basis, Rs, Zs, z0)
+      Us = [ rand(eltype(Rs)) .- 0.5 for _=1:length(Rs) ]
+      dB_dUs = transpose.(dB) * Us
+      errs = []
+      for p = 2:12
+         h = 0.1^p
+         B_h = evaluate(basis, Rs + h * Us, Zs, z0)
+         dB_h = (B_h - B) / h
+         # @show norm(dAA_h - dAA_dUs, Inf)
+         push!(errs, norm(dB_h - dB_dUs, Inf))
+      end
+      success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+      print_tf(@test success)
    end
    println()
 end

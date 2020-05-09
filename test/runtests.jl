@@ -24,7 +24,7 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     # ----------------------
     #   rotation_invariance
     include("rpi/test_cg.jl")
-    include("rpi/test_rpibasis.jl") 
+    include("rpi/test_rpibasis.jl")
 
     # include("test_cg.jl")
     # include("pairpots/test_basics.jl")

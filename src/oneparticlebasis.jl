@@ -30,7 +30,7 @@ function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis, Rs, Zs::AbstractVecto
       iz = z2i(basis, Z)
       Aview = @view A[basis.Aindices[iz, iz0]]
       dAview = @view dA[basis.Aindices[iz, iz0], j]
-      add_into_A_dA!(Aview, dAview, tmp, basis, R, iz, iz0)
+      add_into_A_dA!(Aview, dAview, tmpd, basis, R, iz, iz0)
    end
    return dA
 end
@@ -64,6 +64,16 @@ function alloc_B(basis::OneParticleBasis, args...)
    T = eltype(basis)
    return zeros(T, maxlen)
 end
+
+
+function alloc_dB(basis::OneParticleBasis, maxN::Integer)
+   NZ = numz(basis)
+   maxlen = maximum( sum( length(basis, iz, iz0) for iz = 1:NZ )
+                     for iz0 = 1:NZ )
+   T = eltype(basis)
+   return zeros(JVec{T}, (maxlen, maxN))
+end
+
 
 
 function set_Aindices!(basis::OneParticleBasis)

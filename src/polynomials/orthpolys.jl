@@ -267,8 +267,9 @@ end
 
 cutoff(J::TransformedPolys) = J.ru
 
-alloc_B( J::TransformedPolys, args...) = alloc_B( J.J, args...)
-alloc_dB(J::TransformedPolys, args...) = alloc_dB(J.J, args...)
+alloc_B( J::TransformedPolys, args...) = alloc_B(J.J)
+alloc_dB(J::TransformedPolys) = alloc_dB(J.J)
+alloc_dB(J::TransformedPolys, N::Integer) = alloc_dB(J.J)
 
 function evaluate!(P, tmp, J::TransformedPolys, r)
    # transform coordinates

@@ -155,6 +155,9 @@ mutable struct PIBasis{BOP, NZ} <: IPBasis
    inner::NTuple{NZ, InnerPIBasis}
 end
 
+Base.eltype(basis::PIBasis) = eltype(basis.basis1p)
+
+Base.length(basis::PIBasis) = sum(length(basis, iz) for iz = 1:numz(basis))
 Base.length(basis::PIBasis, iz0::Integer) = length(basis.inner[iz0])
 Base.length(basis::PIBasis, z0::AtomicNumber) = length(basis, z2i(basis, z0))
 
@@ -205,15 +208,26 @@ end
 # -------------------------------------------------
 # Evaluation codes
 
-alloc_B(basis::PIBasis, args...) =
-      zeros( eltype(basis.basis1p), maximum(length.(basis.inner)) )
+site_alloc_B(basis::PIBasis, args...) =
+      zeros( eltype(basis), maximum(length.(basis.inner)) )
 
 alloc_temp(basis::PIBasis, args...) =
       ( A = alloc_B(basis.basis1p, args...),
         tmp_basis1p = alloc_temp(basis.basis1p, args...)
       )
 
+# this method treats basis as a actual basis across all species
 function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
+   fill!(AA, 0)
+   iz0 = z2i(basis, z0)
+   AAview = @view AA[basis.inner[iz0].AAindices]
+   site_evaluate!(AAview, tmp, basis, Rs, Zs, z0)
+   return AA
+end
+
+# this method treats basis as a basis for a single species z0, i.e.
+# AA is assumed to only contain the AA^{z0}.
+function site_evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
    # compute the (multi-variate) density projection
    A = evaluate!(tmp.A, tmp.tmp_basis1p, basis.basis1p, Rs, Zs, z0)
    # now evaluate the correct inner basis, which doesn't know about z0, but
@@ -223,6 +237,8 @@ function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
    return @view(AA[1:length(basis.inner[iz0])])
 end
 
+# this method evaluates the InnerPIBasis, which is really the actual
+# evaluation code; the rest is mostly logic
 function evaluate!(AA, tmp, basis::InnerPIBasis, A)
    fill!(AA, 1)
    for i = 1:length(basis)
@@ -240,16 +256,41 @@ end
 #  ∂∏A / ∂R_j
 
 
-alloc_dB(basis::PIBasis, args...) =
-      zeros( JVec{eltype(basis.basis1p)}, maximum(length.(basis.inner)) )
+site_alloc_dB(basis::PIBasis, args...) =
+      zeros( JVec{eltype(basis)}, maximum(length.(basis.inner)) )
 
 alloc_temp_d(basis::PIBasis, args...) =
       (
         A = alloc_B(basis.basis1p, args...),
         dA = alloc_dB(basis.basis1p, args...),
         tmp_basis1p = alloc_temp(basis.basis1p, args...),
-        tmpd_basis1p = alloc_temp(basis.basis1p, args...)
+        tmpd_basis1p = alloc_temp_d(basis.basis1p, args...)
       )
+
+
+function evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
+   iz0 = z2i(basis, z0)
+   AAview = @view AA[basis.inner[iz0].AAindices]
+   dAAview = @view dAA[basis.inner[iz0].AAindices, 1:length(Rs)]
+   site_evaluate_d!(AAview, dAAview, tmpd, basis, Rs, Zs, z0)
+   return dAA
+end
+
+function site_evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
+   iz0 = z2i(basis, z0)
+   # precompute the 1-p basis and its derivatives
+   evaluate_d!(tmpd.A, tmpd.dA, tmpd.tmpd_basis1p, basis.basis1p, Rs, Zs, z0)
+   # evaluate the AA basis
+   evaluate!(AA, nothing, basis.inner[iz0], tmpd.A)
+   # loop over all neighbours
+   for j = 1:length(Rs)
+      # write the gradients into the correct slice of the dAA matrix
+      dAAj = @view dAA[:, j]
+      evaluate_d_Rj!(dAAj, basis, tmpd.A, tmpd.dA, z0, j)
+   end
+   return nothing
+end
+
 
 
 """
@@ -275,8 +316,8 @@ Compuate ∂∏A_a / ∂Rⱼ:
    \sum_b \prod_{a \neq b} A_a \cdot \frac{\partial \phi_b}{\partial \bm r_j}
 ```
 """
-function grad_AAi_Rj(iAA, j, inner, A, dA) where {T}
-   g = zero(JVec{Complex{T}})
+function grad_AAi_Rj(iAA, j, inner, A, dA)
+   g = zero(eltype(dA))
    for b = 1:inner.orders[iAA] # interaction order
       # A_{k_b} = A[iA]
       iA = inner.iAA2iA[iAA, b]
@@ -303,13 +344,3 @@ evaluate ∂AA[z0] / ∂Rⱼ
 """
 evaluate_d_Rj!(dAAj, pibasis::PIBasis, A, dA, z0, j) =
       evaluate_d_Rj!(dAAj, pibasis.inner[z2i(pibasis, z0)], A, dA, j)
-
-"""
-precompute the 1-particle business for subsequent efficient evaluation of
-the derivatives of AA
-"""
-function _precompute_grads!(tmpd, pibasis::PIBasis, Rs, Zs, z0)
-   A = evaluate!(tmpd.A, tmpd.tmp_basis1p, pibasis.basis1p, Rs, Zs, z0)
-   dA = evaluate_d!(tmpd.dA, tmpd.tmpd_basis1p, pibasis.basis1p, Rs, Zs, z0)
-   return A, dA
-end
