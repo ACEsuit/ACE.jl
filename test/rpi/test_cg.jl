@@ -23,18 +23,19 @@ cg = SHIPs.Rotations3D.ClebschGordan()
 ##
 
 @info("compare implementation against `sympy`")
-ntest = 0
-while ntest <= 200
-   j1 = rand(0:10)
-   j2 = rand(0:10)
-   J = rand(abs(j1-j2):min(10,(j1+j2)))
-   m1 = rand(-j1:j1)
-   for m2 = -j2:j2
-      M = m1+m2
-      if abs(M) <= J
-         global ntest += 1
-         print_tf(@test cg(j1,m1, j2,m2, J,M) ≈ pycg(j1,m1, j2,m2, J,M))
-         # print_tf(@test clebschgordan(j1,m1, j2,m2, J,M) ≈ )
+let ntest = 0
+   while ntest < 200
+      j1 = rand(0:10)
+      j2 = rand(0:10)
+      J = rand(abs(j1-j2):min(10,(j1+j2)))
+      m1 = rand(-j1:j1)
+      for m2 = -j2:j2
+         M = m1+m2
+         if abs(M) <= J
+            ntest += 1
+            print_tf(@test cg(j1,m1, j2,m2, J,M) ≈ pycg(j1,m1, j2,m2, J,M))
+            # print_tf(@test clebschgordan(j1,m1, j2,m2, J,M) ≈ )
+         end
       end
    end
 end
