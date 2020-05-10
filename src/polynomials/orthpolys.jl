@@ -163,6 +163,8 @@ end
 
 alloc_B( J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 alloc_dB(J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
+alloc_B( J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
+alloc_dB(J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
 
 # TODO: revisit this to allow type genericity!!!
 alloc_B( J::OrthPolyBasis, ::TX) where {TX <: Number} = zeros(TX, length(J))

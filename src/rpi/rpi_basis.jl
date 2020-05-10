@@ -131,6 +131,16 @@ _znlms2b(zz, nn, ll, mm = zero(ll), z0 = AtomicNumber(0)) =
                           length(zz)) )
 
 
+function combine(basis::RPIBasis, coeffs)
+   # function SHIP(basis::SHIPBasis{T, NZ}, coeffs::AbstractVector{T}
+   #               ) where {T, NZ}
+   #    AAcoeffs = ntuple(iz0 -> (coeffs[_get_I_iz0(basis, iz0)]' * basis.A2B[iz0])[:], NZ)
+   #    return SHIP( basis.J, basis.SH, basis.zlist,
+   #                 basis.alists, basis.aalists, AAcoeffs )
+   # end
+end
+
+
 # ------------------------------------------------------------------------
 #    Evaluation code
 # ------------------------------------------------------------------------

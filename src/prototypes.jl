@@ -7,16 +7,18 @@
 
 
 
-import JuLIP.Potentials: z2i
 
 import JuLIP: alloc_temp, alloc_temp_d,
               cutoff,
               evaluate, evaluate_d,
               evaluate!, evaluate_d!,
-              SitePotential
+              SitePotential,
+              z2i, i2z
 
-import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
-using JuLIP.Potentials: ZList, z2i, i2z
+import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, combine
+
+using JuLIP.Potentials: ZList
+using JuLIP: JVec 
 
 using Random: shuffle
 

@@ -86,35 +86,6 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
 end
 println()
 
-# ##
-#
-# @info("Check derivatives")
-#
-# maxdeg = 6
-# r0 = 1.0
-# rcut = 3.0
-# trans = PolyTransform(1, r0)
-# Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-# D = SHIPs.SparsePSHDegree()
-# P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
-#
-# basis = SHIPs.PIBasis(P1, 3, D, maxdeg)
-#
-# Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
-# AA = evaluate(basis, Rs, Zs, z0)
-# dAA = evaluate_d(basis, Rs, Zs, z0)
-# Us = [ rand(eltype(Rs)) .- 0.5 for _=1:length(Rs) ]
-# dAA_dUs = transpose.(dAA) * Us
-#
-# errs = []
-# for p = 2:12
-#    h = 0.1^p
-#    AA_h = evaluate(basis, Rs + h * Us, Zs, z0)
-#    dAA_h = (AA_h - AA) / h
-#    # @show norm(dAA_h - dAA_dUs, Inf)
-#    push!(errs, norm(dAA_h - dAA_dUs, Inf))
-# end
-
 ##
 
 

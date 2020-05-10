@@ -30,8 +30,9 @@ include("oneparticlebasis.jl")
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
-# -> pipotential
-# -> realpipotential
+include("pipot.jl")
+# TODO:
+# - realpipotential
 
 # rotation-invariant site potentials (incl the ACE model)
 include("rpi/rpi.jl")
