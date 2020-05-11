@@ -65,6 +65,11 @@ function alloc_B(basis::OneParticleBasis, args...)
    return zeros(T, maxlen)
 end
 
+# TODO: fix the dispatch structure on alloc_dB
+alloc_dB(basis::OneParticleBasis, ::JVec) = alloc_dB(basis, 1)
+alloc_dB(basis::OneParticleBasis, Rs::AbstractVector{<: JVec}, args...) =
+      alloc_dB(basis, length(Rs))
+alloc_dB(basis::OneParticleBasis) = alloc_dB(basis, 1)
 
 function alloc_dB(basis::OneParticleBasis, maxN::Integer)
    NZ = numz(basis)
