@@ -13,7 +13,8 @@ using StaticArrays, LinearAlgebra
 import SHIPs
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
-import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!
+import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!,
+			     write_dict, read_dict
 
 const JVec = SVector{3}
 
@@ -466,6 +467,14 @@ import Base.==
 ==(B1::AbstractSHBasis, B2::AbstractSHBasis) =
 	( (B1.maxL == B1.maxL) &&
 	  (typeof(B1) == typeof(B2)) )
+
+write_dict(SH::SHBasis{T}) where {T} =
+		Dict("__id__" => "SHIPs_SHBasis",
+			  "T" => write_dict(T),
+			  "maxL" => SH.maxL)
+
+read_dict(::Val{:SHIPs_SHBasis}, D::Dict) =
+		SHBasis(D["maxL"], read_dict(D["T"]))
 
 SHBasis(maxL::Integer, T::Type=Float64) =
 		SHBasis(Int(maxL), compute_coefficients(maxL, T))

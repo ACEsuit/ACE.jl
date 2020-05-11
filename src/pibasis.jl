@@ -34,6 +34,15 @@ function PIBasisFcn(Aspec, t, z0::AtomicNumber)
    return PIBasisFcn(z0, Aspec[[tnz...]])
 end
 
+write_dict(b::PIBasisFcn) =
+   Dict("__id__" => "SHIPs_PIBasisFcn",
+        "z0" => write_dict(b.z0),
+        "oneps" => write_dict.(b.oneps))
+
+read_dict(::Val{:SHIPs_PIBasisFcn}, D::Dict) =
+   PIBasisFcn( read_dict(D["z0"]),
+               tuple( read_dict.(D["oneps"]) ... ) )
+
 
 """
 note this function doesn't return an ordered specification, this is due
@@ -42,7 +51,7 @@ Instead the ordering is achieved in the InnerPIBasis constructor
 """
 function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
                      D::AbstractDegree, maxdeg::Real,
-                     z0::AtomicNumber; filter = _->true)
+                     z0::AtomicNumber; filter = _->true )
    iz0 = z2i(basis1p, z0)
    # get the basis spec of the one-particle basis
    #  Aspec[i] described the basis function that will get written into A[i]
@@ -62,9 +71,8 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
                        tup2b = tup2b, degfun = D, ordered = true,
                        maxν = length(Aspec_p),
                        filter = filter)
-   return Aspec, AAspec
+   return AAspec
 end
-
 
 
 
@@ -83,6 +91,10 @@ mutable struct InnerPIBasis <: IPBasis
    b2iA::Dict{Any, Int}          # mapping from 1-p basis fcn to index in A[z0]
    AAindices::UnitRange{Int}     # where in AA does AA[z0] fit?
 end
+
+==(B1::InnerPIBasis, B2::InnerPIBasis) = (
+   (B1.b2iA == B2.b2iA) &&
+   (sortslices(B1.iAA2iA, dims=1) == sortslices(B2.iAA2iA, dims=1)) )
 
 Base.length(basis::InnerPIBasis) = length(basis.orders)
 
@@ -155,6 +167,8 @@ mutable struct PIBasis{BOP, NZ} <: IPBasis
    inner::NTuple{NZ, InnerPIBasis}
 end
 
+==(B1::PIBasis, B2::PIBasis) = SHIPs._allfieldsequal(B1, B2)
+
 Base.eltype(basis::PIBasis) = eltype(basis.basis1p)
 
 Base.length(basis::PIBasis) = sum(length(basis, iz) for iz = 1:numz(basis))
@@ -165,22 +179,34 @@ function PIBasis(basis1p::OneParticleBasis,
                  N::Integer,
                  D::AbstractDegree,
                  maxdeg::Real;
-                 filter = _->true)
-   zlist = basis1p.zlist
-   inner = InnerPIBasis[]
-   idx = 0
+                 filter = b -> order(b) > 0)
+   innerspecs = Any[]
    # now for each iz0 (i.e. for each z0) construct an "inner basis".
    for iz0 = 1:numz(basis1p)
       z0 = i2z(basis1p, iz0)
       # get a list of 1-p basis function
-      Aspec_z0, AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0; filter=filter)
+      AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0; filter=filter)
+      push!(innerspecs, AAspec_z0)
+   end
+   return pibasis_from_specs(basis1p, identity.(innerspecs))
+end
+
+
+# TODO: instead of copying zlist, maybe forward the zlist methods
+
+function pibasis_from_specs(basis1p, innerspecs)
+   idx = 0
+   inner = InnerPIBasis[]
+   for iz0 = 1:numz(basis1p)
+      z0 = i2z(basis1p, iz0)
+      Aspec_z0 = get_basis_spec(basis1p, z0)
+      AAspec_z0 = innerspecs[iz0]
       AAindices = (idx+1):(idx+length(AAspec_z0))
       push!(inner, InnerPIBasis(Aspec_z0, AAspec_z0, AAindices, z0))
       idx += length(AAspec_z0)
    end
-   return PIBasis(basis1p, zlist, tuple(inner...))
+   return PIBasis(basis1p, basis1p.zlist, tuple(inner...))
 end
-
 
 
 function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
@@ -202,6 +228,23 @@ function _get_ordered(b2iA::Dict, pib::PIBasisFcn{N}) where {N}
    iAs = [ b2iA[b] for b in pib.oneps ]
    p = sortperm(iAs)
    return PIBasisFcn(pib.z0, ntuple(i -> pib.oneps[p[i]], N))
+end
+
+
+# -------------------------------------------------
+# FIO codes
+
+
+write_dict(basis::PIBasis) =
+   Dict(  "__id__" => "SHIPs_PIBasis",
+         "basis1p" => write_dict(basis.basis1p),
+           "inner" => [ write_dict.( collect(keys(basis.inner[iz0].b2iAA)) )
+                         for iz0 = 1:numz(basis) ] )
+
+function read_dict(::Val{:SHIPs_PIBasis}, D::Dict)
+   basis1p = read_dict(D["basis1p"])
+   innerspecs = [ read_dict.(D["inner"][iz0])  for iz0 = 1:numz(basis1p) ]
+   return pibasis_from_specs(basis1p, innerspecs)
 end
 
 

@@ -13,12 +13,13 @@ import JuLIP: alloc_temp, alloc_temp_d,
               evaluate, evaluate_d,
               evaluate!, evaluate_d!,
               SitePotential,
-              z2i, i2z
+              z2i, i2z,
+              read_dict, write_dict
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, combine
 
 using JuLIP.Potentials: ZList
-using JuLIP: JVec 
+using JuLIP: JVec
 
 using Random: shuffle
 
@@ -59,6 +60,12 @@ the `arg` argument.
 """
 function degree end
 
+# ------------------------------------------------------------
+# some auxiliary stuff, probably to be moved elsewhere
+
+_allfieldsequal(x1, x2) =
+      all( getfield(x1, sym) == getfield(x2, sym)
+           for sym in union(fieldnames(typeof(x1)), fieldnames(typeof(x2))) )
 
 
 

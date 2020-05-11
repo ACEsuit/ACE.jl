@@ -35,7 +35,9 @@ Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 
-# check multi-species
+
+
+## check multi-species
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
@@ -56,6 +58,8 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
    basis = SHIPs.PIBasis(P1, N, D, maxdeg)
    @info("species = $species; N = $N; length = $(length(basis))")
+   @info("test (de-)serialisation")
+   println(@test all(JuLIP.Testing.test_fio(basis)))
    @info("Check Permutation invariance")
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)

@@ -29,6 +29,13 @@ end
 
 Base.show(io::IO, b::PSH1pBasisFcn) = print(io, "znlm[$(b.z.z)|$(b.n),$(b.l),$(b.m)]")
 
+write_dict(b::PSH1pBasisFcn) =
+   Dict("__id__" => "SHIPs_PSH1pBasisFcn",
+        "nlmz" => [ b.n, b.l, b.m, Int(b.z) ] )
+
+read_dict(::Val{:SHIPs_PSH1pBasisFcn}, D::Dict) =
+   PSH1pBasisFcn(D["nlmz"]...)
+
 
 
 @doc raw"""

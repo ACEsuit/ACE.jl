@@ -47,12 +47,7 @@ for ntest = 1:10
    tdf = rand(1000)
    ww = 1.0 .+ rand(1000)
    Jd = OrthPolyBasis(N, 2, 1.0, 1, -1.0, tdf, ww)
-
-   print_tf(@test read_dict(write_dict(Jd)) == Jd)
-
-   tmpf = tempname() * ".json"
-   save_json(tmpf, write_dict(Jd))
-   print_tf(@test read_dict(load_json(tmpf)) == Jd)
+   print_tf(@test all(JuLIP.Testing.test_fio(Jd)))
 end
 println()
 

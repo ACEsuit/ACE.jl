@@ -31,13 +31,16 @@ Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 evaluate(P1, Rs, Zs, z0)
 evaluate_d(P1, Rs[1], Zs[1], z0)
 
-
 ##
 
 for species in (:X, :Si, [:C, :O, :H])
    @info("species = $species")
    Nat = 15
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
+   @info("   test de-serialisation")
+   println(@test(all(JuLIP.Testing.test_fio(P1))))
+
+   @info("   test evaluation")
    for ntest = 1:10
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       A = evaluate(P1, Rs, Zs, z0)
@@ -46,7 +49,7 @@ for species in (:X, :Si, [:C, :O, :H])
    end
    println()
    # test that the specification is reproduced correctly!
-   @info("Check specification is correct")
+   @info("    Check specification is correct")
    for iz0 in numz(P1)
       z0 = i2z(P1, iz0)
       P1_spec = SHIPs.get_basis_spec(P1, z0)
@@ -54,7 +57,7 @@ for species in (:X, :Si, [:C, :O, :H])
       println(@test P1_spec == P1_spec_2)
    end
    # Check gradients
-   @info("Check gradients")
+   @info("    Check gradients")
    for ntest = 1:30
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       R, Z = Rs[1], Zs[1]
