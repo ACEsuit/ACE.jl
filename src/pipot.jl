@@ -35,6 +35,7 @@ cutoff(V::PIPotential) = cutoff(V.pibasis)
 Base.eltype(::PIPotential{T}) where {T} = T
 
 z2i(V::PIPotential, z::AtomicNumber) = z2i(V.pibasis, z)
+JuLIP.numz(V::PIPotential) = numz(V.pibasis)
 
 # ------------------------------------------------------------
 #   Initialisation code
@@ -119,69 +120,58 @@ function evaluate!(tmp, V::PIPotential,
 end
 
 
-# alloc_temp_d(ship::SHIP{T, NZ}, N::Integer) where {T, NZ} =
-#       ( J = alloc_B(ship.J),
-#        dJ = alloc_dB(ship.J),
-#         Y = alloc_B(ship.SH),
-#        dY = alloc_dB(ship.SH),
-#         A = [ zeros(Complex{T}, length(ship.alists[iz])) for iz=1:NZ ],
-#      dAco = [ zeros(Complex{T}, length(ship.alists[iz])) for iz=1:NZ ],
-#      tmpJ = alloc_temp_d(ship.J),
-#      tmpY = alloc_temp_d(ship.SH),
-#        dV = zeros(JVec{T}, N),
-#         R = zeros(JVec{T}, N),
-#         Z = zeros(Int16, N)
-#       )
-#
-# # compute one site energy
-# function evaluate_d!(dEs, tmp, ship::SHIP{T},
-#                      Rs::AbstractVector{JVec{T}},
-#                      Zs::AbstractVector{<:Integer},
-#                      z0::Integer
-#                      ) where {T}
-#    iz0 = z2i(ship, z0)
-#    alist = ship.alists[iz0]
-#    aalist = ship.aalists[iz0]
-#
-#    # stage 1: precompute all the A values
-#    precompute_A!(tmp.A[iz0], tmp, alist, Rs, Zs, ship)
-#
-#    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
-#    A = tmp.A[iz0]
-#    dAco = tmp.dAco[iz0]
-#    _evaluate_d_stage2!(dAco, A, aalist, ship.coeffs[iz0], ship)
-#
-#    # stage 3: get the gradients
-#    fill!(dEs, zero(JVec{T}))
-#    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-#       R̂ = R / norm(R)
-#       evaluate_d!(tmp.J, tmp.dJ, tmp.tmpJ, ship.J, norm(R))
-#       evaluate_d!(tmp.Y, tmp.dY, tmp.tmpY, ship.SH, R)
-#       iz = z2i(ship, Z)
-#       for iA = alist.firstz[iz]:(alist.firstz[iz+1]-1)
-#          zklm = alist[iA]
-#          ik, iy = zklm.k+1, index_y(zklm.l, zklm.m)
-#          dEs[iR] += real(dAco[iA] * (
-#                          tmp.J[ik] * tmp.dY[iy] + tmp.dJ[ik] * tmp.Y[iy] * R̂) )
-#       end
-#    end
-#    return dEs
-# end
-#
-# function _evaluate_d_stage2!(dAco::AbstractVector{CT}, A, aalist, c, ship::SHIP
-#                             ) where {CT}
-#    fill!(dAco, 0)
-#    for iAA = 1:length(aalist)
-#       for α = 1:aalist.len[iAA]
-#          CxA_α = CT(c[iAA])
-#          for β = 1:aalist.len[iAA]
-#             if β != α
-#                iAβ = aalist.i2Aidx[iAA, β]
-#                CxA_α *= A[iAβ]
-#             end
-#          end
-#          iAα = aalist.i2Aidx[iAA, α]
-#          dAco[iAα] += CxA_α
-#       end
-#    end
-# end
+alloc_temp_d(V::PIPotential{T}, N::Integer) where {T} =
+      (
+      dAco = zeros(eltype(V.pibasis),
+                   maximum(length(V.pibasis.basis1p, iz) for iz=1:numz(V))),
+       tmpd_pibasis = alloc_temp_d(V.pibasis, N),
+       dV = zeros(JVec{T}, N),
+        R = zeros(JVec{T}, N),
+        Z = zeros(AtomicNumber, N)
+      )
+
+# compute one site energy
+function evaluate_d!(dEs, tmpd, V::PIPotential,
+                     Rs::AbstractVector{<: JVec{T}},
+                     Zs::AbstractVector{AtomicNumber},
+                     z0::AtomicNumber
+                     ) where {T}
+   iz0 = z2i(V, z0)
+   basis1p = V.pibasis.basis1p
+   tmpd_1p = tmpd.tmpd_pibasis.tmpd_basis1p
+   Araw = tmpd.tmpd_pibasis.A
+
+   # stage 1: precompute all the A values
+   A = evaluate!(Araw, tmpd_1p, basis1p, Rs, Zs, z0)
+
+   # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+   dAco = tmpd.dAco
+   c = V.coeffs[iz0]
+   inner = V.pibasis.inner[iz0]
+   fill!(dAco, 0)
+   for iAA = 1:length(inner)
+      for α = 1:inner.orders[iAA]
+         CxA_α = c[iAA]
+         for β = 1:inner.orders[iAA]
+            if β != α
+               CxA_α *= A[inner.iAA2iA[iAA, β]]
+            end
+         end
+         iAα = inner.iAA2iA[iAA, α]
+         dAco[iAα] += CxA_α
+      end
+   end
+
+   # stage 3: get the gradients
+   fill!(dEs, zero(JVec{T}))
+   dAraw = tmpd.tmpd_pibasis.dA
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      dA = evaluate_d!(Araw, dAraw, tmpd_1p, basis1p, R, Z, z0)
+      iz = z2i(basis1p, Z)
+      dAco_z = @view dAco[basis1p.Aindices[iz, iz0]]
+      for iA = 1:length(dA)
+         dEs[iR] += real(dAco_z[iA] * dA[iA])
+      end
+   end
+   return dEs
+end

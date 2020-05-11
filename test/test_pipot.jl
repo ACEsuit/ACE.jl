@@ -13,7 +13,7 @@
 
 using SHIPs, Random
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
-using JuLIP: evaluate, evaluate_d
+using JuLIP: evaluate, evaluate_d, evaluate_ed
 using JuLIP.MLIPs: combine
 
 randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
@@ -36,7 +36,10 @@ Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 val_basis = real(sum(c .* evaluate(basis, Rs, Zs, z0)))
 val_V = evaluate(V, Rs, Zs, z0)
 println(@test(val_basis ≈ val_V))
-
+J = evaluate_d(basis, Rs, Zs, z0)
+grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
+grad_V = evaluate_d(V, Rs, Zs, z0)
+println(@test(grad_basis ≈ grad_V))
 
 ##
 
@@ -53,6 +56,10 @@ AA = evaluate(basis, Rs, Zs, z0)
 val_basis = real(sum(c .* evaluate(basis, Rs, Zs, z0)))
 val_V = evaluate(V, Rs, Zs, z0)
 println(@test(val_basis ≈ val_V))
+J = evaluate_d(basis, Rs, Zs, z0)
+grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
+grad_V = evaluate_d(V, Rs, Zs, z0)
+println(@test(grad_basis ≈ grad_V))
 
 
 ##
@@ -73,25 +80,25 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
       val_V = evaluate(V, Rs, Zs, z0)
       print_tf(@test(val_basis ≈ val_V))
    end
-   # println()
-   # @info("Check gradients")
-   # for ntest = 1:20
-   #    Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
-   #    AA = evaluate(basis, Rs, Zs, z0)
-   #    dAA = evaluate_d(basis, Rs, Zs, z0)
-   #    Us = [ rand(eltype(Rs)) .- 0.5 for _=1:length(Rs) ]
-   #    dAA_dUs = transpose.(dAA) * Us
-   #    errs = []
-   #    for p = 2:12
-   #       h = 0.1^p
-   #       AA_h = evaluate(basis, Rs + h * Us, Zs, z0)
-   #       dAA_h = (AA_h - AA) / h
-   #       # @show norm(dAA_h - dAA_dUs, Inf)
-   #       push!(errs, norm(dAA_h - dAA_dUs, Inf))
-   #    end
-   #    success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
-   #    print_tf(@test success)
-   # end
+   println()
+   @info("Check gradients")
+   for ntest = 1:20
+      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      V0 = evaluate(V, Rs, Zs, z0)
+      dV0 = evaluate_d(V, Rs, Zs, z0)
+      Us = [ rand(eltype(Rs)) .- 0.5 for _=1:length(Rs) ]
+      dV0_dUs = sum(transpose.(dV0) .* Us)
+      errs = []
+      for p = 2:12
+         h = 0.1^p
+         V_h = evaluate(V, Rs + h * Us, Zs, z0)
+         dV_h = (V_h - V0) / h
+         # @show norm(dAA_h - dAA_dUs, Inf)
+         push!(errs, norm(dV_h - dV0_dUs, Inf))
+      end
+      success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
+      print_tf(@test success)
+   end
    println()
 end
 println()

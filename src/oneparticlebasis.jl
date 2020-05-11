@@ -23,7 +23,8 @@ function evaluate!(A, tmp, basis::OneParticleBasis, Rs, Zs::AbstractVector, z0)
 end
 
 
-function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis, Rs, Zs::AbstractVector, z0)
+function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis,
+                     Rs, Zs::AbstractVector, z0)
    fill!(A, 0)
    iz0 = z2i(basis, z0)
    for (j, (R, Z)) in enumerate(zip(Rs, Zs))
@@ -43,15 +44,14 @@ function evaluate!(A, tmp, basis::OneParticleBasis, R, z::AtomicNumber, z0)
    return A
 end
 
-function JuLIP.Potentials.evaluate_d(basis::OneParticleBasis, R, z::AtomicNumber, z0)
-   A = alloc_B(basis)
+function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis,
+                     R, z::AtomicNumber, z0)
    fill!(A, 0)
-   dA = zeros(JVec{eltype(A)}, length(A))
    iz, iz0 = z2i(basis, z), z2i(basis, z0)
    Aview = @view A[basis.Aindices[iz, iz0]]
    dAview = @view dA[basis.Aindices[iz, iz0]]
-   add_into_A_dA!(Aview, dAview, alloc_temp_d(basis), basis, R, iz, iz0)
-   return dA
+   add_into_A_dA!(Aview, dAview, tmpd, basis, R, iz, iz0)
+   return dAview
 end
 
 
