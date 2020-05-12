@@ -61,6 +61,7 @@ struct OrthPolyBasis{T} <: SHIPs.ScalarBasis{T}
    ww::Vector{T}
 end
 
+Base.eltype(P::OrthPolyBasis{T}) where {T} = T
 Base.length(P::OrthPolyBasis) = length(P.A)
 
 ==(J1::OrthPolyBasis, J2::OrthPolyBasis) =
@@ -261,6 +262,7 @@ TransformedPolys(D::Dict) =
 read_dict(::Val{:SHIPs_TransformedPolys}, D::Dict) = TransformedPolys(D)
 
 Base.length(J::TransformedPolys) = length(J.J)
+Base.eltype(P::TransformedPolys{T}) where {T} = T
 
 function SHIPs.rand_radial(J::TransformedPolys)
    t = SHIPs.rand_radial(J.J)
