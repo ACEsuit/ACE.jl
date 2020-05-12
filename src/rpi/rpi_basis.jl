@@ -28,17 +28,31 @@ Base.eltype(::RPIBasis{T}) where {T}  = T
 JuLIP.Potentials.i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
 JuLIP.Potentials.z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
 
+# ------------------------------------------------------------------------
+#    FIO code
+# ------------------------------------------------------------------------
+
+==(B1::RPIBasis, B2::RPIBasis) = (B1.pibasis == B2.pibasis)
+
+write_dict(basis::RPIBasis) = Dict(
+      "__id__" => "SHIPs_RPIBasis",
+      "pibasis" => write_dict(basis.pibasis),
+   )
+
+read_dict(::Val{:SHIPs_RPIBasis}, D::Dict) =
+   RPIBasis(read_dict(D["pibasis"]))
 
 # ------------------------------------------------------------------------
 #    Basis construction code
 # ------------------------------------------------------------------------
 
 
-function RPIBasis(basis1p::OneParticleBasis, N::Integer,
-                  D::AbstractDegree, maxdeg::Real)
-   # construct a permutation-invariant basis
-   # TODO: filter out the even ll basis functions!
-   pibasis = PIBasis(basis1p, N, D, maxdeg; filter = _rpi_filter)
+RPIBasis(basis1p::OneParticleBasis, N::Integer,
+         D::AbstractDegree, maxdeg::Real) =
+   RPIBasis(PIBasis(basis1p, N, D, maxdeg; filter = _rpi_filter))
+
+function RPIBasis(pibasis::PIBasis)
+   basis1p = pibasis.basis1p
 
    # construct the cg matrices
    rotc = Rot3DCoeffs()

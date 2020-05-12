@@ -54,33 +54,15 @@ end
 #   FIO code
 # ------------------------------------------------------------
 
-# Dict(ship::SHIP{T,NZ}) where {T, NZ} = Dict(
-#       "__id__" => "SHIPs_SHIP_v2",
-#       "J" => Dict(ship.J),
-#       "SH_maxL" => ship.SH.maxL,   # TODO: replace this with Dict(SH)
-#       "T" => string(eltype(ship.SH)),
-#       "zlist" => Dict(ship.zlist),
-#       "alists" => [Dict.(ship.alists)...],
-#       "aalists" => [Dict.(ship.aalists)...],
-#       "coeffs_re" => [ real.(ship.coeffs[i]) for i = 1:NZ  ],
-#       "coeffs_im" => [ imag.(ship.coeffs[i]) for i = 1:NZ  ]
-#    )
-#
-# convert(::Val{:SHIPs_SHIP_v2}, D::Dict) = SHIP(D)
-#
-# # bodyorder - 1 is because BO is the number of neighbours
-# # not the actual body-order
-# function SHIP(D::Dict)
-#    T = Meta.eval(Meta.parse(D["T"]))
-#    J = TransformedJacobi(D["J"])
-#    SH = SHBasis(D["SH_maxL"], T)
-#    zlist = decode_dict(D["zlist"])
-#    NZ = length(zlist)
-#    alists = ntuple(i -> AList(D["alists"][i]), NZ)
-#    aalists = ntuple(i -> AAList(D["aalists"][i], alists[i]), NZ)
-#    coeffs = ntuple(i -> T.(D["coeffs_re"][i]) + im * T.(D["coeffs_im"][i]), NZ)
-#    return  SHIP(J, SH, zlist, alists, aalists, coeffs)
-# end
+write_dict(V::PIPotential) = Dict(
+      "__id__" => "SHIPs_PIPotential",
+     "pibasis" => write_dict(V.pibasis),
+      "coeffs" => [ write_dict.(V.coeffs)... ] )
+
+read_dict(::Val{:SHIPs_PIPotential}, D::Dict) =
+   PIPotential( read_dict(D["pibasis"]),
+                tuple( read_dict.( D["coeffs"] )... ) )
+
 
 
 # ------------------------------------------------------------

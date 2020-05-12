@@ -45,6 +45,7 @@ println(@test(size(dB) == (length(rpibasis), length(Rs))))
 B_, dB_ = evaluate_ed(rpibasis, Rs, Zs, z0)
 println(@test (B_ == B) && (dB_ == dB))
 
+##
 @info("check multi-species")
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
@@ -71,6 +72,8 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
    basis = SHIPs.RPIBasis(P1, N, D, degrees[N])
    @info("species = $species; N = $N; deg = $(degrees[N]); len = $(length(basis))")
+   @info("   check (de-)serialization")
+   println(@test(all(JuLIP.Testing.test_fio(basis))))
    @info("   isometry and permutation invariance")
    for ntest = 1:30
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
