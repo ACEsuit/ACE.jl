@@ -32,7 +32,7 @@ cutoff(V::PIPotential) = cutoff(V.pibasis)
       (V1.pibasis == V2.pibasis) && (V1.coeffs == V2.coeffs)
 
 # TODO: this doesn't feel right ... should be real(T)?
-Base.eltype(::PIPotential{T}) where {T} = T
+Base.eltype(::PIPotential{T}) where {T} = real(T)
 
 z2i(V::PIPotential, z::AtomicNumber) = z2i(V.pibasis, z)
 JuLIP.numz(V::PIPotential) = numz(V.pibasis)
@@ -70,10 +70,10 @@ read_dict(::Val{:SHIPs_PIPotential}, D::Dict) =
 # ------------------------------------------------------------
 
 
-
+# TODO: generalise the R, Z, allocation
 alloc_temp(V::PIPotential{T}, maxN::Integer) where {T} =
    (
-      R = zeros(JVecF, maxN),
+      R = zeros(JVec{real(T)}, maxN),
       Z = zeros(AtomicNumber, maxN),
       tmp_pibasis = alloc_temp(V.pibasis, maxN),
   )
@@ -101,14 +101,14 @@ function evaluate!(tmp, V::PIPotential,
    return Es
 end
 
-
+# TODO: generalise the R, Z, allocation
 alloc_temp_d(V::PIPotential{T}, N::Integer) where {T} =
       (
       dAco = zeros(eltype(V.pibasis),
                    maximum(length(V.pibasis.basis1p, iz) for iz=1:numz(V))),
        tmpd_pibasis = alloc_temp_d(V.pibasis, N),
-       dV = zeros(JVec{T}, N),
-        R = zeros(JVec{T}, N),
+       dV = zeros(JVec{real(T)}, N),
+        R = zeros(JVec{real(T)}, N),
         Z = zeros(AtomicNumber, N)
       )
 

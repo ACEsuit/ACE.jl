@@ -11,7 +11,7 @@ module OrthPolys
 using SparseArrays
 using LinearAlgebra: dot
 
-import JuLIP: evaluate!, evaluate_d!, JVec
+import JuLIP: evaluate!, evaluate_d!, JVec, cutoff
 import JuLIP.FIO: read_dict, write_dict
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 

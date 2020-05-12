@@ -44,6 +44,8 @@ function BasicPSH1pBasis(J::ScalarBasis{T};
    return P
 end
 
+cutoff(basis::BasicPSH1pBasis) = cutoff(basis.J)
+
 Base.length(basis::BasicPSH1pBasis, z0::AtomicNumber) =
       numz(basis) *  length(basis.spec)
 

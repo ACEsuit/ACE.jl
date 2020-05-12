@@ -167,6 +167,8 @@ mutable struct PIBasis{BOP, NZ} <: IPBasis
    inner::NTuple{NZ, InnerPIBasis}
 end
 
+cutoff(basis::PIBasis) = cutoff(basis.basis1p)
+
 ==(B1::PIBasis, B2::PIBasis) = SHIPs._allfieldsequal(B1, B2)
 
 Base.eltype(basis::PIBasis) = eltype(basis.basis1p)

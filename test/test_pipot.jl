@@ -16,7 +16,7 @@ using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing, Random
 using JuLIP: evaluate, evaluate_d, evaluate_ed
 using JuLIP.MLIPs: combine
 
-randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
+randcoeffs(B) = rand(ComplexF64, length(B)) .* (1:length(B)).^(-2)
 
 ##
 
@@ -43,14 +43,6 @@ println(@test(grad_basis ≈ grad_V))
 
 ##
 
-# D = write_dict(V)
-# read_dict(D["pibasis"])
-# D1 = D["coeffs"][1]
-# read_dict(D1)
-# tuple(read_dict.(D["coeffs"])...)
-# read_dict(D)
-##
-
 # check multi-species
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
@@ -68,6 +60,7 @@ J = evaluate_d(basis, Rs, Zs, z0)
 grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
 grad_V = evaluate_d(V, Rs, Zs, z0)
 println(@test(grad_basis ≈ grad_V))
+
 
 
 ##
@@ -115,5 +108,38 @@ println()
 
 ##
 
+
+@info("Check Correctness of SHIP.PIPotential calculators")
+
+naive_energy(V::PIPotential, at) =
+      sum( evaluate(V, Rs, at.Z[j], at.Z[i])
+            for (i, j, Rs) in sites(at, cutoff(V)) )
+
+for N = 1:5
+   species = :Si
+   maxdeg = 7
+   Pr = transformed_jacobi(maxdeg, trans, 4.0; pcut = 2)
+   P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
+   basis = SHIPs.PIBasis(P1, N, D, maxdeg)
+   @info("N = $N; length = $(length(basis))")
+   c = randcoeffs(basis)
+   V = combine(basis, c)
+   at = bulk(:Si) * (2,2,3)
+   rattle!(at, 0.1)
+   print("     energy: ")
+   println(@test energy(V, at) ≈ naive_energy(V, at) )
+   print("site-energy: ")
+   println(@test energy(V, at) ≈ sum( site_energy(V, at, n)
+                                         for n = 1:length(at) ) )
+   print("     forces: ")
+   println(@test JuLIP.Testing.fdtest(V, at; verbose=false))
+   print("site-forces: ")
+   println(@test JuLIP.Testing.fdtest( x -> site_energy(V, set_dofs!(at, x), 3),
+                                       x -> mat(site_energy_d(V, set_dofs!(at, x), 3))[:],
+                                       dofs(at); verbose=false ) )
+end
+
+
+##
 
 end
