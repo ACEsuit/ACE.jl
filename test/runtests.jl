@@ -32,6 +32,7 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     # ----------------------
     #   pair potentials
     include("pair/test_pair_basis.jl")
+    include("pair/test_pair_pot.jl")
 
 
     # include("pairpots/test_basics.jl")

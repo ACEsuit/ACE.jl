@@ -26,7 +26,7 @@ JuLIP.MLIPs.combine(pB::PolyPairBasis, coeffs::AbstractVector) =
 JuLIP.cutoff(V::PolyPairPot) = cutoff(V.basis)
 
 ==(V1::PolyPairPot, V2::PolyPairPot) =
-            ( (V1.pB == V2.pB) && (V1.coeffs == V2.coeffs) )
+            ( (V1.basis == V2.basis) && (V1.coeffs == V2.coeffs) )
 
 write_dict(V::PolyPairPot) = Dict(
       "__id__" => "SHIPs_PolyPairPot",

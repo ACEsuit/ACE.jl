@@ -12,7 +12,7 @@ import JuLIP
 using JuLIP: JVec, JMat, Atoms, AtomicNumber
 using JuLIP.MLIPs: IPBasis
 using LinearAlgebra: norm, dot
-using JuLIP.Potentials: SZList, z2i, i2z, numz, @pot,PairPotential
+using JuLIP.Potentials: ZList, SZList, z2i, i2z, numz, @pot, PairPotential
 using StaticArrays: SMatrix
 
 using SHIPs: ScalarBasis

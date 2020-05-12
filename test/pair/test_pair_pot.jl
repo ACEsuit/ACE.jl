@@ -16,6 +16,7 @@ using SHIPs
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Potentials: i2z, numz
+using JuLIP.MLIPs: combine
 
 randr() = 1.0 + rand()
 randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
@@ -53,27 +54,31 @@ println(@test energy(V, at) ≈ sum(V.coeffs .*  energy(pB, at)))
 println(@test all(JuLIP.Testing.test_fio(V)))
 
 @info("      check that PolyPairBasis ≈ PolyPairPot")
-for ntest = 1:30
+for ntest = 1:10
    rattle!(at, 0.01)
+   coeffs = randcoeffs(pB)
+   V = combine(pB, coeffs)
 
-   E_pot = energy(pot, at)
-   E_b = dot(energy(B, at), coeffs)
-   print_tf(@test E_pot ≈ E_b)
+   E_V = energy(V, at)
+   E_b = dot(energy(pB, at), coeffs)
+   print_tf(@test E_V ≈ E_b)
 
-   F_pot = forces(pot, at)
-   F_b = sum(coeffs .* forces(B, at))
-   print_tf(@test F_pot ≈ F_b)
+   F_V = forces(V, at)
+   F_b = sum(coeffs .* forces(pB, at))
+   print_tf(@test F_V ≈ F_b)
 
-   V_pot = virial(pot, at)
-   V_b = sum(coeffs .* virial(B, at))
-   print_tf(@test V_pot ≈ V_b)
+   V_V = virial(V, at)
+   V_b = sum(coeffs .* virial(pB, at))
+   print_tf(@test V_V ≈ V_b)
 end
 println()
+
+##
 
 @info("      Standard JuLIP Force Consistency Test")
 variablecell!(at)
 rattle!(at, 0.03)
-JuLIP.Testing.fdtest(pot, at)
+println(@test JuLIP.Testing.fdtest(V, at))
 
 ##
 end
