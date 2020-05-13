@@ -1,4 +1,5 @@
 
+export PIBasis
 
 """
 `PIBasisFcn{N, TOP}` : represents a single multivariate basis function
