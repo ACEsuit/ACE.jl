@@ -10,9 +10,13 @@
 @testset "RepulsiveCore" begin
 
 ##
-using Test
-using SHIPs, JuLIP, LinearAlgebra, Test
-using JuLIP.Testing, JuLIP.MLIPs
+
+using SHIPs
+using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
+using JuLIP: evaluate, evaluate_d
+using JuLIP.Potentials: i2z, numz
+using JuLIP.MLIPs: combine
+
 randr() = 1.0 + rand()
 randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
@@ -24,24 +28,28 @@ at = bulk(:W, cubic=true) * 3
 rattle!(at, 0.03)
 r0 = rnn(:W)
 z = atomic_number(:W)
-trans = PolyTransform(2, r0)
-fcut = PolyCutoff2s(2, 0.5*r0, 1.95*r0)
-B = PolyPairBasis(:W, 10, trans, fcut)
-coeffs = randcoeffs(B)
-pot = combine(B, coeffs)
+
+maxdeg = 8
+r0 = 1.0
+rcut = 3.0
+
+Pr = transformed_jacobi(maxdeg, PolyTransform(1, r0), rcut; pcut = 2)
+pB = SHIPs.PairPotentials.PolyPairBasis(Pr, :W)
+coeffs = randcoeffs(pB)
+V = combine(pB, coeffs)
+
 
 ## try out the repulsive potential
-Vfit = pot
+Vfit = V
 
 ri = 2.1
-@show @D Vfit(ri)
+@show (@D Vfit(ri))
 if (@D Vfit(ri)) > 0
    Vfit = PolyPairPot(- Vfit.coeffs, Vfit.J, Vfit.zlist, Vfit.bidx0)
 end
-@show @D Vfit(ri)
+@show (@D Vfit(ri))
 e0 = Vfit(ri) - 1.0
-Vrep = SHIPs.Repulsion.RepulsiveCore(Vfit, ri)
-
+Vrep = SHIPs.PairPotentials.RepulsiveCore(Vfit, ri)
 
 rout = range(ri+1e-15, 4.0, length=100)
 println(@test all(Vfit(r) == Vrep(r,z,z) for r in rout))
@@ -63,21 +71,23 @@ at = bulk(:W, cubic=true) * 3
 at.Z[2:3:end] .= atomic_number(:Fe)
 rattle!(at, 0.03)
 r0 = rnn(:W)
-trans = PolyTransform(2, r0)
-fcut = PolyCutoff2s(2, 0.5*r0, 1.95*r0)
-B = PolyPairBasis([:W, :Fe], 10, trans, fcut)
-coeffs = randcoeffs(B)
-pot = combine(B, coeffs)
+
+Pr = transformed_jacobi(maxdeg, PolyTransform(1, r0), rcut; pcut = 2)
+pB = SHIPs.PairPotentials.PolyPairBasis(Pr, [:W, :Fe])
+coeffs = randcoeffs(pB)
+V = combine(pB, coeffs)
+
 
 ## try out the repulsive potential
-Vfit = pot
+Vfit = V
 
 ri = 2.1
-z1 = 26
-z2 = 74
+z1 = AtomicNumber(26)
+z2 = AtomicNumber(74)
 @show @D Vfit(ri, z1, z2)
 e0 = min(Vfit(ri, z1, z2), Vfit(ri, z1, z1), Vfit(ri, z2, z2)) - 1.0
-Vrep = SHIPs.Repulsion.RepulsiveCore(Vfit, ri, e0)
+Vrep = SHIPs.PairPotentials.RepulsiveCore(Vfit, ri, e0)
+
 
 for (z, z0) in zip([z1, z1, z2], [z1, z2, z2])
    i, i0 = JuLIP.Potentials.z2i(Vfit, z), JuLIP.Potentials.z2i(Vfit, z0)
@@ -94,15 +104,8 @@ println(@test JuLIP.Testing.fdtest(Vrep, at))
 @info("check scaling")
 println(@test energy(Vfit, at) ≈ energy(Vrep, at))
 
-
-
 @info("check FIO")
-println(@test (Vrep == decode_dict(Dict(Vrep))))
-fname = tempname()
-save_json(fname, Dict(Vrep))
-D1 = load_json(fname)
-rm(fname)
-println(@test (Vrep == decode_dict(D1)))
+println(@test all(JuLIP.Testing.test_fio(Vrep)))
 
 ##
 

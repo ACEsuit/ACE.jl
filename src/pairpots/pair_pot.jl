@@ -25,6 +25,10 @@ JuLIP.MLIPs.combine(pB::PolyPairBasis, coeffs::AbstractVector) =
 
 JuLIP.cutoff(V::PolyPairPot) = cutoff(V.basis)
 
+z2i(V::PolyPairPot, z::AtomicNumber) = z2i(V.basis, z)
+i2z(V::PolyPairPot, iz::Integer) = i2z(V.basis, iz)
+numz(V::PolyPairPot) = numz(V.basis)
+
 ==(V1::PolyPairPot, V2::PolyPairPot) =
             ( (V1.basis == V2.basis) && (V1.coeffs == V2.coeffs) )
 
@@ -52,7 +56,7 @@ alloc_temp_d(V::PolyPairPot{T}, N::Integer) where {T} =
 
 function _dot_zij(V, B, z, z0)
    i0 = _Bidx0(V.basis, z, z0)  # cf. pair_basis.jl
-   return sum( V.coeffs[i0 + n] * B[n]  for n = 1:length(V.basis) )
+   return sum( V.coeffs[i0 + n] * B[n]  for n = 1:length(V.basis, z0) )
 end
 
 evaluate!(tmp, V::PolyPairPot, r::Number, z, z0) =
@@ -62,14 +66,14 @@ evaluate_d!(tmp, V::PolyPairPot, r::Number, z, z0) =
       _dot_zij(V, evaluate_d!(tmp.J, tmp.dJ, tmp.tmpd_J, V.basis.J, r), z, z0)
 
 function evaluate!(tmp, V::PolyPairPot, r::Number)
-   @assert length(V.zlist) == 1
-   z = V.zlist.list[1]
+   @assert numz(V) == 1
+   z = i2z(V, 1)
    return evaluate!(tmp, V::PolyPairPot, r::Number, z, z)
 end
 
 function evaluate_d!(tmp, V::PolyPairPot, r::Number)
-   @assert length(V.zlist) == 1
-   z = V.zlist.list[1]
+   @assert numz(V) == 1
+   z = i2z(V, 1)
    return evaluate_d!(tmp, V::PolyPairPot, r::Number, z, z)
 end
 

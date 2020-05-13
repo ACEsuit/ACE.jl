@@ -20,6 +20,8 @@ end
 Base.eltype(pB::PolyPairBasis) = eltype(pB.J)
 
 Base.length(pB::PolyPairBasis) = length(pB.J) * (numz(pB) * (numz(pB) + 1)) ÷ 2
+Base.length(pB::PolyPairBasis, z0::AtomicNumber) = length(pB, z2i(pB, z0))
+Base.length(pB::PolyPairBasis, iz0::Integer) = length(pB.J)
 
 PolyPairBasis(J::ScalarBasis, species) =
    PolyPairBasis( J, ZList(species; static=true) )

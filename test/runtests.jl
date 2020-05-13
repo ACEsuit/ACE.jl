@@ -33,19 +33,15 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     #   pair potentials
     include("pair/test_pair_basis.jl")
     include("pair/test_pair_pot.jl")
+    include("pair/test_repulsion.jl")
 
 
-    # include("pairpots/test_basics.jl")
-    # include("pairpots/test_repulsion.jl")
-
-    # include("test_fast.jl")
     # include("test_real.jl")
-    # include("test_multispecies.jl")
     # include("test_orth.jl")
     # include("test_descriptor.jl")
-    # ----------------------
-    # include("test_compressA.jl")
-    # ---------------------- bonds stuff
+
+    # ---------------------------
+    #    env-dependent bonds
     # include("bonds/test_cylindrical.jl")
     # include("bonds/test_fourier.jl")
     # include("bonds/test_envpairbasis.jl")

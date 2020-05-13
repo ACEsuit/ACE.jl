@@ -7,24 +7,18 @@
 
 
 
-module Repulsion
 
-using StaticArrays
-
-import JuLIP: decode_dict
-import JuLIP.Potentials: @pot, evaluate, evaluate_d, MPairPotential, @D, cutoff,
-                         @analytic, evaluate!, evaluate_d!,
-                         alloc_temp, alloc_temp_d,
-                         i2z, z2i
-import Base: Dict, convert, ==
 
 # ----------------------------------------------------------------------
 # The repulsive core is built from shifted Buckingham potentials
 
+@doc raw"""
+`struct BuckPot` : Buckingham potential,
+```math
+   V(r) = e_0 + B  \exp\big( - A (r/r_i - 1)\big) \cdot \frac{r}{r_i}
+```
 """
-e0 + B * exp( - A * (r/ri-1) ) * ri/r
-"""
-struct BuckPot{T}
+struct BuckPot{T} <: SimplePairPotential
    e0::T
    A::T
    ri::T
@@ -33,34 +27,35 @@ end
 
 @pot BuckPot
 
-evaluate(V::BuckPot, r) = V.e0 + V.B * exp( - V.A * (r/V.ri-1) ) * V.ri/r
+evaluate(V::BuckPot, r::Number) = V.e0 + V.B * exp( - V.A * (r/V.ri-1) ) * V.ri/r
 
-evaluate_d(V::BuckPot, r) = V.B * exp( - V.A * (r/V.ri-1) ) * V.ri * (
+evaluate_d(V::BuckPot, r::Number) = V.B * exp( - V.A * (r/V.ri-1) ) * V.ri * (
                             - V.A / V.ri / r  - 1/r^2  )
 
-Dict(V::BuckPot) = Dict("__id__" => "PolyPairPots_BuckPot",
-                        "e0" => V.e0, "A" => V.A, "ri" => V.ri, "B" => V.B )
+write_dict(V::BuckPot) = Dict(
+         "__id__" => "SHIPs_BuckPot",
+             "e0" => V.e0,
+              "A" => V.A,
+             "ri" => V.ri,
+              "B" => V.B   )
 
-BuckPot(D::Dict) = BuckPot(D["e0"], D["A"], D["ri"], D["B"])
+read_dict(::Val{:SHIPs_BuckPot}, D::Dict) =
+      BuckPot(D["e0"], D["A"], D["ri"], D["B"])
 
-convert(::Val{:PolyPairPots_BuckPot}, D::Dict) = BuckPot(D)
+==(V1::BuckPot, V2::BuckPot) = _allfieldsequal(V1, V2)
 
-==(V1::BuckPot, V2::BuckPot) =
-   all(getfield(V1, x) == getfield(V2, x) for x in fieldnames(BuckPot))
 
 # ----------------------------------------------------------------------
 
 
-struct RepulsiveCore{T, TOUT, NZ} <: MPairPotential
+struct RepulsiveCore{T, TOUT, NZ} <: PairPotential
    Vout::TOUT
    Vin::SMatrix{NZ, NZ, BuckPot{T}}
 end
 
-==(V1::RepulsiveCore, V2::RepulsiveCore) =
-   (V1.Vout == V2.Vout) && (V1.Vin == V2.Vin)
-
-
 @pot RepulsiveCore
+
+==(V1::RepulsiveCore, V2::RepulsiveCore) = _allfieldsequal(V1, V2)
 
 cutoff(V::RepulsiveCore) = cutoff(V.Vout)
 
@@ -91,17 +86,17 @@ end
 function _simple_repulsive_core(Vout, ri, e0, verbose, z, z0)
    v = Vout(ri, z, z0)
    dv = @D Vout(ri, z, z0)
-   if dv >= 0.0
+   if dv >= 0.0 && verbose
       @warn("The slope `Vout'(ri)` should be negative")
    end
-   if dv > -1.0
+   if dv > -1.0 && verbose
       @warn("""The slope `Vout'(ri) = $dv` may not be steep enough to attach a
                repulsive core. Proceed at your own risk.""")
    end
-   if v-e0 <= 0.0
+   if v-e0 <= 0.0 && verbose
       @warn("it is recommended that `Vout(ri) > 0`.")
    end
-   if v-e0 <= 1.0
+   if v-e0 <= 1.0 && verbose
       @warn("""Ideally the repulsive core should not be attached at small
                values of `Vout(ri) = $v`. Proceed at your own risk.""")
    end
@@ -124,7 +119,7 @@ function _simple_repulsive_core(Vout, ri, e0, verbose, z, z0)
 end
 
 function RepulsiveCore(Vout, ri::Number, e0=0.0; verbose=false)
-   nz = length(Vout.zlist)
+   nz = numz(Vout)
    Vin = Matrix{Any}(undef, nz, nz)
    for i0 = 1:nz, i1 = 1:i0
       z0, z1 = i2z(Vout, i0), i2z(Vout, i1)
@@ -136,25 +131,21 @@ function RepulsiveCore(Vout, ri::Number, e0=0.0; verbose=false)
 end
 
 function RepulsiveCore(Vout, Vin::AbstractArray)
-   nz = length(Vout.zlist)
+   nz = numz(Vout)
    return RepulsiveCore(Vout, SMatrix{nz, nz}(Vin...))
 end
 
 # ----------------------------------------------------
 #  File IO
-# ----------------------------------------------------
 
-Dict(V::RepulsiveCore) = Dict("__id__" => "PolyPairPots_RepulsiveCore",
-                              "Vout" => Dict(V.Vout),
-                              "Vin" => Dict.(V.Vin[:]) )
+write_dict(V::RepulsiveCore) = Dict(
+      "__id__" => "SHIPs_RepulsiveCore",
+        "Vout" => write_dict(V.Vout),
+         "Vin" => write_dict.(V.Vin[:]) )
 
-function RepulsiveCore(D::Dict)
-   Vout = decode_dict(D["Vout"])
-   nz = length(Vout.zlist)
-   Vin = BuckPot.(D["Vin"])
+function read_dict(::Val{:SHIPs_RepulsiveCore}, D::Dict)
+   Vout = read_dict(D["Vout"])
+   nz = numz(Vout)
+   Vin = read_dict.(D["Vin"])
    return RepulsiveCore(Vout, reshape(Vin, (nz, nz)))
-end
-
-convert(::Val{:PolyPairPots_RepulsiveCore}, D::Dict) = RepulsiveCore(D)
-
 end
