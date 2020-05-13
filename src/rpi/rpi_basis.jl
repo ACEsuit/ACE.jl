@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using SparseArrays: SparseMatrixCSC, sparse, sprand
+using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: mul!
 
 """
@@ -104,7 +104,7 @@ function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
             # permutation-invariant basis functions. This means we will
             # add the same PI basis function several times, but in the call to
             # `sparse` the values will just be added.
-            bcol_ordered = _get_ordered(pibasis, bcol)
+            bcol_ordered = SHIPs._get_ordered(pibasis, bcol)
             idxAA = pibasis.inner[iz0].b2iAA[bcol_ordered]
             push!(Irow, idxB)
             push!(Jcol, idxAA)

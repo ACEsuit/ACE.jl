@@ -15,7 +15,7 @@
 using PyCall, Test, SHIPs, SHIPs.SphericalHarmonics, JuLIP.Testing, StaticArrays
 using JuLIP: evaluate
 using SHIPs.SphericalHarmonics: index_y
-using SHIPs.Rotations3D: ClebschGordan
+using SHIPs.RPI.Rotations3D: ClebschGordan
 
 ##
 
@@ -25,7 +25,7 @@ spin = pyimport("sympy.physics.quantum.spin")
 pycg(j1, m1, j2, m2, j3, m3, T=Float64) =
       spin.CG(j1, m1, j2, m2, j3, m3).doit().evalf().__float__()
 
-cg = SHIPs.Rotations3D.ClebschGordan()
+cg = ClebschGordan()
 
 ##
 

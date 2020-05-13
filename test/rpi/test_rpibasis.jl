@@ -25,13 +25,13 @@ r0 = 1.0
 rcut = 3.0
 trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-D = SHIPs.SparsePSHDegree()
-P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
+D = SparsePSHDegree()
+P1 = BasicPSH1pBasis(Pr; species = :X, D = D)
 
 ##
 
-pibasis = SHIPs.PIBasis(P1, N, D, maxdeg)
-rpibasis = SHIPs.RPIBasis(P1, N, D, maxdeg)
+pibasis = PIBasis(P1, N, D, maxdeg)
+rpibasis = RPIBasis(P1, N, D, maxdeg)
 
 ##
 @info("Basis construction and evaluation checks")

@@ -8,11 +8,12 @@
 
 module SHIPs
 
-
 using Reexport
 @reexport using JuLIP
 
-using Parameters
+# external imports that are useful for all submodules
+include("extimports.jl")
+
 
 include("aux.jl")
 include("prototypes.jl")
@@ -34,6 +35,7 @@ include("pipot.jl")
 
 # rotation-invariant site potentials (incl the ACE model)
 include("rpi/rpi.jl")
+@reexport using SHIPs.RPI
 
 # pair potentials + repulsion
 include("pairpots/pair.jl");

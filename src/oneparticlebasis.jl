@@ -6,11 +6,6 @@
 # --------------------------------------------------------------------------
 
 
-using StaticArrays
-
-using SHIPs.SphericalHarmonics: SHBasis, index_y
-using JuLIP.Potentials: ZList, SZList, numz
-
 
 function evaluate!(A, tmp, basis::OneParticleBasis, Rs, Zs::AbstractVector, z0)
    fill!(A, 0)

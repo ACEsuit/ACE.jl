@@ -8,22 +8,6 @@
 
 
 
-import JuLIP: alloc_temp, alloc_temp_d,
-              cutoff,
-              evaluate, evaluate_d,
-              evaluate!, evaluate_d!,
-              SitePotential,
-              z2i, i2z,
-              read_dict, write_dict
-
-import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, combine
-
-using JuLIP.Potentials: ZList
-using JuLIP: JVec
-
-using Random: shuffle
-
-import Base: Dict, convert, ==
 
 # prototypes for space transforms and cutoffs
 function transform end
@@ -60,18 +44,20 @@ the `arg` argument.
 """
 function degree end
 
-# ------------------------------------------------------------
-# some auxiliary stuff, probably to be moved elsewhere
+"""
+interface functions for `OneParticleBasis`
+"""
+function add_into_A! end
 
-_allfieldsequal(x1, x2) =
-      all( getfield(x1, sym) == getfield(x2, sym)
-           for sym in union(fieldnames(typeof(x1)), fieldnames(typeof(x2))) )
-
-
+"""
+interface functions for `OneParticleBasis`
+"""
+function add_into_A_dA! end
 
 # ----------------------------------------------------------------------
 
 # TODO: put type information to the random stuff
+#  -> create a submodule Random
 
 # Some methods for generating random samples
 function rand_radial end

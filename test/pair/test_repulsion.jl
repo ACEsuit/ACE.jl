@@ -18,7 +18,7 @@ using JuLIP.Potentials: i2z, numz
 using JuLIP.MLIPs: combine
 
 randr() = 1.0 + rand()
-randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
+randcoeffs(B) = (rand(length(B)) .* (1:length(B)) .- 0.2).^(-2)
 
 
 ##
@@ -38,15 +38,10 @@ pB = SHIPs.PairPotentials.PolyPairBasis(Pr, :W)
 coeffs = randcoeffs(pB)
 V = combine(pB, coeffs)
 
-
 ## try out the repulsive potential
 Vfit = V
 
 ri = 2.1
-@show (@D Vfit(ri))
-if (@D Vfit(ri)) > 0
-   Vfit = PolyPairPot(- Vfit.coeffs, Vfit.J, Vfit.zlist, Vfit.bidx0)
-end
 @show (@D Vfit(ri))
 e0 = Vfit(ri) - 1.0
 Vrep = SHIPs.PairPotentials.RepulsiveCore(Vfit, ri)
@@ -97,6 +92,7 @@ for (z, z0) in zip([z1, z1, z2], [z1, z2, z2])
    println(@test all(Vrep.Vin[i,i0](r) == Vrep(r, z, z0) for r in rin))
 end
 
+##
 
 @info("JuLIP FD test")
 println(@test JuLIP.Testing.fdtest(Vrep, at))
