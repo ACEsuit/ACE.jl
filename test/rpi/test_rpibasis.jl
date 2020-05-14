@@ -15,6 +15,8 @@ using SHIPs
 using Random, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d, evaluate_ed
 
+randcoeffs(B) = rand(Float64, length(B)) .* (1:length(B)).^(-2)
+
 
 ##
 
@@ -99,6 +101,16 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
       end
       success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
       print_tf(@test success)
+   end
+   println()
+   @info("   check combine")
+   coeffs = randcoeffs(basis)
+   V = combine(basis, coeffs)
+   for ntest = 1:30
+      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      v = evaluate(V, Rs, Zs, z0)
+      cdotB = dot(coeffs, evaluate(basis, Rs, Zs, z0))
+      print_tf(@test v ≈ cdotB)
    end
    println()
 end

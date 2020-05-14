@@ -146,12 +146,10 @@ _znlms2b(zz, nn, ll, mm = zero(ll), z0 = AtomicNumber(0)) =
 
 
 function combine(basis::RPIBasis, coeffs)
-   # function SHIP(basis::SHIPBasis{T, NZ}, coeffs::AbstractVector{T}
-   #               ) where {T, NZ}
-   #    AAcoeffs = ntuple(iz0 -> (coeffs[_get_I_iz0(basis, iz0)]' * basis.A2B[iz0])[:], NZ)
-   #    return SHIP( basis.J, basis.SH, basis.zlist,
-   #                 basis.alists, basis.aalists, AAcoeffs )
-   # end
+
+   picoeffs = ntuple(iz0 -> (coeffs[basis.Bz0inds[iz0]]' * basis.A2Bmaps[iz0])[:],
+                     numz(basis.pibasis))
+   return PIPotential(basis.pibasis, picoeffs)
 end
 
 
