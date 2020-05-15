@@ -14,8 +14,7 @@
 using SHIPs
 using Random, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d, evaluate_ed
-
-randcoeffs(B) = rand(Float64, length(B)) .* (1:length(B)).^(-2)
+using JuLIP.MLIPs: combine
 
 
 ##
@@ -39,7 +38,7 @@ rpibasis = RPIBasis(P1, N, D, maxdeg)
 @info("Basis construction and evaluation checks")
 @info("check single species")
 Nat = 15
-Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
+Rs, Zs, z0 = rand_nhd(Nat, Pr, :X)
 B = evaluate(rpibasis, Rs, Zs, z0)
 println(@test(length(rpibasis) == length(B)))
 dB = evaluate_d(rpibasis, Rs, Zs, z0)
@@ -114,6 +113,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    end
    println()
 end
+
 
 ##
 

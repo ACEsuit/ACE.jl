@@ -25,8 +25,9 @@ Base.length(basis::RPIBasis) = sum(length(basis, iz0)
 
 Base.eltype(::RPIBasis{T}) where {T}  = T
 
-JuLIP.Potentials.i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
-JuLIP.Potentials.z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
+numz(basis::RPIBasis) = numz(basis.pibasis)
+i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
+z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
 
 # ------------------------------------------------------------------------
 #    FIO code
@@ -150,6 +151,17 @@ function combine(basis::RPIBasis, coeffs)
    picoeffs = ntuple(iz0 -> (coeffs[basis.Bz0inds[iz0]]' * basis.A2Bmaps[iz0])[:],
                      numz(basis.pibasis))
    return PIPotential(basis.pibasis, picoeffs)
+end
+
+
+function scaling(basis::RPIBasis, p)
+   wwpi = scaling(basis.pibasis, p)
+   wwrpi = zeros(Float64, length(basis))
+   for iz0 = 1:numz(basis)
+      wwpi_iz0 = wwpi[basis.pibasis.inner[iz0].AAindices]
+      wwrpi[basis.Bz0inds[iz0]] = basis.A2Bmaps[iz0] * wwpi_iz0
+   end
+   return wwrpi
 end
 
 

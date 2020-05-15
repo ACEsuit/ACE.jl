@@ -36,7 +36,7 @@ write_dict(b::PSH1pBasisFcn) =
 read_dict(::Val{:SHIPs_PSH1pBasisFcn}, D::Dict) =
    PSH1pBasisFcn(D["nlmz"]...)
 
-
+scaling(b::PSH1pBasisFcn, p) = b.n^p + b.l^p
 
 @doc raw"""
 `SparsePSHDegree` : A general sparse-grid type degree definition for

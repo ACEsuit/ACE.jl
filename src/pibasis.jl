@@ -25,6 +25,9 @@ order(b::PIBasisFcn{N}) where {N} = N
 
 degree(d::AbstractDegree, pphi::PIBasisFcn) = degree(d, pphi.oneps)
 
+# TODO: this is very rough - can we do better?
+scaling(b::PIBasisFcn, p) = sum(scaling(bb, p) for bb in b.oneps)
+
 # TODO: can we replace this with get_basis_spec?
 function PIBasisFcn(Aspec, t, z0::AtomicNumber)
    if isempty(t) || sum(abs, t) == 0
@@ -212,6 +215,12 @@ function pibasis_from_specs(basis1p, innerspecs)
 end
 
 
+"""
+`get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)`
+
+Here `i` is the index of the basis function for which we reconstruct its
+specification.
+"""
 function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
    N = basis.inner[iz0].orders[i]
    iAA2iA = basis.inner[iz0].iAA2iA[i, 1:N]
@@ -231,6 +240,19 @@ function _get_ordered(b2iA::Dict, pib::PIBasisFcn{N}) where {N}
    iAs = [ b2iA[b] for b in pib.oneps ]
    p = sortperm(iAs)
    return PIBasisFcn(pib.z0, ntuple(i -> pib.oneps[p[i]], N))
+end
+
+
+function scaling(pibasis::PIBasis, p)
+   ww = zeros(Float64, length(pibasis))
+   for iz0 = 1:numz(pibasis)
+      wwin = @view ww[pibasis.inner[iz0].AAindices]
+      for i = 1:length(pibasis.inner[iz0])
+         bspec = get_basis_spec(pibasis, iz0, i)
+         wwin[i] = scaling(bspec, p)
+      end
+   end
+   return ww
 end
 
 

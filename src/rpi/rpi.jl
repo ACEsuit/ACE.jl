@@ -16,7 +16,8 @@ include("../shipimports.jl")
 
 import SHIPs.SphericalHarmonics: SHBasis, index_y
 
-export RPIBasis, SparsePSHDegree, BasicPSH1pBasis
+export RPIBasis, SparsePSHDegree, BasicPSH1pBasis,
+       diagonal_regulariser
 
 # specify the `Rotations3D` submodule for CLebsch-Gordan and related
 include("rotations3d.jl")
@@ -32,7 +33,5 @@ include("rpi_basic1pbasis.jl")
 # RPI basis and RPI potential
 # (the RPI potential is specified through the combine function in this file)
 include("rpi_basis.jl")
-
-# include("rpi_regularise.jl")
 
 end

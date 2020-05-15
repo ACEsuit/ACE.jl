@@ -17,4 +17,5 @@ import SHIPs: ScalarBasis, OneParticleBasis, OnepBasisFcn,
               site_alloc_B, site_alloc_dB,
               site_evaluate!, site_evaluate_d!,
               set_Aindices!, add_into_A!, add_into_A_dA!,
-              evaluate_d_Rj!
+              evaluate_d_Rj!,
+              scaling 

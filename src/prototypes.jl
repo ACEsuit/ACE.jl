@@ -54,44 +54,25 @@ interface functions for `OneParticleBasis`
 """
 function add_into_A_dA! end
 
-# ----------------------------------------------------------------------
+"""
+`function scaling(b, p)`:
 
-# TODO: put type information to the random stuff
-#  -> create a submodule Random
+a scaling factor for a basis functions ϕ, which gives a rought estimate on
+   the magnitude of ∇ᵖϕ e.g.,
+```
+ϕ = r^n Ylm
+```
+has scaling factor `n^p + l^p`, though sharper estimates are also possible.
+"""
+function scaling end
 
-# Some methods for generating random samples
+
+
+using LinearAlgebra: Diagonal
+
+diagonal_regulariser(basis; diff = 0) = Diagonal(scaling(basis, diff))
+
+"""
+every scalar basis must implement this
+"""
 function rand_radial end
-
-function rand_sphere()
-   R = randn(JVecF)
-   return R / norm(R)
-end
-
-rand_vec(J::ScalarBasis) where T = rand_radial(J) *  rand_sphere()
-rand_vec(J::ScalarBasis, N::Integer) = [ rand_vec(J) for _ = 1:N ]
-
-function rand_nhd(Nat, J::ScalarBasis, species = :X)
-   zlist = ZList(species)
-   Rs = [ rand_vec(J) for _ = 1:Nat ]
-   Zs = [ rand(zlist.list) for _ = 1:Nat ]
-   z0 = rand(zlist.list)
-   return Rs, Zs, z0
-end
-
-function rand_perm(Rs, Zs)
-   @assert length(Rs) == length(Zs)
-   p = shuffle(1:length(Rs))
-   return Rs[p], Zs[p]
-end
-
-function rand_rot(Rs, Zs)
-   @assert length(Rs) == length(Zs)
-   K = (@SMatrix rand(3,3)) .- 0.5
-   K = K - K'
-   Q = exp(K)
-   return [ Q * R for R in Rs ], Zs
-end
-
-rand_refl(Rs, Zs) = (-1) .* Rs, Zs
-
-rand_sym(Rs, Zs) = rand_refl(rand_rot(rand_perm(Rs, Zs)...)...)

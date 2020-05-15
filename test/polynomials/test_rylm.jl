@@ -46,7 +46,7 @@ cSH = SHBasis(maxL)
 rSH = RSHBasis(maxL)
 
 for nsamples = 1:30
-   R = SHIPs.rand_sphere()
+   R = SHIPs.Random.rand_sphere()
    cY = evaluate(cSH, R)
    rY = evaluate(rSH, R)
    print_tf(@test test_r2c(maxL, cY, rY))
