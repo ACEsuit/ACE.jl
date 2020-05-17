@@ -12,6 +12,7 @@ using JuLIP: evaluate, evaluate_d
 ##
 
 @info("Basic test of PIBasis construction and evaluation")
+
 maxdeg = 10
 r0 = 1.0
 rcut = 3.0
@@ -27,7 +28,6 @@ Nat = 15
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
-
 
 
 ## check multi-species
