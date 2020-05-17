@@ -46,7 +46,11 @@ include("pairpots/pair.jl");
 #  - random potentials
 #  ...
 include("random.jl")
-@reexport using SHIPs.Random 
+@reexport using SHIPs.Random
+
+
+include("utils.jl")
+@reexport using SHIPs.Utils
 
 # - bond model
 # - pure basis

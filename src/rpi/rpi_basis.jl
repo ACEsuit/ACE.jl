@@ -29,6 +29,8 @@ numz(basis::RPIBasis) = numz(basis.pibasis)
 i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
 z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
 
+cutoff(basis::RPIBasis) = cutoff(basis.pibasis)
+
 # ------------------------------------------------------------------------
 #    FIO code
 # ------------------------------------------------------------------------
@@ -81,7 +83,7 @@ function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
                          pibasis::PIBasis,
                          iz0)
    # allocate triplet format
-   Irow, Jcol, vals = Int[], Int[], eltype(pibasis.basis1p)[]
+   Irow, Jcol, vals = Int[], Int[], real(eltype(pibasis.basis1p))[]
    # count the number of PI basis functions = number of rows
    idxB = 0
    # loop through all (zz, kk, ll) tuples; each specifies 1 to several B
@@ -171,14 +173,19 @@ end
 
 alloc_temp(basis::RPIBasis, args...) =
    ( AA = site_alloc_B(basis.pibasis, args...),
+     AAr = real(site_alloc_B(basis.pibasis, args...)),
      tmp_pibasis = alloc_temp(basis.pibasis, args...)
    )
 
 function evaluate!(B, tmp, basis::RPIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
    AA = site_evaluate!(tmp.AA, tmp.tmp_pibasis, basis.pibasis, Rs, Zs, z0)
+   # TODO: this could be done better maybe by adding the real function into
+   #       site_evaluate!, or by writing a real version of it...
+   AAr = @view tmp.AAr[1:length(AA)]
+   AAr[:] .= real.(AA)
    Bview = @view B[basis.Bz0inds[iz0]]
-   mul!(Bview, basis.A2Bmaps[iz0], AA)
+   mul!(Bview, basis.A2Bmaps[iz0], AAr)
    return B
 end
 
@@ -187,6 +194,7 @@ end
 alloc_temp_d(basis::RPIBasis, args...) =
    (
     AA = site_alloc_B(basis.pibasis, args...),
+    AAr = real(site_alloc_B(basis.pibasis, args...)),
     tmp_pibasis = alloc_temp(basis.pibasis, args...),
     dAAj = site_alloc_dB(basis.pibasis, args...),
     tmpd_pibasis = alloc_temp_d(basis.pibasis, args...),
@@ -206,6 +214,10 @@ function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
    for j = 1:length(Rs)
       # ∂∏A / ∂𝐫ⱼ
       dAAj = evaluate_d_Rj!(tmpd.dAAj, basis.pibasis, A, dA, z0, j)
+      # TODO: check whether copying is faster
+      for i = 1:length(dAAj)
+         dAAj[i] = real.(dAAj[i])
+      end
       # copy into B
       dBview = @view dB[basis.Bz0inds[iz0], j]
       mul!(dBview, basis.A2Bmaps[iz0], dAAj)

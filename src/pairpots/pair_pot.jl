@@ -32,14 +32,15 @@ numz(V::PolyPairPot) = numz(V.basis)
 ==(V1::PolyPairPot, V2::PolyPairPot) =
             ( (V1.basis == V2.basis) && (V1.coeffs == V2.coeffs) )
 
-write_dict(V::PolyPairPot) = Dict(
+write_dict(V::PolyPairPot{T}) where {T} = Dict(
       "__id__" => "SHIPs_PolyPairPot",
+      "T" => write_dict(T),
       "coeffs" => V.coeffs,
       "basis" => write_dict(V.basis)
       )
 
-read_dict(::Val{:SHIPs_PolyPairPot}, D::Dict) =
-      PolyPairPot(D["coeffs"], read_dict(D["basis"]))
+read_dict(::Val{:SHIPs_PolyPairPot}, D::Dict, T = read_dict(D["T"])) =
+      PolyPairPot(read_dict(D["basis"]), T.(D["coeffs"]))
 
 
 alloc_temp(V::PolyPairPot{T}, N::Integer) where {T} =

@@ -98,7 +98,7 @@ end
 
 ==(B1::InnerPIBasis, B2::InnerPIBasis) = (
    (B1.b2iA == B2.b2iA) &&
-   (sortslices(B1.iAA2iA, dims=1) == sortslices(B2.iAA2iA, dims=1)) )
+   (B1.iAA2iA == B2.iAA2iA) )
 
 Base.length(basis::InnerPIBasis) = length(basis.orders)
 
@@ -115,29 +115,39 @@ function InnerPIBasis(Aspec, AAspec, AAindices, z0)
       end
       b2iA[b] = iA
    end
-   # construct the b2iAA mapping
-   b2iAA = Dict{PIBasisFcn, Int}()
-   for (iAA, b) in enumerate(AAspec)
-      b = _get_ordered(b2iA, b)
-      AAspec[iAA] = b
-      if haskey(b2iAA, b)
-         @show b
-         error("b2iAA already has the key b. This means the basis spec is invalid.")
-      end
-      b2iAA[b] = iAA
-   end
+
+
+
 
    # allocate the two main arrays used for evaluation ...
    orders = zeros(Int, len)
    iAA2iA = zeros(Int, len, maxorder)
    # ... and fill them up with the cross-indices
    for (iAA, b) in enumerate(AAspec)
-      @assert b2iAA[b] == iAA
       @assert b.z0 == z0
+      b = _get_ordered(b2iA, b)
+      AAspec[iAA] = b
+
       orders[iAA] = order(b)
       for α = 1:order(b)
          iAA2iA[iAA, α] = b2iA[ b.oneps[α] ]
       end
+   end
+
+   # now sort iAA2iA lexicographically by rows to make sure the representation
+   perm = sortperm( [ vcat([orders[iAA]], iAA2iA[iAA,:]) for iAA = 1:len ] )
+   iAA2iA = iAA2iA[perm, :]
+   AAspec = AAspec[perm]
+   orders = orders[perm]
+
+   # construct the b2iAA mapping
+   b2iAA = Dict{PIBasisFcn, Int}()
+   for (iAA, b) in enumerate(AAspec)
+      if haskey(b2iAA, b)
+         @show b
+         error("b2iAA already has the key b. This means the basis spec is invalid.")
+      end
+      b2iAA[b] = iAA
    end
 
    # put it all together ...
