@@ -8,6 +8,7 @@ import SHIPs: ScalarBasis, ZList, rand_radial, scaling
 
 using Random: shuffle
 using JuLIP: JVecF
+using JuLIP.MLIPs: combine
 using StaticArrays: @SMatrix
 
 export rand_nhd, rand_sym, randcoeffs, randcombine
