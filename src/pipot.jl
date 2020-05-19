@@ -91,8 +91,8 @@ function evaluate!(tmp, V::PIPotential,
    inner = V.pibasis.inner[iz0]
    c = V.coeffs[iz0]
    Es = zero(T)
-   for iAA = 1:length(inner)
-      Esi = c[iAA] # one(Complex{T})
+   @inbounds for iAA = 1:length(inner)
+      Esi = one(Complex{T}) * c[iAA]    # TODO: OW - NASTY!!!
       for α = 1:inner.orders[iAA]
          Esi *= A[inner.iAA2iA[iAA, α]]
       end

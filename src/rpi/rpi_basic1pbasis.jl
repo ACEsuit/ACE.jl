@@ -153,7 +153,19 @@ function add_into_A!(A, tmp, basis::BasicPSH1pBasis,
    evaluate!(tmp.BJ, tmp.tmpJ, basis.J, norm(R))
    evaluate!(tmp.BY, tmp.tmpY, basis.SH, R)
    # add the contributions to the A_zklm
-   for (i, nlm) in enumerate(basis.spec)
+   @inbounds for (i, nlm) in enumerate(basis.spec)
+      A[i] += tmp.BJ[nlm.n] * tmp.BY[index_y(nlm.l, nlm.m)]
+   end
+   return nothing
+end
+
+function add_into_A!(A, inds, tmp, basis::BasicPSH1pBasis,
+                     R, iz::Integer, iz0::Integer)
+   # evaluate the r-basis and the R̂-basis for the current neighbour at R
+   evaluate!(tmp.BJ, tmp.tmpJ, basis.J, norm(R))
+   evaluate!(tmp.BY, tmp.tmpY, basis.SH, R)
+   # add the contributions to the A_zklm
+   @inbounds for (i, nlm) in zip(inds, basis.spec)
       A[i] += tmp.BJ[nlm.n] * tmp.BY[index_y(nlm.l, nlm.m)]
    end
    return nothing
@@ -178,7 +190,7 @@ function add_into_A_dA!(A, dA, tmpd, basis::BasicPSH1pBasis, R, iz::Integer, iz0
    evaluate_d!(tmpd.BJ, tmpd.dBJ, tmpd.tmpdJ, basis.J, r)
    evaluate_d!(tmpd.BY, tmpd.dBY, tmpd.tmpdY, basis.SH, R)
    # add the contributions to the A_zklm, ∇A
-   for (i, nlm) in enumerate(basis.spec)
+   @inbounds for (i, nlm) in enumerate(basis.spec)
       iY = index_y(nlm.l, nlm.m)
       A[i] += tmpd.BJ[nlm.n] * tmpd.BY[iY]
       dA[i] = (tmpd.dBJ[nlm.n] * tmpd.BY[iY]) * R̂ + tmpd.BJ[nlm.n] * tmpd.dBY[iY]

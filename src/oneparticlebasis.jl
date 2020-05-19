@@ -12,7 +12,8 @@ function evaluate!(A, tmp, basis::OneParticleBasis, Rs, Zs::AbstractVector, z0)
    iz0 = z2i(basis, z0)
    for (R, Z) in zip(Rs, Zs)
       iz = z2i(basis, Z)
-      add_into_A!((@view A[basis.Aindices[iz, iz0]]), tmp, basis, R, iz, iz0)
+      # add_into_A!((@view A[basis.Aindices[iz, iz0]]), tmp, basis, R, iz, iz0)
+      add_into_A!(A, basis.Aindices[iz, iz0], tmp, basis, R, iz, iz0)
    end
    return A
 end

@@ -59,4 +59,8 @@ include("utils.jl")
 # - descriptors
 # - random potentials
 
+
+include("treeeval.jl")
+
+
 end # module
