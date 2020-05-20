@@ -11,7 +11,7 @@ module Tree
 include("extimports.jl")
 include("shipimports.jl")
 
-using Combinatorics: combinations
+using Combinatorics: combinations, partitions
 
 import SHIPs: InnerPIBasis
 
@@ -57,10 +57,55 @@ end
 
 
 
+_score_partition(p) = any(isnothing, p) ? Inf : 1000 * length(p) + maximum(p)
+
+_get_ns(p, specnew) =
+      [ findfirst(isequal(kk_), specnew)  for kk_ in p ]
+
+function _find_partition(kk, specnew)
+   # @show kk
+   worstp = _get_ns([ [k] for k in kk ], specnew)
+   @assert worstp == kk
+   bestp = worstp
+   bestscore = _score_partition(bestp)
+
+   for ip in partitions(1:length(kk))
+      p = _get_ns([ kk[i] for i in ip ], specnew)
+      score = _score_partition(p)
+      if !any(isnothing.(p)) && score < bestscore
+         bestp = p
+         bestscore = score
+      end
+   end
+
+   return bestp
+end
+
+# return value is the number of fake nodes added to the tree
+function _insert_partition!(nodes, coeffsnew, specnew,
+                            kk, p,
+                            ikk, coeffsN, specN,
+                            TI = Int)
+   if length(p) == 2
+      push!(nodes, ETNode{TI}(p[1], p[2]))
+      push!(coeffsnew, coeffsN[ikk])
+      push!(specnew, kk)
+      return 0
+   else
+      # reduce the partition by pushing a new node
+      push!(nodes, ETNode{TI}(p[1], p[2]))
+      push!(coeffsnew, 0)
+      push!(specnew, sort(vcat(specnew[p[1]], specnew[p[2]])))
+      # and now recurse with the reduced partition
+      return 1 + _insert_partition!(nodes, coeffsnew, specnew,
+                         kk, vcat( [length(nodes)], p[3:end] ),
+                         ikk, coeffsN, specN, TI)
+   end
+end
 
 function get_eval_tree(inner::InnerPIBasis, coeffs;
                        filter = _->true,
-                       TI = UInt16)
+                       TI = Int)
    # make a list of all basis functions as vectors so we can search it
    # TODO: should also check the tuples are sorted lexicographically
    spec = [ inner.iAA2iA[iAA, 1:inner.orders[iAA]]
@@ -77,8 +122,8 @@ function get_eval_tree(inner::InnerPIBasis, coeffs;
    # start assembling the tree
    nodes = ETNode{TI}[]
    sizehint!(nodes, length(inner))
-   newcoeffs = Vector{eltype(coeffs)}()
-   sizehint!(newcoeffs, length(inner))
+   coeffsnew = Vector{eltype(coeffs)}()
+   sizehint!(coeffsnew, length(inner))
    specnew = Vector{Int}[]
    sizehint!(specnew, length(inner))
 
@@ -90,44 +135,27 @@ function get_eval_tree(inner::InnerPIBasis, coeffs;
       # find that index in `spec`
       ispec = findfirst(isequal([i]), spec1)
       if isnothing(ispec)
-         push!(newcoeffs, 0)
+         push!(coeffsnew, 0)
       else
-         push!(newcoeffs, coeffs1[ispec])
+         push!(coeffsnew, coeffs1[ispec])
       end
    end
 
    # now we can construct the rest
-   # this is the limit of how many intermediate computations must be stored
+   extranodes = 0
    for (ikk, kk) in enumerate(specN)
-      if length(kk) == 1; continue; end # skip the 1-p, we already have them
-      # best length
-      bestlen = length(kk)
-      best_node = ETNode{TI}(0,0)
-      for i1 in combinations(1:length(kk))
-         if length(i1) > length(kk) ÷ 2; continue; end
-         i2 = setdiff(1:length(kk), i1)
-         kk1 = sort(kk[i1])
-         kk2 = sort(kk[i2])
-         len = max( length(kk1), length(kk2) )
-         if len < bestlen
-            n1 = findfirst(isequal(kk1), specnew)
-            n2 = findfirst(isequal(kk2), specnew)
-            if n1 != nothing && n2 != nothing
-               bestlen = len
-               best_node = ETNode{TI}(n1, n2)
-            end
-         end
-      end
-      if best_node == ETNode{TI}(0,0)
-         error("couldn't find a decomposition for $kk")
-      end
-      # add into the collection
-      push!(nodes, best_node)
-      push!(newcoeffs, coeffs[ikk])
-      push!(specnew, kk)
+      # find a good partition of kk
+      p = _find_partition(kk, specnew)
+      extranodes += _insert_partition!(nodes, coeffsnew, specnew,
+                                       kk, p, ikk, coeffsN, specN, TI)
    end
+
+   # TODO: re-organise to minimise numstore
    numstore = maximum(maximum.(nodes))
-   return EvalTree(nodes, newcoeffs, TI(num1), TI(numstore))
+
+   @info("Extra nodes inserted into the tree: $extranodes")
+
+   return EvalTree(nodes, coeffsnew, TI(num1), TI(numstore))
 end
 
 
@@ -164,7 +192,8 @@ function evaluate!(tmp, V::TreePIPot, Rs, Zs, z0)
       Es = real(muladd(c[i], AA[i], Es))
    end
 
-   # Stage 2: now go through the tree and store the intermediate results we need
+   # Stage 2:
+   # go through the tree and store the intermediate results we need
    for i = (tree.num1+1):tree.numstore
       t = nodes[i]
       a = AA[t[1]] * AA[t[2]]
@@ -174,7 +203,8 @@ function evaluate!(tmp, V::TreePIPot, Rs, Zs, z0)
 
    # Stage 3:
    # continue going through the tree, but now we don't need to store
-   # the new correlations since we don't need them anymore later
+   # the new correlations since the later expressions don't depend
+   # on them
    for i = (tree.numstore+1):length(tree)
       t = nodes[i]
       a = AA[t[1]] * AA[t[2]]
