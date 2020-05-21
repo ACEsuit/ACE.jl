@@ -8,6 +8,8 @@
 
 module Tree
 
+using TimerOutputs
+
 include("extimports.jl")
 include("shipimports.jl")
 
@@ -105,7 +107,8 @@ end
 
 function get_eval_tree(inner::InnerPIBasis, coeffs;
                        filter = _->true,
-                       TI = Int)
+                       TI = Int,
+                       verbose = false)
    # make a list of all basis functions as vectors so we can search it
    # TODO: should also check the tuples are sorted lexicographically
    spec = [ inner.iAA2iA[iAA, 1:inner.orders[iAA]]
@@ -150,16 +153,65 @@ function get_eval_tree(inner::InnerPIBasis, coeffs;
                                        kk, p, ikk, coeffsN, specN, TI)
    end
 
-   # TODO: re-organise to minimise numstore
-   numstore = maximum(maximum.(nodes))
+   verbose && @info("Extra nodes inserted into the tree: $extranodes")
+   numstore = length(nodes)
 
-   @info("Extra nodes inserted into the tree: $extranodes")
+   # re-organise the tree layout to minimise numstore
+   # nodesfinal, coeffsfinal, num1, numstore = _reorder_tree!(nodes, coeffsnew)
+   nodesfinal = nodes
+   coeffsfinal = coeffs
 
-   return EvalTree(nodes, coeffsnew, TI(num1), TI(numstore))
+   return EvalTree(nodesfinal, coeffsfinal, TI(num1), TI(numstore))
 end
 
 
+function _reorder_tree!(nodes::Vector{ETNode{TI}}, coeffs::Vector{T}) where {TI, T}
+   # collect all AA indices that are used anywhere in the tree
+   newinds = zeros(Int, length(nodes))
+   newnodes = ETNode{TI}[]
+   newcoeffs = T[]
 
+   # inds2 = stage-2 indices, i.e. temporary storage
+   # inds3 = stage-3 indices, i.e. no intermediate storage
+   inds2 = sort(unique([[ n[1] for n in nodes ]; [n[2] for n in nodes]]))
+   inds3 = sort(setdiff(1:length(nodes), inds2))
+
+   # first add all 1p nodes
+   for i = 1:length(nodes)
+      n, c = nodes[i], coeffs[i]
+      if (n[2] == 0) && ((c != 0) || (n in inds2))
+         @assert n[1] == i
+         newinds[i] = i
+         push!(newnodes, n)
+         push!(newcoeffs, c)
+      end
+   end
+   num1 = length(newnodes)
+
+   # next add the remaining dependent nodes
+   for i = 1:length(nodes)
+      n, c = nodes[i], coeffs[i]
+      # not 1p basis && dependent node
+      if (n[2] != 0) && (i in inds2)
+         push!(newnodes, ETNode{TI}(newinds[n[1]], newinds[n[2]]))
+         push!(newcoeffs, c)
+         newinds[i] = length(newnodes)
+      end
+   end
+   numstore = length(newnodes)
+
+   # now go through one more time and add the independent nodes
+   for i = 1:length(nodes)
+      n, c = nodes[i], coeffs[i]
+      if (n[2] != 0) && (newinds[i] == 0) && (c != 0)
+         push!(newnodes, ETNode{TI}(newinds[n[1]], newinds[n[2]]))
+         push!(newcoeffs, c)
+         newinds[i] = length(newnodes)
+      end
+   end
+
+   return newnodes, newcoeffs, num1, numstore
+end
 
 # ---------------------------------------------------------------------
 #   evaluation codes
@@ -188,32 +240,93 @@ function evaluate!(tmp, V::TreePIPot, Rs, Zs, z0)
 
    # Stage 1: accumulate the first basis functions
    Es = zero(eltype(V))
-   for i = 1:tree.num1
+   @inbounds for i = 1:tree.num1
       Es = real(muladd(c[i], AA[i], Es))
    end
 
    # Stage 2:
    # go through the tree and store the intermediate results we need
-   for i = (tree.num1+1):tree.numstore
-      t = nodes[i]
-      a = AA[t[1]] * AA[t[2]]
-      AA[i] = a
-      Es = real(muladd(c[i], a, Es))
+   @inbounds @fastmath for i = (tree.num1+1):tree.numstore
+      # @timeit "t = nodes[i]" t = nodes[i]
+      # @timeit "a = AA[t[1]] * AA[t[2]]" a = AA[t[1]] * AA[t[2]]
+      # @timeit "AA[i] = a" AA[i] = a
+      # @timeit "Es = real(muladd(c[i], a, Es))" Es = real(muladd(c[i], a, Es))
+      c_ = c[i]
+      if c_ != 0
+         t = nodes[i]
+         a = AA[t[1]] * AA[t[2]]
+         AA[i] = a
+         Es = muladd(c[i], real(a), Es)
+      end
    end
 
    # Stage 3:
    # continue going through the tree, but now we don't need to store
    # the new correlations since the later expressions don't depend
    # on them
-   for i = (tree.numstore+1):length(tree)
+   @inbounds @fastmath for i = (tree.numstore+1):length(tree)
       t = nodes[i]
       a = AA[t[1]] * AA[t[2]]
-      Es = real(muladd(c[i], a, Es))
+      Es = muladd(c[i], real(a), Es)
    end
 
    return Es
 end
 
+
+
+function evaluate_d!(dEs, tmpd, V::TreePIPot, Rs, Zs, z0)
+   iz0 = z2i(V, z0)
+   AA = tmpd.AA
+   B = tmpd.B
+   tmp_basis1p = tmpd.tmp_basis1p
+   basis1p = V.basis1p
+   tree = V.trees[iz0]
+   nodes = tree.nodes
+   coeffs = tree.coeffs
+
+   # FORWARD PASS
+   # ------------
+   # evaluate the 1-particle basis
+   # this puts the first `tree.num1` 1-b (trivial) correlations into the
+   # storage array, and from these we can build the rest
+   evaluate!(AA, tmp_basis1p, basis1p, Rs, Zs, z0)
+
+   # Stage 2 of evaluate!
+   # go through the tree and store the intermediate results we need
+   # @inbounds @fastmath
+   for i = (tree.num1+1):tree.numstore
+      t = nodes[i]
+      a = AA[t[1]] * AA[t[2]]
+      AA[i] = a
+      Es = muladd(c[i], real(a), Es)
+   end
+
+   # BACKWARD PASS
+   # --------------
+   # fill the B array -> coefficients of the derivatives
+   for i = length(tree):-1:1
+      c = coeffs[i]
+      n1, n2 = nodes[i]
+      B[n1] = muladd(c, AA[n2], B[n1])
+      B[n2] = muladd(c, AA[n1], B[n2])
+   end
+
+   # stage 3: get the gradients
+   fill!(dEs, zero(JVec{T}))
+   Araw = tmpd_pibasis.A
+   dAraw = tmpd_pibasis.dA
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      dA = evaluate_d!(Araw, dAraw, tmpd_1p, basis1p, R, Z, z0)
+      iz = z2i(basis1p, Z)
+      B_z = @view B[basis1p.Aindices[iz, iz0]]
+      for iA = 1:length(dA)
+         dEs[iR] += real(dAco_z[iA] * dA[iA])
+      end
+   end
+
+   return dEs
+end
 
 
 

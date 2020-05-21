@@ -22,6 +22,7 @@ basis = SHIPs.Utils.rpi_basis(species = :X, N = 6, maxdeg = 10)
 V = SHIPs.Random.randcombine(basis)
 Rs, Zs, z0 = rand_nhd(15, basis.pibasis.basis1p.J, :X)
 tmp = SHIPs.alloc_temp(V, length(Rs));
+
 Vtr = SHIPs.Tree.TreePIPot(V)
 tmptr = SHIPs.alloc_temp(Vtr, length(Rs))
 
