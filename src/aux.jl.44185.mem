@@ -1,0 +1,97 @@
+        - 
+        - using StaticArrays
+        - using LinearAlgebra: norm, dot
+        - 
+        - 
+        - # ------------------------------------------------------------
+        - # miscellaneous
+        - 
+        - """
+        - a simple utility function to check whether two objects are equal
+        - """
+        - _allfieldsequal(x1, x2) =
+        -       all( getfield(x1, sym) == getfield(x2, sym)
+        -            for sym in union(fieldnames(typeof(x1)), fieldnames(typeof(x2))) )
+        - 
+        - 
+        - # ----------- Auxiliary functions to generate sparse grid type stuff
+        - # -> could go into Utils?
+        - 
+     6544 gensparse(N::Integer, deg::Real; degfun = ν -> sum(ν), kwargs...) =
+ 54267574    gensparse(N; admissible = ν -> (degfun(ν) <= deg), kwargs...)
+        - 
+        - gensparse(N::Integer;
+        -           admissible = _-> false,
+        -           filter = _-> true,
+        -           tup2b = ν -> SVector(ν),
+        -           INT = Int,
+        -           ordered = false,
+  6316858           maxν = Inf) =
+        -       _gensparse(Val(N), admissible, filter, tup2b, INT, ordered, maxν)
+        - 
+        - function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
+        -                    ) where {N}
+  3814215    @assert INT <: Integer
+        - 
+        -    lastidx = 0
+     2240    ν = @MVector zeros(INT, N)
+       48    b = tup2b(ν)
+      160    Nu = Vector{Any}(undef, 0)
+      160    orig_Nu = []
+        - 
+        -    if N == 0
+        -       push!(Nu, b)
+        -       return Nu
+        -    end
+        - 
+        0    while true
+        -       # check whether the current ν tuple is admissible
+        -       # the first condition is that its max index is small enough
+        -       # we want to increment `curindex`, but if we've reach the maximum degree
+        -       # then we need to move to the next index down
+        -       isadmissible = true
+    68185       if maximum(ν) > maxν
+        -          isadmissible = false
+        -       else
+     2304          b = tup2b(ν)
+        0          isadmissible = admissible(b)
+        -       end
+        - 
+        0       if isadmissible
+        -          # ... then we add it to the stack  ...
+        -          # (unless some filtering mechanism prevents it)
+        0          if filter(b)
+    11312             push!(Nu, b)
+     9536             push!(orig_Nu, copy(ν))
+        -          end
+        -          # ... and increment it
+        0          lastidx = N
+        0          ν[lastidx] += 1
+        -       else
+        -          # we have overshot, e.g. degfun(ν) > deg; we must go back down, by
+        -          # decreasing the index at which we increment
+        0          if lastidx == 1
+        -             # if we have gone all the way down to lastindex==1 and are still
+        -             # inadmissible then this means we are done
+        -             break
+        -          end
+        -          # reset
+        0          ν[lastidx-1] += 1
+        0          if ordered   #   ordered tuples (permutation symmetry)
+  6732214             ν[lastidx:end] .= ν[lastidx-1]
+        -          else         # unordered tuples (no permutation symmetry)
+  6658383             ν[lastidx:end] .= 0
+        -          end
+        0          lastidx -= 1
+        -       end
+        -    end
+        - 
+        0    if ordered
+        -       # @info("sanity test")
+  1659818       @assert all(issorted, orig_Nu)
+ 21631957       @assert length(unique(orig_Nu)) == length(orig_Nu)
+        -    end
+        - 
+  8283395    return identity.(Nu)
+        - end
+        - 

@@ -183,7 +183,7 @@ alloc_temp_d(basis::BasicPSH1pBasis, args...) =
         tmpdY = alloc_temp_d(basis.SH, args...),
        )
 
-function add_into_A_dA!(A, dA, tmpd, basis::BasicPSH1pBasis, R, iz::Integer, iz0::Integer)
+function add_into_A_dA!(A, dA, inds, j, tmpd, basis::BasicPSH1pBasis, R, iz::Integer, iz0::Integer)
    r = norm(R)
    R̂ = R / r
    # evaluate the r-basis and the R̂-basis for the current neighbour at R
@@ -192,8 +192,8 @@ function add_into_A_dA!(A, dA, tmpd, basis::BasicPSH1pBasis, R, iz::Integer, iz0
    # add the contributions to the A_zklm, ∇A
    @inbounds for (i, nlm) in enumerate(basis.spec)
       iY = index_y(nlm.l, nlm.m)
-      A[i] += tmpd.BJ[nlm.n] * tmpd.BY[iY]
-      dA[i] = (tmpd.dBJ[nlm.n] * tmpd.BY[iY]) * R̂ + tmpd.BJ[nlm.n] * tmpd.dBY[iY]
+      A[inds[i]] += tmpd.BJ[nlm.n] * tmpd.BY[iY]
+      dA[inds[i], j] = (tmpd.dBJ[nlm.n] * tmpd.BY[iY]) * R̂ + tmpd.BJ[nlm.n] * tmpd.dBY[iY]
    end
    return nothing
 end

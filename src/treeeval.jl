@@ -8,8 +8,6 @@
 
 module Tree
 
-using TimerOutputs
-
 include("extimports.jl")
 include("shipimports.jl")
 

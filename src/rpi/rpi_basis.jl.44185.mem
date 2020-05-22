@@ -1,0 +1,220 @@
+        - 
+        - using SparseArrays: SparseMatrixCSC, sparse
+        - using LinearAlgebra: mul!
+        - 
+        - """
+        - `struct RPIBasis`
+        - """
+        - struct RPIBasis{T, BOP, NZ} <: IPBasis
+        -    pibasis::PIBasis{BOP, NZ}
+        -    A2Bmaps::NTuple{NZ, SparseMatrixCSC{T, Int}}
+        -    Bz0inds::NTuple{NZ, UnitRange{Int}}
+        - end
+        - 
+        - Base.length(basis::RPIBasis, iz0::Integer) = size(basis.A2Bmaps[iz0], 1)
+        - 
+        - Base.length(basis::RPIBasis) = sum(length(basis, iz0)
+        -                                     for iz0 = 1:numz(basis.pibasis))
+        - 
+        - Base.eltype(::RPIBasis{T}) where {T}  = T
+        - 
+        - numz(basis::RPIBasis) = numz(basis.pibasis)
+        - i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
+        - z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
+        - 
+        - cutoff(basis::RPIBasis) = cutoff(basis.pibasis)
+        - 
+        - # ------------------------------------------------------------------------
+        - #    FIO code
+        - # ------------------------------------------------------------------------
+        - 
+        - ==(B1::RPIBasis, B2::RPIBasis) = (B1.pibasis == B2.pibasis)
+        - 
+        - write_dict(basis::RPIBasis) = Dict(
+        -       "__id__" => "SHIPs_RPIBasis",
+        -       "pibasis" => write_dict(basis.pibasis),
+        -    )
+        - 
+        - read_dict(::Val{:SHIPs_RPIBasis}, D::Dict) =
+        -    RPIBasis(read_dict(D["pibasis"]))
+        - 
+        - # ------------------------------------------------------------------------
+        - #    Basis construction code
+        - # ------------------------------------------------------------------------
+        - 
+        - 
+        - RPIBasis(basis1p::OneParticleBasis, N::Integer,
+        -          D::AbstractDegree, maxdeg::Real) =
+        -    RPIBasis(PIBasis(basis1p, N, D, maxdeg; filter = _rpi_filter))
+        - 
+        - function RPIBasis(pibasis::PIBasis)
+        0    basis1p = pibasis.basis1p
+        - 
+        -    # construct the cg matrices
+     1424    rotc = Rot3DCoeffs()
+       48    A2Bmaps = ntuple(iz0 -> _rpi_A2B_matrix(rotc, pibasis, iz0), numz(pibasis))
+        - 
+        -    # construct the indices within the B vector to which the A2Bmaps map.
+       80    Bz0inds = UnitRange{Int}[]
+        -    idx0 = 0
+        0    for i = 1:length(A2Bmaps)
+        0       len = size(A2Bmaps[i], 1)
+       80       push!(Bz0inds, (idx0+1):(idx0+len))
+        0       idx0 += len
+        -    end
+        - 
+      112    return RPIBasis(pibasis, A2Bmaps, tuple(Bz0inds...))
+        - end
+        - 
+        - _rpi_filter(pib::PIBasisFcn{0}) = false
+        - _rpi_filter(pib::PIBasisFcn{1}) = (pib.oneps[1].l == 0)
+ 27409459 _rpi_filter(pib::PIBasisFcn) = (
+        -       iseven( sum(b.l for b in pib.oneps) ) &&
+        -       (sum(b.m for b in pib.oneps) == 0) )
+        - 
+        - function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
+        -                          pibasis::PIBasis,
+        -                          iz0)
+        -    # allocate triplet format
+      240    Irow, Jcol, vals = Int[], Int[], real(eltype(pibasis.basis1p))[]
+        -    # count the number of PI basis functions = number of rows
+        -    idxB = 0
+        -    # loop through all (zz, kk, ll) tuples; each specifies 1 to several B
+        0    for i = 1:length(pibasis.inner[iz0])
+        -       # get the specification of the ith basis function
+        0       pib = get_basis_spec(pibasis, iz0, i)
+        -       # skip it unless all m are zero, because we want to consider each
+        -       # (nn, ll) block only once.
+  9142182       if !all(b.m == 0 for b in pib.oneps)
+        -          continue
+        -       end
+        -       # get the rotation-coefficients for this basis group
+        -       # the bs are the basis functions corresponding to the columns
+        0       U, bcols = _rpi_coupling_coeffs(pibasis, rotc, pib)
+        -       # loop over the rows of Ull -> each specifies a basis function
+        0       for irow = 1:size(U, 1)
+        0          idxB += 1
+        -          # loop over the columns of U / over brows
+  6024865          for (icol, bcol) in enumerate(bcols)
+        -             # this is a subtle step: bcol and bcol_ordered are equivalent
+        -             # permutation-invariant basis functions. This means we will
+        -             # add the same PI basis function several times, but in the call to
+        -             # `sparse` the values will just be added.
+    49536             bcol_ordered = SHIPs._get_ordered(pibasis, bcol)
+  1080006             idxAA = pibasis.inner[iz0].b2iAA[bcol_ordered]
+     8448             push!(Irow, idxB)
+     8448             push!(Jcol, idxAA)
+  2194374             push!(vals, U[irow, icol])
+        -          end
+        -       end
+        -    end
+        -    # create CSC: [   triplet    ]  nrows   ncols
+        0    return sparse(Irow, Jcol, vals, idxB, length(pibasis.inner[iz0]))
+        - end
+        - 
+        - 
+        - # U, bcols = rpi_coupling_coeffs(rotc, pib)
+        - 
+        - """
+        - this is essentially a wrapper function around Rotations3D.rpi_basis,
+        - and is just meant to translate between different representations
+        - """
+        - function _rpi_coupling_coeffs(pibasis, rotc::Rot3DCoeffs, pib::PIBasisFcn{N}
+        -                               ) where {N}
+        -    # convert to zz, ll, nn tuples
+197173311    zz, nn, ll, _ = _b2znlms(pib)
+        -    # construct the RPI coupling coefficients
+        0    U, Ms = Rotations3D.rpi_basis(rotc, zz, nn, ll)
+        -    # convert the Ms into basis functions
+ 83760838    rpibs = [ _znlms2b(zz, nn, ll, mm, pib.z0) for mm in Ms ]
+    10016    return U, rpibs
+        - end
+        - 
+        - _b2znlms(pib::PIBasisFcn{N}) where {N} = (
+        -    SVector(ntuple(n -> pib.oneps[n].z, N)...),
+        -    SVector(ntuple(n -> pib.oneps[n].n, N)...),
+        -    SVector(ntuple(n -> pib.oneps[n].l, N)...),
+        -    SVector(ntuple(n -> pib.oneps[n].m, N)...) )
+        - 
+        - _znlms2b(zz, nn, ll, mm = zero(ll), z0 = AtomicNumber(0)) =
+        -    PIBasisFcn( z0, ntuple(i -> PSH1pBasisFcn(nn[i], ll[i], mm[i], zz[i]),
+        -                           length(zz)) )
+        - 
+        - 
+        - function combine(basis::RPIBasis, coeffs)
+        - 
+     9440    picoeffs = ntuple(iz0 -> (coeffs[basis.Bz0inds[iz0]]' * basis.A2Bmaps[iz0])[:],
+        -                      numz(basis.pibasis))
+        0    return PIPotential(basis.pibasis, picoeffs)
+        - end
+        - 
+        - 
+        - function scaling(basis::RPIBasis, p)
+        0    wwpi = scaling(basis.pibasis, p)
+     1808    wwrpi = zeros(Float64, length(basis))
+        0    for iz0 = 1:numz(basis)
+     3776       wwpi_iz0 = wwpi[basis.pibasis.inner[iz0].AAindices]
+     1808       wwrpi[basis.Bz0inds[iz0]] = basis.A2Bmaps[iz0] * wwpi_iz0
+        -    end
+        0    return wwrpi
+        - end
+        - 
+        - 
+        - # ------------------------------------------------------------------------
+        - #    Evaluation code
+        - # ------------------------------------------------------------------------
+        - 
+        - alloc_temp(basis::RPIBasis, args...) =
+        -    ( AA = site_alloc_B(basis.pibasis, args...),
+        -      AAr = real(site_alloc_B(basis.pibasis, args...)),
+        -      tmp_pibasis = alloc_temp(basis.pibasis, args...)
+        -    )
+        - 
+        - function evaluate!(B, tmp, basis::RPIBasis, Rs, Zs, z0)
+        -    iz0 = z2i(basis, z0)
+        -    AA = site_evaluate!(tmp.AA, tmp.tmp_pibasis, basis.pibasis, Rs, Zs, z0)
+        -    # TODO: this could be done better maybe by adding the real function into
+        -    #       site_evaluate!, or by writing a real version of it...
+        -    AAr = @view tmp.AAr[1:length(AA)]
+        -    AAr[:] .= real.(AA)
+        -    Bview = @view B[basis.Bz0inds[iz0]]
+        -    mul!(Bview, basis.A2Bmaps[iz0], AAr)
+        -    return B
+        - end
+        - 
+        - # ------- gradient
+        - 
+        - alloc_temp_d(basis::RPIBasis, args...) =
+        -    (
+        -     AA = site_alloc_B(basis.pibasis, args...),
+        -     AAr = real(site_alloc_B(basis.pibasis, args...)),
+        -     tmp_pibasis = alloc_temp(basis.pibasis, args...),
+        -     dAAj = site_alloc_dB(basis.pibasis, args...),
+        -     tmpd_pibasis = alloc_temp_d(basis.pibasis, args...),
+        -     )
+        - 
+        - # TODO: evaluate also B??? the interface seems to command it.
+        - function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
+        -    iz0 = z2i(basis, z0)
+        -    # fill B. TODO: do this as part of evaluating dB?
+        -    evaluate!(B, tmpd, basis, Rs, Zs, z0)
+        -    # now move to dB; here we are unfortunately computing A twice.
+        -    # but timings suggest this makes almost no difference
+        -    A = tmpd.tmpd_pibasis.A
+        -    dA = tmpd.tmpd_pibasis.dA
+        -    evaluate_d!(A, dA, tmpd.tmpd_pibasis.tmpd_basis1p, basis.pibasis.basis1p,
+        -                Rs, Zs, z0)
+        -    for j = 1:length(Rs)
+        -       # ∂∏A / ∂𝐫ⱼ
+        -       dAAj = evaluate_d_Rj!(tmpd.dAAj, basis.pibasis, A, dA, z0, j)
+        -       # TODO: check whether copying is faster
+        -       for i = 1:length(dAAj)
+        -          dAAj[i] = real.(dAAj[i])
+        -       end
+        -       # copy into B
+        -       dBview = @view dB[basis.Bz0inds[iz0], j]
+        -       mul!(dBview, basis.A2Bmaps[iz0], dAAj)
+        -    end
+        -    return dB
+        - end
+        - 

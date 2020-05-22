@@ -148,11 +148,11 @@ function evaluate_d!(dEs, tmpd, V::PIPotential,
    fill!(dEs, zero(JVec{T}))
    dAraw = tmpd.tmpd_pibasis.dA
    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-      dA = evaluate_d!(Araw, dAraw, tmpd_1p, basis1p, R, Z, z0)
+      evaluate_d!(Araw, dAraw, tmpd_1p, basis1p, R, Z, z0)
       iz = z2i(basis1p, Z)
-      dAco_z = @view dAco[basis1p.Aindices[iz, iz0]]
-      for iA = 1:length(dA)
-         dEs[iR] += real(dAco_z[iA] * dA[iA])
+      zinds = basis1p.Aindices[iz, iz0]
+      for iA = 1:length(basis1p, iz, iz0)
+         dEs[iR] += real(dAco[zinds[iA]] * dAraw[iA])
       end
    end
    return dEs
