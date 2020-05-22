@@ -155,5 +155,6 @@ function evaluate_d!(dEs, tmpd, V::PIPotential,
          dEs[iR] += real(dAco[zinds[iA]] * dAraw[zinds[iA]])
       end
    end
+
    return dEs
 end

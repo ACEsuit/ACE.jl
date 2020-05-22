@@ -153,6 +153,7 @@ function get_eval_tree(inner::InnerPIBasis, coeffs;
 
    verbose && @info("Extra nodes inserted into the tree: $extranodes")
    numstore = length(nodes)
+   num1old = num1
 
    # re-organise the tree layout to minimise numstore
    nodesfinal, coeffsfinal, num1, numstore = _reorder_tree!(nodes, coeffsnew)
@@ -174,7 +175,7 @@ function _reorder_tree!(nodes::Vector{ETNode{TI}}, coeffs::Vector{T}) where {TI,
    # first add all 1p nodes
    for i = 1:length(nodes)
       n, c = nodes[i], coeffs[i]
-      if (n[2] == 0) && ((c != 0) || (i in inds2))
+      if (n[2] == 0) ## && ((c != 0) || (i in inds2))
          @assert n[1] == i
          newinds[i] = i
          push!(newnodes, n)
@@ -241,9 +242,8 @@ function evaluate!(tmp, V::TreePIPot, Rs, Zs, z0)
    # Stage 2:
    # go through the tree and store the intermediate results we need
    @inbounds @fastmath for i = (tree.num1+1):tree.numstore
-      t = nodes[i]
-      a = AA[t[1]] * AA[t[2]]
-      AA[i] = a
+      n1, n2 = nodes[i]
+      AA[i] = a = AA[n1] * AA[n2]
       Es = muladd(c[i], real(a), Es)
    end
 
@@ -284,7 +284,10 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
    nodes = tree.nodes
    coeffs = tree.coeffs
 
-   fill!(B, 0)
+   # we start from the representation
+   #     V = sum B[i] AA[i]
+   # i.e. this vector represents the constributions c[i] ∂AA[i]
+   copy!(B, coeffs)
 
    # FORWARD PASS
    # ------------
@@ -304,18 +307,23 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
    # BACKWARD PASS
    # --------------
    # fill the B array -> coefficients of the derivatives
-   for i = length(tree):-1:(tree.num1+1)
+   #  AA_i = AA_{n1} * AA_{n2}
+   #  ∂AA_i = AA_{n1} * ∂AA_{n2} + AA_{n1} * AA_{n2}
+   #  c_{n1} * ∂AA_{n1} <- (c_{n1} + c_i AA_{n2}) ∂AA_{n1}
+   for i = length(tree):-1:(tree.numstore+1)
       c = coeffs[i]
       n1, n2 = nodes[i]
-      B[n1] = muladd(c, AA[n2], B[n1])
-      B[n2] = muladd(c, AA[n1], B[n2])
+      B[n1] += c * AA[n2]
+      B[n2] += c * AA[n1]
+   end
+   # in stage 2 c = C[i] is replaced with b = B[i]
+   for i = tree.numstore:-1:(tree.num1+1)
+      n1, n2 = nodes[i]
+      b = B[i]
+      B[n1] += b * AA[n2]
+      B[n2] += b * AA[n1]
    end
 
-   # second part of backward pass (reverting the first stage of the forward pass)
-   for i = 1:tree.num1
-      n1, n2 = nodes[i]
-      B[n1] += coeffs[i]
-   end
 
    # stage 3: get the gradients
    fill!(dEs, zero(JVec{T}))
