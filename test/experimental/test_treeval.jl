@@ -32,6 +32,13 @@ println(@test(v ≈ vtr))
 
 ##
 
+dv = evaluate_d(V, Rs, Zs, z0)
+dvtr = evaluate_d(Vtr, Rs, Zs, z0)
+
+[mat(dv); mat(dvtr)]
+
+##
+
 @info("Check several properties of PIPotential")
 for species in (:Si, [:C, :O], [:C, :O, :H]), N = 1:5
    Nat = 15
