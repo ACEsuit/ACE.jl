@@ -297,9 +297,8 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
    # go through the tree and store the intermediate results we need
    # @inbounds @fastmath
    for i = (tree.num1+1):tree.numstore
-      t = nodes[i]
-      a = AA[t[1]] * AA[t[2]]
-      AA[i] = a
+      n1, n2 = nodes[i]
+      AA[i] = AA[n1] * AA[n2]
    end
 
    # BACKWARD PASS
@@ -312,16 +311,22 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
       B[n2] = muladd(c, AA[n1], B[n2])
    end
 
+   # second part of backward pass (reverting the first stage of the forward pass)
+   for i = 1:tree.num1
+      n1, n2 = nodes[i]
+      B[n1] += coeffs[i]
+   end
+
    # stage 3: get the gradients
    fill!(dEs, zero(JVec{T}))
-   Araw = tmpd.A
-   dAraw = tmpd.dA
+   A = tmpd.A
+   dA = tmpd.dA
    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-      dA = evaluate_d!(Araw, dAraw, tmpd_basis1p, basis1p, R, Z, z0)
+      evaluate_d!(A, dA, tmpd_basis1p, basis1p, R, Z, z0)
       iz = z2i(basis1p, Z)
-      B_z = @view B[basis1p.Aindices[iz, iz0]]
-      for iA = 1:length(dA)
-         dEs[iR] += real(B_z[iA] * dA[iA])
+      inds = basis1p.Aindices[iz, iz0]
+      for iA = 1:length(basis1p, iz, iz0)
+         dEs[iR] += real(B[inds[iA]] * dA[inds[iA]])
       end
    end
 

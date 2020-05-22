@@ -152,7 +152,7 @@ function evaluate_d!(dEs, tmpd, V::PIPotential,
       iz = z2i(basis1p, Z)
       zinds = basis1p.Aindices[iz, iz0]
       for iA = 1:length(basis1p, iz, iz0)
-         dEs[iR] += real(dAco[zinds[iA]] * dAraw[iA])
+         dEs[iR] += real(dAco[zinds[iA]] * dAraw[zinds[iA]])
       end
    end
    return dEs

@@ -42,10 +42,12 @@ println(@test(v ≈ vtr))
 
 ##
 
-dv = evaluate_d(V, Rs, Zs, z0)
-dvtr = evaluate_d(Vtr, Rs, Zs, z0)
+dv = evaluate_d(V, Rs, Zs, z0)[1][1]
+dvtr = evaluate_d(Vtr, Rs, Zs, z0)[1][1]
 
 dv ≈ dvtr
+
+[mat(dv); mat(dvtr)]
 
 ##
 #
