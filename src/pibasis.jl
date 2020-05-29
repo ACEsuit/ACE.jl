@@ -116,9 +116,6 @@ function InnerPIBasis(Aspec, AAspec, AAindices, z0)
       b2iA[b] = iA
    end
 
-
-
-
    # allocate the two main arrays used for evaluation ...
    orders = zeros(Int, len)
    iAA2iA = zeros(Int, len, maxorder)

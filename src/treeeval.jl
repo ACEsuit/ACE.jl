@@ -298,10 +298,9 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
 
    # Stage 2 of evaluate!
    # go through the tree and store the intermediate results we need
-   # @inbounds @fastmath
-   for i = (tree.num1+1):tree.numstore
+   @inbounds @fastmath for i = (tree.num1+1):tree.numstore
       n1, n2 = nodes[i]
-      AA[i] = AA[n1] * AA[n2]
+      AA[i] = muladd(AA[n1], AA[n2], AA[i])
    end
 
    # BACKWARD PASS
@@ -310,20 +309,19 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
    #  AA_i = AA_{n1} * AA_{n2}
    #  ∂AA_i = AA_{n1} * ∂AA_{n2} + AA_{n1} * AA_{n2}
    #  c_{n1} * ∂AA_{n1} <- (c_{n1} + c_i AA_{n2}) ∂AA_{n1}
-   for i = length(tree):-1:(tree.numstore+1)
+   @inbounds @fastmath for i = length(tree):-1:(tree.numstore+1)
       c = coeffs[i]
       n1, n2 = nodes[i]
-      B[n1] += c * AA[n2]
-      B[n2] += c * AA[n1]
+      B[n1] = muladd(c, AA[n2], B[n1])
+      B[n2] = muladd(c, AA[n1], B[n2])
    end
    # in stage 2 c = C[i] is replaced with b = B[i]
-   for i = tree.numstore:-1:(tree.num1+1)
+   @inbounds @fastmath for i = tree.numstore:-1:(tree.num1+1)
       n1, n2 = nodes[i]
       b = B[i]
-      B[n1] += b * AA[n2]
-      B[n2] += b * AA[n1]
+      B[n1] = muladd(b, AA[n2], B[n1])
+      B[n2] = muladd(b, AA[n1], B[n2])
    end
-
 
    # stage 3: get the gradients
    fill!(dEs, zero(JVec{T}))
