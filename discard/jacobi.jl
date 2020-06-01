@@ -120,6 +120,9 @@ function evaluate!(P::AbstractVector, tmp, J::Jacobi, x)
    α, β = J.α, J.β
    P[1] = 1
    if N > 0
+      #       (A * x + B) * P[1]
+      #       A = 0.5 * (α+β+2)
+      #       B = (α+1) - 0.5 * (α+β+2)
       P[2] = (α+1) + 0.5 * (α+β+2) * (x-1)
       if N > 1
          # 3-pt recursion
