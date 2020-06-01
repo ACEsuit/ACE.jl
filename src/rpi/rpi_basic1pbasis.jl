@@ -25,23 +25,28 @@ struct BasicPSH1pBasis{T, NZ, TJ <: ScalarBasis{T}} <: OneParticleBasis{T}
    Aindices::Matrix{UnitRange{Int}}
 end
 
-
-function BasicPSH1pBasis(J::ScalarBasis{T};
-                         species = :X,
-                         D::AbstractDegree = SparsePSHDegree()
-                ) where {T}
-   # get a generic basis spec
-   spec = _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
+function BasicPSH1pBasis(J::ScalarBasis{T}, zlist::SZList,
+                         spec::Vector{PSH1pBasisFcn}) where {T}
    # now get the maximum L-degree to generate the SH basis
    maxL = maximum(b.l for b in spec)
    SH = SHBasis(maxL, T)
-   # construct the basis
-   zlist = ZList(species; static=true)
+   # construct a preliminary Aindices array to get an incorrect basis
    NZ = length(zlist)
    P = BasicPSH1pBasis(J, SH, zlist, spec,
                        Matrix{UnitRange{Int}}(undef, NZ, NZ))
+   # ... now fix the Aindices array
    set_Aindices!(P)
    return P
+end
+
+function BasicPSH1pBasis(J::ScalarBasis;
+                         species = :X,
+                         D::AbstractDegree = SparsePSHDegree())
+   # get a generic basis spec
+   spec = _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
+   # construct the basis
+   zlist = ZList(species; static=true)
+   return BasicPSH1pBasis(J, zlist, spec)
 end
 
 cutoff(basis::BasicPSH1pBasis) = cutoff(basis.J)
