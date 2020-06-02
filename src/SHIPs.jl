@@ -52,6 +52,9 @@ include("random.jl")
 include("utils.jl")
 @reexport using SHIPs.Utils
 
+include("utils/importv5.jl")
+
+
 include("compat/compat.jl")
 
 # - bond model

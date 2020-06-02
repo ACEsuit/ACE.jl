@@ -6,13 +6,14 @@
 # --------------------------------------------------------------------------
 
 
+@testset "Graph-Evaluator" begin
+
 ##
 
 using SHIPs
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!, alloc_temp
 using BenchmarkTools, StaticArrays
-using Profile
 
 ##
 
@@ -38,35 +39,35 @@ dv = evaluate_d(V, Rs, Zs, z0)
 dvtr = evaluate_d(Vtr, Rs, Zs, z0)
 println(@test(dv ≈ dvtr))
 
-##
-
-tree = Vtr.trees[1]
-nodes = tree.nodes
-nodes2 = nodes[tree.num1+1:end]
-allns = sort(vcat( [ n[1] for n in nodes2 ], [ n[2] for n in nodes2 ] )
-            )
-occ = zeros(Int, tree.num1)
-for n in nodes2
-   if n[1] <= tree.num1; occ[n[1]] += 1; end
-   if n[2] <= tree.num1; occ[n[2]] += 1; end
-end
-
-indirect = zeros(Int, length(tree))
-for i = length(tree):-1:tree.num1+1
-   n1, n2 = nodes[i]
-   if n1 > tree.num1; indirect[n1] += 1; end
-   if n2 > tree.num1; indirect[n2] += 1; end
-   indirect[n1] += indirect[i]
-   indirect[n2] += indirect[i]
-end
-
-using DataFrames
-df = DataFrame(:spec => string.(Vtr.basis1p.spec),
-         :B_V => round.(real.(dv), digits=3),
-         :B_Vtr => round.(real.(dvtr), digits=3),
-         :nocc => occ,
-         :ind => indirect[1:tree.num1])
-println(df)
+# ##
+#
+# tree = Vtr.trees[1]
+# nodes = tree.nodes
+# nodes2 = nodes[tree.num1+1:end]
+# allns = sort(vcat( [ n[1] for n in nodes2 ], [ n[2] for n in nodes2 ] )
+#             )
+# occ = zeros(Int, tree.num1)
+# for n in nodes2
+#    if n[1] <= tree.num1; occ[n[1]] += 1; end
+#    if n[2] <= tree.num1; occ[n[2]] += 1; end
+# end
+#
+# indirect = zeros(Int, length(tree))
+# for i = length(tree):-1:tree.num1+1
+#    n1, n2 = nodes[i]
+#    if n1 > tree.num1; indirect[n1] += 1; end
+#    if n2 > tree.num1; indirect[n2] += 1; end
+#    indirect[n1] += indirect[i]
+#    indirect[n2] += indirect[i]
+# end
+#
+# using DataFrames
+# df = DataFrame(:spec => string.(Vtr.basis1p.spec),
+#          :B_V => round.(real.(dv), digits=3),
+#          :B_Vtr => round.(real.(dvtr), digits=3),
+#          :nocc => occ,
+#          :ind => indirect[1:tree.num1])
+# println(df)
 
 
 ##
@@ -116,3 +117,5 @@ for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
 end
 
 ##
+
+end

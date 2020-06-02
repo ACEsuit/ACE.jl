@@ -58,12 +58,28 @@ write_dict(V::PIPotential) = Dict(
       "__id__" => "SHIPs_PIPotential",
      "pibasis" => write_dict(V.pibasis),
       "coeffs" => [ write_dict.(V.coeffs)... ] )
+#    if ntests > 0
+#       tests = SHIPs.Random.rand_nhd(Nat, J::ScalarBasis, species = :X)
+#       Pr = V.pibasis.basis1p.J
+#       for ntest = 1:5
+#
+#          r = SHIPs.rand_radial(V.pibasis.basis1p.J)
+#          Pr = evaluate(B3.J, r)
+#          push!(rtests, Dict("r" => r, "Pr" => Pr))
+#       end
+#
+#    end
+#    return D
+# end
 
-read_dict(::Val{:SHIPs_PIPotential}, D::Dict) =
+read_dict(::Val{:SHIPs_PIPotential}, D::Dict; tests = true) =
    PIPotential( read_dict(D["pibasis"]),
                 tuple( read_dict.( D["coeffs"] )... ) )
 
 
+# function test_compat(V::PIPotential, rtests, tests)
+#
+# end
 
 # ------------------------------------------------------------
 #   Evaluation code

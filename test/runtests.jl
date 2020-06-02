@@ -36,6 +36,11 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     include("pair/test_repulsion.jl")
 
 
+    # ----------------------
+    #   miscallaneous ...
+    include("test_compat.jl")
+    include("experimental/test_treeeval.jl")
+
     # include("test_real.jl")
     # include("test_orth.jl")
     # include("test_descriptor.jl")
