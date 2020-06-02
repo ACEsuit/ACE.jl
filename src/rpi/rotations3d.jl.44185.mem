@@ -1,0 +1,361 @@
+        - 
+        - module Rotations3D
+        - 
+        - using StaticArrays
+        - using LinearAlgebra: norm, rank, svd, Diagonal
+        - using SHIPs.SphericalHarmonics: index_y
+        - using Combinatorics: permutations
+        - 
+        - export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis
+        - 
+        - 
+        - """
+        - `ClebschGordan: ` storing precomputed Clebsch-Gordan coefficients; see
+        - `?clebschgordan` for the convention that is use.
+        - """
+        - struct ClebschGordan{T}
+        - 	vals::Dict{Tuple{Int, Int, Int, Int, Int, Int}, T}
+        - end
+        - 
+        - """
+        - `Rot3DCoeffs: ` storing recursively precomputed coefficients for a
+        - rotation-invariant basis.
+        - """
+        - struct Rot3DCoeffs{T}
+        -    vals::Vector{Dict}
+        -    cg::ClebschGordan{T}
+        - end
+        - 
+        - 
+        - 
+        - # -----------------------------------
+        - # iterating over an m collection
+        - # -----------------------------------
+        - 
+        - _mvec(::CartesianIndex{0}) = SVector(Int(0))
+        - 
+        - _mvec(mpre::CartesianIndex) = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+        - 
+        - struct MRange{N, T2}
+        -    ll::SVector{N, Int}
+        -    cartrg::T2
+        - end
+        - 
+        - Base.length(mr::MRange) = sum(_->1, _mrange(mr.ll))
+        - 
+        - """
+        - Given an l-vector `ll` iterate over all combinations of `mm` vectors  of
+        - the same length such that `sum(mm) == 0`
+        - """
+        - _mrange(ll) = MRange(ll, Iterators.Stateful(
+        -                      CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll)-1))))
+        - 
+        - function Base.iterate(mr::MRange{1}, args...)
+      800    if isempty(mr.cartrg)
+        0       return nothing
+        -    end
+        0    while !isempty(mr.cartrg)
+     7760       popfirst!(mr.cartrg)
+        -    end
+        0    return SVector{1, Int}(0), nothing
+        - end
+        - 
+        - function Base.iterate(mr::MRange, args...)
+        -    while true
+        -       if isempty(mr.cartrg)
+        -          return nothing
+        -       end
+        -       mpre = popfirst!(mr.cartrg)
+        -       if abs(sum(mpre.I)) <= mr.ll[end]
+        -          return _mvec(mpre), nothing
+        -       end
+        -    end
+        -    error("we should never be here")
+        - end
+        - 
+        - 
+        - 
+        - # ----------------------------------------------------------------------
+        - #     ClebschGordan code
+        - # ----------------------------------------------------------------------
+        - 
+        - 
+        - cg_conditions(j1,m1, j2,m2, J,M) =
+        - 	cg_l_condition(j1, j2, J)   &&
+        - 	cg_m_condition(m1, m2, M)   &&
+        - 	(abs(m1) <= j1) && (abs(m2) <= j2) && (abs(M) <= J)
+        - 
+        - cg_l_condition(j1, j2, J) = (abs(j1-j2) <= J <= j1 + j2)
+        - 
+        - cg_m_condition(m1, m2, M) = (M == m1 + m2)
+        - 
+        - 
+        - """
+        - `clebschgordan(j1, m1, j2, m2, J, M, T=Float64)` :
+        - 
+        - A reference implementation of Clebsch-Gordon coefficients based on
+        - 
+        - https://hal.inria.fr/hal-01851097/document
+        - Equation (4-6)
+        - 
+        - This heavily uses BigInt and BigFloat and should therefore not be employed
+        - for performance critical tasks, but only precomputation.
+        - 
+        - The ordering of parameters corresponds to the following convention:
+        - ```
+        - clebschgordan(j1, m1, j2, m2, J, M) = C_{j1m1j2m2}^{JM}
+        - ```
+        - where
+        - ```
+        -    D_{m1k1}^{l1} D_{m2k2}^{l2}}
+        - 	=
+        - 	∑_j  C_{l1m1l2m2}^{j(m1+m2)} C_{l1k1l2k2}^{j2(k1+k2)} D_{(m1+m2)(k1+k2)}^{j}
+        - ```
+        - """
+        - function clebschgordan(j1, m1, j2, m2, J, M, T=Float64)
+  4043326 	if !cg_conditions(j1, m1, j2, m2, J, M)
+        0 		return zero(T)
+        - 	end
+        - 
+   237600    N = (2*J+1) *
+        -        factorial(big(j1+m1)) * factorial(big(j1-m1)) *
+        -        factorial(big(j2+m2)) * factorial(big(j2-m2)) *
+        -        factorial(big(J+M)) * factorial(big(J-M)) /
+        -        factorial(big( j1+j2-J)) /
+        -        factorial(big( j1-j2+J)) /
+        -        factorial(big(-j1+j2+J)) /
+        -        factorial(big(j1+j2+J+1))
+        - 
+     5400    G = big(0)
+        -    # 0 ≦ k ≦ j1+j2-J
+        -    # 0 ≤ j1-m1-k ≤ j1-j2+J   <=>   j2-J-m1 ≤ k ≤ j1-m1
+        -    # 0 ≤ j2+m2-k ≤ -j1+j2+J  <=>   j1-J+m2 ≤ k ≤ j2+m2
+        0    lb = (0, j2-J-m1, j1-J+m2)
+        0    ub = (j1+j2-J, j1-m1, j2+m2)
+        0    for k in maximum(lb):minimum(ub)
+     6160       bk = big(k)
+    99824       G += (-1)^k *
+        -            binomial(big( j1+j2-J), big(k)) *
+        -            binomial(big( j1-j2+J), big(j1-m1-k)) *
+        -            binomial(big(-j1+j2+J), big(j2+m2-k))
+        -    end
+        - 
+    32400    return T(sqrt(N) * G)
+        - end
+        - 
+        - 
+        - ClebschGordan(T=Float64) =
+        - 	ClebschGordan{T}(Dict{Tuple{Int,Int,Int,Int,Int,Int}, T}())
+        - 
+        - _cg_key(j1, m1, j2, m2, J, M) = (j1, m1, j2, m2, J, M)
+        - 	# Int.((index_y(j1,m1), index_y(j2,m2), index_y(J,M)))
+        - 
+        - function (cg::ClebschGordan{T})(j1, m1, j2, m2, J, M) where {T}
+        0 	if !cg_conditions(j1,m1, j2,m2, J,M)
+        0 		return zero(T)
+        - 	end
+        0 	key = _cg_key(j1, m1, j2, m2, J, M)
+        0 	if haskey(cg.vals, key)
+        0 		return cg.vals[key]
+        - 	end
+        0 	val = clebschgordan(j1, m1, j2, m2, J, M, T)
+    18944 	cg.vals[key] = val
+        0 	return val
+        - end
+        - 
+        - 
+        - # ----------------------------------------------------------------------
+        - #     Rot3DCoeffs code: generalized cg coefficients
+        - #
+        - #  Note: in this section kk is a tuple of m-values, it is not
+        - #        related to the k index in the 1-p basis (or radial basis)
+        - # ----------------------------------------------------------------------
+        - 
+    87600 dicttype(N::Integer) = dicttype(Val(N))
+        - 
+        0 dicttype(::Val{N}) where {N} =
+        -    Dict{Tuple{SVector{N,Int}, SVector{N,Int}, SVector{N,Int}}, Float64}
+        - 
+        - Rot3DCoeffs(T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T))
+        - 
+        - 
+        - function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
+        0 	if length(A.vals) < N
+        0 		for n = length(A.vals)+1:N
+  8088852 			push!(A.vals, dicttype(n)())
+        - 		end
+        - 	end
+        0    return A.vals[N]::dicttype(valN)
+        - end
+        - 
+        - _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
+        -       (SVector{N, Int}(ll), SVector{N, Int}(mm), SVector{N, Int}(kk))
+        - 
+        - function (A::Rot3DCoeffs{T})(ll::StaticVector{N},
+        -                             mm::StaticVector{N},
+        -                             kk::StaticVector{N}) where {T, N}
+     5280    if       sum(mm) != 0 ||
+        -             sum(kk) != 0 ||
+        -             !all(abs.(mm) .<= ll) ||
+        -             !all(abs.(kk) .<= ll)
+        0       return T(0)
+        -    end
+        0    vals = get_vals(A, Val(N))  # this should infer the type!
+        0    key = _key(ll, mm, kk)
+        0    if haskey(vals, key)
+        0       val  = vals[key]
+        -    else
+        0       val = _compute_val(A, key...)
+  5862863       vals[key] = val
+        -    end
+    26144    return val
+        - end
+        - 
+        - # the recursion has two steps so we need to define the
+        - # coupling coefficients for N = 1, 2
+        - # TODO: actually this seems false; it is only one recursion step, and a bit
+        - #       or reshuffling should allow us to get rid of the {N = 2} case.
+        - 
+        - function (A::Rot3DCoeffs{T})(ll::StaticVector{1},
+        -                             mm::StaticVector{1},
+        -                             kk::StaticVector{1}) where {T}
+        -    if ll[1] == mm[1] == kk[1] == 0
+        -       return T(1)
+        -    else
+        -       return T(0)
+        -    end
+        - end
+        - 
+        - function (A::Rot3DCoeffs{T})(ll::StaticVector{2},
+        -                             mm::StaticVector{2},
+        -                             kk::StaticVector{2}) where {T}
+    15248    if ll[1] != ll[2] || sum(mm) != 0 || sum(kk) != 0
+        0       return T(0)
+        -    else
+        0       return T( 8 * pi^2 / (2*ll[1]+1) * (-1)^(mm[1]-kk[1]) )
+        -    end
+        - end
+        - 
+        - # next comes the recursion step for N ≧ 3
+        - 
+        - function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
+        -                                         mm::StaticVector{N},
+        -                                         kk::StaticVector{N}) where {T, N}
+        0 	val = T(0)
+    89504    llp = ll[1:N-2]
+    89504    mmp = mm[1:N-2]
+    89504    kkp = kk[1:N-2]
+        0    for j = abs(ll[N-1]-ll[N]):(ll[N-1]+ll[N])
+        0       if abs(kk[N-1]+kk[N]) > j || abs(mm[N-1]+mm[N]) > j
+        -          continue
+        -       end
+        - 		cgk = try
+        0 			A.cg(ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
+        - 		catch
+        0 			@show (ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
+        0 			T(0)
+        - 		end
+        0 		cgm = A.cg(ll[N-1], mm[N-1], ll[N], mm[N], j, mm[N-1]+mm[N])
+        0 		if cgk * cgm  != 0
+   107632 			val += cgk * cgm * A( SVector(llp..., j),
+        - 								       SVector(mmp..., mm[N-1]+mm[N]),
+        - 								       SVector(kkp..., kk[N-1]+kk[N]) )
+        - 		end
+        -    end
+        0    return val
+        - end
+        - 
+        - 
+        - # ----------------------------------------------------------------------
+        - #   construction of a possible set of generalised CG coefficient;
+        - #   numerically via SVD
+        - # ----------------------------------------------------------------------
+        - 
+        - 
+        - function ri_basis(A::Rot3DCoeffs{T}, ll::SVector; ordered=false) where {T}
+    31856 	CC = compute_Al(A, ll, Val(ordered))
+    39136 	svdC = svd(CC)
+     4576 	rk = rank(Diagonal(svdC.S))
+    32560 	return svdC.U[:, 1:rk]'
+        - end
+        - 
+        - 
+        - # unordered
+        - function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
+    43552 	len = length(_mrange(ll))
+    39136    CC = zeros(T, len, len)
+     1280    for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+     1168       CC[ik, im] = A(ll, mm, kk)
+        -    end
+        0    return CC
+        - end
+        - 
+        - # # ordered; TODO: check this out, clean it up and test it!!!
+        - # function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{true}) where {T}
+        - # 	num_mm_sorted = sum(mm -> issorted(mm), _mrange(ll))
+        - # 	# @show num_mm_sorted
+        - # 	num_mm = length(_mrange(ll))
+        - #    CC = zeros(T, num_mm, num_mm_sorted)
+        - # 	im = 0
+        - #    for mm in _mrange(ll)
+        - # 		if issorted(mm) # -> make this sorted relative to ll!!!
+        - # 			im += 1
+        - # 			for (ik, kk) in enumerate(_mrange(ll))
+        - # 		      CC[ik, im] = A(ll, mm, kk)
+        - # 			end
+        - # 		end
+        - # 	end
+        - #    return CC
+        - # end
+        - #
+        - #
+        - # # two utility functions which are probably never used!
+        - #
+        - # compute_Al(ll::SVector{N}; ordered = false) where {N} =
+        - # 		compute_Al(Rot3DCoeffs(N, sum(ll)), ll; ordered=ordered)
+        - #
+        - # compute_Al(A::Rot3DCoeffs, ll::SVector{N}; ordered = false) where {N} =
+        - # 		compute_Al(A, ll, Val(ordered))
+        - 
+        - 
+        - # TODO: this could use some documentation
+        - 
+        - rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
+        - 			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
+        - 
+        - function rpi_basis(A::Rot3DCoeffs,
+        - 						 zz::SVector{N},
+        - 						 nn::SVector{N, Int},
+        - 						 ll::SVector{N, Int}) where {N}
+        0 	Uri = ri_basis(A, ll)
+   135376 	Mri = collect( _mrange(ll) )   # rows...
+        0 	G = _gramian(zz, nn, ll, Uri, Mri)
+    26112    S = svd(G)
+        0    rk = rank(G; rtol =  1e-7)
+    26064 	Urpi = S.U[:, 1:rk]'
+   119568 	return Diagonal(sqrt.(S.S[1:rk])) * Urpi * Uri, Mri
+        - end
+        - 
+        - 
+        - function _gramian(zz, nn, ll, Uri, Mri)
+        0    N = length(nn)
+        0    nri = size(Uri, 1)
+        0    @assert size(Uri, 1) == nri
+    26112    G = zeros(nri, nri)
+      960    for σ in permutations(1:N)
+  5595920       if (zz[σ] != zz) || (nn[σ] != nn) || (ll[σ] != ll); continue; end
+        0       for (iU1, mm1) in enumerate(Mri), (iU2, mm2) in enumerate(Mri)
+  2195072          if mm1[σ] == mm2
+        0             for i1 = 1:nri, i2 = 1:nri
+        0                G[i1, i2] += conj(Uri[i1, iU1]) * Uri[i2, iU2]
+        -             end
+        -          end
+        -       end
+        -    end
+        0    return G
+        - end
+        - 
+        - 
+        - 
+        - end
+        - 
