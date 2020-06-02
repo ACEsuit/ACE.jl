@@ -54,4 +54,9 @@ include("compat/compat.jl")
 # - descriptors
 # - random potentials
 
+
+include("treeeval.jl")
+
+include("export/export.jl")
+
 end # module
