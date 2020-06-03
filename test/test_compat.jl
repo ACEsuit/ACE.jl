@@ -45,7 +45,7 @@ end
 
 fname = @__DIR__() * "/models/randship_v05.json"
 D = load_dict(fname)
-V = SHIPs.Import.import_pipot_v05(fname)
+V = SHIPs.Import.import_pipot_v05(D)
 compat_tests(V, D["rtests"], D["tests"])
 
 ##
