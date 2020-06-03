@@ -8,7 +8,6 @@ using SHIPs: PIBasisFcn
 using SHIPs.RPI: BasicPSH1pBasis, PSH1pBasisFcn
 
 
-
 function import_rbasis_v05(D, rtests = [])
    @assert D["__id__"] == "SHIPs_TransformedJacobi"
    trans = SHIPs.Transforms.PolyTransform(D["trans"])
@@ -76,8 +75,10 @@ function import_pipot_v05(D::Dict)
 
    # get the 1-p and n-p basis specifications
    rawspec = D["aalists"][1]["ZKLM_list"]
+
    pispec = []
    pispec_i = []
+   pispec_i_dict = Dict{Vector{Int}, Int}()
    spec1 = []
    coeffs = []
    for (idx, ZNLM) in enumerate(rawspec)
@@ -105,16 +106,17 @@ function import_pipot_v05(D::Dict)
       p = sortperm(bs_i)
       bs_i = bs_i[p]
       bb = PIBasisFcn(AtomicNumber(species[1]), bs[p])
-      In = findall(isequal(bs_i), pispec_i)
-      if isempty(In)
+
+      if haskey(pispec_i_dict, bs_i)
+         In = pispec_i_dict[bs_i]
+         coeffs[In] += rawcoeffs[idx]
+      else
          push!(pispec, bb)
          push!(pispec_i, bs_i)
          push!(coeffs, rawcoeffs[idx])
-      else
-         @assert length(In) == 1
-         in = In[1]
-         coeffs[in] += rawcoeffs[idx]
+         pispec_i_dict[bs_i] = length(pispec_i)
       end
+
    end
 
    # construct 1p basis from the specs
