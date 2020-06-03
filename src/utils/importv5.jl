@@ -20,7 +20,15 @@ function import_rbasis_v05(D, rtests = [])
    trans = SHIPs.Transforms.PolyTransform(D["trans"])
    ru, rl = D["ru"], D["rl"]
    tu, tl = trans(ru), trans(rl)
-   pl = pu = D["cutoff"]["P"]
+   cutoff_id = D["cutoff"]["__id__"]
+   if cutoff_id == "SHIPs_PolyCutoff1s"
+      pl = 0
+      pu = D["cutoff"]["P"]
+   elseif cutoff_id == "SHIPs_PolyCutoff2s"
+      pl = pu = D["cutoff"]["P"]
+   else
+      error("unknown cutoff %(cutoff_id)")
+   end
    if tl > tu
       tl, tr = tu, tl
       pl, pr = pu, pl
@@ -53,7 +61,7 @@ function import_rbasis_v05(D, rtests = [])
    At = An * a
    Bt = Bn - An * ((tr + tl) / (tr - tl))
    Ct = Cn
-   At[1] = An[1] * a^4
+   At[1] = An[1] * a^(pl+pr)
 
    Jt = SHIPs.OrthPolys.OrthPolyBasis(pl, tl, pr, tr, At, Bt, Ct,
                                       Float64[], Float64[])

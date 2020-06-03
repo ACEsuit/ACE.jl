@@ -41,12 +41,25 @@ function compat_tests(V::PIPotential, rtests, tests)
    end
 end
 
+
 ##
 
+# a randomly generated single-species potential 
 fname = @__DIR__() * "/models/randship_v05.json"
 D = load_dict(fname)
 V = SHIPs.Import.import_pipot_v05(D)
 compat_tests(V, D["rtests"], D["tests"])
+
+##
+
+# Cas' Si fit from v0.5.x times
+# See if the Si potential lives in the dropbox, otherwise skip this test
+sifile = "/users/ortner/Dropbox/Public/SHIPPots/Si_split_1.2_reg_test_v05.json"
+if isfile(sifile)
+   D = load_dict(sifile)
+   V = SHIPs.Import.import_pipot_v05(D)
+   compat_tests(V, D["rtests"], D["tests"])
+end
 
 ##
 
