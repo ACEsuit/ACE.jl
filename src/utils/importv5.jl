@@ -63,9 +63,10 @@ function import_rbasis_v05(D, rtests = [])
    return Jr
 end
 
+import_pipot_v05(fname::AbstractString) =
+      import_pipot_v05(JuLIP.read_dict(fname))
 
-function import_pipot_v05(fname)
-   D = load_dict(fname)
+function import_pipot_v05(D::Dict)
    species = D["zlist"]["list"]
    zlist = read_dict(D["zlist"])
    rawcoeffs = Float64.(D["coeffs_re"][1])
