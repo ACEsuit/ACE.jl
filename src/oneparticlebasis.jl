@@ -12,8 +12,7 @@ function evaluate!(A, tmp, basis::OneParticleBasis, Rs, Zs::AbstractVector, z0)
    iz0 = z2i(basis, z0)
    for (R, Z) in zip(Rs, Zs)
       iz = z2i(basis, Z)
-      # add_into_A!((@view A[basis.Aindices[iz, iz0]]), tmp, basis, R, iz, iz0)
-      add_into_A!(A, basis.Aindices[iz, iz0], tmp, basis, R, iz, iz0)
+      add_into_A!((@view A[basis.Aindices[iz, iz0]]), tmp, basis, R, iz, iz0)
    end
    return A
 end
@@ -25,7 +24,9 @@ function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis,
    iz0 = z2i(basis, z0)
    for (j, (R, Z)) in enumerate(zip(Rs, Zs))
       iz = z2i(basis, Z)
-      add_into_A_dA!(A, dA, basis.Aindices[iz, iz0], j, tmpd, basis, R, iz, iz0)
+      Aview = @view A[basis.Aindices[iz, iz0]]
+      dAview = @view dA[basis.Aindices[iz, iz0], j]
+      add_into_A_dA!(Aview, dAview, tmpd, basis, R, iz, iz0)
    end
    return dA
 end
@@ -42,9 +43,9 @@ function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis,
                      R, z::AtomicNumber, z0)
    fill!(A, 0)
    iz, iz0 = z2i(basis, z), z2i(basis, z0)
-   # Aview = @view A[basis.Aindices[iz, iz0]]
-   # dAview = @view dA[basis.Aindices[iz, iz0]]
-   add_into_A_dA!(A, dA, basis.Aindices[iz, iz0], 1, tmpd, basis, R, iz, iz0)
+   Aview = @view A[basis.Aindices[iz, iz0]]
+   dAview = @view dA[basis.Aindices[iz, iz0]]
+   add_into_A_dA!(Aview, dAview, tmpd, basis, R, iz, iz0)
    return dA
 end
 
