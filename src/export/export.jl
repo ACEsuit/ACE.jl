@@ -96,7 +96,8 @@ function _write_group(fptr, g)
    println(fptr, "l=(" * prod(" $(li) " for li in g["l"]) * ")")
    println(fptr, "num_ms=$(length(g["M"]))")
    for (m, c) in zip(g["M"], g["C"])
-      println(fptr, "<" * prod(" $(mi) " for mi in m) * ">:  $(c)")
+      c_ace = c / (4*π)^(order/2)
+      println(fptr, "<" * prod(" $(mi) " for mi in m) * ">:  $(c_ace)")
    end
 end
 
