@@ -39,7 +39,7 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     # ----------------------
     #   miscallaneous ...
     include("test_compat.jl")
-    include("experimental/test_treeeval.jl")
+    include("experimental/test_grapheval.jl")
 
     # include("test_real.jl")
     # include("test_orth.jl")

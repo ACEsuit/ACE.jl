@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-module Tree
+module DAG
 
 include("extimports.jl")
 include("shipimports.jl")
@@ -15,44 +15,46 @@ using Combinatorics: combinations, partitions
 
 import SHIPs: InnerPIBasis
 
-const ETNode{TI} = Tuple{TI,TI}
+const BinDagNode{TI} = Tuple{TI,TI}
 
-ETNode{TI}(i1, i2) where {TI} = ( TI(i1), TI(i2) )
+# struct BinDagNode{TI}
+#    i1::TI
+#    i2::TI
+# end
 
-
-struct EvalTree{T, TI}
-   nodes::Vector{ETNode{TI}}
-   coeffs::Vector{T}
+struct CorrEvalGraph{T, TI}
+   nodes::Vector{BinDagNode{TI}}
+   vals::Vector{T}
    num1::TI
    numstore::TI
 end
 
 
-struct TreePIPot{T, TI, NZ, TB} <: SitePotential
+struct GraphPIPot{T, TI, NZ, TB} <: SitePotential
    basis1p::TB
-   trees::NTuple{NZ, EvalTree{T, TI}}
+   dags::NTuple{NZ, CorrEvalGraph{T, TI}}
 end
 
-i2z(V::TreePIPot, i::Integer) = i2z(V.basis1p, i)
-z2i(V::TreePIPot, z::AtomicNumber) = z2i(V.basis1p, z)
-numz(V::TreePIPot) = numz(V.basis1p)
+i2z(V::GraphPIPot, i::Integer) = i2z(V.basis1p, i)
+z2i(V::GraphPIPot, z::AtomicNumber) = z2i(V.basis1p, z)
+numz(V::GraphPIPot) = numz(V.basis1p)
 
-cutoff(V::TreePIPot) = cutoff(V.basis1p)
+cutoff(V::GraphPIPot) = cutoff(V.basis1p)
 
-Base.eltype(V::TreePIPot{T}) where {T} = real(T)
+Base.eltype(V::GraphPIPot{T}) where {T} = real(T)
 
-_maxstore(V::TreePIPot) = maximum( tree.numstore for tree in V.trees )
+_maxstore(V::GraphPIPot) = maximum( dag.numstore for dag in V.dags )
 
-Base.length(tree::EvalTree) = length(tree.nodes)
+Base.length(dag::CorrEvalGraph) = length(dag.nodes)
 
 # ---------------------------------------------------------------------
 #   construction codes
 
 
-function TreePIPot(pipot::PIPotential; kwargs...)
-   trees = [ get_eval_tree(pipot.pibasis.inner[iz], pipot.coeffs[iz];
+function GraphPIPot(pipot::PIPotential; kwargs...)
+   dags = [ get_eval_graph(pipot.pibasis.inner[iz], pipot.coeffs[iz];
                            kwargs...)  for iz = 1:numz(pipot) ]
-   return TreePIPot(pipot.pibasis.basis1p, tuple(trees...))
+   return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
 end
 
 
@@ -81,19 +83,19 @@ function _find_partition(kk, specnew)
    return bestp
 end
 
-# return value is the number of fake nodes added to the tree
+# return value is the number of fake nodes added to the dag
 function _insert_partition!(nodes, coeffsnew, specnew,
                             kk, p,
                             ikk, coeffsN, specN,
                             TI = Int)
    if length(p) == 2
-      push!(nodes, ETNode{TI}(p[1], p[2]))
+      push!(nodes, BinDagNode{TI}((p[1], p[2])))
       push!(coeffsnew, coeffsN[ikk])
       push!(specnew, kk)
       return 0
    else
       # reduce the partition by pushing a new node
-      push!(nodes, ETNode{TI}(p[1], p[2]))
+      push!(nodes, BinDagNode{TI}((p[1], p[2])))
       push!(coeffsnew, 0)
       push!(specnew, sort(vcat(specnew[p[1]], specnew[p[2]])))
       # and now recurse with the reduced partition
@@ -103,7 +105,7 @@ function _insert_partition!(nodes, coeffsnew, specnew,
    end
 end
 
-function get_eval_tree(inner::InnerPIBasis, coeffs;
+function get_eval_graph(inner::InnerPIBasis, coeffs;
                        filter = _->true,
                        TI = Int,
                        verbose = false)
@@ -120,18 +122,18 @@ function get_eval_tree(inner::InnerPIBasis, coeffs;
    specN = spec[IN]
    coeffsN = coeffs[IN]
 
-   # start assembling the tree
-   nodes = ETNode{TI}[]
+   # start assembling the dag
+   nodes = BinDagNode{TI}[]
    sizehint!(nodes, length(inner))
    coeffsnew = Vector{eltype(coeffs)}()
    sizehint!(coeffsnew, length(inner))
    specnew = Vector{Int}[]
    sizehint!(specnew, length(inner))
 
-   # add the full 1-particle basis (N=1) into the tree
+   # add the full 1-particle basis (N=1) into the dag
    num1 = maximum(inner.iAA2iA)
    for i = 1:num1
-      push!(nodes, ETNode{TI}(i, 0))
+      push!(nodes, BinDagNode{TI}((i, 0)))
       push!(specnew, [i])
       # find that index in `spec`
       ispec = findfirst(isequal([i]), spec1)
@@ -151,21 +153,21 @@ function get_eval_tree(inner::InnerPIBasis, coeffs;
                                        kk, p, ikk, coeffsN, specN, TI)
    end
 
-   verbose && @info("Extra nodes inserted into the tree: $extranodes")
+   verbose && @info("Extra nodes inserted into the dag: $extranodes")
    numstore = length(nodes)
    num1old = num1
 
-   # re-organise the tree layout to minimise numstore
-   nodesfinal, coeffsfinal, num1, numstore = _reorder_tree!(nodes, coeffsnew)
+   # re-organise the dag layout to minimise numstore
+   nodesfinal, coeffsfinal, num1, numstore = _reorder_dag!(nodes, coeffsnew)
 
-   return EvalTree(nodesfinal, coeffsfinal, TI(num1), TI(numstore))
+   return CorrEvalGraph(nodesfinal, coeffsfinal, TI(num1), TI(numstore))
 end
 
 
-function _reorder_tree!(nodes::Vector{ETNode{TI}}, coeffs::Vector{T}) where {TI, T}
-   # collect all AA indices that are used anywhere in the tree
+function _reorder_dag!(nodes::Vector{BinDagNode{TI}}, coeffs::Vector{T}) where {TI, T}
+   # collect all AA indices that are used anywhere in the dag
    newinds = zeros(Int, length(nodes))
-   newnodes = ETNode{TI}[]
+   newnodes = BinDagNode{TI}[]
    newcoeffs = T[]
 
    # inds2 = stage-2 indices, i.e. temporary storage
@@ -189,7 +191,7 @@ function _reorder_tree!(nodes::Vector{ETNode{TI}}, coeffs::Vector{T}) where {TI,
       n, c = nodes[i], coeffs[i]
       # not 1p basis && dependent node
       if (n[2] != 0) && (i in inds2)
-         push!(newnodes, ETNode{TI}(newinds[n[1]], newinds[n[2]]))
+         push!(newnodes, BinDagNode{TI}((newinds[n[1]], newinds[n[2]])))
          push!(newcoeffs, c)
          newinds[i] = length(newnodes)
       end
@@ -200,7 +202,7 @@ function _reorder_tree!(nodes::Vector{ETNode{TI}}, coeffs::Vector{T}) where {TI,
    for i = 1:length(nodes)
       n, c = nodes[i], coeffs[i]
       if (n[2] != 0) && (newinds[i] == 0) && (c != 0)
-         push!(newnodes, ETNode{TI}(newinds[n[1]], newinds[n[2]]))
+         push!(newnodes, BinDagNode{TI}((newinds[n[1]], newinds[n[2]])))
          push!(newcoeffs, c)
          newinds[i] = length(newnodes)
       end
@@ -212,7 +214,7 @@ end
 # ---------------------------------------------------------------------
 #   evaluation codes
 
-alloc_temp(V::TreePIPot{T}, maxN::Integer) where {T} =
+alloc_temp(V::GraphPIPot{T}, maxN::Integer) where {T} =
    (
    R = zeros(JVec{real(T)}, maxN),
    Z = zeros(AtomicNumber, maxN),
@@ -221,37 +223,37 @@ alloc_temp(V::TreePIPot{T}, maxN::Integer) where {T} =
     )
 
 
-function evaluate!(tmp, V::TreePIPot, Rs, Zs, z0)
+function evaluate!(tmp, V::GraphPIPot, Rs, Zs, z0)
    iz0 = z2i(V, z0)
    AA = tmp.AA
-   tree = V.trees[iz0]
-   nodes = tree.nodes
-   c = tree.coeffs
+   dag = V.dags[iz0]
+   nodes = dag.nodes
+   c = dag.vals
 
    # evaluate the 1-particle basis
-   # this puts the first `tree.num1` 1-b (trivial) correlations into the
+   # this puts the first `dag.num1` 1-b (trivial) correlations into the
    # storage array, and from these we can build the rest
    evaluate!(AA, tmp.tmp_basis1p, V.basis1p, Rs, Zs, z0)
 
    # Stage 1: accumulate the first basis functions
    Es = zero(eltype(V))
-   @inbounds for i = 1:tree.num1
+   @inbounds for i = 1:dag.num1
       Es = muladd(c[i], real(AA[i]), Es)
    end
 
    # Stage 2:
-   # go through the tree and store the intermediate results we need
-   @inbounds @fastmath for i = (tree.num1+1):tree.numstore
+   # go through the dag and store the intermediate results we need
+   @inbounds @fastmath for i = (dag.num1+1):dag.numstore
       n1, n2 = nodes[i]
       AA[i] = a = AA[n1] * AA[n2]
       Es = muladd(c[i], real(a), Es)
    end
 
    # Stage 3:
-   # continue going through the tree, but now we don't need to store
+   # continue going through the dag, but now we don't need to store
    # the new correlations since the later expressions don't depend
    # on them
-   @inbounds @fastmath for i = (tree.numstore+1):length(tree)
+   @inbounds @fastmath for i = (dag.numstore+1):length(dag)
       t = nodes[i]
       a = AA[t[1]] * AA[t[2]]
       Es = muladd(c[i], real(a), Es)
@@ -261,7 +263,7 @@ function evaluate!(tmp, V::TreePIPot, Rs, Zs, z0)
 end
 
 
-alloc_temp_d(V::TreePIPot{T}, maxN::Integer) where {T} =
+alloc_temp_d(V::GraphPIPot{T}, maxN::Integer) where {T} =
    (
    R = zeros(JVec{real(T)}, maxN),
    Z = zeros(AtomicNumber, maxN),
@@ -274,15 +276,15 @@ alloc_temp_d(V::TreePIPot{T}, maxN::Integer) where {T} =
     )
 
 
-function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
+function evaluate_d!(dEs, tmpd, V::GraphPIPot{T}, Rs, Zs, z0) where {T}
    iz0 = z2i(V, z0)
    AA = tmpd.AA
    B = tmpd.B
    tmpd_basis1p = tmpd.tmpd_basis1p
    basis1p = V.basis1p
-   tree = V.trees[iz0]
-   nodes = tree.nodes
-   coeffs = tree.coeffs
+   dag = V.dags[iz0]
+   nodes = dag.nodes
+   coeffs = dag.vals
 
    # we start from the representation
    #     V = sum B[i] AA[i]
@@ -292,13 +294,13 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
    # FORWARD PASS
    # ------------
    # evaluate the 1-particle basis
-   # this puts the first `tree.num1` 1-b (trivial) correlations into the
+   # this puts the first `dag.num1` 1-b (trivial) correlations into the
    # storage array, and from these we can build the rest
    evaluate!(AA, tmpd_basis1p, basis1p, Rs, Zs, z0)
 
    # Stage 2 of evaluate!
-   # go through the tree and store the intermediate results we need
-   @inbounds @fastmath for i = (tree.num1+1):tree.numstore
+   # go through the dag and store the intermediate results we need
+   @inbounds @fastmath for i = (dag.num1+1):dag.numstore
       n1, n2 = nodes[i]
       AA[i] = muladd(AA[n1], AA[n2], AA[i])
    end
@@ -309,14 +311,14 @@ function evaluate_d!(dEs, tmpd, V::TreePIPot{T}, Rs, Zs, z0) where {T}
    #  AA_i = AA_{n1} * AA_{n2}
    #  ∂AA_i = AA_{n1} * ∂AA_{n2} + AA_{n1} * AA_{n2}
    #  c_{n1} * ∂AA_{n1} <- (c_{n1} + c_i AA_{n2}) ∂AA_{n1}
-   @inbounds @fastmath for i = length(tree):-1:(tree.numstore+1)
+   @inbounds @fastmath for i = length(dag):-1:(dag.numstore+1)
       c = coeffs[i]
       n1, n2 = nodes[i]
       B[n1] = muladd(c, AA[n2], B[n1])
       B[n2] = muladd(c, AA[n1], B[n2])
    end
    # in stage 2 c = C[i] is replaced with b = B[i]
-   @inbounds @fastmath for i = tree.numstore:-1:(tree.num1+1)
+   @inbounds @fastmath for i = dag.numstore:-1:(dag.num1+1)
       n1, n2 = nodes[i]
       b = B[i]
       B[n1] = muladd(b, AA[n2], B[n1])

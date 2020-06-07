@@ -13,7 +13,7 @@
 using SHIPs
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!, alloc_temp
-using BenchmarkTools, StaticArrays
+using BenchmarkTools
 
 ##
 
@@ -27,7 +27,7 @@ V = SHIPs.Random.randcombine(basis)
 tmp = SHIPs.alloc_temp(V, length(Rs));
 tmpd = SHIPs.alloc_temp_d(V, length(Rs));
 
-Vtr = SHIPs.Tree.TreePIPot(V)
+Vtr = SHIPs.DAG.GraphPIPot(V)
 tmptr = SHIPs.alloc_temp(Vtr, length(Rs))
 tmptrd = SHIPs.alloc_temp_d(Vtr, length(Rs));
 
@@ -39,53 +39,24 @@ dv = evaluate_d(V, Rs, Zs, z0)
 dvtr = evaluate_d(Vtr, Rs, Zs, z0)
 println(@test(dv ≈ dvtr))
 
-# ##
-#
-# tree = Vtr.trees[1]
-# nodes = tree.nodes
-# nodes2 = nodes[tree.num1+1:end]
-# allns = sort(vcat( [ n[1] for n in nodes2 ], [ n[2] for n in nodes2 ] )
-#             )
-# occ = zeros(Int, tree.num1)
-# for n in nodes2
-#    if n[1] <= tree.num1; occ[n[1]] += 1; end
-#    if n[2] <= tree.num1; occ[n[2]] += 1; end
-# end
-#
-# indirect = zeros(Int, length(tree))
-# for i = length(tree):-1:tree.num1+1
-#    n1, n2 = nodes[i]
-#    if n1 > tree.num1; indirect[n1] += 1; end
-#    if n2 > tree.num1; indirect[n2] += 1; end
-#    indirect[n1] += indirect[i]
-#    indirect[n2] += indirect[i]
-# end
-#
-# using DataFrames
-# df = DataFrame(:spec => string.(Vtr.basis1p.spec),
-#          :B_V => round.(real.(dv), digits=3),
-#          :B_Vtr => round.(real.(dvtr), digits=3),
-#          :nocc => occ,
-#          :ind => indirect[1:tree.num1])
-# println(df)
-
 
 ##
 
-@info("Check several properties of TreePIPot")
+@info("Check several properties of GraphPIPot")
 for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
+   local Rs, Zs, z0, v, vtr, V, Vtr, basis
    Nat = 15
    basis = SHIPs.Utils.rpi_basis(species = species, N = N, maxdeg = 10)
    Pr = basis.pibasis.basis1p.J
    V = SHIPs.Random.randcombine(basis)
    @info("species = $species; N = $N")
-   Vtr = SHIPs.Tree.TreePIPot(V)
+   Vtr = SHIPs.DAG.GraphPIPot(V)
    lenpi = maximum(length.(V.pibasis.inner))
-   lentree = maximum(length.(Vtr.trees))
-   @info("    #$(lenpi) pibasis vs #$(lentree) tree nodes")
+   lendag = maximum(length.(Vtr.dags))
+   @info("    #$(lenpi) pibasis vs #$(lendag) dag nodes")
    # @info("check (de-)serialisation")
    # println(@test(all(JuLIP.Testing.test_fio(V))))
-   @info("Check PiPot and TreePiPot match")
+   @info("Check PiPot and DAGPiPot match")
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       v = evaluate(V, Rs, Zs, z0)
