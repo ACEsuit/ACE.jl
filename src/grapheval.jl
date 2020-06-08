@@ -9,7 +9,7 @@
 module DAG
 
 include("extimports.jl")
-include("shipimports.jl")
+# include("shipimports.jl")
 
 using Combinatorics: combinations, partitions
 
@@ -17,10 +17,6 @@ import SHIPs: InnerPIBasis
 
 const BinDagNode{TI} = Tuple{TI,TI}
 
-# struct BinDagNode{TI}
-#    i1::TI
-#    i2::TI
-# end
 
 struct CorrEvalGraph{T, TI}
    nodes::Vector{BinDagNode{TI}}
@@ -50,12 +46,13 @@ Base.length(dag::CorrEvalGraph) = length(dag.nodes)
 # ---------------------------------------------------------------------
 #   construction codes
 
-
-function GraphPIPot(pipot::PIPotential; kwargs...)
-   dags = [ get_eval_graph(pipot.pibasis.inner[iz], pipot.coeffs[iz];
-                           kwargs...)  for iz = 1:numz(pipot) ]
-   return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
-end
+# moved to pipot.jl
+#
+# function GraphPIPot(pipot::PIPotential; kwargs...)
+#    dags = [ get_eval_graph(pipot.pibasis.inner[iz], pipot.coeffs[iz];
+#                            kwargs...)  for iz = 1:numz(pipot) ]
+#    return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
+# end
 
 
 
@@ -341,6 +338,40 @@ function evaluate_d!(dEs, tmpd, V::GraphPIPot{T}, Rs, Zs, z0) where {T}
    return dEs
 end
 
+
+
+# ------------------------------------------------------------
+#   new generic evaluation framework
+
+function traverse_dag!(AA, dag::CorrEvalGraph, A, fun)
+   nodes = dag.nodes
+   vals = dag.vals
+
+   # Stage-1: copy the 1-particle basis into AA
+   @assert length(A) >= dag.num1
+   for i = 1:dag.num1
+      AA[i] = a = A[i]
+      fun(vals[i], a)
+   end
+
+   # Stage-2: go through the dag and store the intermediate results we need
+   for i = (dag.num1+1):dag.numstore
+      n1, n2 = nodes[i]
+      AA[i] = a = AA[n1] * AA[n2]
+      fun(vals[i], a)
+   end
+
+   # Stage 3:
+   # continue going through the dag, but now we don't need to store the new
+   # correlations since the later expressions don't depend on them
+   for i = (dag.numstore+1):length(dag)
+      n1, n2 = nodes[i]
+      a = AA[n1] * AA[n2]
+      fun(vals[i], a)
+   end
+
+   return nothing
+end
 
 
 end

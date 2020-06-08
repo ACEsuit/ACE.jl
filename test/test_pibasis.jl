@@ -20,6 +20,7 @@ using JuLIP: evaluate, evaluate_d
 
 @info("Basic test of PIBasis construction and evaluation")
 
+ord = 5
 maxdeg = 10
 r0 = 1.0
 rcut = 3.0
@@ -28,7 +29,7 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = SHIPs.SparsePSHDegree()
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 
-basis = SHIPs.PIBasis(P1, 2, D, maxdeg)
+basis = SHIPs.PIBasis(P1, ord, D, maxdeg)
 
 # check single-species
 Nat = 15
@@ -36,23 +37,36 @@ Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 
+# construct a basis with dag-evaluator, and check they are identical!!!
+dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg, evaluator = :dag)
+AAdag = evaluate(dagbasis, Rs, Zs, z0)
+println(@test(AA ≈ AAdag))
+
 
 ## check multi-species
 maxdeg = 5
+ord = 3
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
-basis = SHIPs.PIBasis(P1, 3, D, maxdeg)
+basis = SHIPs.PIBasis(P1, ord, D, maxdeg)
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
 AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 dAA = evaluate_d(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 
+# construct a basis with dag-evaluator, and check they are identical!!!
+dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg, evaluator = :dag
+   )
+AAdag = evaluate(dagbasis, Rs, Zs, z0)
+println(@test(AA ≈ AAdag))
+
 ##
 
 @info("Check several properties of PIBasis")
 for species in (:X, :Si, [:C, :O, :H]), N = 1:5
+   local AA, AAdag, dAA
    maxdeg = 7
    Nat = 15
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
@@ -85,6 +99,16 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
       end
       success = (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10)
       print_tf(@test success)
+   end
+
+   println()
+   @info("Check Classic=DAG Evaluator")
+   dagbasis = SHIPs.PIBasis(P1, N, D, maxdeg, evaluator = :dag)
+   for ntest = 1:20
+      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      AA = evaluate(basis, Rs, Zs, z0)
+      AAdag = evaluate(dagbasis, Rs, Zs, z0)
+      print_tf(@test AA ≈ AAdag)
    end
    println()
 end

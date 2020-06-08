@@ -54,7 +54,7 @@ to the fact that we don't require the Aspec to be ordered by degree.
 Instead the ordering is achieved in the InnerPIBasis constructor
 """
 function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
-                     D::AbstractDegree, maxdeg::Real,
+                     degree::AbstractDegree, maxdeg::Real,
                      z0::AtomicNumber; filter = _->true )
    iz0 = z2i(basis1p, z0)
    # get the basis spec of the one-particle basis
@@ -64,7 +64,7 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
    #  but the actual basis functions themselves.
    Aspec = get_basis_spec(basis1p, z0)
    # next we need to sort it by degree so that gensparse doesn't get confused.
-   Aspec_p = sort(Aspec, by = D)
+   Aspec_p = sort(Aspec, by = degree)
    # now an index νi corresponds to the basis function
    # Aspec[p[νi]] = Aspec_p[νi] and a tuple ν = (ν1,...,νN) to the following
    # basis function
@@ -72,14 +72,14 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
    # we can now construct the basis specification; the `ordered = true`
    # keyword signifies that this is a permutation-invariant basis
    AAspec = gensparse(N, maxdeg;
-                       tup2b = tup2b, degfun = D, ordered = true,
-                       maxν = length(Aspec_p),
-                       filter = filter)
+                      tup2b = tup2b, degfun = degree, ordered = true,
+                      maxν = length(Aspec_p),
+                      filter = filter)
    return AAspec
 end
 
 
-
+abstract type AbstractInnerPIBasis <: IPBasis end
 
 """
 `mutable struct InnerPIBasis` : this type is just an auxilary type to
@@ -88,7 +88,7 @@ permutation-invariant basis for a single centre-atom species. The main
 type `PIBasis` then stores `NZ` objects of type `InnerPIBasis`
 and "dispatches" the work accordingly.
 """
-mutable struct InnerPIBasis <: IPBasis
+mutable struct InnerPIBasis <: AbstractInnerPIBasis
    orders::Vector{Int}           # order (length) of ith basis function
    iAA2iA::Matrix{Int}           # where in A can we find the ith basis function
    b2iAA::Dict{PIBasisFcn, Int}  # mapping PIBasisFcn -> iAA =  index in AA[z0]
@@ -172,10 +172,10 @@ PIBasis(basis1p, N, D, maxdeg)
 
 Note the species list will be taken from `basis1p`
 """
-mutable struct PIBasis{BOP, NZ} <: IPBasis
+mutable struct PIBasis{BOP, NZ, TIN} <: IPBasis
    basis1p::BOP             # a one-particle basis
    zlist::SZList{NZ}
-   inner::NTuple{NZ, InnerPIBasis}
+   inner::NTuple{NZ, TIN}
 end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
@@ -192,7 +192,8 @@ function PIBasis(basis1p::OneParticleBasis,
                  N::Integer,
                  D::AbstractDegree,
                  maxdeg::Real;
-                 filter = b -> order(b) > 0)
+                 filter = b -> order(b) > 0,
+                 evaluator = :classic)
    innerspecs = Any[]
    # now for each iz0 (i.e. for each z0) construct an "inner basis".
    for iz0 = 1:numz(basis1p)
@@ -201,21 +202,31 @@ function PIBasis(basis1p::OneParticleBasis,
       AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0; filter=filter)
       push!(innerspecs, AAspec_z0)
    end
-   return pibasis_from_specs(basis1p, identity.(innerspecs))
+   return pibasis_from_specs(basis1p, identity.(innerspecs),
+                             _evaluator(evaluator))
+end
+
+function _evaluator(evaluator)
+   if evaluator == :classic
+      return InnerPIBasis
+   elseif evaluator == :dag
+      return DAGInnerPIBasis
+   end
+   error("Unknown evaluator")
 end
 
 
 # TODO: instead of copying zlist, maybe forward the zlist methods
 
-function pibasis_from_specs(basis1p, innerspecs)
+function pibasis_from_specs(basis1p, innerspecs, InnerType)
    idx = 0
-   inner = InnerPIBasis[]
+   inner = InnerType[]
    for iz0 = 1:numz(basis1p)
       z0 = i2z(basis1p, iz0)
       Aspec_z0 = get_basis_spec(basis1p, z0)
       AAspec_z0 = innerspecs[iz0]
       AAindices = (idx+1):(idx+length(AAspec_z0))
-      push!(inner, InnerPIBasis(Aspec_z0, AAspec_z0, AAindices, z0))
+      push!(inner, InnerType(Aspec_z0, AAspec_z0, AAindices, z0))
       idx += length(AAspec_z0)
    end
    return PIBasis(basis1p, basis1p.zlist, tuple(inner...))
@@ -271,12 +282,14 @@ write_dict(basis::PIBasis) =
    Dict(  "__id__" => "SHIPs_PIBasis",
          "basis1p" => write_dict(basis.basis1p),
            "inner" => [ write_dict.( collect(keys(basis.inner[iz0].b2iAA)) )
-                         for iz0 = 1:numz(basis) ] )
+                         for iz0 = 1:numz(basis) ],
+       "evaluator" => "classic")
 
 function read_dict(::Val{:SHIPs_PIBasis}, D::Dict)
    basis1p = read_dict(D["basis1p"])
    innerspecs = [ read_dict.(D["inner"][iz0])  for iz0 = 1:numz(basis1p) ]
-   return pibasis_from_specs(basis1p, innerspecs)
+   return pibasis_from_specs(basis1p, innerspecs,
+                             _evaluator(Symbol(D["evaluator"])))
 end
 
 
@@ -288,8 +301,11 @@ site_alloc_B(basis::PIBasis, args...) =
 
 alloc_temp(basis::PIBasis, args...) =
       ( A = alloc_B(basis.basis1p, args...),
-        tmp_basis1p = alloc_temp(basis.basis1p, args...)
+        tmp_basis1p = alloc_temp(basis.basis1p, args...),
+        tmp_inner = alloc_temp(typeof(basis.inner[1]), basis)
       )
+
+alloc_temp(::Type{InnerPIBasis}, basis::PIBasis) = nothing
 
 # this method treats basis as a actual basis across all species
 function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
@@ -309,11 +325,11 @@ function site_evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
    # only ever sees A
    iz0 = z2i(basis, z0)
    evaluate!(AA, tmp, basis.inner[iz0], A)
-   return @view(AA[1:length(basis.inner[iz0])])
+   return nothing; # @view(AA[1:length(basis.inner[iz0])])
 end
 
 # this method evaluates the InnerPIBasis, which is really the actual
-# evaluation code; the rest is mostly logic
+# evaluation code; the rest is just bookkeeping
 function evaluate!(AA, tmp, basis::InnerPIBasis, A)
    fill!(AA, 1)
    for i = 1:length(basis)
@@ -419,3 +435,43 @@ evaluate ∂AA[z0] / ∂Rⱼ
 """
 evaluate_d_Rj!(dAAj, pibasis::PIBasis, A, dA, z0, j) =
       evaluate_d_Rj!(dAAj, pibasis.inner[z2i(pibasis, z0)], A, dA, j)
+
+
+
+# --------------------------------------------------------
+#   Alternative InnerPIBasis based on the graph-evaluator
+
+include("grapheval.jl")
+
+import SHIPs.DAG: CorrEvalGraph, get_eval_graph, traverse_dag!
+
+mutable struct DAGInnerPIBasis <: AbstractInnerPIBasis
+   b1pspec::Vector{Any}
+   dag::CorrEvalGraph{Int, Int}
+   len::Int
+   z0::AtomicNumber
+   AAindices::UnitRange{Int}
+end
+
+Base.length(inner::DAGInnerPIBasis) = inner.len
+
+function DAGInnerPIBasis(Aspec::AbstractVector, AAspec::AbstractVector,
+                         AAindices, z0; kwargs...)
+   classic = InnerPIBasis(Aspec, AAspec, AAindices, z0)
+   len = length(classic)
+   dag = get_eval_graph(classic, collect(1:len); kwargs...)
+   return DAGInnerPIBasis(Aspec, dag, len, z0, classic.AAindices)
+end
+
+
+alloc_temp(::Type{DAGInnerPIBasis}, basis::PIBasis) =
+   zeros(eltype(basis), maximum(inner.dag.numstore for inner in basis.inner))
+
+
+function evaluate!(AA, tmp, basis::DAGInnerPIBasis, A)
+   AAdag = tmp.tmp_inner
+   fill!(AAdag, 1)
+   traverse_dag!(AAdag, basis.dag, A,
+                 (idx, AAval) -> if idx > 0; AA[idx] = AAval; end)
+   return AA
+end

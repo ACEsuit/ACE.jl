@@ -37,6 +37,18 @@ Base.eltype(::PIPotential{T}) where {T} = real(T)
 z2i(V::PIPotential, z::AtomicNumber) = z2i(V.pibasis, z)
 JuLIP.numz(V::PIPotential) = numz(V.pibasis)
 
+
+# -------- GraphPiPot converter
+
+import SHIPs.DAG: GraphPIPot, get_eval_graph
+
+function GraphPIPot(pipot::PIPotential; kwargs...)
+   dags = [ get_eval_graph(pipot.pibasis.inner[iz], pipot.coeffs[iz];
+                           kwargs...)  for iz = 1:numz(pipot) ]
+   return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
+end
+
+
 # ------------------------------------------------------------
 #   Initialisation code
 # ------------------------------------------------------------
