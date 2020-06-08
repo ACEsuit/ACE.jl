@@ -38,15 +38,7 @@ z2i(V::PIPotential, z::AtomicNumber) = z2i(V.pibasis, z)
 JuLIP.numz(V::PIPotential) = numz(V.pibasis)
 
 
-# -------- GraphPiPot converter
 
-import SHIPs.DAG: GraphPIPot, get_eval_graph
-
-function GraphPIPot(pipot::PIPotential; kwargs...)
-   dags = [ get_eval_graph(pipot.pibasis.inner[iz], pipot.coeffs[iz];
-                           kwargs...)  for iz = 1:numz(pipot) ]
-   return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
-end
 
 
 # ------------------------------------------------------------
@@ -181,6 +173,139 @@ function evaluate_d!(dEs, tmpd, V::PIPotential,
       zinds = basis1p.Aindices[iz, iz0]
       for iA = 1:length(basis1p, iz, iz0)
          dEs[iR] += real(dAco[zinds[iA]] * dAraw[zinds[iA]])
+      end
+   end
+
+   return dEs
+end
+
+
+
+
+# ------------------------------------------------------------
+#    GraphPIPot -> temporary place for dag-evaluator wrapper
+
+import SHIPs.DAG: CorrEvalGraph, get_eval_graph
+
+
+
+struct GraphPIPot{T, TI, NZ, TB} <: SitePotential
+   basis1p::TB
+   dags::NTuple{NZ, CorrEvalGraph{T, TI}}
+end
+
+function GraphPIPot(pipot::PIPotential; kwargs...)
+   dags = [ get_eval_graph(pipot.pibasis.inner[iz], pipot.coeffs[iz];
+                           kwargs...)  for iz = 1:numz(pipot) ]
+   return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
+end
+
+
+i2z(V::GraphPIPot, i::Integer) = i2z(V.basis1p, i)
+z2i(V::GraphPIPot, z::AtomicNumber) = z2i(V.basis1p, z)
+numz(V::GraphPIPot) = numz(V.basis1p)
+
+cutoff(V::GraphPIPot) = cutoff(V.basis1p)
+
+Base.eltype(V::GraphPIPot{T}) where {T} = real(T)
+
+_maxstore(V::GraphPIPot) = maximum( dag.numstore for dag in V.dags )
+
+alloc_temp(V::GraphPIPot{T}, maxN::Integer) where {T} =
+   (
+   R = zeros(JVec{real(T)}, maxN),
+   Z = zeros(AtomicNumber, maxN),
+   tmp_basis1p = alloc_temp(V.basis1p),
+   AA = zeros(eltype(V.basis1p), _maxstore(V)),
+   A = alloc_B(V.basis1p)
+    )
+
+
+function evaluate!(tmp, V::GraphPIPot, Rs, Zs, z0)
+   AAdag = tmp.AA
+   A = tmp.A
+   iz0 = z2i(V, z0)
+   evaluate!(A, tmp.tmp_basis1p, V.basis1p, Rs, Zs, z0)
+   Es = zero(eltype(V))
+   traverse_dag!(AAdag, V.dags[iz0], A,
+                 (coeff, AAval) -> (Es += coeff * AAval))
+   return Es
+end
+
+
+
+alloc_temp_d(V::GraphPIPot{T}, maxN::Integer) where {T} =
+   (
+   R = zeros(JVec{real(T)}, maxN),
+   Z = zeros(AtomicNumber, maxN),
+    dV = zeros(JVec{real(T)}, maxN),
+   tmpd_basis1p = alloc_temp_d(V.basis1p),
+   AA = zeros(eltype(V.basis1p), _maxstore(V)),
+   B = zeros(eltype(V.basis1p), _maxstore(V)),
+   A = alloc_B(V.basis1p),
+   dA = alloc_dB(V.basis1p)
+    )
+
+
+function evaluate_d!(dEs, tmpd, V::GraphPIPot{T}, Rs, Zs, z0) where {T}
+   iz0 = z2i(V, z0)
+   AA = tmpd.AA
+   B = tmpd.B
+   tmpd_basis1p = tmpd.tmpd_basis1p
+   basis1p = V.basis1p
+   dag = V.dags[iz0]
+   nodes = dag.nodes
+   coeffs = dag.vals
+
+   # we start from the representation
+   #     V = sum B[i] AA[i]
+   # i.e. this vector represents the constributions c[i] ∂AA[i]
+   copy!(B, coeffs)
+
+   # FORWARD PASS
+   # ------------
+   # evaluate the 1-particle basis
+   # this puts the first `dag.num1` 1-b (trivial) correlations into the
+   # storage array, and from these we can build the rest
+   evaluate!(AA, tmpd_basis1p, basis1p, Rs, Zs, z0)
+
+   # Stage 2 of evaluate!
+   # go through the dag and store the intermediate results we need
+   @inbounds @fastmath for i = (dag.num1+1):dag.numstore
+      n1, n2 = nodes[i]
+      AA[i] = muladd(AA[n1], AA[n2], AA[i])
+   end
+
+   # BACKWARD PASS
+   # --------------
+   # fill the B array -> coefficients of the derivatives
+   #  AA_i = AA_{n1} * AA_{n2}
+   #  ∂AA_i = AA_{n1} * ∂AA_{n2} + AA_{n1} * AA_{n2}
+   #  c_{n1} * ∂AA_{n1} <- (c_{n1} + c_i AA_{n2}) ∂AA_{n1}
+   @inbounds @fastmath for i = length(dag):-1:(dag.numstore+1)
+      c = coeffs[i]
+      n1, n2 = nodes[i]
+      B[n1] = muladd(c, AA[n2], B[n1])
+      B[n2] = muladd(c, AA[n1], B[n2])
+   end
+   # in stage 2 c = C[i] is replaced with b = B[i]
+   @inbounds @fastmath for i = dag.numstore:-1:(dag.num1+1)
+      n1, n2 = nodes[i]
+      b = B[i]
+      B[n1] = muladd(b, AA[n2], B[n1])
+      B[n2] = muladd(b, AA[n1], B[n2])
+   end
+
+   # stage 3: get the gradients
+   fill!(dEs, zero(JVec{T}))
+   A = tmpd.A
+   dA = tmpd.dA
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      evaluate_d!(A, dA, tmpd_basis1p, basis1p, R, Z, z0)
+      iz = z2i(basis1p, Z)
+      inds = basis1p.Aindices[iz, iz0]
+      for iA = 1:length(basis1p, iz, iz0)
+         dEs[iR] += real(B[inds[iA]] * dA[inds[iA]])
       end
    end
 

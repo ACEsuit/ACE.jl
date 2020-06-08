@@ -371,13 +371,18 @@ function site_evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
    # precompute the 1-p basis and its derivatives
    evaluate_d!(tmpd.A, tmpd.dA, tmpd.tmpd_basis1p, basis.basis1p, Rs, Zs, z0)
+   site_evaluate_d!(AA, dAA, tmpd, basis.inner[iz0], tmpd.A, tmpd.dA)
+   return nothing
+end
+
+function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis, A, dA)
    # evaluate the AA basis
-   evaluate!(AA, nothing, basis.inner[iz0], tmpd.A)
+   evaluate!(AA, nothing, inner, tmpd.A)
    # loop over all neighbours
-   for j = 1:length(Rs)
+   for j = 1:size(dA, 2)
       # write the gradients into the correct slice of the dAA matrix
       dAAj = @view dAA[:, j]
-      evaluate_d_Rj!(dAAj, basis, tmpd.A, tmpd.dA, z0, j)
+      evaluate_d_Rj!(dAAj, inner, A, dA, j)
    end
    return nothing
 end
@@ -430,11 +435,11 @@ function evaluate_d_Rj!(dAAj, inner::InnerPIBasis, A, dA, j) where {T}
    return dAAj
 end
 
-"""
-evaluate ∂AA[z0] / ∂Rⱼ
-"""
-evaluate_d_Rj!(dAAj, pibasis::PIBasis, A, dA, z0, j) =
-      evaluate_d_Rj!(dAAj, pibasis.inner[z2i(pibasis, z0)], A, dA, j)
+# """
+# evaluate ∂AA[z0] / ∂Rⱼ
+# """
+# evaluate_d_Rj!(dAAj, pibasis::PIBasis, A, dA, z0, j) =
+#       evaluate_d_Rj!(dAAj, pibasis.inner[z2i(pibasis, z0)], A, dA, j)
 
 
 

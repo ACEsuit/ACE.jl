@@ -27,7 +27,7 @@ V = SHIPs.Random.randcombine(basis)
 tmp = SHIPs.alloc_temp(V, length(Rs));
 tmpd = SHIPs.alloc_temp_d(V, length(Rs));
 
-Vtr = SHIPs.DAG.GraphPIPot(V)
+Vtr = SHIPs.GraphPIPot(V)
 tmptr = SHIPs.alloc_temp(Vtr, length(Rs))
 tmptrd = SHIPs.alloc_temp_d(Vtr, length(Rs));
 
@@ -50,7 +50,7 @@ for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
    Pr = basis.pibasis.basis1p.J
    V = SHIPs.Random.randcombine(basis)
    @info("species = $species; N = $N")
-   Vtr = SHIPs.DAG.GraphPIPot(V)
+   Vtr = SHIPs.GraphPIPot(V)
    lenpi = maximum(length.(V.pibasis.inner))
    lendag = maximum(length.(Vtr.dags))
    @info("    #$(lenpi) pibasis vs #$(lendag) dag nodes")
