@@ -45,7 +45,15 @@ JuLIP.numz(V::PIPotential) = numz(V.pibasis)
 #   Initialisation code
 # ------------------------------------------------------------
 
-combine(basis::PIBasis, coeffs) = PIPotential(basis, coeffs)
+function combine(basis::PIBasis, coeffs; evaluator = :classic)
+   V = PIPotential(basis, coeffs)
+   if evaluator == :classic
+      return V
+   elseif evaluator == :dag
+      return GraphPIPot(V)
+   end
+   error("unknown evaluator $evaluator")
+end
 
 
 function PIPotential(basis::PIBasis, coeffs::Vector{<: Number})

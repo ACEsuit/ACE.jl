@@ -185,7 +185,7 @@ end
 #   evaluation codes
 
 
-function traverse_dag!(AA, dag::CorrEvalGraph, A, fun)
+function traverse_fwd!(AA, dag::CorrEvalGraph, A, fun)
    nodes = dag.nodes
    vals = dag.vals
 
@@ -214,6 +214,73 @@ function traverse_dag!(AA, dag::CorrEvalGraph, A, fun)
 
    return nothing
 end
+
+
+# function traverse_fwdbwd!(AA, dag::CorrEvalGraph, A, fwdfun, bwdfun)
+#    # function fwdbwd_traverse!(dEs, tmpd, V::GraphPIPot{T}, ) where {T}
+#    nodes = dag.nodes
+#    vals = dag.vals
+#
+#    # FORWARD PASS
+#    # --------------
+#
+#    for i = 1:dag.num1
+#       AA[i] = a = A[i]
+#       fwdfun(vals[i], a)
+#    end
+#
+#    # go through the dag and store the intermediate results we need
+#    for i = (dag.num1+1):dag.numstore
+#       n1, n2 = nodes[i]
+#       AA[i] = a = muladd(AA[n1], AA[n2], AA[i])
+#       fwdfun(vals[i], a)
+#    end
+#
+#    # go through the dag and store the intermediate results we need
+#    for i = (dag.num1+1):dag.numstore
+#       n1, n2 = nodes[i]
+#       AA[i] = a = muladd(AA[n1], AA[n2], AA[i])
+#       fwdfun(vals[i], a)
+#    end
+#
+#
+#    # BACKWARD PASS
+#    # --------------
+#    # fill the B array -> coefficients of the derivatives
+#    #  AA_i = AA_{n1} * AA_{n2}
+#    #  ∂AA_i = AA_{n1} * ∂AA_{n2} + AA_{n1} * AA_{n2}
+#    #  c_{n1} * ∂AA_{n1} <- (c_{n1} + c_i AA_{n2}) ∂AA_{n1}
+#    @inbounds @fastmath for i = length(dag):-1:(dag.numstore+1)
+#       c = coeffs[i]
+#       n1, n2 = nodes[i]
+#       B[n1] = muladd(c, AA[n2], B[n1])
+#       B[n2] = muladd(c, AA[n1], B[n2])
+#    end
+#    # in stage 2 c = C[i] is replaced with b = B[i]
+#    @inbounds @fastmath for i = dag.numstore:-1:(dag.num1+1)
+#       n1, n2 = nodes[i]
+#       b = B[i]
+#       B[n1] = muladd(b, AA[n2], B[n1])
+#       B[n2] = muladd(b, AA[n1], B[n2])
+#    end
+#
+#    # stage 3: get the gradients
+#    fill!(dEs, zero(JVec{T}))
+#    A = tmpd.A
+#    dA = tmpd.dA
+#    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+#       evaluate_d!(A, dA, tmpd_basis1p, basis1p, R, Z, z0)
+#       iz = z2i(basis1p, Z)
+#       inds = basis1p.Aindices[iz, iz0]
+#       for iA = 1:length(basis1p, iz, iz0)
+#          dEs[iR] += real(B[inds[iA]] * dA[inds[iA]])
+#       end
+#    end
+#
+#    return dEs
+# end
+
+
 
 
 end

@@ -480,3 +480,58 @@ function evaluate!(AA, tmp, basis::DAGInnerPIBasis, A)
                  (idx, AAval) -> if idx > 0; AA[idx] = AAval; end)
    return AA
 end
+
+
+
+# function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis, A, dA)
+#    # evaluate the AA basis
+#    evaluate!(AA, nothing, inner, tmpd.A)
+#    # loop over all neighbours
+#    for j = 1:size(dA, 2)
+#       # write the gradients into the correct slice of the dAA matrix
+#       dAAj = @view dAA[:, j]
+#       evaluate_d_Rj!(dAAj, inner, A, dA, j)
+#    end
+#    return nothing
+# end
+
+
+function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis, A, dA)
+   nodes = inner.dag.nodes
+   idxs = inner.dag.vals
+   AAtmp = tmpd.tmpd_inner.AA
+   dAAtmp = tmpd.tmpd_inner.dAA
+
+   for i = 1:dag.num1
+      idx = idxs[i]
+      AAtmp[i] = A[i]
+      @. dAAtmp[i, :] = dA[i, :]
+      if idx > 0
+         AA[idx] = AAtmp[i]
+         @. dAA[idx,:] = dAAtmp[i,:]
+      end
+   end
+
+   for i = (dag.num1+1):dag.numstore
+      n1, n2 = nodes[i]
+      idx = idxs[i]
+      AA1, AA2 = AAtmp[n1], AAtmp[n2]
+      AAtmp[i] = AA1 * AA2
+      @. dAAtmp[i, :] = AA1 * dAAtmp[n2,:] + AA2 * dAAtmp[n1,:]
+      if idx > 0
+         AA[idx] = AAtmp[i]
+         @. dAA[idx, :] = dAAtmp[i, :]
+      end
+   end
+
+   for i = (dag.num1+1):dag.numstore
+      idx = idxs[i]
+      n1, n2 = nodes[i]
+      @assert idx > 0
+      AA1, AA2 = AAtmp[n1], AAtmp[n2]
+      AA[idx] = AA1 * AA2
+      @. dAA[idx, :] = AA1 * dAAtmp[n2,:] + AA2 * dAAtmp[n1,:]
+   end
+
+   return nothing
+end
