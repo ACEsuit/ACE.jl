@@ -15,7 +15,8 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     # core permutation-invariant functionality
     include("test_1pbasis.jl")
     include("test_pibasis.jl")
-    # include("test_pipot.jl")
+    include("test_pipot.jl")
+    include("experimental/test_grapheval.jl")
 
     # # ------------------------
     # #   rotation_invariance
@@ -31,7 +32,6 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     # # ----------------------
     # #   miscallaneous ...
     # include("test_compat.jl")
-    # include("experimental/test_grapheval.jl")
 
 
     # ----------------------------------
