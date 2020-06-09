@@ -199,6 +199,7 @@ function PIBasis(basis1p::OneParticleBasis,
                              _evaluator(evaluator))
 end
 
+
 function _evaluator(evaluator)
    if evaluator == :classic
       return InnerPIBasis
@@ -318,7 +319,7 @@ function site_evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
    # only ever sees A
    iz0 = z2i(basis, z0)
    evaluate!(AA, tmp, basis.inner[iz0], A)
-   return nothing; # @view(AA[1:length(basis.inner[iz0])])
+   return @view(AA[1:length(basis.inner[iz0])])
 end
 
 # this method evaluates the InnerPIBasis, which is really the actual
@@ -339,17 +340,22 @@ end
 # gradients: this section of functions is for computing
 #  ∂∏A / ∂R_j
 
+site_alloc_dB(basis::PIBasis, Rs::AbstractVector, args...) =
+   site_alloc_dB(basis, length(Rs))
 
-site_alloc_dB(basis::PIBasis, args...) =
-      zeros( JVec{eltype(basis)}, maximum(length.(basis.inner)) )
+site_alloc_dB(basis::PIBasis, nmax::Integer) =
+      zeros( JVec{eltype(basis)}, maximum(length.(basis.inner)), nmax )
 
-alloc_temp_d(basis::PIBasis, args...) =
+alloc_temp_d(basis::PIBasis, Rs::AbstractVector, args...) =
+   alloc_temp_d(basis, length(Rs))
+
+alloc_temp_d(basis::PIBasis, nmax::Integer) =
       (
-        A = alloc_B(basis.basis1p, args...),
-        dA = alloc_dB(basis.basis1p, args...),
-        tmp_basis1p = alloc_temp(basis.basis1p, args...),
-        tmpd_basis1p = alloc_temp_d(basis.basis1p, args...),
-        tmpd_inner = alloc_temp_d(typeof(basis.inner[1]), basis, args...)
+        A = alloc_B(basis.basis1p, nmax),
+        dA = alloc_dB(basis.basis1p, nmax),
+        tmp_basis1p = alloc_temp(basis.basis1p, nmax),
+        tmpd_basis1p = alloc_temp_d(basis.basis1p, nmax),
+        tmpd_inner = alloc_temp_d(typeof(basis.inner[1]), basis, nmax)
       )
 
 alloc_temp_d(::Type{InnerPIBasis}, basis::PIBasis, args...) = nothing
@@ -447,6 +453,20 @@ function DAGInnerPIBasis(Aspec::AbstractVector, AAspec::AbstractVector,
 end
 
 
+function graph_evaluator(basis::PIBasis; kwargs...)
+   inners = []
+   for iz0 = 1:numz(basis)
+      inner = basis.inner[iz0]
+      len = length(inner)
+      z0 = i2z(basis, iz0)
+      Aspec = get_basis_spec(basis.basis1p, z0)
+      dag = get_eval_graph(inner, collect(1:len); kwargs...)
+      push!(inners, DAGInnerPIBasis(Aspec, dag, len, z0, inner.AAindices))
+   end
+   return PIBasis(basis.basis1p, basis.zlist, tuple(inners...))
+end
+
+
 alloc_temp(::Type{DAGInnerPIBasis}, basis::PIBasis) =
    zeros(eltype(basis), maximum(inner.dag.numstore for inner in basis.inner))
 
@@ -461,12 +481,11 @@ end
 
 
 
-function alloc_temp_d(::Type{DAGInnerPIBasis}, basis::PIBasis,  Rs, args...)
+function alloc_temp_d(::Type{DAGInnerPIBasis}, basis::PIBasis,  nmax::Integer)
    maxstore = maximum(inner.dag.numstore for inner in basis.inner)
-   Nmax = length(Rs)
    return (
       AA = zeros(eltype(basis), maxstore),
-      dAA = zeros(JVec{eltype(basis)}, maxstore, Nmax)
+      dAA = zeros(JVec{eltype(basis)}, maxstore, nmax)
    )
 end
 
@@ -478,14 +497,33 @@ function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis, A, dA)
    AAtmp = tmpd.tmpd_inner.AA
    dAAtmp = tmpd.tmpd_inner.dAA
    numneigs = size(dA, 2)
+   # --- manual bounds checking
+   @assert size(dAA, 2) >= numneigs
+   @assert size(dAAtmp, 2) >= numneigs
+   @assert length(AAtmp) >= inner.dag.numstore
+   @assert size(dAAtmp, 1) >= inner.dag.numstore
+   # ------------------
 
-   for i = 1:dag.num1
+   @inline function _copyrow!(A_, iA, B_, iB)
+      @simd for j = 1:numneigs
+         @inbounds A_[iA,j] = B_[iB,j]
+      end
+   end
+
+   @inline function _fwdgrad!(dAA_, i, n1, AA1, n2, AA2)
+      @simd for j = 1:numneigs
+         @inbounds dAA_[i, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
+      end
+   end
+
+   @inbounds for i = 1:dag.num1
       idx = idxs[i]
       AAtmp[i] = A[i]
-      @. dAAtmp[i, :] = (@view dA[i, :])
+      _copyrow!(dAAtmp, i, dA, i)
       if idx > 0
          AA[idx] = AAtmp[i]
-         @. dAA[idx,:] = (@view dAAtmp[i,:])
+         _copyrow!(dAA, idx, dAAtmp, i)
+         # @. dAA[idx,:] = (@view dAAtmp[i,:])
       end
    end
 
@@ -494,13 +532,12 @@ function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis, A, dA)
       idx = idxs[i]
       AA1, AA2 = AAtmp[n1], AAtmp[n2]
       AAtmp[i] = AA1 * AA2
-      @simd for j = 1:numneigs
-         @inbounds dAAtmp[i, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
-      end
+      _fwdgrad!(dAAtmp, i, n1, AA1, n2, AA2)
       # @. dAAtmp[i, :] = AA1 * (@view dAAtmp[n2,:]) + AA2 * (@view dAAtmp[n1,:])
       if idx > 0
          AA[idx] = AAtmp[i]
-         @. dAA[idx, :] .= (@view dAAtmp[i, :])
+         _copyrow!(dAA, idx, dAAtmp, i)
+         # @. dAA[idx, :] .= (@view dAAtmp[i, :])
       end
    end
 
@@ -510,9 +547,10 @@ function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis, A, dA)
       # @assert idx > 0
       AA1, AA2 = AAtmp[n1], AAtmp[n2]
       AA[idx] = AA1 * AA2
-      @simd for j = 1:numneigs
-         @inbounds dAA[idx, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
-      end
+      _fwdgrad!(dAA, idx, n1, AA1, n2, AA2)
+      # @simd for j = 1:numneigs
+      #    @inbounds dAA[idx, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
+      # end
    end
 
    return nothing

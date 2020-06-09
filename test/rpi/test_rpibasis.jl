@@ -1,7 +1,7 @@
 
 @testset "RPIBasis"  begin
 
-##
+#---
 
 
 using SHIPs
@@ -10,7 +10,7 @@ using JuLIP: evaluate, evaluate_d, evaluate_ed
 using JuLIP.MLIPs: combine
 
 
-##
+#---
 
 @info("Basic test of RPIBasis construction and evaluation")
 maxdeg = 15
@@ -22,12 +22,12 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = SparsePSHDegree()
 P1 = BasicPSH1pBasis(Pr; species = :X, D = D)
 
-##
+#---
 
 pibasis = PIBasis(P1, N, D, maxdeg)
 rpibasis = RPIBasis(P1, N, D, maxdeg)
 
-##
+#---
 @info("Basis construction and evaluation checks")
 @info("check single species")
 Nat = 15
@@ -37,9 +37,9 @@ println(@test(length(rpibasis) == length(B)))
 dB = evaluate_d(rpibasis, Rs, Zs, z0)
 println(@test(size(dB) == (length(rpibasis), length(Rs))))
 B_, dB_ = evaluate_ed(rpibasis, Rs, Zs, z0)
-println(@test (B_ == B) && (dB_ == dB))
+println(@test (B_ ≈ B) && (dB_ ≈ dB))
 
-##
+#---
 @info("check multi-species")
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
@@ -52,15 +52,16 @@ println(@test(length(basis) == length(B)))
 dB = evaluate_d(basis, Rs, Zs, z0)
 println(@test(size(dB) == (length(basis), length(Rs))))
 B_, dB_ = evaluate_ed(basis, Rs, Zs, z0)
-println(@test (B_ == B) && (dB_ == dB))
+println(@test (B_ ≈ B) && (dB_ ≈ dB))
 
-##
+#---
 
 degrees = [ 12, 10, 8, 8, 8, 8 ]
 
 @info("Check a few basis properties ")
 # for species in (:X, :Si) # , [:C, :O, :H])
 for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
+   local Rs, Zs, z0, B, dB, basis, D, P1, Nat
    Nat = 15
    D = SparsePSHDegree()
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
@@ -108,6 +109,6 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
 end
 
 
-##
+#---
 
 end
