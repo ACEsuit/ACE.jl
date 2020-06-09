@@ -355,9 +355,11 @@ alloc_temp_d(basis::PIBasis, args...) =
         A = alloc_B(basis.basis1p, args...),
         dA = alloc_dB(basis.basis1p, args...),
         tmp_basis1p = alloc_temp(basis.basis1p, args...),
-        tmpd_basis1p = alloc_temp_d(basis.basis1p, args...)
+        tmpd_basis1p = alloc_temp_d(basis.basis1p, args...),
+        tmpd_inner = alloc_temp_d(typeof(basis.inner[1]), basis, args...)
       )
 
+alloc_temp_d(::Type{InnerPIBasis}, basis::PIBasis, args...) = nothing
 
 function evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
@@ -381,8 +383,9 @@ function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis, A, dA)
    # loop over all neighbours
    for j = 1:size(dA, 2)
       # write the gradients into the correct slice of the dAA matrix
-      dAAj = @view dAA[:, j]
-      evaluate_d_Rj!(dAAj, inner, A, dA, j)
+      for iAA = 1:length(inner)
+         @inbounds dAA[iAA, j] = grad_AAi_Rj(iAA, j, inner, A, dA)
+      end
    end
    return nothing
 end
@@ -394,7 +397,7 @@ Compute ∂∏A_a / ∂A_b = ∏_{a ≂̸ b} A_a
 """
 function grad_AAi_Ab(iAA, b, inner, A)
    g = one(eltype(A))
-   for a = 1:inner.orders[iAA]
+   @inbounds for a = 1:inner.orders[iAA]
       if a != b
          g *= A[inner.iAA2iA[iAA, a]]
       end
@@ -414,7 +417,7 @@ Compuate ∂∏A_a / ∂Rⱼ:
 """
 function grad_AAi_Rj(iAA, j, inner, A, dA)
    g = zero(eltype(dA))
-   for b = 1:inner.orders[iAA] # interaction order
+   @inbounds for b = 1:inner.orders[iAA] # interaction order
       # A_{k_b} = A[iA]
       iA = inner.iAA2iA[iAA, b]
       # dAAi_dAb = ∂(∏A_{n_a}) / ∂A_{n_b}
@@ -425,30 +428,12 @@ function grad_AAi_Rj(iAA, j, inner, A, dA)
 end
 
 
-"""
-evaluate ∂AA / ∂Rⱼ
-"""
-function evaluate_d_Rj!(dAAj, inner::InnerPIBasis, A, dA, j) where {T}
-   for iAA = 1:length(inner)
-      dAAj[iAA] = grad_AAi_Rj(iAA, j, inner, A, dA)
-   end
-   return dAAj
-end
-
-# """
-# evaluate ∂AA[z0] / ∂Rⱼ
-# """
-# evaluate_d_Rj!(dAAj, pibasis::PIBasis, A, dA, z0, j) =
-#       evaluate_d_Rj!(dAAj, pibasis.inner[z2i(pibasis, z0)], A, dA, j)
-
-
-
 # --------------------------------------------------------
 #   Alternative InnerPIBasis based on the graph-evaluator
 
 include("grapheval.jl")
 
-import SHIPs.DAG: CorrEvalGraph, get_eval_graph, traverse_dag!
+import SHIPs.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
 
 mutable struct DAGInnerPIBasis <: AbstractInnerPIBasis
    b1pspec::Vector{Any}
@@ -476,61 +461,65 @@ alloc_temp(::Type{DAGInnerPIBasis}, basis::PIBasis) =
 function evaluate!(AA, tmp, basis::DAGInnerPIBasis, A)
    AAdag = tmp.tmp_inner
    fill!(AAdag, 1)
-   traverse_dag!(AAdag, basis.dag, A,
+   traverse_fwd!(AAdag, basis.dag, A,
                  (idx, AAval) -> if idx > 0; AA[idx] = AAval; end)
    return AA
 end
 
 
 
-# function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis, A, dA)
-#    # evaluate the AA basis
-#    evaluate!(AA, nothing, inner, tmpd.A)
-#    # loop over all neighbours
-#    for j = 1:size(dA, 2)
-#       # write the gradients into the correct slice of the dAA matrix
-#       dAAj = @view dAA[:, j]
-#       evaluate_d_Rj!(dAAj, inner, A, dA, j)
-#    end
-#    return nothing
-# end
+function alloc_temp_d(::Type{DAGInnerPIBasis}, basis::PIBasis,  Rs, args...)
+   maxstore = maximum(inner.dag.numstore for inner in basis.inner)
+   Nmax = length(Rs)
+   return (
+      AA = zeros(eltype(basis), maxstore),
+      dAA = zeros(JVec{eltype(basis)}, maxstore, Nmax)
+   )
+end
 
 
 function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis, A, dA)
-   nodes = inner.dag.nodes
-   idxs = inner.dag.vals
+   dag = inner.dag
+   nodes = dag.nodes
+   idxs = dag.vals
    AAtmp = tmpd.tmpd_inner.AA
    dAAtmp = tmpd.tmpd_inner.dAA
+   numneigs = size(dA, 2)
 
    for i = 1:dag.num1
       idx = idxs[i]
       AAtmp[i] = A[i]
-      @. dAAtmp[i, :] = dA[i, :]
+      @. dAAtmp[i, :] = (@view dA[i, :])
       if idx > 0
          AA[idx] = AAtmp[i]
-         @. dAA[idx,:] = dAAtmp[i,:]
+         @. dAA[idx,:] = (@view dAAtmp[i,:])
       end
    end
 
-   for i = (dag.num1+1):dag.numstore
+   @inbounds for i = (dag.num1+1):dag.numstore
       n1, n2 = nodes[i]
       idx = idxs[i]
       AA1, AA2 = AAtmp[n1], AAtmp[n2]
       AAtmp[i] = AA1 * AA2
-      @. dAAtmp[i, :] = AA1 * dAAtmp[n2,:] + AA2 * dAAtmp[n1,:]
+      @simd for j = 1:numneigs
+         @inbounds dAAtmp[i, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
+      end
+      # @. dAAtmp[i, :] = AA1 * (@view dAAtmp[n2,:]) + AA2 * (@view dAAtmp[n1,:])
       if idx > 0
          AA[idx] = AAtmp[i]
-         @. dAA[idx, :] = dAAtmp[i, :]
+         @. dAA[idx, :] .= (@view dAAtmp[i, :])
       end
    end
 
-   for i = (dag.num1+1):dag.numstore
+   @inbounds for i = (dag.numstore+1):length(dag)
       idx = idxs[i]
       n1, n2 = nodes[i]
-      @assert idx > 0
+      # @assert idx > 0
       AA1, AA2 = AAtmp[n1], AAtmp[n2]
       AA[idx] = AA1 * AA2
-      @. dAA[idx, :] = AA1 * dAAtmp[n2,:] + AA2 * dAAtmp[n1,:]
+      @simd for j = 1:numneigs
+         @inbounds dAA[idx, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
+      end
    end
 
    return nothing

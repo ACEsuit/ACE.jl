@@ -42,6 +42,10 @@ dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg, evaluator = :dag)
 AAdag = evaluate(dagbasis, Rs, Zs, z0)
 println(@test(AA ≈ AAdag))
 
+dAA = evaluate_d(basis, Rs, Zs, z0)
+dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
+println(@test dAA ≈ dAAdag)
+
 
 ## check multi-species
 maxdeg = 5
@@ -62,11 +66,15 @@ dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg, evaluator = :dag
 AAdag = evaluate(dagbasis, Rs, Zs, z0)
 println(@test(AA ≈ AAdag))
 
+dAA = evaluate_d(basis, Rs, Zs, z0)
+dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
+println(@test dAA ≈ dAAdag)
+
 ##
 
 @info("Check several properties of PIBasis")
 for species in (:X, :Si, [:C, :O, :H]), N = 1:5
-   local AA, AAdag, dAA
+   local AA, AAdag, dAA, dAAdag
    maxdeg = 7
    Nat = 15
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
@@ -109,6 +117,10 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
       AA = evaluate(basis, Rs, Zs, z0)
       AAdag = evaluate(dagbasis, Rs, Zs, z0)
       print_tf(@test AA ≈ AAdag)
+
+      dAA = evaluate_d(basis, Rs, Zs, z0)
+      dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
+      print_tf(@test dAA ≈ dAAdag)
    end
    println()
 end

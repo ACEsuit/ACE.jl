@@ -235,7 +235,7 @@ function evaluate!(tmp, V::GraphPIPot, Rs, Zs, z0)
    iz0 = z2i(V, z0)
    evaluate!(A, tmp.tmp_basis1p, V.basis1p, Rs, Zs, z0)
    Es = zero(eltype(V))
-   traverse_dag!(AAdag, V.dags[iz0], A,
+   traverse_fwd!(AAdag, V.dags[iz0], A,
                  (coeff, AAval) -> (Es += coeff * AAval))
    return Es
 end
