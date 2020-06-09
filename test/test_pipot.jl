@@ -8,17 +8,15 @@
 
 @testset "PIPotential"  begin
 
-##
+#---
 
 
 using SHIPs
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing, Random
 using JuLIP: evaluate, evaluate_d, evaluate_ed
-using JuLIP.MLIPs: combine
+using SHIPs: combine
 
-randcoeffs(B) = rand(ComplexF64, length(B)) .* (1:length(B)).^(-2)
-
-##
+#---
 
 @info("Basic test of PIPotential construction and evaluation")
 maxdeg = 10
@@ -29,7 +27,7 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = SHIPs.SparsePSHDegree()
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 basis = SHIPs.PIBasis(P1, 2, D, maxdeg)
-c = randcoeffs(basis)
+c = SHIPs.Random.randcoeffs(basis)
 V = combine(basis, c)
 Nat = 15
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
@@ -41,7 +39,7 @@ grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
 grad_V = evaluate_d(V, Rs, Zs, z0)
 println(@test(grad_basis ≈ grad_V))
 
-##
+#---
 
 # check multi-species
 maxdeg = 5
@@ -63,7 +61,7 @@ println(@test(grad_basis ≈ grad_V))
 
 
 
-##
+#---
 
 @info("Check several properties of PIPotential")
 for species in (:X, :Si, [:C, :O, :H]), N = 1:5
@@ -106,7 +104,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
 end
 println()
 
-##
+#---
 
 
 @info("Check Correctness of SHIP.PIPotential calculators")
@@ -140,6 +138,6 @@ for N = 1:5
 end
 
 
-##
+#---
 
 end

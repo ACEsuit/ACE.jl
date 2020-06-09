@@ -188,16 +188,17 @@ end
 function traverse_fwd!(AA, dag::CorrEvalGraph, A, fun)
    nodes = dag.nodes
    vals = dag.vals
+   @assert length(AA) >= dag.numstore
+   @assert length(A) >= dag.num1
 
    # Stage-1: copy the 1-particle basis into AA
-   @assert length(A) >= dag.num1
-   for i = 1:dag.num1
+   @inbounds for i = 1:dag.num1
       AA[i] = a = A[i]
       fun(vals[i], a)
    end
 
    # Stage-2: go through the dag and store the intermediate results we need
-   for i = (dag.num1+1):dag.numstore
+   @inbounds for i = (dag.num1+1):dag.numstore
       n1, n2 = nodes[i]
       AA[i] = a = AA[n1] * AA[n2]
       fun(vals[i], a)
@@ -206,7 +207,7 @@ function traverse_fwd!(AA, dag::CorrEvalGraph, A, fun)
    # Stage 3:
    # continue going through the dag, but now we don't need to store the new
    # correlations since the later expressions don't depend on them
-   for i = (dag.numstore+1):length(dag)
+   @inbounds for i = (dag.numstore+1):length(dag)
       n1, n2 = nodes[i]
       a = AA[n1] * AA[n2]
       fun(vals[i], a)

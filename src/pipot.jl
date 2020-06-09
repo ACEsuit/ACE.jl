@@ -229,14 +229,48 @@ alloc_temp(V::GraphPIPot{T}, maxN::Integer) where {T} =
     )
 
 
+# function evaluate!(tmp, V::GraphPIPot, Rs, Zs, z0)
+#    AAdag = tmp.AA
+#    A = tmp.A
+#    iz0 = z2i(V, z0)
+#    evaluate!(A, tmp.tmp_basis1p, V.basis1p, Rs, Zs, z0)
+#    Es = zero(eltype(V))
+#    traverse_fwd!(AAdag, V.dags[iz0], A,
+#                  (coeff, AAval) -> (Es = muladd(coeff, real(AAval), Es)))
+#    return Es
+# end
+
+
 function evaluate!(tmp, V::GraphPIPot, Rs, Zs, z0)
    AAdag = tmp.AA
    A = tmp.A
    iz0 = z2i(V, z0)
+   dag = V.dags[iz0]
+   nodes = dag.nodes
+   vals = dag.vals
+   @assert length(A) >= dag.num1
+   @assert length(AAdag) >= dag.numstore
+
    evaluate!(A, tmp.tmp_basis1p, V.basis1p, Rs, Zs, z0)
+
    Es = zero(eltype(V))
-   traverse_fwd!(AAdag, V.dags[iz0], A,
-                 (coeff, AAval) -> (Es += coeff * AAval))
+   @inbounds for i = 1:dag.num1
+      AAdag[i] = a = A[i]
+      Es = muladd(vals[i], real(a), Es)
+   end
+
+   @inbounds for i = (dag.num1+1):dag.numstore
+      n1, n2 = nodes[i]
+      AAdag[i] = a = AAdag[n1] * AAdag[n2]
+      Es = muladd(vals[i], real(a), Es)
+   end
+
+   @inbounds for i = (dag.numstore+1):length(dag)
+      n1, n2 = nodes[i]
+      a = AAdag[n1] * AAdag[n2]
+      Es = muladd(vals[i], real(a), Es)
+   end
+
    return Es
 end
 
