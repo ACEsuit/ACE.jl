@@ -58,38 +58,38 @@ for species in (:Si, ), N = 2:2:6, maxdeg in degrees[N]
 end
 
 
-species = :Si
-N  = 4
-maxdeg = 7
-r0 = 2.3
-rcut = 5.0
-trans = PolyTransform(1, r0)
-Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
-D = SHIPs.SparsePSHDegree()
-
-Rs, Zs, z0 = SHIPs.Random.rand_nhd(30, Pr, species)
-basis = SHIPs.PIBasis(P1, N, D, maxdeg, evaluator = :classic)
-basisdag = SHIPs.PIBasis(P1, N, D, maxdeg, evaluator = :dag)
-tmp = alloc_temp(basis, Rs, Zs, z0)
-tmpd = alloc_temp_d(basis, Rs, Zs, z0)
-tmpdag = alloc_temp(basisdag, Rs, Zs, z0)
-tmpdagd = alloc_temp_d(basisdag, Rs, Zs, z0)
-B = alloc_B(basis, Rs)
-dB = alloc_dB(basis, Rs)
+# species = :Si
+# N  = 4
+# maxdeg = 7
+# r0 = 2.3
+# rcut = 5.0
+# trans = PolyTransform(1, r0)
+# Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
+# P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
+# D = SHIPs.SparsePSHDegree()
+#
+# Rs, Zs, z0 = SHIPs.Random.rand_nhd(30, Pr, species)
+# basis = SHIPs.PIBasis(P1, N, D, maxdeg, evaluator = :classic)
+# basisdag = SHIPs.PIBasis(P1, N, D, maxdeg, evaluator = :dag)
+# tmp = alloc_temp(basis, Rs, Zs, z0)
+# tmpd = alloc_temp_d(basis, Rs, Zs, z0)
+# tmpdag = alloc_temp(basisdag, Rs, Zs, z0)
+# tmpdagd = alloc_temp_d(basisdag, Rs, Zs, z0)
+# B = alloc_B(basis, Rs)
+# dB = alloc_dB(basis, Rs)
 
 # @btime evaluate_d!($B, $dB, $tmpdagd, $basisdag, $Rs, $Zs, $z0)
 # @btime evaluate_d!($B, $dB, $tmpdagd, $basisdag, $Rs, $Zs, $z0)
 
 
-
-function runN(N, f, args...)
-   for n = 1:N
-      f(args...)
-   end
-   return nothing
-end
-
-runN(10, evaluate_d!, B, dB, tmpd, basis, Rs, Zs, z0)
-
-Juno.@profiler runN(10_000, evaluate_d!, B, dB, tmpd, basis, Rs, Zs, z0)
+#
+# function runN(N, f, args...)
+#    for n = 1:N
+#       f(args...)
+#    end
+#    return nothing
+# end
+#
+# runN(10, evaluate_d!, B, dB, tmpd, basis, Rs, Zs, z0)
+#
+# Juno.@profiler runN(10_000, evaluate_d!, B, dB, tmpd, basis, Rs, Zs, z0)
