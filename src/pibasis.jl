@@ -47,7 +47,7 @@ to the fact that we don't require the Aspec to be ordered by degree.
 Instead the ordering is achieved in the InnerPIBasis constructor
 """
 function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
-                     D::AbstractDegree, maxdeg::Real,
+                     degree::AbstractDegree, maxdeg::Real,
                      z0::AtomicNumber; filter = _->true )
    iz0 = z2i(basis1p, z0)
    # get the basis spec of the one-particle basis
@@ -57,7 +57,7 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
    #  but the actual basis functions themselves.
    Aspec = get_basis_spec(basis1p, z0)
    # next we need to sort it by degree so that gensparse doesn't get confused.
-   Aspec_p = sort(Aspec, by = D)
+   Aspec_p = sort(Aspec, by = degree)
    # now an index νi corresponds to the basis function
    # Aspec[p[νi]] = Aspec_p[νi] and a tuple ν = (ν1,...,νN) to the following
    # basis function
@@ -65,14 +65,14 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
    # we can now construct the basis specification; the `ordered = true`
    # keyword signifies that this is a permutation-invariant basis
    AAspec = gensparse(N, maxdeg;
-                       tup2b = tup2b, degfun = D, ordered = true,
-                       maxν = length(Aspec_p),
-                       filter = filter)
+                      tup2b = tup2b, degfun = degree, ordered = true,
+                      maxν = length(Aspec_p),
+                      filter = filter)
    return AAspec
 end
 
 
-
+abstract type AbstractInnerPIBasis <: IPBasis end
 
 """
 `mutable struct InnerPIBasis` : this type is just an auxilary type to
@@ -81,7 +81,7 @@ permutation-invariant basis for a single centre-atom species. The main
 type `PIBasis` then stores `NZ` objects of type `InnerPIBasis`
 and "dispatches" the work accordingly.
 """
-mutable struct InnerPIBasis <: IPBasis
+mutable struct InnerPIBasis <: AbstractInnerPIBasis
    orders::Vector{Int}           # order (length) of ith basis function
    iAA2iA::Matrix{Int}           # where in A can we find the ith basis function
    b2iAA::Dict{PIBasisFcn, Int}  # mapping PIBasisFcn -> iAA =  index in AA[z0]
@@ -165,10 +165,10 @@ PIBasis(basis1p, N, D, maxdeg)
 
 Note the species list will be taken from `basis1p`
 """
-mutable struct PIBasis{BOP, NZ} <: IPBasis
+mutable struct PIBasis{BOP, NZ, TIN} <: IPBasis
    basis1p::BOP             # a one-particle basis
    zlist::SZList{NZ}
-   inner::NTuple{NZ, InnerPIBasis}
+   inner::NTuple{NZ, TIN}
 end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
@@ -185,7 +185,8 @@ function PIBasis(basis1p::OneParticleBasis,
                  N::Integer,
                  D::AbstractDegree,
                  maxdeg::Real;
-                 filter = b -> order(b) > 0)
+                 filter = b -> order(b) > 0,
+                 evaluator = :classic)
    innerspecs = Any[]
    # now for each iz0 (i.e. for each z0) construct an "inner basis".
    for iz0 = 1:numz(basis1p)
@@ -194,21 +195,32 @@ function PIBasis(basis1p::OneParticleBasis,
       AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0; filter=filter)
       push!(innerspecs, AAspec_z0)
    end
-   return pibasis_from_specs(basis1p, identity.(innerspecs))
+   return pibasis_from_specs(basis1p, identity.(innerspecs),
+                             _evaluator(evaluator))
+end
+
+
+function _evaluator(evaluator)
+   if evaluator == :classic
+      return InnerPIBasis
+   elseif evaluator == :dag
+      return DAGInnerPIBasis
+   end
+   error("Unknown evaluator")
 end
 
 
 # TODO: instead of copying zlist, maybe forward the zlist methods
 
-function pibasis_from_specs(basis1p, innerspecs)
+function pibasis_from_specs(basis1p, innerspecs, InnerType)
    idx = 0
-   inner = InnerPIBasis[]
+   inner = InnerType[]
    for iz0 = 1:numz(basis1p)
       z0 = i2z(basis1p, iz0)
       Aspec_z0 = get_basis_spec(basis1p, z0)
       AAspec_z0 = innerspecs[iz0]
       AAindices = (idx+1):(idx+length(AAspec_z0))
-      push!(inner, InnerPIBasis(Aspec_z0, AAspec_z0, AAindices, z0))
+      push!(inner, InnerType(Aspec_z0, AAspec_z0, AAindices, z0))
       idx += length(AAspec_z0)
    end
    return PIBasis(basis1p, basis1p.zlist, tuple(inner...))
@@ -264,12 +276,14 @@ write_dict(basis::PIBasis) =
    Dict(  "__id__" => "SHIPs_PIBasis",
          "basis1p" => write_dict(basis.basis1p),
            "inner" => [ write_dict.( collect(keys(basis.inner[iz0].b2iAA)) )
-                         for iz0 = 1:numz(basis) ] )
+                         for iz0 = 1:numz(basis) ],
+       "evaluator" => "classic")
 
 function read_dict(::Val{:SHIPs_PIBasis}, D::Dict)
    basis1p = read_dict(D["basis1p"])
    innerspecs = [ read_dict.(D["inner"][iz0])  for iz0 = 1:numz(basis1p) ]
-   return pibasis_from_specs(basis1p, innerspecs)
+   return pibasis_from_specs(basis1p, innerspecs,
+                             _evaluator(Symbol(D["evaluator"])))
 end
 
 
@@ -281,8 +295,11 @@ site_alloc_B(basis::PIBasis, args...) =
 
 alloc_temp(basis::PIBasis, args...) =
       ( A = alloc_B(basis.basis1p, args...),
-        tmp_basis1p = alloc_temp(basis.basis1p, args...)
+        tmp_basis1p = alloc_temp(basis.basis1p, args...),
+        tmp_inner = alloc_temp(typeof(basis.inner[1]), basis)
       )
+
+alloc_temp(::Type{InnerPIBasis}, basis::PIBasis) = nothing
 
 # this method treats basis as a actual basis across all species
 function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
@@ -306,7 +323,7 @@ function site_evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
 end
 
 # this method evaluates the InnerPIBasis, which is really the actual
-# evaluation code; the rest is mostly logic
+# evaluation code; the rest is just bookkeeping
 function evaluate!(AA, tmp, basis::InnerPIBasis, A)
    fill!(AA, 1)
    for i = 1:length(basis)
@@ -323,18 +340,25 @@ end
 # gradients: this section of functions is for computing
 #  ∂∏A / ∂R_j
 
+site_alloc_dB(basis::PIBasis, Rs::AbstractVector, args...) =
+   site_alloc_dB(basis, length(Rs))
 
-site_alloc_dB(basis::PIBasis, args...) =
-      zeros( JVec{eltype(basis)}, maximum(length.(basis.inner)) )
+site_alloc_dB(basis::PIBasis, nmax::Integer) =
+      zeros( JVec{eltype(basis)}, maximum(length.(basis.inner)), nmax )
 
-alloc_temp_d(basis::PIBasis, args...) =
+alloc_temp_d(basis::PIBasis, Rs::AbstractVector, args...) =
+   alloc_temp_d(basis, length(Rs))
+
+alloc_temp_d(basis::PIBasis, nmax::Integer) =
       (
-        A = alloc_B(basis.basis1p, args...),
-        dA = alloc_dB(basis.basis1p, args...),
-        tmp_basis1p = alloc_temp(basis.basis1p, args...),
-        tmpd_basis1p = alloc_temp_d(basis.basis1p, args...)
+        A = alloc_B(basis.basis1p, nmax),
+        dA = alloc_dB(basis.basis1p, nmax),
+        tmp_basis1p = alloc_temp(basis.basis1p, nmax),
+        tmpd_basis1p = alloc_temp_d(basis.basis1p, nmax),
+        tmpd_inner = alloc_temp_d(typeof(basis.inner[1]), basis, nmax)
       )
 
+alloc_temp_d(::Type{InnerPIBasis}, basis::PIBasis, args...) = nothing
 
 function evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
@@ -348,13 +372,19 @@ function site_evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
    # precompute the 1-p basis and its derivatives
    evaluate_d!(tmpd.A, tmpd.dA, tmpd.tmpd_basis1p, basis.basis1p, Rs, Zs, z0)
+   site_evaluate_d!(AA, dAA, tmpd, basis.inner[iz0], tmpd.A, tmpd.dA)
+   return nothing
+end
+
+function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis, A, dA)
    # evaluate the AA basis
-   evaluate!(AA, nothing, basis.inner[iz0], tmpd.A)
+   evaluate!(AA, nothing, inner, tmpd.A)
    # loop over all neighbours
-   for j = 1:length(Rs)
+   for j = 1:size(dA, 2)
       # write the gradients into the correct slice of the dAA matrix
-      dAAj = @view dAA[:, j]
-      evaluate_d_Rj!(dAAj, basis, tmpd.A, tmpd.dA, z0, j)
+      for iAA = 1:length(inner)
+         @inbounds dAA[iAA, j] = grad_AAi_Rj(iAA, j, inner, A, dA)
+      end
    end
    return nothing
 end
@@ -366,7 +396,7 @@ Compute ∂∏A_a / ∂A_b = ∏_{a ≂̸ b} A_a
 """
 function grad_AAi_Ab(iAA, b, inner, A)
    g = one(eltype(A))
-   for a = 1:inner.orders[iAA]
+   @inbounds for a = 1:inner.orders[iAA]
       if a != b
          g *= A[inner.iAA2iA[iAA, a]]
       end
@@ -386,7 +416,7 @@ Compuate ∂∏A_a / ∂Rⱼ:
 """
 function grad_AAi_Rj(iAA, j, inner, A, dA)
    g = zero(eltype(dA))
-   for b = 1:inner.orders[iAA] # interaction order
+   @inbounds for b = 1:inner.orders[iAA] # interaction order
       # A_{k_b} = A[iA]
       iA = inner.iAA2iA[iAA, b]
       # dAAi_dAb = ∂(∏A_{n_a}) / ∂A_{n_b}
@@ -397,18 +427,131 @@ function grad_AAi_Rj(iAA, j, inner, A, dA)
 end
 
 
-"""
-evaluate ∂AA / ∂Rⱼ
-"""
-function evaluate_d_Rj!(dAAj, inner::InnerPIBasis, A, dA, j) where {T}
-   for iAA = 1:length(inner)
-      dAAj[iAA] = grad_AAi_Rj(iAA, j, inner, A, dA)
-   end
-   return dAAj
+# --------------------------------------------------------
+#   Alternative InnerPIBasis based on the graph-evaluator
+
+include("grapheval.jl")
+
+import SHIPs.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
+
+mutable struct DAGInnerPIBasis <: AbstractInnerPIBasis
+   b1pspec::Vector{Any}
+   dag::CorrEvalGraph{Int, Int}
+   len::Int
+   z0::AtomicNumber
+   AAindices::UnitRange{Int}
 end
 
-"""
-evaluate ∂AA[z0] / ∂Rⱼ
-"""
-evaluate_d_Rj!(dAAj, pibasis::PIBasis, A, dA, z0, j) =
-      evaluate_d_Rj!(dAAj, pibasis.inner[z2i(pibasis, z0)], A, dA, j)
+Base.length(inner::DAGInnerPIBasis) = inner.len
+
+function DAGInnerPIBasis(Aspec::AbstractVector, AAspec::AbstractVector,
+                         AAindices, z0; kwargs...)
+   classic = InnerPIBasis(Aspec, AAspec, AAindices, z0)
+   len = length(classic)
+   dag = get_eval_graph(classic, collect(1:len); kwargs...)
+   return DAGInnerPIBasis(Aspec, dag, len, z0, classic.AAindices)
+end
+
+
+function graph_evaluator(basis::PIBasis; kwargs...)
+   inners = []
+   for iz0 = 1:numz(basis)
+      inner = basis.inner[iz0]
+      len = length(inner)
+      z0 = i2z(basis, iz0)
+      Aspec = get_basis_spec(basis.basis1p, z0)
+      dag = get_eval_graph(inner, collect(1:len); kwargs...)
+      push!(inners, DAGInnerPIBasis(Aspec, dag, len, z0, inner.AAindices))
+   end
+   return PIBasis(basis.basis1p, basis.zlist, tuple(inners...))
+end
+
+
+alloc_temp(::Type{DAGInnerPIBasis}, basis::PIBasis) =
+   zeros(eltype(basis), maximum(inner.dag.numstore for inner in basis.inner))
+
+
+function evaluate!(AA, tmp, basis::DAGInnerPIBasis, A)
+   AAdag = tmp.tmp_inner
+   fill!(AAdag, 1)
+   traverse_fwd!(AAdag, basis.dag, A,
+                 (idx, AAval) -> if idx > 0; AA[idx] = AAval; end)
+   return AA
+end
+
+
+
+function alloc_temp_d(::Type{DAGInnerPIBasis}, basis::PIBasis,  nmax::Integer)
+   maxstore = maximum(inner.dag.numstore for inner in basis.inner)
+   return (
+      AA = zeros(eltype(basis), maxstore),
+      dAA = zeros(JVec{eltype(basis)}, maxstore, nmax)
+   )
+end
+
+
+function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis, A, dA)
+   dag = inner.dag
+   nodes = dag.nodes
+   idxs = dag.vals
+   AAtmp = tmpd.tmpd_inner.AA
+   dAAtmp = tmpd.tmpd_inner.dAA
+   numneigs = size(dA, 2)
+   # --- manual bounds checking
+   @assert size(dAA, 2) >= numneigs
+   @assert size(dAAtmp, 2) >= numneigs
+   @assert length(AAtmp) >= inner.dag.numstore
+   @assert size(dAAtmp, 1) >= inner.dag.numstore
+   # ------------------
+
+   @inline function _copyrow!(A_, iA, B_, iB)
+      @simd for j = 1:numneigs
+         @inbounds A_[iA,j] = B_[iB,j]
+      end
+   end
+
+   @inline function _fwdgrad!(dAA_, i, n1, AA1, n2, AA2)
+      @simd for j = 1:numneigs
+         @inbounds dAA_[i, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
+      end
+   end
+
+   @inbounds for i = 1:dag.num1
+      idx = idxs[i]
+      AAtmp[i] = A[i]
+      _copyrow!(dAAtmp, i, dA, i)
+      if idx > 0
+         AA[idx] = AAtmp[i]
+         _copyrow!(dAA, idx, dAAtmp, i)
+         # @. dAA[idx,:] = (@view dAAtmp[i,:])
+      end
+   end
+
+   @inbounds for i = (dag.num1+1):dag.numstore
+      n1, n2 = nodes[i]
+      idx = idxs[i]
+      AA1, AA2 = AAtmp[n1], AAtmp[n2]
+      AAtmp[i] = AA1 * AA2
+      _fwdgrad!(dAAtmp, i, n1, AA1, n2, AA2)
+      # @. dAAtmp[i, :] = AA1 * (@view dAAtmp[n2,:]) + AA2 * (@view dAAtmp[n1,:])
+      if idx > 0
+         AA[idx] = AAtmp[i]
+         _copyrow!(dAA, idx, dAAtmp, i)
+         # @. dAA[idx, :] .= (@view dAAtmp[i, :])
+      end
+   end
+
+   @inbounds for i = (dag.numstore+1):length(dag)
+      idx = idxs[i]
+      n1, n2 = nodes[i]
+      # @assert idx > 0
+      AA1, AA2 = AAtmp[n1], AAtmp[n2]
+      AA[idx] = AA1 * AA2
+      _fwdgrad!(dAA, idx, n1, AA1, n2, AA2)
+      # @simd for j = 1:numneigs
+      #    @inbounds dAA[idx, j] = AA1 * dAAtmp[n2,j] + AA2 * dAAtmp[n1,j]
+      # end
+   end
+
+   return nothing
+end

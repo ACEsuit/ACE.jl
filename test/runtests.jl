@@ -16,6 +16,7 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     include("test_1pbasis.jl")
     include("test_pibasis.jl")
     include("test_pipot.jl")
+    include("experimental/test_grapheval.jl")
 
     # ------------------------
     #   rotation_invariance
@@ -28,18 +29,16 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     include("pair/test_pair_pot.jl")
     include("pair/test_repulsion.jl")
 
-
     # ----------------------
     #   miscallaneous ...
     include("test_compat.jl")
-    include("experimental/test_treeeval.jl")
 
+
+    # ----------------------------------
+    #    old tests to be re-introduced
     # include("test_real.jl")
     # include("test_orth.jl")
     # include("test_descriptor.jl")
-
-    # ---------------------------
-    #    env-dependent bonds
     # include("bonds/test_cylindrical.jl")
     # include("bonds/test_fourier.jl")
     # include("bonds/test_envpairbasis.jl")

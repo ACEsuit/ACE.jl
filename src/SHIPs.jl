@@ -24,6 +24,7 @@ include("oneparticlebasis.jl")
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
+# include("grapheval.jl")   # temporarily? Or permanently? ...
 include("pipot.jl")
 
 # rotation-invariant site potentials (incl the ACE model)
@@ -50,6 +51,10 @@ include("utils/importv5.jl")
 
 include("compat/compat.jl")
 
+
+include("export/export.jl")
+
+
 # - bond model
 # - pure basis
 # - real basis
@@ -57,9 +62,5 @@ include("compat/compat.jl")
 # - descriptors
 # - random potentials
 
-
-include("treeeval.jl")
-
-include("export/export.jl")
 
 end # module
