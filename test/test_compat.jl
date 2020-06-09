@@ -26,6 +26,7 @@ function compat_tests(V::PIPotential, rtests, tests)
          Jr_new = evaluate(Jr, r)
          print_tf(@test Jr_test ≈ Jr_new)
       end
+      println()
    end
 
    @info("Running potential tests")
@@ -38,13 +39,14 @@ function compat_tests(V::PIPotential, rtests, tests)
          valnew = evaluate(V, Rs, Zs, z0)
          print_tf(@test valold ≈ valnew)
       end
+      println()
    end
 end
 
 
 ##
 
-# a randomly generated single-species potential 
+# a randomly generated single-species potential
 fname = @__DIR__() * "/models/randship_v05.json"
 D = load_dict(fname)
 V = SHIPs.Import.import_pipot_v05(D)

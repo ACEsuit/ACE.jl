@@ -73,6 +73,11 @@ function RPIBasis(pibasis::PIBasis)
    return RPIBasis(pibasis, A2Bmaps, tuple(Bz0inds...))
 end
 
+SHIPs.graph_evaluator(basis::RPIBasis; kwargs...) =
+      SHIPs.RPI.RPIBasis(SHIPs.graph_evaluator(basis.pibasis; kwargs...),
+                         basis.A2Bmaps, basis.Bz0inds)
+
+
 _rpi_filter(pib::PIBasisFcn{0}) = false
 _rpi_filter(pib::PIBasisFcn{1}) = (pib.oneps[1].l == 0)
 _rpi_filter(pib::PIBasisFcn) = (

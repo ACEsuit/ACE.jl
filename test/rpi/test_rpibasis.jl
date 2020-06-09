@@ -113,6 +113,14 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
       print_tf(@test v ≈ cdotB)
    end
    println()
+   @info("   check graph evaluator")
+   basisgr = SHIPs.graph_evaluator(basis)
+   for ntest = 1:30
+      env = SHIPs.rand_nhd(Nat, Pr, species)
+      print_tf(@test evaluate(basis, env...) ≈ evaluate(basisgr, env...))
+      print_tf(@test evaluate_d(basis, env...) ≈ evaluate_d(basisgr, env...))
+   end
+   println()
 end
 
 

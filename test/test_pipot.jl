@@ -101,6 +101,15 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
       print_tf(@test success)
    end
    println()
+   @info("Check graph evaluator")
+   Vgr = SHIPs.graph_evaluator(V)
+   for ntest = 1:20
+      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      v = evaluate(V, Rs, Zs, z0)
+      vgr = evaluate(Vgr, Rs, Zs, z0)
+      print_tf(@test(v ≈ vgr))
+   end
+   println()
 end
 println()
 

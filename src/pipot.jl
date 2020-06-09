@@ -195,6 +195,8 @@ end
 
 import SHIPs.DAG: CorrEvalGraph, get_eval_graph
 
+graph_evaluator(basis::PIPotential; kwargs...) =
+      GraphPIPot(pipot::PIPotential; kwargs...)
 
 
 struct GraphPIPot{T, TI, NZ, TB} <: SitePotential
