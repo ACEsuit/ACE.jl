@@ -191,32 +191,34 @@ end
 
 # ------- gradient
 
-alloc_temp_d(basis::RPIBasis, args...) =
-   (
-    AA = site_alloc_B(basis.pibasis, args...),
-    AAr = real(site_alloc_B(basis.pibasis, args...)),
-    tmp_pibasis = alloc_temp(basis.pibasis, args...),
-    dAAj = site_alloc_dB(basis.pibasis, args...),
-    tmpd_pibasis = alloc_temp_d(basis.pibasis, args...),
+alloc_temp_d(basis::RPIBasis, Rs::AbstractVector, args...) =
+   alloc_temp_d(basis, length(Rs))
+
+alloc_temp_d(basis::RPIBasis, nmax::Integer) =
+    (
+    AA = site_alloc_B(basis.pibasis),
+    AAr = real(site_alloc_B(basis.pibasis)),
+    tmp_pibasis = alloc_temp(basis.pibasis, nmax),
+    dAA = site_alloc_dB(basis.pibasis, nmax),
+    tmpd_pibasis = alloc_temp_d(basis.pibasis, nmax),
     )
 
 # TODO: evaluate also B??? the interface seems to command it.
 function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
-   # fill B. TODO: do this as part of evaluating dB?
-   evaluate!(B, tmpd, basis, Rs, Zs, z0)
-   # now move to dB; here we are unfortunately computing A twice.
-   # but timings suggest this makes almost no difference
-   A = tmpd.tmpd_pibasis.A
-   dA = tmpd.tmpd_pibasis.dA
-   evaluate_d!(A, dA, tmpd.tmpd_pibasis.tmpd_basis1p, basis.pibasis.basis1p,
-               Rs, Zs, z0)
+   AA, dAA = tmpd.AA, tmpd.dAA
+   site_evaluate_d!(AA, dAA, tmpd.tmpd_pibasis, basis.pibasis, Rs, Zs, z0)
+   len = length(basis.pibasis.inner[iz0])
+   for i = 1:len
+      AA[i] = real(AA[i])
+   end
+   mul!((@view B[basis.Bz0inds[iz0]]), basis.A2Bmaps[iz0], (@view AA[1:len]))
    for j = 1:length(Rs)
       # ∂∏A / ∂𝐫ⱼ
-      dAAj = evaluate_d_Rj!(tmpd.dAAj, basis.pibasis, A, dA, z0, j)
+      dAAj = @view dAA[1:len, j]
       # TODO: check whether copying is faster
       for i = 1:length(dAAj)
-         dAAj[i] = real.(dAAj[i])
+         @inbounds dAAj[i] = real.(dAAj[i])
       end
       # copy into B
       dBview = @view dB[basis.Bz0inds[iz0], j]
