@@ -72,3 +72,69 @@ function degree(d::SparsePSHDegree, pphi::VecOrTup)
       )
    end
 end
+
+
+
+@doc raw"""
+`SparsePSHDegreeM` : A general sparse-grid type degree definition for
+``P_r \otimes Y`` type basis functions, which gives more freedom to adjust
+the weights across species and correlation-orders. For simplicity, this doesn't
+admit hyperbolic-cross type constructions but only the classical sparse grid.
+```math
+{\rm deg}(\{n_i\}_{i=1}^N, \{l_i\}_{i=1}^N)
+= \sum_{i=1}^N (w^{\rm n}_i n_i + w^{\rm l}_i l_i)
+```
+where ``w^{\rm n}_i, w^{\rm l}_i`` may now depend on ``z_i, z_0, N``.
+
+### Constructor
+```julia
+SparsePSHDegreeM(wn_fun, wl_fun)
+```
+where `wn_fun, wlfun` are functions that must take the arguments `(N, zi, z0)`.
+
+Note: at the moment, the z0-dependence doesn't work, this needs some reworking
+of internals. The third argument should therefore be ignored for now!
+
+This is very awkward of course, so there is an alternative constructor,
+```
+SparsePSHDegreeM(Dn::Dict, Dl::Dict)
+```
+which will construct the functions `wN_fun, wL_fun` by checking for information
+in the two dictionaries in the following order of precedence:
+- Look for a key `(N, zi, z0)`
+- Look for a key `N`
+- Look for a key `"default"`
+If none exist, an error is thrown.
+"""
+@with_kw struct SparsePSHDegreeM <: AbstractDegree
+   wNfun
+   wLfun
+end
+
+degree(d::SparsePSHDegreeM, phi::PSH1pBasisFcn) =
+      (    d.wNfun(1, phi.z, phi.z) * phi.n
+         + d.wLfun(1, phi.z, phi.z) * phi.l )
+
+function degree(d::SparsePSHDegreeM, pphi::VecOrTup)
+   if length(pphi) == 0
+      return 0
+   end
+   N = length(pphi)
+   return sum( (  d.wNfun(N, phi.z, phi.z) * phi.n
+                + d.wLfun(N, phi.z, phi.z) * phi.l)    for phi in pphi )
+end
+
+function _readfromdict(D, args)
+   if haskey(D, args)
+      return D[args]
+   elseif haskey(D, args[1])
+      return D[args[1]]
+   elseif haskey(D, "default")
+      return D["default"]
+   end
+   error("SparsePSHDegreeM: no valid key found for argument $(args)")
+end
+
+SparsePSHDegreeM(DN::Dict, DL::Dict) =
+      SparsePSHDegreeM( (N, zi, z0) -> _readfromdict(DN, (N, zi, z0)),
+                        (N, zi, z0) -> _readfromdict(DL, (N, zi, z0)) )
