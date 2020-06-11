@@ -64,7 +64,7 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
    #  but the actual basis functions themselves.
    Aspec = get_basis_spec(basis1p, z0)
    # next we need to sort it by degree so that gensparse doesn't get confused.
-   Aspec_p = sort(Aspec, by = degree)
+   Aspec_p = sort(Aspec, by = b -> degree(b, z0))
    # now an index νi corresponds to the basis function
    # Aspec[p[νi]] = Aspec_p[νi] and a tuple ν = (ν1,...,νN) to the following
    # basis function

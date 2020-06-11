@@ -43,7 +43,7 @@ function BasicPSH1pBasis(J::ScalarBasis;
                          species = :X,
                          D::AbstractDegree = SparsePSHDegree())
    # get a generic basis spec
-   spec = _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
+   spec = _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species)
    # construct the basis
    zlist = ZList(species; static=true)
    return BasicPSH1pBasis(J, zlist, spec)
@@ -94,20 +94,27 @@ These must be treated differently because of the requirements that complete
 
 See also: `_get_1p_spec`.
 """
-function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree)
+function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species)
    # find out what the largest degree is that we can allow:
-   maxdeg = maximum(D(PSH1pBasisFcn(n, 0, 0, 0)) for n = 1:length(J))
-
-   # generate the `spec::Vector{PSH1pBasisFcn}` using length(J)
-   specnl = gensparse(2, maxdeg;
-                      tup2b = t -> PSH1pBasisFcn(t[1]+1, t[2], 0, 0),
-                      degfun = t -> D(t),
-                      ordered = false)
+   specnl = []
+   for s1 in species, s2 in species
+      z, z0 = AtomicNumber(s1), AtomicNumber(s2)
+      maxdeg = maximum( D(PSH1pBasisFcn(n, 0, 0, z), z0) for n = 1:length(J) )
+      # generate the `spec::Vector{PSH1pBasisFcn}` using length(J)
+      specnl_zz0 = gensparse(2, maxdeg;
+                             tup2b = t -> PSH1pBasisFcn(t[1]+1, t[2], 0, z),
+                             degfun = t -> D(t, z0),
+                             ordered = false)
+      append!(specnl, specnl_zz0)
+   end
+   specnl = unique([ PSH1pBasisFcn(b.n, b.l, 0, 0) for b in specnl ])
    # add the m-parameters
    return [ PSH1pBasisFcn(b.n, b.l, m, 0)
               for b in specnl for m = -b.l:b.l ]
 end
 
+_get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species::Symbol) =
+         _get_PSH_1p_spec(J, D, (species,))
 
 # ------------------------------------------------------
 #  FIO code

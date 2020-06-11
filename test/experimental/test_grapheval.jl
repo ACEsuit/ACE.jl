@@ -8,14 +8,14 @@
 
 @testset "Graph-Evaluator" begin
 
-##
+#---
 
 using SHIPs
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!, alloc_temp
 using BenchmarkTools
 
-##
+#---
 
 @info("Basic preliminary test for debugging")
 
@@ -40,7 +40,7 @@ dvtr = evaluate_d(Vtr, Rs, Zs, z0)
 println(@test(dv ≈ dvtr))
 
 
-##
+#---
 
 @info("Check several properties of GraphPIPot")
 for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
@@ -87,6 +87,6 @@ for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
 
 end
 
-##
+#---
 
 end

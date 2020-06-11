@@ -35,6 +35,7 @@ cutoff(V::PIPotential) = cutoff(V.pibasis)
 Base.eltype(::PIPotential{T}) where {T} = real(T)
 
 z2i(V::PIPotential, z::AtomicNumber) = z2i(V.pibasis, z)
+i2z(V::PIPotential, i::Integer) = i2z(V.pibasis, i)
 JuLIP.numz(V::PIPotential) = numz(V.pibasis)
 
 

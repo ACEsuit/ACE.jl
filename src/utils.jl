@@ -8,7 +8,7 @@
 
 module Utils
 
-import SHIPs.RPI: BasicPSH1pBasis, SparsePSHDegree, RPIBasis
+import SHIPs.RPI: BasicPSH1pBasis, SparsePSHDegree, RPIBasis, get_maxn
 import SHIPs: PolyTransform, transformed_jacobi
 import SHIPs.PairPotentials: PolyPairBasis
 
@@ -30,7 +30,8 @@ function rpi_basis(; species = :X, N = 3,
       rin = 0.5 * r0,
       pcut = 2,
       pin = 0,
-      rbasis = transformed_jacobi(maxdeg, trans, rcut, rin; pcut=pcut, pin=pin),
+      rbasis = transformed_jacobi(get_maxn(D, maxdeg, species), trans, rcut, rin;
+                                  pcut=pcut, pin=pin),
       # one-particle basis
       Basis1p = BasicPSH1pBasis,
       basis1p = Basis1p(rbasis; species = species, D = D) )

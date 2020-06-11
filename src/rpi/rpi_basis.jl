@@ -221,8 +221,8 @@ function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
    for j = 1:length(Rs)
       # ∂∏A / ∂𝐫ⱼ
       dAAj = @view dAA[1:len, j]
-      # TODO: check whether copying is faster
       for i = 1:length(dAAj)
+         # TODO: we should incorporate the `real` operation into the PIBasis?
          @inbounds dAAj[i] = real.(dAAj[i])
       end
       # copy into B

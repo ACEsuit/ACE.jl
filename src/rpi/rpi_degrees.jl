@@ -38,6 +38,27 @@ read_dict(::Val{:SHIPs_PSH1pBasisFcn}, D::Dict) =
 
 scaling(b::PSH1pBasisFcn, p) = b.n^p + b.l^p
 
+abstract type AbstractPSHDegree <: AbstractDegree end
+
+get_maxn(d::AbstractPSHDegree, maxdeg, species::Symbol) =
+   get_maxn(d, maxdeg, (species,))
+
+function get_maxn(d::AbstractPSHDegree, maxdeg, species)
+   maxn = 0
+   for s1 in species, s2 in species
+      n = 1
+      z  = AtomicNumber(s1)
+      z0 = AtomicNumber(s2)
+      while degree(d, PSH1pBasisFcn(n, 0, 0, z), z0) < maxdeg
+         n += 1
+      end
+      maxn = max(maxn, n)
+   end
+   @show maxn
+   return maxn
+end
+
+
 @doc raw"""
 `SparsePSHDegree` : A general sparse-grid type degree definition for
 ``Pr \otimes Y`` type basis functions
@@ -52,7 +73,7 @@ scaling(b::PSH1pBasisFcn, p) = b.n^p + b.l^p
 SparsePSHDegree(wL = 1.5, csp = 1.0, chc = 0.0, ahc = 0.0, bhc = 0.0)
 ```
 """
-@with_kw struct SparsePSHDegree <: AbstractDegree
+@with_kw struct SparsePSHDegree <: AbstractPSHDegree
    wL::Float64   = 1.5
    csp::Float64  = 1.0
    chc::Float64  = 0.0
@@ -60,9 +81,11 @@ SparsePSHDegree(wL = 1.5, csp = 1.0, chc = 0.0, ahc = 0.0, bhc = 0.0)
    bhc::Float64  = 0.0
 end
 
-degree(d::SparsePSHDegree, phi::PSH1pBasisFcn) = phi.n + d.wL * phi.l
 
-function degree(d::SparsePSHDegree, pphi::VecOrTup)
+degree(d::SparsePSHDegree, phi::PSH1pBasisFcn, z0=nothing) =
+      phi.n + d.wL * phi.l
+
+function degree(d::SparsePSHDegree, pphi::VecOrTup, z0=nothing)
    if length(pphi) == 0
       return 0
    else
@@ -87,54 +110,78 @@ admit hyperbolic-cross type constructions but only the classical sparse grid.
 where ``w^{\rm n}_i, w^{\rm l}_i`` may now depend on ``z_i, z_0, N``.
 
 ### Constructor
+
 ```julia
 SparsePSHDegreeM(wn_fun, wl_fun)
 ```
 where `wn_fun, wlfun` are functions that must take the arguments `(N, zi, z0)`.
 
-Note: at the moment, the z0-dependence doesn't work, this needs some reworking
-of internals. The third argument should therefore be ignored for now!
+### A More Practical Constructor
 
-This is very awkward of course, so there is an alternative constructor,
+The functional constructor is very awkward to use, so there is an alternative
+constructor, which constructs the functions wn_fun, wl_fun from a few
+dictionaries.
 ```
-SparsePSHDegreeM(Dn::Dict, Dl::Dict)
+SparsePSHDegreeM(Dn::Dict, Dl::Dict, Dd::Dict)
 ```
-which will construct the functions `wN_fun, wL_fun` by checking for information
-in the two dictionaries in the following order of precedence:
-- Look for a key `(N, zi, z0)`
-- Look for a key `N`
-- Look for a key `"default"`
-If none exist, an error is thrown.
+which will construct the functions `wn_fun, wl_fun` as follows:
+```
+wn_fun(N, zi, z0) = Dn[(N, zi, z0)] / Dd[(N, z0)]
+wl_fun(N, zi, z0) = Dl[(N, zi, z0)] / Dd[(N, z0)]
+```
+If the key `(N, zi, z0)` does not exist then it will instead look for
+- a key `(zi, z0)`
+- or a key `"default"`
+If none exist, an error is thrown. Similarly if the key `(N, z0)` does not
+exist, then it will look for
+- a key `N`
+- a key `z0`
+- a key "default".
+If none of these exist, then it will throw an error.
 """
-@with_kw struct SparsePSHDegreeM <: AbstractDegree
+struct SparsePSHDegreeM <: AbstractPSHDegree
    wNfun
    wLfun
 end
 
-degree(d::SparsePSHDegreeM, phi::PSH1pBasisFcn) =
-      (    d.wNfun(1, phi.z, phi.z) * phi.n
-         + d.wLfun(1, phi.z, phi.z) * phi.l )
 
-function degree(d::SparsePSHDegreeM, pphi::VecOrTup)
-   if length(pphi) == 0
-      return 0
-   end
+degree(d::SparsePSHDegreeM, phi::PSH1pBasisFcn, z0::AtomicNumber) =
+      (    d.wNfun(1, phi.z, z0) * phi.n
+         + d.wLfun(1, phi.z, z0) * phi.l )
+
+function degree(d::SparsePSHDegreeM, b::PIBasisFcn)
+   pphi = b.oneps
+   z0 = b.z0
    N = length(pphi)
-   return sum( (  d.wNfun(N, phi.z, phi.z) * phi.n
-                + d.wLfun(N, phi.z, phi.z) * phi.l)    for phi in pphi )
+   if N == 0; return 0; end
+   return sum( (  d.wNfun(N, phi.z, z0) * phi.n
+                + d.wLfun(N, phi.z, z0) * phi.l)    for phi in pphi )
 end
 
-function _readfromdict(D, args)
-   if haskey(D, args)
-      return D[args]
-   elseif haskey(D, args[1])
-      return D[args[1]]
+function _finddegree(D::Dict, N, z0)
+   if haskey(D, (N, z0))
+      return D[(N, z0)]
+   elseif haskey(D, N)
+      return D[N]
+   elseif haskey(D, z0)
+      return D[z0]
+   elseif haskey(D, "default")
+      return D["default"]
+   end
+   error("can't find a valid degree")
+end
+
+function _findweight(D::Dict, N, zi, z0)
+   if haskey(D, (N, zi, z0))
+      return D[(N, zi, z0)]
+   elseif haskey(D, (zi, z0))
+      return D[(zi, z0)]
    elseif haskey(D, "default")
       return D["default"]
    end
    error("SparsePSHDegreeM: no valid key found for argument $(args)")
 end
 
-SparsePSHDegreeM(DN::Dict, DL::Dict) =
-      SparsePSHDegreeM( (N, zi, z0) -> _readfromdict(DN, (N, zi, z0)),
-                        (N, zi, z0) -> _readfromdict(DL, (N, zi, z0)) )
+SparsePSHDegreeM(DN::Dict, DL::Dict, DD::Dict) = SparsePSHDegreeM(
+         (N, zi, z0) -> _findweight(DN, N, zi, z0) / _finddegree(DD, N, z0),
+         (N, zi, z0) -> _findweight(DL, N, zi, z0) / _finddegree(DD, N, z0) )
