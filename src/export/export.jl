@@ -2,11 +2,12 @@
 
 module Export
 
-import SHIPs
+import SHIPs, JuLIP
 using SHIPs.RPI: BasicPSH1pBasis, PSH1pBasisFcn
 using SHIPs: PIBasis, PIBasisFcn, PIPotential
 using SHIPs.OrthPolys: TransformedPolys
 using SHIPs: rand_radial, cutoff, numz
+using JuLIP: energy, bulk, i2z, z2i
 
 function export_ace(fname::AbstractString, V;  kwargs...)
    fptr = open(fname; write=true)
@@ -65,7 +66,7 @@ function export_ace(fptr::IOStream, V::PIPotential; kwargs...)
    println(fptr, "num_ms_combinations_max=$(num_ms_combinations_max)")
 
    # write the pair basis groups
-   total_basis_size_rank1 = sum( length(g["l"] ==  1) for g in groups )
+   total_basis_size_rank1 = sum( (length(g["l"]) ==  1) for g in groups )
    println(fptr, "total_basis_size_rank1: $(total_basis_size_rank1)")
    for i = 1:total_basis_size_rank1
       g = groups[i]
@@ -95,10 +96,29 @@ function _write_group(fptr, g)
 end
 
 
-#
-# function export_tests(fptr::IOStream, basis::PIBasis)
-#
-# end
+
+function export_ace_tests(fname::AbstractString, V::PIPotential, ntests = 1;
+                          nrepeat = 3)
+   s = JuLIP.chemical_symbol(i2z(V, 1))
+   at = bulk(s, cubic=true, pbc=false) * nrepeat
+   r0 = JuLIP.rnn(s)
+   for n = 1:ntests
+      JuLIP.rattle!(at, 0.05 * r0)
+      E = energy(V, at)
+      _write_test(fname * "_$n.dat", JuLIP.positions(at), E)
+   end
+end
+
+function _write_test(fname, X, E)
+   fptr = open(fname; write=true)
+   println(fptr, "E = $E")
+   println(fptr, "natoms = $(length(X))")
+   println(fptr, "# type x y z")
+   for n = 1:length(X)
+      println(fptr, "0 $(X[n][1]) $(X[n][2]) $(X[n][2])")
+   end
+   close(fptr)
+end
 
 
 
