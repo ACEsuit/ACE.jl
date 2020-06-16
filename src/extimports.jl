@@ -8,7 +8,7 @@ using Random: shuffle
 
 import Base: ==, length
 
-using LinearAlgebra: norm, dot 
+using LinearAlgebra: norm, dot, mul! 
 
 using StaticArrays
 
