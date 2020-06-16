@@ -177,31 +177,31 @@ alloc_dB( J::OrthPolyBasis,
          ::Union{JVec{TX}, AbstractVector{JVec{TX}}}) where {TX} =
    zeros(TX, length(J))
 
-function evaluate!(P, tmp, J::OrthPolyBasis, t)
-   @assert length(J) <= length(P)
+function evaluate!(P, tmp, J::OrthPolyBasis, t; maxn=length(J))
+   @assert length(P) >= maxn
    P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
-   if length(J) == 1; return P; end
+   if maxn == 1; return P; end
    P[2] = (J.A[2] * t + J.B[2]) * P[1]
-   if length(J) == 2; return P; end
-   @inbounds for n = 3:length(J)
+   if maxn == 2; return P; end
+   @inbounds for n = 3:maxn
       P[n] = (J.A[n] * t + J.B[n]) * P[n-1] + J.C[n] * P[n-2]
    end
    return P
 end
 
-function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t)
-   @assert length(J) <= min(length(P), length(dP))
+function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
+   @assert maxn <= min(length(P), length(dP))
 
    P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
    dP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
-   if length(J) == 1; return dP; end
+   if maxn == 1; return dP; end
 
    α = J.A[2] * t + J.B[2]
    P[2] = α * P[1]
    dP[2] = α * dP[1] + J.A[2] * P[1]
-   if length(J) == 2; return dP; end
+   if maxn == 2; return dP; end
 
-   @inbounds for n = 3:length(J)
+   @inbounds for n = 3:maxn
       α = J.A[n] * t + J.B[n]
       P[n] = α * P[n-1] + J.C[n] * P[n-2]
       dP[n] = α * dP[n-1] + J.C[n] * dP[n-2] + J.A[n] * P[n-1]
@@ -275,20 +275,20 @@ alloc_B( J::TransformedPolys, args...) = alloc_B(J.J, args...)
 alloc_dB(J::TransformedPolys) = alloc_dB(J.J)
 alloc_dB(J::TransformedPolys, N::Integer) = alloc_dB(J.J)
 
-function evaluate!(P, tmp, J::TransformedPolys, r)
+function evaluate!(P, tmp, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
    t = transform(J.trans, r)
    # evaluate the actual polynomials
-   evaluate!(P, nothing, J.J, t)
+   evaluate!(P, nothing, J.J, t; maxn=maxn)
    return P
 end
 
-function evaluate_d!(P, dP, tmp, J::TransformedPolys, r)
+function evaluate_d!(P, dP, tmp, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
    t = transform(J.trans, r)
    dt = transform_d(J.trans, r)
    # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-   evaluate_d!(P, dP, nothing, J.J, t)
+   evaluate_d!(P, dP, nothing, J.J, t, maxn=maxn)
    @. dP *= dt
    return dP
 end
