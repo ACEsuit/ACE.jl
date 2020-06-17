@@ -80,8 +80,9 @@ Base.length(basis::PSH1pBasis, iz0::Integer) =
 # ----------------------------------------
 # basis construction 
 
-# function PSH1pBasis(species, )
-# end 
+function PSH1pBasis(species, D::AbstractDegree; kwargs...)
+   
+end 
 
 
 # function BasicPSH1pBasis(J::ScalarBasis{T}, zlist::SZList,
