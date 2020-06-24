@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using JuLIP, SHIPs
+using JuLIP, SHIPs, LinearAlgebra
 
 # #---
 # #
@@ -29,7 +29,7 @@ using JuLIP, SHIPs
 #---
 V = nothing
 N = 1
-for maxdeg = 3:6
+for maxdeg = 7:8
    basis = SHIPs.Utils.rpi_basis(; species = :Al, N = N, maxdeg=maxdeg)
    global V = SHIPs.Random.randcombine(basis)
    # V.coeffs[1][3] = 0.0
@@ -53,9 +53,6 @@ for maxdeg = 3:6
    close(fptr)
 end
 
-x = rand(JVecF)
-print(x)
-
 #--- radial basis test
 
 # Pr = basis.pibasis.basis1p.J
@@ -63,7 +60,7 @@ print(x)
 
 #---
 
-for maxdeg = 3:6
+for maxdeg = 7:8
    fname = "testpot_ord=$(N)_maxn=$(maxdeg)"
    filelist = [ fname * ".ships",
                 fname * ".json",
@@ -87,18 +84,18 @@ end
 
 
 #---
-using LinearAlgebra, JuLIP
-# tests with the maxdeg=5 potential
-fname = "testpot_ord=1_maxn=6"
-V = read_dict(load_dict("/Users/ortner/gits/ace-evaluator/test/ships/" * fname * ".json"))
-at = Atoms(:Al, [ JVecF(0.0, 0.0, -1.0), JVecF(1.0, 2.0, 3.0) ])
-set_pbc!(at, false)
-energy(V, at)
-# ace : 0.067359063660145199
-r = norm(JVecF(0.0, 0.0, -1.0) - JVecF(1.0, 2.0, 3.0))
-z = atomic_number(:Al)
-Pr = JuLIP.Potentials.evaluate(V.pibasis.basis1p.J, r)
-dot(Pr, V.coeffs[1]) * 2 / sqrt(4*pi)
+# using LinearAlgebra, JuLIP
+# # tests with the maxdeg=5 potential
+# fname = "testpot_ord=1_maxn=6"
+# V = read_dict(load_dict("/Users/ortner/gits/ace-evaluator/test/ships/" * fname * ".json"))
+# at = Atoms(:Al, [ JVecF(0.0, 0.0, -1.0), JVecF(1.0, 2.0, 3.0) ])
+# set_pbc!(at, false)
+# energy(V, at)
+# # ace : 0.067359063660145199
+# r = norm(JVecF(0.0, 0.0, -1.0) - JVecF(1.0, 2.0, 3.0))
+# z = atomic_number(:Al)
+# Pr = JuLIP.Potentials.evaluate(V.pibasis.basis1p.J, r)
+# dot(Pr, V.coeffs[1]) * 2 / sqrt(4*pi)
 
 
 #---
@@ -130,38 +127,54 @@ dot(Pr, V.coeffs[1]) * 2 / sqrt(4*pi)
 
 #---
 
-using LinearAlgebra, JuLIP
-# tests with the maxdeg=5 potential
-z = atomic_number(:Al)
-b5 = SHIPs.PIBasisFcn(z, (SHIPs.RPI.PSH1pBasisFcn(5, 0, 0, z),))
-v5 = V.coeffs[1][5]
-fname = "testpot_ord=1_maxn=5"
-V = read_dict(load_dict("/Users/ortner/gits/ace-evaluator/test/ships/" * fname * ".json"))
-V.pibasis.inner[1].AAindices = 1:1
-V.pibasis.inner[1].orders = [1]
-V.pibasis.inner[1].b2iAA = Dict(b5 => 1)
-V.pibasis.inner[1].iAA2iA = 24 * ones(Int, 1,1)
-empty!(V.coeffs[1])
-push!(V.coeffs[1], v5)
-
-at = Atoms(:Al, [ JVecF(0.0, 0.0, -1.0), JVecF(1.0, 2.0, 3.0) ])
-set_pbc!(at, false)
-energy(V, at)
-# ace : 0.067359063660145199
-r = norm(JVecF(0.0, 0.0, -1.0) - JVecF(1.0, 2.0, 3.0))
-z = atomic_number(:Al)
-Pr = JuLIP.Potentials.evaluate(V.pibasis.basis1p.J, r)
-Pr[5] * V.coeffs[1][1] * 2 / sqrt(4*pi)
-fnameonly = @__DIR__() * fname * "_only"
-SHIPs.Export.export_ace(fnameonly * ".ships", V)
-run(`mv $(fnameonly*".ships") /Users/ortner/gits/ace-evaluator/test/ships/`)
-fptr = open(fnameonly * "_dimer_test.dat", "w")
-println(fptr, "E=$(energy(V, at))")
-F = forces(V, at)
-println(fptr, "F[1]=$(F[1])")
-println(fptr, "F[2]=$(F[2])")
-close(fptr)
-run(`mv $(fnameonly * "_dimer_test.dat") /Users/ortner/gits/ace-evaluator/test/ships/`)
+# using LinearAlgebra, JuLIP
+# # tests with the maxdeg=5 potential
+# z = atomic_number(:Al)
+# b5 = SHIPs.PIBasisFcn(z, (SHIPs.RPI.PSH1pBasisFcn(5, 0, 0, z),))
+# v5 = V.coeffs[1][5]
+# fname = "testpot_ord=1_maxn=5"
+# V = read_dict(load_dict("/Users/ortner/gits/ace-evaluator/test/ships/" * fname * ".json"))
+# V.pibasis.inner[1].AAindices = 1:1
+# V.pibasis.inner[1].orders = [1]
+# V.pibasis.inner[1].b2iAA = Dict(b5 => 1)
+# V.pibasis.inner[1].iAA2iA = 24 * ones(Int, 1,1)
+# empty!(V.coeffs[1])
+# push!(V.coeffs[1], v5)
+#
+# at = Atoms(:Al, [ JVecF(0.0, 0.0, -1.0), JVecF(1.0, 2.0, 3.0) ])
+# set_pbc!(at, false)
+# energy(V, at)
+# # ace : 0.067359063660145199
+# r = norm(JVecF(0.0, 0.0, -1.0) - JVecF(1.0, 2.0, 3.0))
+# z = atomic_number(:Al)
+# Pr = JuLIP.Potentials.evaluate(V.pibasis.basis1p.J, r)
+# Pr[5] * V.coeffs[1][1] * 2 / sqrt(4*pi)
+# fnameonly = @__DIR__() * fname * "_only"
+# SHIPs.Export.export_ace(fnameonly * ".ships", V)
+# run(`mv $(fnameonly*".ships") /Users/ortner/gits/ace-evaluator/test/ships/`)
+# fptr = open(fnameonly * "_dimer_test.dat", "w")
+# println(fptr, "E=$(energy(V, at))")
+# F = forces(V, at)
+# println(fptr, "F[1]=$(F[1])")
+# println(fptr, "F[2]=$(F[2])")
+# close(fptr)
+# run(`mv $(fnameonly * "_dimer_test.dat") /Users/ortner/gits/ace-evaluator/test/ships/`)
 
 
 # v5 / sqrt(4*pi) ≈ -0.0396764510800229
+
+
+#---
+using Plots
+using SHIPs: evaluate
+basis = SHIPs.Utils.rpi_basis(; species = :Al, N = 1, maxdeg=6)
+Pr = basis.pibasis.basis1p.J
+rp = range(Pr.rl, Pr.ru, length=200)
+p = plot()
+for n = 1:6
+   Pn = [ evaluate(Pr, r)[n] for r in rp ]
+   plot!(p, rp, Pn, label = "n=$n")
+end
+display(p)
+
+r = norm(JVecF(0.0, 0.0, -1.0) -  JVecF(1.0, 2.0, 3.0))
