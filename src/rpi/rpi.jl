@@ -29,6 +29,7 @@ include("rpi_degrees.jl")
 
 # the basic RPI type 1-particle basis
 include("rpi_basic1pbasis.jl")
+include("rpi_1pbasis.jl")
 
 # RPI basis and RPI potential
 # (the RPI potential is specified through the combine function in this file)

@@ -43,7 +43,7 @@ function BasicPSH1pBasis(J::ScalarBasis;
                          species = :X,
                          D::AbstractDegree = SparsePSHDegree())
    # get a generic basis spec
-   spec = _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species)
+   spec = _build_PSH_1p_spec(length(J), D, species)
    # construct the basis
    zlist = ZList(species; static=true)
    return BasicPSH1pBasis(J, zlist, spec)
@@ -85,8 +85,14 @@ function get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber, i::Integer)
 end
 
 
+_build_specnl(maxdeg, D, z, z0) =
+         gensparse(2, maxdeg;               #     n     l    m  z
+                    tup2b = t -> PSH1pBasisFcn(t[1]+1, t[2], 0, z),
+                    degfun = b -> D(b, z0),
+                    ordered = false)
+
 @doc raw"""
-`function _get_PSH_1p_spec`
+`function _build_PSH_1p_spec`
 
 Construct the specification for a ``P \otimes Y`` type 1-particle basis.
 These must be treated differently because of the requirements that complete
@@ -94,17 +100,14 @@ These must be treated differently because of the requirements that complete
 
 See also: `_get_1p_spec`.
 """
-function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species)
+function _build_PSH_1p_spec(maxn::Integer, D::AbstractDegree, species)
    # find out what the largest degree is that we can allow:
    specnl = []
    for s1 in species, s2 in species
       z, z0 = AtomicNumber(s1), AtomicNumber(s2)
-      maxdeg = maximum( D(PSH1pBasisFcn(n, 0, 0, z), z0) for n = 1:length(J) )
-      # generate the `spec::Vector{PSH1pBasisFcn}` using length(J)
-      specnl_zz0 = gensparse(2, maxdeg;
-                             tup2b = t -> PSH1pBasisFcn(t[1]+1, t[2], 0, z),
-                             degfun = t -> D(t, z0),
-                             ordered = false)
+      maxdeg = maximum( D(PSH1pBasisFcn(n, 0, 0, z), z0) for n = 1:maxn )
+      # generate the `spec::Vector{PSH1pBasisFcn}` using maxn
+      specnl_zz0 = _build_specnl(maxdeg, D, z, z0)
       append!(specnl, specnl_zz0)
    end
    specnl = unique([ PSH1pBasisFcn(b.n, b.l, 0, 0) for b in specnl ])
@@ -113,8 +116,8 @@ function _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species)
               for b in specnl for m = -b.l:b.l ]
 end
 
-_get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species::Symbol) =
-         _get_PSH_1p_spec(J, D, (species,))
+_build_PSH_1p_spec(maxn::Integer, D::AbstractDegree, species::Symbol) =
+         _build_PSH_1p_spec(maxn::Integer, D, (species,))
 
 # ------------------------------------------------------
 #  FIO code
