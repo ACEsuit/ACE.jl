@@ -150,14 +150,15 @@ end
 function _basis_groups(inner, coeffs)
    NL = []
    M = []
-   ords = []
    C = []
    for b in keys(inner.b2iAA)
-      push!(NL, ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps] ))
-      push!(M, [b1.m for b1 in b.oneps])
-      push!(C, coeffs[ inner.b2iAA[b] ])
-      push!(ords, length(M))
+      if coeffs[ inner.b2iAA[b] ] != 0
+         push!(NL, ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps] ))
+         push!(M, [b1.m for b1 in b.oneps])
+         push!(C, coeffs[ inner.b2iAA[b] ])
+      end
    end
+   ords = length.(M)
    perm = sortperm(ords)
    NL = NL[perm]
    M = M[perm]
@@ -169,6 +170,7 @@ function _basis_groups(inner, coeffs)
       if alldone[i]; continue; end
       nl = NL[i]
       Inl = findall(NL .== Ref(nl))
+      alldone[Inl] .= true
       Mnl = M[Inl]
       Cnl = C[Inl]
       pnl = sortperm(Mnl)
