@@ -29,7 +29,7 @@ using JuLIP, SHIPs, LinearAlgebra
 #---
 V = nothing
 N = 1
-for maxdeg = 7:8
+for maxdeg = 3:8
    basis = SHIPs.Utils.rpi_basis(; species = :Al, N = N, maxdeg=maxdeg)
    global V = SHIPs.Random.randcombine(basis)
    # V.coeffs[1][3] = 0.0
@@ -38,7 +38,7 @@ for maxdeg = 7:8
    JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
    # SHIPs.Export.export_ace_tests(@__DIR__() * "/testpot_$(N)_test", V, 3)
 
-   # export tests with for the dimer structure
+   # export tests with the dimer structure
    # n_atoms = 2
    # # type x y z
    # 0 0.0 0.0 -1.0
@@ -53,6 +53,10 @@ for maxdeg = 7:8
    close(fptr)
 end
 
+spec1 = V.pibasis.basis1p.spec
+spec1[V.pibasis.inner[1].iAA2iA
+(V.coeffs[1]/sqrt(4*pi)) |> display
+
 #--- radial basis test
 
 # Pr = basis.pibasis.basis1p.J
@@ -60,7 +64,7 @@ end
 
 #---
 
-for maxdeg = 7:8
+for maxdeg = 3:8
    fname = "testpot_ord=$(N)_maxn=$(maxdeg)"
    filelist = [ fname * ".ships",
                 fname * ".json",
@@ -84,19 +88,19 @@ end
 
 
 #---
-# using LinearAlgebra, JuLIP
-# # tests with the maxdeg=5 potential
-# fname = "testpot_ord=1_maxn=6"
-# V = read_dict(load_dict("/Users/ortner/gits/ace-evaluator/test/ships/" * fname * ".json"))
-# at = Atoms(:Al, [ JVecF(0.0, 0.0, -1.0), JVecF(1.0, 2.0, 3.0) ])
-# set_pbc!(at, false)
-# energy(V, at)
-# # ace : 0.067359063660145199
-# r = norm(JVecF(0.0, 0.0, -1.0) - JVecF(1.0, 2.0, 3.0))
-# z = atomic_number(:Al)
-# Pr = JuLIP.Potentials.evaluate(V.pibasis.basis1p.J, r)
-# dot(Pr, V.coeffs[1]) * 2 / sqrt(4*pi)
-
+using LinearAlgebra, JuLIP
+# tests with the maxdeg=5 potential
+fname = "testpot_ord=1_maxn=8"
+V = read_dict(load_dict("/Users/ortner/gits/ace-evaluator/test/ships/" * fname * ".json"))
+at = Atoms(:Al, [ JVecF(0.0, 0.0, -1.0), JVecF(1.0, 2.0, 3.0) ])
+set_pbc!(at, false)
+energy(V, at)
+# ace : 0.067359063660145199
+r = norm(JVecF(0.0, 0.0, -1.0) - JVecF(1.0, 2.0, 3.0))
+z = atomic_number(:Al)
+Pr = JuLIP.Potentials.evaluate(V.pibasis.basis1p.J, r)
+dot(Pr, V.coeffs[1]) * 2 / sqrt(4*pi)
+V.coeffs[1] / sqrt(4*pi)
 
 #---
 #

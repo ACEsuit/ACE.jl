@@ -148,14 +148,20 @@ end
 
 
 function _basis_groups(inner, coeffs)
-   allspec = collect(keys(inner.b2iAA))
-   NL = [ ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps] ) for b in allspec ]
-   M = [ [b1.m for b1 in b.oneps] for b in allspec ]
-   ords = length.(M)
+   NL = []
+   M = []
+   ords = []
+   C = []
+   for b in keys(inner.b2iAA)
+      push!(NL, ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps] ))
+      push!(M, [b1.m for b1 in b.oneps])
+      push!(C, coeffs[ inner.b2iAA[b] ])
+      push!(ords, length(M))
+   end
    perm = sortperm(ords)
    NL = NL[perm]
    M = M[perm]
-   C = coeffs[perm]
+   C = C[perm]
    @assert issorted(length.(M))
    bgrps = []
    alldone = fill(false, length(NL))
