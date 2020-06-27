@@ -47,7 +47,6 @@ function get_maxn(d::AbstractPSHDegree, maxdeg, species)
       end
       maxn = max(maxn, n)
    end
-   @show maxn
    return maxn
 end
 
