@@ -109,7 +109,7 @@ end
 fname = "/testpot_ord=$(ord)_mini"
 SHIPs.Export.export_ace(@__DIR__() * fname * ".ships", V)
 JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
-SHIPs.Export.export_ace_tests(@__DIR__() * fname * "_test", V, 1)
+SHIPs.Export.export_ace_tests(@__DIR__() * fname * "_test", V, 1, nrepeat=2)
 export_dimer_test(V, fname, :Al)
 export_trimer_test(V, fname, :Al)
 

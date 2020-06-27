@@ -123,15 +123,17 @@ end
 
 
 function export_ace_tests(fname::AbstractString, V::PIPotential, ntests = 1;
-                          nrepeat = 3)
+                          nrepeat = 3, pert=0.05)
    s = JuLIP.chemical_symbol(i2z(V, 1))
-   at = bulk(s, cubic=true, pbc=false) * nrepeat
+   at = bulk(s, cubic=true) * nrepeat
+   JuLIP.set_pbc!(at, false)
    r0 = JuLIP.rnn(s)
    for n = 1:ntests
-      JuLIP.rattle!(at, 0.05 * r0)
+      JuLIP.rattle!(at, pert * r0)
       E = energy(V, at)
       _write_test(fname * "_$n.dat", JuLIP.positions(at), E)
    end
+   return at
 end
 
 function _write_test(fname, X, E)
@@ -140,7 +142,7 @@ function _write_test(fname, X, E)
    println(fptr, "natoms = $(length(X))")
    println(fptr, "# type x y z")
    for n = 1:length(X)
-      println(fptr, "0 $(X[n][1]) $(X[n][2]) $(X[n][2])")
+      println(fptr, "0 $(X[n][1]) $(X[n][2]) $(X[n][3])")
    end
    close(fptr)
 end
