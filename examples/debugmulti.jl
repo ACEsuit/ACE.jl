@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+
 using JuLIP, SHIPs, JuLIP.Potentials, LinearAlgebra
 using JuLIP.Potentials: SZList, ZList
 using SHIPs.Testing: ToyModel, trainset, lsq
@@ -44,48 +45,55 @@ basis = get_basis(species; N = 3, maxdeg = 6, rcut = 6.0)
 c, relrmse = lsq(train, basis)
 
 Vfit = JuLIP.MLIPs.combine(basis, c)
+
+norm(forces(Vfit, at) - sum(c .* forces(basis, at)))
+
 relrmse2 = calc_rmse(train, Vfit)
-@show abs(relrmse - relrmse2)
+@assert abs(relrmse - relrmse2) < 0.01
 
 #---
 
 species = [:Fe, :Al]
 basis = get_basis(species; N = 3, maxdeg = 6, rcut = 6.0)
-c = rand(length(basis))
+c = rand(length(basis)) .- 0.5
 Vfit = JuLIP.MLIPs.combine(basis, c)
 # at = bulk(:Fe, pbc=false, cubic=true) * 3
 at = train[1].at
-Efit = energy(Vfit, at)
-Ebas = sum(c .* energy(basis, at))
-@show Efit - Ebas
+energy(Vfit, at) ≈ sum(c .* energy(basis, at))
+forces(Vfit, at) ≈ sum(c .* forces(basis, at))
+virial(Vfit, at) ≈ sum(c .* virial(basis, at))
 
 
 #---
 Rs, Zs, z0 = SHIPs.Random.rand_nhd(12, basis.pibasis.basis1p.J, species)
-SHIPs.evaluate(Vfit, Rs, Zs, z0)
-sum(c .* SHIPs.evaluate(basis, Rs, Zs, z0))
+dVfit = SHIPs.evaluate_d(Vfit, Rs, Zs, z0)
+dVbas = sum(c_ * dVb
+       for (c_, dVb) in zip(c, eachrow(SHIPs.evaluate_d(basis, Rs, Zs, z0)))
+   )
+dVfit ≈ dVbas
 
 nlist = neighbourlist(at, cutoff(Vfit))
 
-Efit = 0.0
-Ebas = 0.0
+Fbas = zeros(JVecF, length(at))
+Ffit = zeros(JVecF, length(at))
 for i = 1:length(at)
+   global Fbas, dVbas
    j, Rs, Zs = JuLIP.Potentials.neigsz(nlist, at, i)
-   Es_fit = SHIPs.evaluate(Vfit, Rs, Zs, at.Z[i])
-   # Es_bas = sum(c .* SHIPs.evaluate(basis, Rs, Zs, at.Z[i]))
-
-   B = SHIPs.alloc_B(shipB)
-
-   evaluate!(B, tmp, shipB, R, Z, at.Z[i])
-
-   @assert Es_fit ≈ Es_bas
-   global Efit += Es_fit
-   global Ebas += Es_bas
+   dVbas = sum(c_ * dVb
+       for (c_, dVb) in zip(c, eachrow(SHIPs.evaluate_d(basis, Rs, Zs, at.Z[i])))
+          )
+   dVfit = SHIPs.evaluate_d(Vfit, Rs, Zs, at.Z[i])
+   @assert dVbas ≈ dVfit
+   for a = 1:length(Rs)
+      Fbas[j[a]] -= dVbas[a]
+      Fbas[i]    += dVbas[a]
+      Ffit[j[a]] -= dVfit[a]
+      Ffit[i]    += dVfit[a]
+   end
 end
 
-energy(Vfit, at) - Efit
-sum(c .* energy(basis, at)) - Ebas
-
+forces(Vfit, at) ≈ Fbas
+forces(basis, at)
 
 #--- simple convergence test
 
