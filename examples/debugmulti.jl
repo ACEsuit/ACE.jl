@@ -64,36 +64,6 @@ forces(Vfit, at) ≈ sum(c .* forces(basis, at))
 virial(Vfit, at) ≈ sum(c .* virial(basis, at))
 
 
-#---
-Rs, Zs, z0 = SHIPs.Random.rand_nhd(12, basis.pibasis.basis1p.J, species)
-dVfit = SHIPs.evaluate_d(Vfit, Rs, Zs, z0)
-dVbas = sum(c_ * dVb
-       for (c_, dVb) in zip(c, eachrow(SHIPs.evaluate_d(basis, Rs, Zs, z0)))
-   )
-dVfit ≈ dVbas
-
-nlist = neighbourlist(at, cutoff(Vfit))
-
-Fbas = zeros(JVecF, length(at))
-Ffit = zeros(JVecF, length(at))
-for i = 1:length(at)
-   global Fbas, dVbas
-   j, Rs, Zs = JuLIP.Potentials.neigsz(nlist, at, i)
-   dVbas = sum(c_ * dVb
-       for (c_, dVb) in zip(c, eachrow(SHIPs.evaluate_d(basis, Rs, Zs, at.Z[i])))
-          )
-   dVfit = SHIPs.evaluate_d(Vfit, Rs, Zs, at.Z[i])
-   @assert dVbas ≈ dVfit
-   for a = 1:length(Rs)
-      Fbas[j[a]] -= dVbas[a]
-      Fbas[i]    += dVbas[a]
-      Ffit[j[a]] -= dVfit[a]
-      Ffit[i]    += dVfit[a]
-   end
-end
-
-forces(Vfit, at) ≈ Fbas
-forces(basis, at)
 
 #--- simple convergence test
 
