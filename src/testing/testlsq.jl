@@ -5,13 +5,15 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
+using LinearAlgebra: qr, cond
+
 function get_V0(train)
    # get list of atomic numbers
    Zs = AtomicNumber[]
    for (at, E) in train
       Zs = unique( [Zs; at.Z] )
    end
-   
+
    # setup lsq system for E0s
    A = zeros(length(train), length(Zs))
    y = zeros(length(train))
@@ -22,45 +24,52 @@ function get_V0(train)
       end
    end
    E0s = A \ y
-   @show E0s
+   @info("  E0s = $(E0s)")
    syms = chemical_symbol.(Zs)
    return JuLIP.OneBody([syms[i] => E0s[i] for i = 1:length(Zs)]...)
 end
 
-function trainset(Vref, Ntrain)
-   configs = []
+
+function trainset(Vref, Ntrain; kwargs...)
+   train = []
    for n = 1:Ntrain
-      at = ToyM.rand_config(Vref)
-      push!(configs, (at = at, E = energy(Vref, at)))
+      at = rand(Vref; kwargs...)
+      push!(train, (at = at, E = energy(Vref, at), F = forces(Vref, at)))
    end
    # remove E0s
    V0 = get_V0(train)
-   configs = [ (at = at, E = E - energy(V0, at)) for (at, E) in configs ]
-   return configs
+   train = [ (at = at, E = E - energy(V0, at), F = F)
+               for (at, E,  F) in train ]
+   return train
 end
 
-function get_basis(species; N = 3, maxdeg = 10, rcut = 7.0 )
-   rcut = 7.0
-   basis = SHIPs.Utils.rpi_basis(; species=species, N = N, r0 = 2.5,
-   maxdeg = maxdeg, rcut = rcut,
-   rin = rnn(:Fe) * 0.6,
-   constants = false )
-   return basis
-end
 
-function lsq(train, basis)
-   @show length(train)
-   @show length(basis)
-   A = zeros(length(train), length(basis))
-   y = zeros(length(train))
-   for (irow, (at, E)) in enumerate(train)
-      A[irow, :] =  energy(basis, at)
-      y[irow] = E
+
+function lsq(train, basis; verbose=true, wE = 1.0, wF = 1.0)
+   @info("lsq info")
+   nobs = sum( 1+3*length(t.at) for t in train )
+   @info("  nobs = $(nobs); nbasis = $(length(basis))")
+   A = zeros(nobs, length(basis))
+   y = zeros(nobs)
+   irow = 0
+   for (at, E, F) in train
+      # add energy to the lsq system
+      irow += 1
+      y[irow] = wE * E / length(at)
+      A[irow, :] = wE * energy(basis, at) / length(at)
+
+      # add forces to the lsq system
+      nf = 3*length(at)
+      y[(irow+1):(irow+nf)] = wF * mat(F)[:]
+      Fb = forces(basis, at)
+      for ib = 1:length(basis)
+         A[(irow+1):(irow+nf), ib] = wF * mat(Fb[ib])[:]
+      end
+      irow += nf
    end
-   F = qr(A)
-   @show cond(F.R)
-   c = F \ y
+   qrF = qr(A)
+   c = qrF \ y
    relrmse = norm(A * c - y) / norm(y)
-   @show relrmse
-   return c
+   @info("   cond(R) = $(cond(qrF.R)); relrmse = $(relrmse)")
+   return c, relrmse
 end

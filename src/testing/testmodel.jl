@@ -5,9 +5,6 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using LinearAlgebra: eigvals, eigen
-import JuLIP.Potentials: F64fun
-import JuLIP: Atoms, bulk, rattle!, positions, energy, forces, JVec
 
 """
 `mutable struct ToyModel` : a tight-binding type toy model admitting
