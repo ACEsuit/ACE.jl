@@ -21,6 +21,7 @@ end
 function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis,
                      Rs, Zs::AbstractVector, z0)
    fill!(A, 0)
+   fill!(dA, zero(eltype(dA)))  # TODO: this should not be necessary!
    iz0 = z2i(basis, z0)
    for (j, (R, Z)) in enumerate(zip(Rs, Zs))
       iz = z2i(basis, Z)

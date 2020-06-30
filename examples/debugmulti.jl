@@ -36,6 +36,19 @@ end
 
 #---
 
+species = [:Fe, :Al]
+at = SHIPs.Testing.rand_config(ToyModel(species))
+
+basis = get_basis(species; N = 3, maxdeg = 6, rcut = 6.0)
+c = rand(length(basis)) .- 0.5
+Vfit = JuLIP.MLIPs.combine(basis, c)
+@show energy(Vfit, at) ≈ sum(c .* energy(basis, at))
+@show forces(Vfit, at) ≈ sum(c .* forces(basis, at))
+@show virial(Vfit, at) ≈ sum(c .* virial(basis, at))
+
+
+#---
+
 @info("Quick run + consistency test")
 # species = [:Al, :Fe]
 species = [:Fe, :Al]
@@ -50,18 +63,6 @@ norm(forces(Vfit, at) - sum(c .* forces(basis, at)))
 
 relrmse2 = calc_rmse(train, Vfit)
 @assert abs(relrmse - relrmse2) < 0.01
-
-#---
-
-species = [:Fe, :Al]
-basis = get_basis(species; N = 3, maxdeg = 6, rcut = 6.0)
-c = rand(length(basis)) .- 0.5
-Vfit = JuLIP.MLIPs.combine(basis, c)
-# at = bulk(:Fe, pbc=false, cubic=true) * 3
-at = train[1].at
-energy(Vfit, at) ≈ sum(c .* energy(basis, at))
-forces(Vfit, at) ≈ sum(c .* forces(basis, at))
-virial(Vfit, at) ≈ sum(c .* virial(basis, at))
 
 
 
