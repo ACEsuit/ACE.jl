@@ -62,6 +62,8 @@ include("compat/compat.jl")
 include("export/export.jl")
 
 
+include("testing/testing.jl")
+
 # - bond model
 # - pure basis
 # - real basis

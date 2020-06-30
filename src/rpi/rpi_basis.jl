@@ -51,8 +51,8 @@ read_dict(::Val{:SHIPs_RPIBasis}, D::Dict) =
 
 
 RPIBasis(basis1p::OneParticleBasis, N::Integer,
-         D::AbstractDegree, maxdeg::Real) =
-   RPIBasis(PIBasis(basis1p, N, D, maxdeg; filter = _rpi_filter))
+         D::AbstractDegree, maxdeg::Real, constants=false) =
+   RPIBasis(PIBasis(basis1p, N, D, maxdeg; filter = RPIFilter(constants)))
 
 function RPIBasis(pibasis::PIBasis)
    basis1p = pibasis.basis1p
@@ -78,11 +78,21 @@ SHIPs.graph_evaluator(basis::RPIBasis; kwargs...) =
                          basis.A2Bmaps, basis.Bz0inds)
 
 
-_rpi_filter(pib::PIBasisFcn{0}) = false
-_rpi_filter(pib::PIBasisFcn{1}) = (pib.oneps[1].l == 0)
-_rpi_filter(pib::PIBasisFcn) = (
+struct RPIFilter
+   constants::Bool
+end
+
+(f::RPIFilter)(pib::PIBasisFcn{0}) = f.constants
+(f::RPIFilter)(pib::PIBasisFcn{1}) = (pib.oneps[1].l == 0)
+(f::RPIFilter)(pib::PIBasisFcn) = (
       iseven( sum(b.l for b in pib.oneps) ) &&
       (sum(b.m for b in pib.oneps) == 0) )
+
+# _rpi_filter(pib::PIBasisFcn{0}) = false
+# _rpi_filter(pib::PIBasisFcn{1}) = (pib.oneps[1].l == 0)
+# _rpi_filter(pib::PIBasisFcn) = (
+#       iseven( sum(b.l for b in pib.oneps) ) &&
+#       (sum(b.m for b in pib.oneps) == 0) )
 
 function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
                          pibasis::PIBasis,
@@ -141,6 +151,11 @@ function _rpi_coupling_coeffs(pibasis, rotc::Rot3DCoeffs, pib::PIBasisFcn{N}
    rpibs = [ _znlms2b(zz, nn, ll, mm, pib.z0) for mm in Ms ]
    return U, rpibs
 end
+
+_rpi_coupling_coeffs(pibasis, rotc::Rot3DCoeffs, pib::PIBasisFcn{0}) =
+      [ 1.0 ], [] 
+
+
 
 _b2znlms(pib::PIBasisFcn{N}) where {N} = (
    SVector(ntuple(n -> pib.oneps[n].z, N)...),
