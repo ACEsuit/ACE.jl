@@ -14,7 +14,7 @@ using SHIPs.RPI: BasicPSH1pBasis, PSH1pBasisFcn
 using SHIPs: PIBasis, PIBasisFcn, PIPotential
 using SHIPs.OrthPolys: TransformedPolys
 using SHIPs: rand_radial, cutoff, numz
-using JuLIP: energy, bulk, i2z, z2i
+using JuLIP: energy, bulk, i2z, z2i, chemical_symbol
 
 function export_ace(fname::AbstractString, V;  kwargs...)
    fptr = open(fname; write=true)
@@ -33,7 +33,7 @@ function export_ace(fptr::IOStream, Pr::TransformedPolys; ntests=0, kwargs...)
    rcut = cutoff(Pr)
    maxn = length(Pr)
 
-   println(fptr, "radial basis: id=ships")
+   println(fptr, "radbasename=SHIPsBasic")
    println(fptr, "transform parameters: p=$(p) r0=$(r0)")
    println(fptr, "cutoff parameters: rcut=$rcut xl=$xl xr=$xr pl=$pl pr=$pr")
    println(fptr, "recursion coefficients: maxn=$(maxn)")
@@ -46,9 +46,10 @@ function export_ace(fptr::IOStream, Pr::TransformedPolys; ntests=0, kwargs...)
    for itest = 1:ntests
       r = SHIPs.rand_radial(Pr)
       P = SHIPs.evaluate(Pr, r)
+      dP = SHIPs.evaluate_d(Pr, r)
       println(fptr, " r=$(r)")
       for n = 1:length(P)
-         println(fptr, " $(P[n])")
+         println(fptr, " $(P[n]) $(dP[n])")
       end
    end
 end
@@ -60,6 +61,17 @@ function export_ace(fptr::IOStream, V::PIPotential; kwargs...)
    coeffs = V.coeffs[1]
    # sort the basis functions into groups the way the ace evaluator wants it
    groups = _basis_groups(inner, coeffs)
+   lmax = maximum(maximum(g["l"]) for g in groups)
+
+   # header
+   println(fptr, "nelements=1")
+   println(fptr, "elements: $(chemical_symbol(i2z(V, 1)))")
+   println(fptr, "")
+   println(fptr, "lmax=$lmax")
+   println(fptr, "")
+   println(fptr, "2 FS parameters:  1.000000 1.000000")
+   println(fptr, "core energy-cutoff parameters: 100000.000000000000000000 1.000000000000000000")
+   println(fptr, "")
 
    # export_ace the radial basis
    export_ace(fptr, V.pibasis.basis1p.J; kwargs...)
@@ -68,6 +80,12 @@ function export_ace(fptr::IOStream, V::PIPotential; kwargs...)
    println(fptr, "")
 
    # header
+   rankmax = maximum(length(g["l"]) for g in groups)
+   println(fptr, "rankmax=$rankmax")
+   println(fptr, "ndensitymax=1")
+   println(fptr, "")
+
+   # header for basis list pair contributions
    println(fptr, "num_c_tilde_max=$(length(groups))")
    num_ms_combinations_max = maximum( length(g["M"]) for g in groups )
    println(fptr, "num_ms_combinations_max=$(num_ms_combinations_max)")
@@ -105,15 +123,17 @@ end
 
 
 function export_ace_tests(fname::AbstractString, V::PIPotential, ntests = 1;
-                          nrepeat = 3)
+                          nrepeat = 3, pert=0.05)
    s = JuLIP.chemical_symbol(i2z(V, 1))
-   at = bulk(s, cubic=true, pbc=false) * nrepeat
+   at = bulk(s, cubic=true) * nrepeat
+   JuLIP.set_pbc!(at, false)
    r0 = JuLIP.rnn(s)
    for n = 1:ntests
-      JuLIP.rattle!(at, 0.05 * r0)
+      JuLIP.rattle!(at, pert * r0)
       E = energy(V, at)
       _write_test(fname * "_$n.dat", JuLIP.positions(at), E)
    end
+   return at
 end
 
 function _write_test(fname, X, E)
@@ -122,7 +142,7 @@ function _write_test(fname, X, E)
    println(fptr, "natoms = $(length(X))")
    println(fptr, "# type x y z")
    for n = 1:length(X)
-      println(fptr, "0 $(X[n][1]) $(X[n][2]) $(X[n][2])")
+      println(fptr, "0 $(X[n][1]) $(X[n][2]) $(X[n][3])")
    end
    close(fptr)
 end
@@ -130,14 +150,21 @@ end
 
 
 function _basis_groups(inner, coeffs)
-   allspec = collect(keys(inner.b2iAA))
-   NL = [ ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps] ) for b in allspec ]
-   M = [ [b1.m for b1 in b.oneps] for b in allspec ]
+   NL = []
+   M = []
+   C = []
+   for b in keys(inner.b2iAA)
+      if coeffs[ inner.b2iAA[b] ] != 0
+         push!(NL, ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps] ))
+         push!(M, [b1.m for b1 in b.oneps])
+         push!(C, coeffs[ inner.b2iAA[b] ])
+      end
+   end
    ords = length.(M)
    perm = sortperm(ords)
    NL = NL[perm]
    M = M[perm]
-   C = coeffs[perm]
+   C = C[perm]
    @assert issorted(length.(M))
    bgrps = []
    alldone = fill(false, length(NL))
@@ -145,6 +172,7 @@ function _basis_groups(inner, coeffs)
       if alldone[i]; continue; end
       nl = NL[i]
       Inl = findall(NL .== Ref(nl))
+      alldone[Inl] .= true
       Mnl = M[Inl]
       Cnl = C[Inl]
       pnl = sortperm(Mnl)

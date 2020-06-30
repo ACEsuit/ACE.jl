@@ -16,10 +16,13 @@ this function will be interpreted as a *permutation invariant* basis function!
 struct PIBasisFcn{N, TOP <: OnepBasisFcn}
    z0::AtomicNumber
    oneps::NTuple{N, TOP}
+   top::Type{TOP}
 end
 
-PIBasisFcn(z0::AtomicNumber, oneps::AbstractVector) =
-   PIBasisFcn(z0, tuple(oneps...))
+_top(::PIBasisFcn{N, TOP}) where {N, TOP} = TOP
+
+PIBasisFcn(z0::AtomicNumber, oneps) =
+   PIBasisFcn(z0, tuple(oneps...), typeof(oneps[1]))
 
 order(b::PIBasisFcn{N}) where {N} = N
 
@@ -31,7 +34,8 @@ scaling(b::PIBasisFcn, p) = sum(scaling(bb, p) for bb in b.oneps)
 # TODO: can we replace this with get_basis_spec?
 function PIBasisFcn(Aspec, t, z0::AtomicNumber)
    if isempty(t) || sum(abs, t) == 0
-      return PIBasisFcn{0, eltype(Aspec)}(z0, tuple())
+      TOP = eltype(Aspec)
+      return PIBasisFcn{0, eltype(Aspec)}(z0, NTuple{0, TOP}(), TOP)
    end
    # zeros stand for reduction in body-order
    tnz = t[findall(t .!= 0)]
@@ -243,6 +247,11 @@ specification.
 function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
    N = basis.inner[iz0].orders[i]
    iAA2iA = basis.inner[iz0].iAA2iA[i, 1:N]
+   if N == 0
+      # TODO - Nasty hack; I'm assuming all TOPs are the same
+      TOP = typeof(get_basis_spec(basis.basis1p, iz0, 1))
+      return PIBasisFcn(i2z(basis, iz0), NTuple{0, TOP}(), TOP) 
+   end
    return PIBasisFcn( i2z(basis, iz0),
                   [ get_basis_spec(basis.basis1p, iz0, iAA2iA[n]) for n = 1:N] )
 end

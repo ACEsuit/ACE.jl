@@ -31,6 +31,8 @@ import JuLIP: alloc_temp, alloc_temp_d,
               SitePotential,
               z2i, i2z, numz,
               read_dict, write_dict,
+              AbstractCalculator,
+              Atoms,
               chemical_symbol
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, combine
