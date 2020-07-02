@@ -225,7 +225,7 @@ end
 
 
 Base.eltype(basis::PSH1pBasis{T}) where T = Complex{T}
-reltype(basis::BasicPSH1pBasis{T}) where T = T
+reltype(basis::PSH1pBasis{T}) where T = T
 # eltype and length should provide automatic allocation of alloc_B, alloc_dB
 
 
