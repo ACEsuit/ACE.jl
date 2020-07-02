@@ -153,7 +153,7 @@ function _rpi_coupling_coeffs(pibasis, rotc::Rot3DCoeffs, pib::PIBasisFcn{N}
 end
 
 _rpi_coupling_coeffs(pibasis, rotc::Rot3DCoeffs, pib::PIBasisFcn{0}) =
-      [ 1.0 ], [] 
+      [ 1.0 ], []
 
 
 
@@ -228,7 +228,7 @@ function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
    AA, dAA = tmpd.AA, tmpd.dAA
    site_evaluate_d!(AA, dAA, tmpd.tmpd_pibasis, basis.pibasis, Rs, Zs, z0)
-   len = length(basis.pibasis.inner[iz0])
+   len = length(basis.pibasis.inner[iz0])::Int
    for i = 1:len
       AA[i] = real(AA[i])
    end
