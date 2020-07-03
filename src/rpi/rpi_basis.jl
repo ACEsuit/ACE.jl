@@ -12,8 +12,8 @@ using LinearAlgebra: mul!
 """
 `struct RPIBasis`
 """
-struct RPIBasis{T, BOP, NZ} <: IPBasis
-   pibasis::PIBasis{BOP, NZ}
+struct RPIBasis{T, BOP, NZ, TIN} <: IPBasis
+   pibasis::PIBasis{BOP, NZ, TIN}
    A2Bmaps::NTuple{NZ, SparseMatrixCSC{T, Int}}
    Bz0inds::NTuple{NZ, UnitRange{Int}}
 end
@@ -153,7 +153,7 @@ function _rpi_coupling_coeffs(pibasis, rotc::Rot3DCoeffs, pib::PIBasisFcn{N}
 end
 
 _rpi_coupling_coeffs(pibasis, rotc::Rot3DCoeffs, pib::PIBasisFcn{0}) =
-      [ 1.0 ], [] 
+      [ 1.0 ], []
 
 
 
@@ -222,6 +222,7 @@ alloc_temp_d(basis::RPIBasis, nmax::Integer) =
     dAA = site_alloc_dB(basis.pibasis, nmax),
     tmpd_pibasis = alloc_temp_d(basis.pibasis, nmax),
     )
+
 
 # TODO: evaluate also B??? the interface seems to command it.
 function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
