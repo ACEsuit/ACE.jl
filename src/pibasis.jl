@@ -250,7 +250,7 @@ function get_basis_spec(basis::PIBasis, iz0::Integer, i::Integer)
    if N == 0
       # TODO - Nasty hack; I'm assuming all TOPs are the same
       TOP = typeof(get_basis_spec(basis.basis1p, iz0, 1))
-      return PIBasisFcn(i2z(basis, iz0), NTuple{0, TOP}(), TOP) 
+      return PIBasisFcn(i2z(basis, iz0), NTuple{0, TOP}(), TOP)
    end
    return PIBasisFcn( i2z(basis, iz0),
                   [ get_basis_spec(basis.basis1p, iz0, iAA2iA[n]) for n = 1:N] )

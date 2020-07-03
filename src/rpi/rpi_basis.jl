@@ -12,8 +12,8 @@ using LinearAlgebra: mul!
 """
 `struct RPIBasis`
 """
-struct RPIBasis{T, BOP, NZ} <: IPBasis
-   pibasis::PIBasis{BOP, NZ}
+struct RPIBasis{T, BOP, NZ, TIN} <: IPBasis
+   pibasis::PIBasis{BOP, NZ, TIN}
    A2Bmaps::NTuple{NZ, SparseMatrixCSC{T, Int}}
    Bz0inds::NTuple{NZ, UnitRange{Int}}
 end
@@ -223,12 +223,13 @@ alloc_temp_d(basis::RPIBasis, nmax::Integer) =
     tmpd_pibasis = alloc_temp_d(basis.pibasis, nmax),
     )
 
+
 # TODO: evaluate also B??? the interface seems to command it.
 function evaluate_d!(B, dB, tmpd, basis::RPIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
    AA, dAA = tmpd.AA, tmpd.dAA
    site_evaluate_d!(AA, dAA, tmpd.tmpd_pibasis, basis.pibasis, Rs, Zs, z0)
-   len = length(basis.pibasis.inner[iz0])::Int
+   len = length(basis.pibasis.inner[iz0])
    for i = 1:len
       AA[i] = real(AA[i])
    end
