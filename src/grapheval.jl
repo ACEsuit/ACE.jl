@@ -28,6 +28,37 @@ end
 Base.length(dag::CorrEvalGraph) = length(dag.nodes)
 
 
+# -------------- FIO
+
+# TODO: maybe there is a cleverer way to do this, for now this is just
+#       a quick hack to make sure it can be read without any ambiguity
+
+write_dict(g::CorrEvalGraph{T, TI}) where {T <: Real, TI <: Integer} =
+   Dict( "__id__" => "SHIPs_CorrEvalGraph",
+         "T" => write_dict(T),
+         "TI" => write_dict(TI),
+         "nodes1" => [ n[1] for n in gr.nodes ],
+         "nodes2" => [ n[2] for n in gr.nodes ],
+         "vals" => gr.vals,
+         "num1" => gr.num1,
+         "numstore" => gr.numstore
+      )
+
+
+function read_dict(::Val{:SHIPs_CorrEvalGraph}, D::Dict)
+   T = read_dict("D[T]")::Real 
+   TI = read_dict("D[TI]")::Integer
+   return CorrEvalGraph{T, TI}(
+      collect(zip(D["nodes1"], D["nodes2"])),
+      D["vals"],
+      D["num1"],
+      D["numstore"]
+   )
+end
+
+# ---------------------------------------------------------------------
+#   partition generator
+
 
 _score_partition(p) = any(isnothing, p) ? Inf : 1000 * length(p) + maximum(p)
 

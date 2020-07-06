@@ -54,8 +54,8 @@ for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
    lenpi = maximum(length.(V.pibasis.inner))
    lendag = maximum(length.(Vtr.dags))
    @info("    #$(lenpi) pibasis vs #$(lendag) dag nodes")
-   # @info("check (de-)serialisation")
-   # println(@test(all(JuLIP.Testing.test_fio(V))))
+   @info("check (de-)serialisation")
+   println(@test(all(JuLIP.Testing.test_fio(V))))
    @info("Check PiPot and DAGPiPot match")
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)

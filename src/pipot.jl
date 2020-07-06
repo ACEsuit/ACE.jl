@@ -211,6 +211,7 @@ function GraphPIPot(pipot::PIPotential; kwargs...)
    return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
 end
 
+# ------- House keeping
 
 i2z(V::GraphPIPot, i::Integer) = i2z(V.basis1p, i)
 z2i(V::GraphPIPot, z::AtomicNumber) = z2i(V.basis1p, z)
@@ -221,6 +222,21 @@ cutoff(V::GraphPIPot) = cutoff(V.basis1p)
 Base.eltype(V::GraphPIPot{T}) where {T} = real(T)
 
 _maxstore(V::GraphPIPot) = maximum( dag.numstore for dag in V.dags )
+
+
+# ------- House keeping
+
+write_dict(V::GraphPIPot) =
+   Dict( "__id__" => "SHIPS_GraphPIPot",
+         "basis1p" => write_dict(V.basis1p),
+         "dags" => write_dict.(V.dags) )
+
+read_dict(::Val{:GraphPIPot}, D::Dict) =
+   GraphPIPot(read_dict(D["basis1p"]),
+              tuple( read_dict.(D["dags"])... ))
+
+
+# ------- Evaluation code
 
 alloc_temp(V::GraphPIPot{T}, maxN::Integer) where {T} =
    (
