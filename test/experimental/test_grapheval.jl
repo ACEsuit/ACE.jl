@@ -40,6 +40,8 @@ dvtr = evaluate_d(Vtr, Rs, Zs, z0)
 println(@test(dv ≈ dvtr))
 
 
+JuLIP.Testing.test_fio(Vtr)
+
 #---
 
 @info("Check several properties of GraphPIPot")
@@ -55,7 +57,7 @@ for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
    lendag = maximum(length.(Vtr.dags))
    @info("    #$(lenpi) pibasis vs #$(lendag) dag nodes")
    @info("check (de-)serialisation")
-   println(@test(all(JuLIP.Testing.test_fio(V))))
+   println(@test(all(JuLIP.Testing.test_fio(Vtr))))
    @info("Check PiPot and DAGPiPot match")
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)

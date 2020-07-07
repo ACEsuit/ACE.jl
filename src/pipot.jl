@@ -223,6 +223,7 @@ Base.eltype(V::GraphPIPot{T}) where {T} = real(T)
 
 _maxstore(V::GraphPIPot) = maximum( dag.numstore for dag in V.dags )
 
+==(V1::GraphPIPot, V2::GraphPIPot) = _allfieldsequal(V1, V2)
 
 # ------- House keeping
 
@@ -231,7 +232,7 @@ write_dict(V::GraphPIPot) =
          "basis1p" => write_dict(V.basis1p),
          "dags" => write_dict.(V.dags) )
 
-read_dict(::Val{:GraphPIPot}, D::Dict) =
+read_dict(::Val{:SHIPS_GraphPIPot}, D::Dict) =
    GraphPIPot(read_dict(D["basis1p"]),
               tuple( read_dict.(D["dags"])... ))
 

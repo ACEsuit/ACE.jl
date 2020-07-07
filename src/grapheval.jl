@@ -9,7 +9,7 @@
 module DAG
 
 include("extimports.jl")
-# include("shipimports.jl")
+include("shipimports.jl")
 
 using Combinatorics: combinations, partitions
 
@@ -27,13 +27,14 @@ end
 
 Base.length(dag::CorrEvalGraph) = length(dag.nodes)
 
+==(dag1::CorrEvalGraph, dag2::CorrEvalGraph) = SHIPs._allfieldsequal(dag1, dag2) 
 
 # -------------- FIO
 
 # TODO: maybe there is a cleverer way to do this, for now this is just
 #       a quick hack to make sure it can be read without any ambiguity
 
-write_dict(g::CorrEvalGraph{T, TI}) where {T <: Real, TI <: Integer} =
+write_dict(gr::CorrEvalGraph{T, TI}) where {T <: Real, TI <: Integer} =
    Dict( "__id__" => "SHIPs_CorrEvalGraph",
          "T" => write_dict(T),
          "TI" => write_dict(TI),
@@ -46,8 +47,10 @@ write_dict(g::CorrEvalGraph{T, TI}) where {T <: Real, TI <: Integer} =
 
 
 function read_dict(::Val{:SHIPs_CorrEvalGraph}, D::Dict)
-   T = read_dict("D[T]")::Real 
-   TI = read_dict("D[TI]")::Integer
+   T = read_dict(D["T"])
+   TI = read_dict(D["TI"])
+   @assert T <: Real
+   @assert TI <: Integer
    return CorrEvalGraph{T, TI}(
       collect(zip(D["nodes1"], D["nodes2"])),
       D["vals"],
