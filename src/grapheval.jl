@@ -27,7 +27,7 @@ end
 
 Base.length(dag::CorrEvalGraph) = length(dag.nodes)
 
-==(dag1::CorrEvalGraph, dag2::CorrEvalGraph) = SHIPs._allfieldsequal(dag1, dag2) 
+==(dag1::CorrEvalGraph, dag2::CorrEvalGraph) = SHIPs._allfieldsequal(dag1, dag2)
 
 # -------------- FIO
 
@@ -63,20 +63,38 @@ end
 #   partition generator
 
 
-_score_partition(p) = any(isnothing, p) ? Inf : 1000 * length(p) + maximum(p)
+_score_partition(p) = isempty(p) ? Inf : (1000 * length(p) + maximum(p))
 
-_get_ns(p, specnew) =
-      [ findfirst(isequal(kk_), specnew)  for kk_ in p ]
 
-function _find_partition(kk, specnew)
+function _get_ns(p, specnew, specnew_dict)
+   out = Vector{Int}(undef, length(p))
+   for (i, kk_) in enumerate(p)
+      if haskey(specnew_dict, kk_)
+         out[i] = specnew_dict[kk_]
+      else
+         return Int[]
+      end
+   end
+   return out
+end
+
+# _score_partition(p) = any(isnothing, p) ? Inf : 1000 * length(p) + maximum(p)
+# valornothing(kk_, specnew_dict) =
+#       haskey(specnew_dict, kk_) ? specnew_dict[kk_] : nothing
+
+   # [ valornothing(specnew_dict, kk_) for kk_ in p ]
+      #
+      # [ findfirst(isequal(kk_), specnew)  for kk_ in p ]
+
+function _find_partition(kk, specnew, specnew_dict)
    # @show kk
-   worstp = _get_ns([ [k] for k in kk ], specnew)
+   worstp = _get_ns([ [k] for k in kk ], specnew, specnew_dict)
    @assert worstp == kk
    bestp = worstp
    bestscore = _score_partition(bestp)
 
    for ip in partitions(1:length(kk))
-      p = _get_ns([ kk[i] for i in ip ], specnew)
+      p = _get_ns([ kk[i] for i in ip ], specnew, specnew_dict)
       score = _score_partition(p)
       if !any(isnothing.(p)) && score < bestscore
          bestp = p
@@ -132,6 +150,7 @@ function get_eval_graph(inner::InnerPIBasis, coeffs;
    coeffsnew = Vector{eltype(coeffs)}()
    sizehint!(coeffsnew, length(inner))
    specnew = Vector{Int}[]
+   specnew_dict = Dict{Vector{Int}, Int}()
    sizehint!(specnew, length(inner))
 
    # add the full 1-particle basis (N=1) into the dag
@@ -139,6 +158,7 @@ function get_eval_graph(inner::InnerPIBasis, coeffs;
    for i = 1:num1
       push!(nodes, BinDagNode{TI}((i, 0)))
       push!(specnew, [i])
+      specnew_dict[ [i] ] = length(specnew)
       # find that index in `spec`
       ispec = findfirst(isequal([i]), spec1)
       if isnothing(ispec)
@@ -152,7 +172,7 @@ function get_eval_graph(inner::InnerPIBasis, coeffs;
    extranodes = 0
    for (ikk, kk) in enumerate(specN)
       # find a good partition of kk
-      p = _find_partition(kk, specnew)
+      p = _find_partition(kk, specnew, specnew_dict)
       extranodes += _insert_partition!(nodes, coeffsnew, specnew,
                                        kk, p, ikk, coeffsN, specN, TI)
    end
