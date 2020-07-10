@@ -23,7 +23,6 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     include("test_1pbasis.jl")
     include("test_pibasis.jl")
     include("test_pipot.jl")
-    include("experimental/test_grapheval.jl")
 
     # ------------------------
     #   rotation_invariance

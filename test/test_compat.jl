@@ -9,11 +9,13 @@
 
 @testset "Compatibility" begin
 
-##
+#---
 
 using SHIPs, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 using SHIPs: PIPotential
+
+#---
 
 function compat_tests(V::PIPotential, rtests, tests)
    Jr = V.pibasis.basis1p.J

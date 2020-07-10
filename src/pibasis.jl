@@ -169,6 +169,7 @@ end
 
 
 function generate_dag!(inner; kwargs...)
+   len = length(inner)
    inner.dag = get_eval_graph(inner, collect(1:len); kwargs...)
    return inner
 end
@@ -334,7 +335,7 @@ alloc_temp(basis::PIBasis, args...) =
 
 
 evaluate!(AA, tmp, basis::PIBasis, args...) =
-   evaluate!(AA, tmp, basis::PIBasis, basis.evaluator, args...) =
+   evaluate!(AA, tmp, basis::PIBasis, basis.evaluator, args...)
 
 # this method treats basis as a actual basis across all species
 function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
@@ -374,7 +375,7 @@ alloc_temp_d(basis::PIBasis, nmax::Integer) =
         dA = alloc_dB(basis.basis1p, nmax),
         tmp_basis1p = alloc_temp(basis.basis1p, nmax),
         tmpd_basis1p = alloc_temp_d(basis.basis1p, nmax),
-        tmpd_inner = alloc_temp_d(typeof(basis.inner[1]), basis, nmax)
+        tmpd_inner = alloc_temp_d(basis.evaluator, basis, nmax)
       )
 
 
@@ -390,7 +391,7 @@ function site_evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
    # precompute the 1-p basis and its derivatives
    evaluate_d!(tmpd.A, tmpd.dA, tmpd.tmpd_basis1p, basis.basis1p, Rs, Zs, z0)
-   site_evaluate_d!(AA, dAA, tmpd, basis.inner[iz0], tmpd.A, tmpd.dA)
+   site_evaluate_d!(AA, dAA, tmpd, basis.inner[iz0], basis.evaluator, tmpd.A, tmpd.dA)
    return nothing
 end
 
@@ -417,9 +418,9 @@ end
 
 
 function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis,
-                          ::StandardEvaluator, A, dA)
+                          _ev::StandardEvaluator, A, dA)
    # evaluate the AA basis
-   evaluate!(AA, nothing, inner, tmpd.A)
+   evaluate!(AA, nothing, inner, _ev, tmpd.A)
    # loop over all neighbours
    for j = 1:size(dA, 2)
       # write the gradients into the correct slice of the dAA matrix
@@ -484,7 +485,7 @@ function alloc_temp_d(::DAGEvaluator, basis::PIBasis,  nmax::Integer)
    )
 end
 
-function evaluate!(AA, tmp, basis::DAGInnerPIBasis, ::DAGEvaluator, A)
+function evaluate!(AA, tmp, basis::InnerPIBasis, ::DAGEvaluator, A)
    AAdag = tmp.tmp_inner
    fill!(AAdag, 1)
    traverse_fwd!(AAdag, basis.dag, A,
@@ -494,7 +495,7 @@ end
 
 
 
-function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis,
+function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis,
                           ::DAGEvaluator, A, dA)
    dag = inner.dag
    nodes = dag.nodes

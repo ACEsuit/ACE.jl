@@ -26,8 +26,8 @@ through a PIBasis and its coefficients
 mutable struct PIPotential{T, NZ, TPI, TEV} <: SitePotential
    pibasis::TPI
    coeffs::NTuple{NZ, Vector{T}}
-   dags::NTuple{NZ, CorrEvalGraph{T, TI}}
-   dageval::TEV
+   dags::NTuple{NZ, CorrEvalGraph{T, Int}}
+   evaluator::TEV
 end
 
 cutoff(V::PIPotential) = cutoff(V.pibasis)
@@ -55,11 +55,16 @@ standardevaluator(V::PIPotential) =
 
 combine(basis::PIBasis, coeffs) = PIPotential(basis, coeffs)
 
-
+# assemble from basis with global coeff vector
 function PIPotential(basis::PIBasis, coeffs::Vector{<: Number})
    coeffs_t = ntuple(iz0 -> coeffs[basis.inner[iz0].AAindices], numz(basis))
-   dags = ntuple(iz0 -> _getdagfrombasis(basis.inner[iz0], coeffs_t[iz0]), numz(basis))
    return PIPotential(basis, coeffs_t)
+end
+
+# assemble from basis with coeff vectors separated into individual species
+function PIPotential(basis::PIBasis, coeffs_t::Tuple)
+   dags = ntuple(iz0 -> _getdagfrombasis(basis.inner[iz0], coeffs_t[iz0]), numz(basis))
+   return PIPotential(basis, coeffs_t, dags, DAGEvaluator())
 end
 
 function _getdagfrombasis(inner, c)
@@ -68,7 +73,9 @@ function _getdagfrombasis(inner, c)
    dag = DAG.CorrEvalGraph(nodes, zeros(eltype(c), length(nodes)),
                            inner.dag.num1, inner.dag.numstore)
    for (i, idx) in enumerate(vals)
-      dag.vals[i] = c[idx]
+      if idx != 0  # idx = 0 means this is an auxiliary basis with 0 coefficient!
+         dag.vals[i] = c[idx]
+      end
    end
    return dag
 end
@@ -109,8 +116,8 @@ read_dict(::Val{:SHIPs_PIPotential}, D::Dict; tests = true) =
 #   Dispatching the Evaluation codes
 # ------------------------------------------------------------
 
-alloc_temp(V::PIPotential, args...) =  alloc_temp(V.evaluator, V, args...)
-alloc_temp_d(V::PIPotential, args...) =  alloc_temp_d(V.evaluator, V, args...)
+alloc_temp(V::PIPotential, maxN::Integer) =  alloc_temp(V.evaluator, V, maxN)
+alloc_temp_d(V::PIPotential, maxN::Integer) =  alloc_temp_d(V.evaluator, V, maxN)
 evaluate!(tmp, V::PIPotential, args...) = evaluate!(tmp, V, V.evaluator, args...)
 evaluate_d!(dEs, tmp, V::PIPotential, args...) = evaluate_d!(dEs, tmp, V, V.evaluator, args...)
 
@@ -218,13 +225,13 @@ alloc_temp(::DAGEvaluator, V::PIPotential{T}, maxN::Integer) where {T} =
    (
    R = zeros(JVec{real(T)}, maxN),
    Z = zeros(AtomicNumber, maxN),
-   tmp_basis1p = alloc_temp(V.basis1p),
-   AA = zeros(eltype(V.basis1p), _maxstore(V)),
-   A = alloc_B(V.basis1p)
+   tmp_basis1p = alloc_temp(V.pibasis.basis1p),
+   AA = zeros(eltype(V.pibasis.basis1p), _maxstore(V)),
+   A = alloc_B(V.pibasis.basis1p)
    )
 
 
-function evaluate!(tmp, V::GraphPIPot, ::DAGEvaluator, Rs, Zs, z0)
+function evaluate!(tmp, V::PIPotential, ::DAGEvaluator, Rs, Zs, z0)
    AAdag = tmp.AA
    A = tmp.A
    iz0 = z2i(V, z0)
@@ -234,7 +241,7 @@ function evaluate!(tmp, V::GraphPIPot, ::DAGEvaluator, Rs, Zs, z0)
    @assert length(A) >= dag.num1
    @assert length(AAdag) >= dag.numstore
 
-   evaluate!(A, tmp.tmp_basis1p, V.basis1p, Rs, Zs, z0)
+   evaluate!(A, tmp.tmp_basis1p, V.pibasis.basis1p, Rs, Zs, z0)
 
    Es = zero(eltype(V))
    @inbounds for i = 1:dag.num1
@@ -259,25 +266,25 @@ end
 
 
 
-alloc_temp_d(::DAGEvaluator, V::GraphPIPot{T}, maxN::Integer) where {T} =
+alloc_temp_d(::DAGEvaluator, V::PIPotential{T}, maxN::Integer) where {T} =
    (
    R = zeros(JVec{real(T)}, maxN),
    Z = zeros(AtomicNumber, maxN),
     dV = zeros(JVec{real(T)}, maxN),
-   tmpd_basis1p = alloc_temp_d(V.basis1p),
-   AA = zeros(eltype(V.basis1p), _maxstore(V)),
-   B = zeros(eltype(V.basis1p), _maxstore(V)),
-   A = alloc_B(V.basis1p),
-   dA = alloc_dB(V.basis1p)
+   tmpd_basis1p = alloc_temp_d(V.pibasis.basis1p),
+   AA = zeros(eltype(V.pibasis.basis1p), _maxstore(V)),
+   B = zeros(eltype(V.pibasis.basis1p), _maxstore(V)),
+   A = alloc_B(V.pibasis.basis1p),
+   dA = alloc_dB(V.pibasis.basis1p)
     )
 
 
-function evaluate_d!(dEs, tmpd, V::GraphPIPot{T}, ::DAGEvaluator, Rs, Zs, z0) where {T}
+function evaluate_d!(dEs, tmpd, V::PIPotential{T}, ::DAGEvaluator, Rs, Zs, z0) where {T}
    iz0 = z2i(V, z0)
    AA = tmpd.AA
    B = tmpd.B
    tmpd_basis1p = tmpd.tmpd_basis1p
-   basis1p = V.basis1p
+   basis1p = V.pibasis.basis1p
    dag = V.dags[iz0]
    nodes = dag.nodes
    coeffs = dag.vals

@@ -8,7 +8,7 @@
 
 @testset "PIBasis"  begin
 
-##
+#---
 
 
 using SHIPs, Random
@@ -16,7 +16,7 @@ using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 
 
-##
+#---
 
 @info("Basic test of PIBasis construction and evaluation")
 
@@ -29,7 +29,8 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = SHIPs.SparsePSHDegree()
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 
-basis = SHIPs.PIBasis(P1, ord, D, maxdeg)
+dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg)
+basis = standardevaluator(dagbasis)
 
 # check single-species
 Nat = 15
@@ -38,22 +39,24 @@ AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 
 # construct a basis with dag-evaluator, and check they are identical!!!
-dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg, evaluator = :dag)
 AAdag = evaluate(dagbasis, Rs, Zs, z0)
 println(@test(AA ≈ AAdag))
 
-dAA = evaluate_d(basis, Rs, Zs, z0)
+dAA = evaluate_d(basis, Rs, Zs, z0
+   )
 dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
 println(@test dAA ≈ dAAdag)
 
+println(@test all(JuLIP.Testing.test_fio(dagbasis)))
 
-## check multi-species
+#--- check multi-species
 maxdeg = 5
 ord = 3
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
-basis = SHIPs.PIBasis(P1, ord, D, maxdeg)
+dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg)
+basis = standardevaluator(dagbasis)
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
 AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
@@ -61,8 +64,6 @@ dAA = evaluate_d(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 
 # construct a basis with dag-evaluator, and check they are identical!!!
-dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg, evaluator = :dag
-   )
 AAdag = evaluate(dagbasis, Rs, Zs, z0)
 println(@test(AA ≈ AAdag))
 
@@ -70,18 +71,21 @@ dAA = evaluate_d(basis, Rs, Zs, z0)
 dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
 println(@test dAA ≈ dAAdag)
 
-##
+println(@test all(JuLIP.Testing.test_fio(dagbasis)))
+#---
 
 @info("Check several properties of PIBasis")
 for species in (:X, :Si, [:C, :O, :H]), N = 1:5
-   local AA, AAdag, dAA, dAAdag
+   local AA, AAdag, dAA, dAAdag, dagbasis, basis, Rs, Zs, z0
    maxdeg = 7
    Nat = 15
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
-   basis = SHIPs.PIBasis(P1, N, D, maxdeg)
+   dagbasis = SHIPs.PIBasis(P1, N, D, maxdeg)
+   basis = standardevaluator(dagbasis)
    @info("species = $species; N = $N; length = $(length(basis))")
    @info("test (de-)serialisation")
-   println(@test all(JuLIP.Testing.test_fio(basis)))
+   # only require dagbasis to deserialize correctly
+   println(@test all(JuLIP.Testing.test_fio(dagbasis)))
    @info("Check Permutation invariance")
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
@@ -110,8 +114,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    end
 
    println()
-   @info("Check Classic=DAG Evaluator")
-   dagbasis = SHIPs.PIBasis(P1, N, D, maxdeg, evaluator = :dag)
+   @info("Check Standard=DAG Evaluator")
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       AA = evaluate(basis, Rs, Zs, z0)
@@ -126,7 +129,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
 end
 println()
 
-##
+#---
 
 
 end

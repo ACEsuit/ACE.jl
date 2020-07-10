@@ -28,16 +28,21 @@ D = SHIPs.SparsePSHDegree()
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
 basis = SHIPs.PIBasis(P1, 2, D, maxdeg)
 c = SHIPs.Random.randcoeffs(basis)
-V = combine(basis, c)
+Vdag = combine(basis, c)
+V = standardevaluator(Vdag)
 Nat = 15
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
 val_basis = real(sum(c .* evaluate(basis, Rs, Zs, z0)))
 val_V = evaluate(V, Rs, Zs, z0)
 println(@test(val_basis ≈ val_V))
+println(@test(evaluate(Vdag, Rs, Zs, z0) ≈ val_V))
 J = evaluate_d(basis, Rs, Zs, z0)
 grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
 grad_V = evaluate_d(V, Rs, Zs, z0)
 println(@test(grad_basis ≈ grad_V))
+println(@test(evaluate_d(Vdag, Rs, Zs, z0) ≈ grad_V))
+
+println(@test(all(JuLIP.Testing.test_fio(V))))
 
 #---
 
@@ -48,32 +53,37 @@ species = [:C, :O, :H]
 P1 = SHIPs.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
 basis = SHIPs.PIBasis(P1, 3, D, maxdeg)
 c = randcoeffs(basis)
-V = combine(basis, c)
+Vdag = combine(basis, c)
+V = standardevaluator(Vdag)
 Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
 AA = evaluate(basis, Rs, Zs, z0)
 val_basis = real(sum(c .* evaluate(basis, Rs, Zs, z0)))
 val_V = evaluate(V, Rs, Zs, z0)
 println(@test(val_basis ≈ val_V))
+println(@test(evaluate(Vdag, Rs, Zs, z0) ≈ val_V))
 J = evaluate_d(basis, Rs, Zs, z0)
 grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
 grad_V = evaluate_d(V, Rs, Zs, z0)
 println(@test(grad_basis ≈ grad_V))
+println(@test(evaluate_d(Vdag, Rs, Zs, z0) ≈ grad_V))
 
-
+println(@test(all(JuLIP.Testing.test_fio(V))))
 
 #---
 
 @info("Check several properties of PIPotential")
 for species in (:X, :Si, [:C, :O, :H]), N = 1:5
+   local Rs, Zs, z0, V, Vdag, basis, P1, maxdeg, Nat, c, val_basis, val_V
    maxdeg = 7
    Nat = 15
    P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
    basis = SHIPs.PIBasis(P1, N, D, maxdeg)
    @info("species = $species; N = $N; length = $(length(basis))")
    c = randcoeffs(basis)
-   V = combine(basis, c)
+   Vdag = combine(basis, c)
+   V = standardevaluator(Vdag)
    @info("check (de-)serialisation")
-   println(@test(all(JuLIP.Testing.test_fio(V))))
+   println(@test(all(JuLIP.Testing.test_fio(Vdag))))
    @info("Check basis and potential match")
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
@@ -102,11 +112,10 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    end
    println()
    @info("Check graph evaluator")
-   Vgr = SHIPs.graph_evaluator(V)
    for ntest = 1:20
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       v = evaluate(V, Rs, Zs, z0)
-      vgr = evaluate(Vgr, Rs, Zs, z0)
+      vgr = evaluate(Vdag, Rs, Zs, z0)
       print_tf(@test(v ≈ vgr))
    end
    println()

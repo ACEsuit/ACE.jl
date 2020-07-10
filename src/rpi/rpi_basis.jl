@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+import SHIPs: standardevaluator, graphevaluator
 using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: mul!
 
@@ -30,6 +31,14 @@ i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
 z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
 
 cutoff(basis::RPIBasis) = cutoff(basis.pibasis)
+
+standardevaluator(basis::RPIBasis) =
+      RPIBasis( standardevaluator(basis.pibasis),
+                basis.A2Bmaps, basis.Bz0inds )
+
+graphevaluator(basis::RPIBasis) =
+      RPIBasis( graphevaluator(basis.pibasis),
+                basis.A2Bmaps, basis.Bz0inds )
 
 # ------------------------------------------------------------------------
 #    FIO code
@@ -73,10 +82,7 @@ function RPIBasis(pibasis::PIBasis)
    return RPIBasis(pibasis, A2Bmaps, tuple(Bz0inds...))
 end
 
-SHIPs.graph_evaluator(basis::RPIBasis; kwargs...) =
-      SHIPs.RPI.RPIBasis(SHIPs.graph_evaluator(basis.pibasis; kwargs...),
-                         basis.A2Bmaps, basis.Bz0inds)
-
+# TODO NOW: graphevaluator, standardevaluator
 
 struct RPIFilter
    constants::Bool
@@ -169,7 +175,6 @@ _znlms2b(zz, nn, ll, mm = zero(ll), z0 = AtomicNumber(0)) =
 
 
 function combine(basis::RPIBasis, coeffs)
-
    picoeffs = ntuple(iz0 -> (coeffs[basis.Bz0inds[iz0]]' * basis.A2Bmaps[iz0])[:],
                      numz(basis.pibasis))
    return PIPotential(basis.pibasis, picoeffs)

@@ -106,19 +106,21 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    @info("   check combine")
    coeffs = randcoeffs(basis)
    V = combine(basis, coeffs)
+   Vst = standardevaluator(V)
    for ntest = 1:30
       Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
       v = evaluate(V, Rs, Zs, z0)
+      vst = evaluate(Vst, Rs, Zs, z0)
       cdotB = dot(coeffs, evaluate(basis, Rs, Zs, z0))
-      print_tf(@test v ≈ cdotB)
+      print_tf(@test v ≈ cdotB ≈ vst)
    end
    println()
    @info("   check graph evaluator")
-   basisgr = SHIPs.graph_evaluator(basis)
+   basisst = standardevaluator(basis)
    for ntest = 1:30
       env = SHIPs.rand_nhd(Nat, Pr, species)
-      print_tf(@test evaluate(basis, env...) ≈ evaluate(basisgr, env...))
-      print_tf(@test evaluate_d(basis, env...) ≈ evaluate_d(basisgr, env...))
+      print_tf(@test evaluate(basisst, env...) ≈ evaluate(basis, env...))
+      print_tf(@test evaluate_d(basisst, env...) ≈ evaluate_d(basis, env...))
    end
    println()
 end
