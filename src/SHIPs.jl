@@ -28,6 +28,8 @@ include("polynomials/orthpolys.jl"); @reexport using SHIPs.OrthPolys
 # The One-particle basis is the first proper building block
 include("oneparticlebasis.jl")
 
+include("grapheval.jl")
+
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
 include("pibasis.jl")

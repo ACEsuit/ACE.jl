@@ -13,8 +13,6 @@ include("shipimports.jl")
 
 using Combinatorics: combinations, partitions
 
-import SHIPs: InnerPIBasis
-
 const BinDagNode{TI} = Tuple{TI,TI}
 
 
@@ -28,6 +26,11 @@ end
 Base.length(dag::CorrEvalGraph) = length(dag.nodes)
 
 ==(dag1::CorrEvalGraph, dag2::CorrEvalGraph) = SHIPs._allfieldsequal(dag1, dag2)
+
+CorrEvalGraph{T, TI} where {T, TI} =
+      CorrEvalGraph(Vector{BinDagNode{TI}}(undef, 0),
+                    Vector{T}(undef, 0),
+                    0, 0)
 
 # -------------- FIO
 
@@ -135,7 +138,7 @@ function _insert_partition!(nodes, coeffsnew, specnew, specnew_dict,
    end
 end
 
-function get_eval_graph(inner::InnerPIBasis, coeffs;
+function get_eval_graph(inner, coeffs;   # inner::InnerPIBasis
                         filter = _->true,
                         TI = Int,
                         verbose = false)

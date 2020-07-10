@@ -6,7 +6,13 @@
 # --------------------------------------------------------------------------
 
 
+
+import SHIPs.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
+
 export PIBasis
+
+export graphevaluator, standardevaluator
+
 
 """
 `PIBasisFcn{N, TOP}` : represents a single multivariate basis function
@@ -83,8 +89,6 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
 end
 
 
-abstract type AbstractInnerPIBasis <: IPBasis end
-
 """
 `mutable struct InnerPIBasis` : this type is just an auxilary type to
 make the implementation of `PIBasis` clearer. It implements the
@@ -92,13 +96,16 @@ permutation-invariant basis for a single centre-atom species. The main
 type `PIBasis` then stores `NZ` objects of type `InnerPIBasis`
 and "dispatches" the work accordingly.
 """
-mutable struct InnerPIBasis <: AbstractInnerPIBasis
+mutable struct InnerPIBasis
    orders::Vector{Int}           # order (length) of ith basis function
    iAA2iA::Matrix{Int}           # where in A can we find the ith basis function
    b2iAA::Dict{PIBasisFcn, Int}  # mapping PIBasisFcn -> iAA =  index in AA[z0]
    b2iA::Dict{Any, Int}          # mapping from 1-p basis fcn to index in A[z0]
    AAindices::UnitRange{Int}     # where in AA does AA[z0] fit?
+   z0::AtomicNumber              # inner basis for which species?
+   dag::CorrEvalGraph{Int, Int}  # for fast evaluation
 end
+
 
 ==(B1::InnerPIBasis, B2::InnerPIBasis) = (
    (B1.b2iA == B2.b2iA) &&
@@ -151,14 +158,26 @@ function InnerPIBasis(Aspec, AAspec, AAindices, z0)
       b2iAA[b] = iAA
    end
 
-   # put it all together ...
-   return InnerPIBasis(orders, iAA2iA, b2iAA, b2iA, AAindices)
+   # putting it all together :
+   # an empty dag, to assemble the basis ...
+   emptydag = DAG.CorrEvalGraph{Int, Int}()
+   inner = InnerPIBasis(orders, iAA2iA, b2iAA, b2iA, AAindices, z0, emptydag)
+   # ... generate the actual dag to return
+   generate_dag!(inner)
+   return inner
 end
 
 
+function generate_dag!(inner; kwargs...)
+   inner.dag = get_eval_graph(inner, collect(1:len); kwargs...)
+   return inner
+end
 
 
+# ---------------------- PIBasis
 
+struct DAGEvaluator end
+struct StandardEvaluator end
 
 
 """
@@ -176,10 +195,11 @@ PIBasis(basis1p, N, D, maxdeg)
 
 Note the species list will be taken from `basis1p`
 """
-mutable struct PIBasis{BOP, NZ, TIN} <: IPBasis
+mutable struct PIBasis{BOP, NZ, TEV} <: IPBasis
    basis1p::BOP             # a one-particle basis
    zlist::SZList{NZ}
-   inner::NTuple{NZ, TIN}
+   inner::NTuple{NZ, InnerPIBasis}
+   evaluator::TEV
 end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
@@ -196,8 +216,7 @@ function PIBasis(basis1p::OneParticleBasis,
                  N::Integer,
                  D::AbstractDegree,
                  maxdeg::Real;
-                 filter = b -> order(b) > 0,
-                 evaluator = :classic)
+                 filter = b -> order(b) > 0)
    innerspecs = Any[]
    # now for each iz0 (i.e. for each z0) construct an "inner basis".
    for iz0 = 1:numz(basis1p)
@@ -206,35 +225,25 @@ function PIBasis(basis1p::OneParticleBasis,
       AAspec_z0 = get_PI_spec(basis1p, N, D, maxdeg, z0; filter=filter)
       push!(innerspecs, AAspec_z0)
    end
-   return pibasis_from_specs(basis1p, identity.(innerspecs),
-                             _evaluator(evaluator))
+   return pibasis_from_specs(basis1p, identity.(innerspecs))
 end
 
-
-function _evaluator(evaluator)
-   if evaluator == :classic
-      return InnerPIBasis
-   elseif evaluator == :dag
-      return DAGInnerPIBasis
-   end
-   error("Unknown evaluator")
-end
 
 
 # TODO: instead of copying zlist, maybe forward the zlist methods
 
-function pibasis_from_specs(basis1p, innerspecs, InnerType)
+function pibasis_from_specs(basis1p, innerspecs)
    idx = 0
-   inner = InnerType[]
+   inner = InnerPIBasis[]
    for iz0 = 1:numz(basis1p)
       z0 = i2z(basis1p, iz0)
       Aspec_z0 = get_basis_spec(basis1p, z0)
       AAspec_z0 = innerspecs[iz0]
       AAindices = (idx+1):(idx+length(AAspec_z0))
-      push!(inner, InnerType(Aspec_z0, AAspec_z0, AAindices, z0))
+      push!(inner, InnerPIBasis(Aspec_z0, AAspec_z0, AAindices, z0))
       idx += length(AAspec_z0)
    end
-   return PIBasis(basis1p, basis1p.zlist, tuple(inner...))
+   return PIBasis(basis1p, basis1p.zlist, tuple(inner...), DAGEvaluator())
 end
 
 
@@ -284,22 +293,30 @@ function scaling(pibasis::PIBasis, p)
 end
 
 
+graphevaluator(basis::PIBasis) =
+   PIBasis(basis.basis1p, basis.zlist, basis.inner, DAGEvaluator())
+
+standardevaluator(basis::PIBasis) =
+   PIBasis(basis.basis1p, basis.zlist, basis.inner, StandardEvaluator())
+
+
+
 # -------------------------------------------------
 # FIO codes
 
+# TODO: at the moment the DAGs will be generated from scratch
+#       every time we load the basis...
 
 write_dict(basis::PIBasis) =
    Dict(  "__id__" => "SHIPs_PIBasis",
          "basis1p" => write_dict(basis.basis1p),
            "inner" => [ write_dict.( collect(keys(basis.inner[iz0].b2iAA)) )
-                         for iz0 = 1:numz(basis) ],
-       "evaluator" => "classic")
+                         for iz0 = 1:numz(basis) ], )
 
 function read_dict(::Val{:SHIPs_PIBasis}, D::Dict)
    basis1p = read_dict(D["basis1p"])
    innerspecs = [ read_dict.(D["inner"][iz0])  for iz0 = 1:numz(basis1p) ]
-   return pibasis_from_specs(basis1p, innerspecs,
-                             _evaluator(Symbol(D["evaluator"])))
+   return pibasis_from_specs(basis1p, innerspecs)
 end
 
 
@@ -312,10 +329,12 @@ site_alloc_B(basis::PIBasis, args...) =
 alloc_temp(basis::PIBasis, args...) =
       ( A = alloc_B(basis.basis1p, args...),
         tmp_basis1p = alloc_temp(basis.basis1p, args...),
-        tmp_inner = alloc_temp(typeof(basis.inner[1]), basis)
+        tmp_inner = alloc_temp(basis.evaluator, basis)
       )
 
-alloc_temp(::Type{InnerPIBasis}, basis::PIBasis) = nothing
+
+evaluate!(AA, tmp, basis::PIBasis, args...) =
+   evaluate!(AA, tmp, basis::PIBasis, basis.evaluator, args...) =
 
 # this method treats basis as a actual basis across all species
 function evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
@@ -334,27 +353,11 @@ function site_evaluate!(AA, tmp, basis::PIBasis, Rs, Zs, z0)
    # now evaluate the correct inner basis, which doesn't know about z0, but
    # only ever sees A
    iz0 = z2i(basis, z0)
-   evaluate!(AA, tmp, basis.inner[iz0], A)
+   evaluate!(AA, tmp, basis.inner[iz0], basis.evaluator, A)
    return @view(AA[1:length(basis.inner[iz0])])
 end
 
-# this method evaluates the InnerPIBasis, which is really the actual
-# evaluation code; the rest is just bookkeeping
-function evaluate!(AA, tmp, basis::InnerPIBasis, A)
-   fill!(AA, 1)
-   for i = 1:length(basis)
-      for α = 1:basis.orders[i]
-         iA = basis.iAA2iA[i, α]
-         AA[i] *= A[iA]
-      end
-   end
-   return AA
-end
-
-
-# --------------------------------------------------------
-# gradients: this section of functions is for computing
-#  ∂∏A / ∂R_j
+# gradients
 
 site_alloc_dB(basis::PIBasis, Rs::AbstractVector, args...) =
    site_alloc_dB(basis, length(Rs))
@@ -374,7 +377,6 @@ alloc_temp_d(basis::PIBasis, nmax::Integer) =
         tmpd_inner = alloc_temp_d(typeof(basis.inner[1]), basis, nmax)
       )
 
-alloc_temp_d(::Type{InnerPIBasis}, basis::PIBasis, args...) = nothing
 
 function evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
    iz0 = z2i(basis, z0)
@@ -392,7 +394,30 @@ function site_evaluate_d!(AA, dAA, tmpd, basis::PIBasis, Rs, Zs, z0)
    return nothing
 end
 
-function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis, A, dA)
+
+#--------------------------------------------------------
+# ------- specialised code for the standard evaluator
+
+alloc_temp(::StandardEvaluator, basis::PIBasis) = nothing
+
+alloc_temp_d(::StandardEvaluator, basis::PIBasis, args...) = nothing
+
+# this method evaluates the InnerPIBasis, which is really the actual
+# evaluation code; the rest is just bookkeeping
+function evaluate!(AA, tmp, basis::InnerPIBasis, ::StandardEvaluator, A)
+   fill!(AA, 1)
+   for i = 1:length(basis)
+      for α = 1:basis.orders[i]
+         iA = basis.iAA2iA[i, α]
+         AA[i] *= A[iA]
+      end
+   end
+   return AA
+end
+
+
+function site_evaluate_d!(AA, dAA, tmpd, inner::InnerPIBasis,
+                          ::StandardEvaluator, A, dA)
    # evaluate the AA basis
    evaluate!(AA, nothing, inner, tmpd.A)
    # loop over all neighbours
@@ -444,50 +469,22 @@ end
 
 
 # --------------------------------------------------------
-#   Alternative InnerPIBasis based on the graph-evaluator
-
-include("grapheval.jl")
-
-import SHIPs.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
-
-mutable struct DAGInnerPIBasis <: AbstractInnerPIBasis
-   b1pspec::Vector{Any}
-   dag::CorrEvalGraph{Int, Int}
-   len::Int
-   z0::AtomicNumber
-   AAindices::UnitRange{Int}
-end
-
-Base.length(inner::DAGInnerPIBasis) = inner.len
-
-function DAGInnerPIBasis(Aspec::AbstractVector, AAspec::AbstractVector,
-                         AAindices, z0; kwargs...)
-   classic = InnerPIBasis(Aspec, AAspec, AAindices, z0)
-   len = length(classic)
-   dag = get_eval_graph(classic, collect(1:len); kwargs...)
-   return DAGInnerPIBasis(Aspec, dag, len, z0, classic.AAindices)
-end
+#   Evaluation code for DAG evaluator
 
 
-function graph_evaluator(basis::PIBasis; kwargs...)
-   inners = []
-   for iz0 = 1:numz(basis)
-      inner = basis.inner[iz0]
-      len = length(inner)
-      z0 = i2z(basis, iz0)
-      Aspec = get_basis_spec(basis.basis1p, z0)
-      dag = get_eval_graph(inner, collect(1:len); kwargs...)
-      push!(inners, DAGInnerPIBasis(Aspec, dag, len, z0, inner.AAindices))
-   end
-   return PIBasis(basis.basis1p, basis.zlist, tuple(inners...))
-end
-
-
-alloc_temp(::Type{DAGInnerPIBasis}, basis::PIBasis) =
+alloc_temp(::DAGEvaluator, basis::PIBasis) =
    zeros(eltype(basis), maximum(inner.dag.numstore for inner in basis.inner))
 
 
-function evaluate!(AA, tmp, basis::DAGInnerPIBasis, A)
+function alloc_temp_d(::DAGEvaluator, basis::PIBasis,  nmax::Integer)
+   maxstore = maximum(inner.dag.numstore for inner in basis.inner)
+   return (
+      AA = zeros(eltype(basis), maxstore),
+      dAA = zeros(JVec{eltype(basis)}, maxstore, nmax)
+   )
+end
+
+function evaluate!(AA, tmp, basis::DAGInnerPIBasis, ::DAGEvaluator, A)
    AAdag = tmp.tmp_inner
    fill!(AAdag, 1)
    traverse_fwd!(AAdag, basis.dag, A,
@@ -497,16 +494,8 @@ end
 
 
 
-function alloc_temp_d(::Type{DAGInnerPIBasis}, basis::PIBasis,  nmax::Integer)
-   maxstore = maximum(inner.dag.numstore for inner in basis.inner)
-   return (
-      AA = zeros(eltype(basis), maxstore),
-      dAA = zeros(JVec{eltype(basis)}, maxstore, nmax)
-   )
-end
-
-
-function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis, A, dA)
+function site_evaluate_d!(AA, dAA, tmpd, inner::DAGInnerPIBasis,
+                          ::DAGEvaluator, A, dA)
    dag = inner.dag
    nodes = dag.nodes
    idxs = dag.vals

@@ -16,14 +16,18 @@ import JuLIP, JuLIP.MLIPs
 
 export PIPotential
 
+# from pibasis:
+# StandardEvaluator, DAGEvaluator, graphevaluator, standardevaluator
 
 """
 `struct PIPotential` : specifies a PIPotential, which is basically defined
 through a PIBasis and its coefficients
 """
-struct PIPotential{T, NZ, TIN} <: SitePotential
-   pibasis::TIN
+mutable struct PIPotential{T, NZ, TPI, TEV} <: SitePotential
+   pibasis::TPI
    coeffs::NTuple{NZ, Vector{T}}
+   dags::NTuple{NZ, CorrEvalGraph{T, TI}}
+   dageval::TEV
 end
 
 cutoff(V::PIPotential) = cutoff(V.pibasis)
@@ -38,30 +42,36 @@ z2i(V::PIPotential, z::AtomicNumber) = z2i(V.pibasis, z)
 i2z(V::PIPotential, i::Integer) = i2z(V.pibasis, i)
 JuLIP.numz(V::PIPotential) = numz(V.pibasis)
 
+graphevaluator(V::PIPotential) =
+   PIPotential(V.pibasis, V.coeffs, V.dags, DAGEvaluator())
 
-
+standardevaluator(V::PIPotential) =
+   PIPotential(V.pibasis, V.coeffs, V.dags, StandardEvaluator())
 
 
 # ------------------------------------------------------------
 #   Initialisation code
 # ------------------------------------------------------------
 
-function combine(basis::PIBasis, coeffs; evaluator = :classic)
-   V = PIPotential(basis, coeffs)
-   if evaluator == :classic
-      return V
-   elseif evaluator == :dag
-      return GraphPIPot(V)
-   end
-   error("unknown evaluator $evaluator")
-end
+combine(basis::PIBasis, coeffs) = PIPotential(basis, coeffs)
 
 
 function PIPotential(basis::PIBasis, coeffs::Vector{<: Number})
    coeffs_t = ntuple(iz0 -> coeffs[basis.inner[iz0].AAindices], numz(basis))
+   dags = ntuple(iz0 -> _getdagfrombasis(basis.inner[iz0], coeffs_t[iz0]), numz(basis))
    return PIPotential(basis, coeffs_t)
 end
 
+function _getdagfrombasis(inner, c)
+   nodes = inner.dag.nodes
+   vals = inner.dag.vals
+   dag = DAG.CorrEvalGraph(nodes, zeros(eltype(c), length(nodes)),
+                           inner.dag.num1, inner.dag.numstore)
+   for (i, idx) in enumerate(vals)
+      dag.vals[i] = c[idx]
+   end
+   return dag
+end
 
 # ------------------------------------------------------------
 #   FIO code
@@ -71,6 +81,7 @@ write_dict(V::PIPotential) = Dict(
       "__id__" => "SHIPs_PIPotential",
      "pibasis" => write_dict(V.pibasis),
       "coeffs" => [ write_dict.(V.coeffs)... ] )
+
 #    if ntests > 0
 #       tests = SHIPs.Random.rand_nhd(Nat, J::ScalarBasis, species = :X)
 #       Pr = V.pibasis.basis1p.J
@@ -95,22 +106,31 @@ read_dict(::Val{:SHIPs_PIPotential}, D::Dict; tests = true) =
 # end
 
 # ------------------------------------------------------------
-#   Evaluation code
+#   Dispatching the Evaluation codes
+# ------------------------------------------------------------
+
+alloc_temp(V::PIPotential, args...) =  alloc_temp(V.evaluator, V, args...)
+alloc_temp_d(V::PIPotential, args...) =  alloc_temp_d(V.evaluator, V, args...)
+evaluate!(tmp, V::PIPotential, args...) = evaluate!(tmp, V, V.evaluator, args...)
+evaluate_d!(dEs, tmp, V::PIPotential, args...) = evaluate_d!(dEs, tmp, V, V.evaluator, args...)
+
+# ------------------------------------------------------------
+#   Standard Evaluation code
 # ------------------------------------------------------------
 
 
 # TODO: generalise the R, Z, allocation
-alloc_temp(V::PIPotential{T}, maxN::Integer) where {T} =
+alloc_temp(::StandardEvaluator, V::PIPotential{T}, maxN::Integer) where {T} =
    (
       R = zeros(JVec{real(T)}, maxN),
       Z = zeros(AtomicNumber, maxN),
       tmp_pibasis = alloc_temp(V.pibasis, maxN),
-  )
+   )
 
 
 
 # compute one site energy
-function evaluate!(tmp, V::PIPotential,
+function evaluate!(tmp, V::PIPotential, ::StandardEvaluator,
                    Rs::AbstractVector{JVec{T}},
                    Zs::AbstractVector{<:AtomicNumber},
                    z0::AtomicNumber) where {T}
@@ -131,7 +151,7 @@ function evaluate!(tmp, V::PIPotential,
 end
 
 # TODO: generalise the R, Z, allocation
-alloc_temp_d(V::PIPotential{T}, N::Integer) where {T} =
+alloc_temp_d(::StandardEvaluator, V::PIPotential{T}, N::Integer) where {T} =
       (
       dAco = zeros(eltype(V.pibasis),
                    maximum(length(V.pibasis.basis1p, iz) for iz=1:numz(V))),
@@ -142,7 +162,7 @@ alloc_temp_d(V::PIPotential{T}, N::Integer) where {T} =
       )
 
 # compute one site energy
-function evaluate_d!(dEs, tmpd, V::PIPotential,
+function evaluate_d!(dEs, tmpd, V::PIPotential, ::StandardEvaluator,
                      Rs::AbstractVector{<: JVec{T}},
                      Zs::AbstractVector{AtomicNumber},
                      z0::AtomicNumber
@@ -189,79 +209,22 @@ function evaluate_d!(dEs, tmpd, V::PIPotential,
 end
 
 
-
-
-# ------------------------------------------------------------
-#    GraphPIPot -> temporary place for dag-evaluator wrapper
-
-import SHIPs.DAG: CorrEvalGraph, get_eval_graph
-
-graph_evaluator(pipot::PIPotential; kwargs...) =
-      GraphPIPot(pipot; kwargs...)
-
-
-struct GraphPIPot{T, TI, NZ, TB} <: SitePotential
-   basis1p::TB
-   dags::NTuple{NZ, CorrEvalGraph{T, TI}}
-end
-
-function GraphPIPot(pipot::PIPotential; kwargs...)
-   dags = [ get_eval_graph(pipot.pibasis.inner[iz], pipot.coeffs[iz];
-                           kwargs...)  for iz = 1:numz(pipot) ]
-   return GraphPIPot(pipot.pibasis.basis1p, tuple(dags...))
-end
-
-# ------- House keeping
-
-i2z(V::GraphPIPot, i::Integer) = i2z(V.basis1p, i)
-z2i(V::GraphPIPot, z::AtomicNumber) = z2i(V.basis1p, z)
-numz(V::GraphPIPot) = numz(V.basis1p)
-
-cutoff(V::GraphPIPot) = cutoff(V.basis1p)
-
-Base.eltype(V::GraphPIPot{T}) where {T} = real(T)
-
-_maxstore(V::GraphPIPot) = maximum( dag.numstore for dag in V.dags )
-
-==(V1::GraphPIPot, V2::GraphPIPot) = _allfieldsequal(V1, V2)
-
-# ------- House keeping
-
-write_dict(V::GraphPIPot) =
-   Dict( "__id__" => "SHIPS_GraphPIPot",
-         "basis1p" => write_dict(V.basis1p),
-         "dags" => write_dict.(V.dags) )
-
-read_dict(::Val{:SHIPS_GraphPIPot}, D::Dict) =
-   GraphPIPot(read_dict(D["basis1p"]),
-              tuple( read_dict.(D["dags"])... ))
-
-
 # ------- Evaluation code
 
-alloc_temp(V::GraphPIPot{T}, maxN::Integer) where {T} =
+_maxstore(V::PIPotential) = maximum( dag.numstore for dag in V.dags )
+
+
+alloc_temp(::DAGEvaluator, V::PIPotential{T}, maxN::Integer) where {T} =
    (
    R = zeros(JVec{real(T)}, maxN),
    Z = zeros(AtomicNumber, maxN),
    tmp_basis1p = alloc_temp(V.basis1p),
    AA = zeros(eltype(V.basis1p), _maxstore(V)),
    A = alloc_B(V.basis1p)
-    )
+   )
 
 
-# function evaluate!(tmp, V::GraphPIPot, Rs, Zs, z0)
-#    AAdag = tmp.AA
-#    A = tmp.A
-#    iz0 = z2i(V, z0)
-#    evaluate!(A, tmp.tmp_basis1p, V.basis1p, Rs, Zs, z0)
-#    Es = zero(eltype(V))
-#    traverse_fwd!(AAdag, V.dags[iz0], A,
-#                  (coeff, AAval) -> (Es = muladd(coeff, real(AAval), Es)))
-#    return Es
-# end
-
-
-function evaluate!(tmp, V::GraphPIPot, Rs, Zs, z0)
+function evaluate!(tmp, V::GraphPIPot, ::DAGEvaluator, Rs, Zs, z0)
    AAdag = tmp.AA
    A = tmp.A
    iz0 = z2i(V, z0)
@@ -296,7 +259,7 @@ end
 
 
 
-alloc_temp_d(V::GraphPIPot{T}, maxN::Integer) where {T} =
+alloc_temp_d(::DAGEvaluator, V::GraphPIPot{T}, maxN::Integer) where {T} =
    (
    R = zeros(JVec{real(T)}, maxN),
    Z = zeros(AtomicNumber, maxN),
@@ -309,7 +272,7 @@ alloc_temp_d(V::GraphPIPot{T}, maxN::Integer) where {T} =
     )
 
 
-function evaluate_d!(dEs, tmpd, V::GraphPIPot{T}, Rs, Zs, z0) where {T}
+function evaluate_d!(dEs, tmpd, V::GraphPIPot{T}, ::DAGEvaluator, Rs, Zs, z0) where {T}
    iz0 = z2i(V, z0)
    AA = tmpd.AA
    B = tmpd.B
