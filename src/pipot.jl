@@ -53,7 +53,8 @@ standardevaluator(V::PIPotential) =
 #   Initialisation code
 # ------------------------------------------------------------
 
-combine(basis::PIBasis, coeffs) = PIPotential(basis, coeffs)
+combine(basis::PIBasis, coeffs::AbstractVector) =
+      PIPotential(basis, identity.(collect(coeffs)))
 
 # assemble from basis with global coeff vector
 function PIPotential(basis::PIBasis, coeffs::Vector{<: Number})
