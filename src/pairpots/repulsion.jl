@@ -135,6 +135,22 @@ function RepulsiveCore(Vout, Vin::AbstractArray)
    return RepulsiveCore(Vout, SMatrix{nz, nz}(Vin...))
 end
 
+
+function RepulsiveCore(Vout, D::Dict; verbose=false)
+   _sort_key(V, key) = tuple(sort([z2i.(Ref(V), AtomicNumber.(key))...])...)
+   Di = Dict([_sort_key(Vout, key) => val for (key, val) in D]...)
+   nz = numz(Vout)
+   Vin = Matrix{Any}(undef, nz, nz)
+   for i0 = 1:nz, i1 = 1:i0
+      z0, z1 = i2z(Vout, i0), i2z(Vout, i1)
+      ri, e0 = Di[(i1, i0)].ri, Di[(i1, i0)].e0
+      Vin[i0, i1] = Vin[i1, i0] =
+            _simple_repulsive_core(Vout, ri, e0, verbose, z1, z0)
+   end
+   # construct the piecewise potential
+   return RepulsiveCore(Vout, Vin)
+end
+
 # ----------------------------------------------------
 #  File IO
 
