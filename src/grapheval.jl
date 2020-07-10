@@ -63,8 +63,7 @@ end
 #   partition generator
 
 
-_score_partition(p) = isempty(p) ? Inf : (1000 * length(p) + maximum(p))
-
+_score_partition(p) = isempty(p) ? Inf : (1e9 * length(p) + maximum(p))
 
 function _get_ns(p, specnew, specnew_dict)
    out = Vector{Int}(undef, length(p))
@@ -78,16 +77,8 @@ function _get_ns(p, specnew, specnew_dict)
    return out
 end
 
-# _score_partition(p) = any(isnothing, p) ? Inf : 1000 * length(p) + maximum(p)
-# valornothing(kk_, specnew_dict) =
-#       haskey(specnew_dict, kk_) ? specnew_dict[kk_] : nothing
-
-   # [ valornothing(specnew_dict, kk_) for kk_ in p ]
-      #
-      # [ findfirst(isequal(kk_), specnew)  for kk_ in p ]
 
 function _find_partition(kk, specnew, specnew_dict)
-   # @show kk
    worstp = _get_ns([ [k] for k in kk ], specnew, specnew_dict)
    @assert worstp == kk
    bestp = worstp
@@ -95,8 +86,12 @@ function _find_partition(kk, specnew, specnew_dict)
 
    for ip in partitions(1:length(kk))
       p = _get_ns([ kk[i] for i in ip ], specnew, specnew_dict)
+      # p_old = _get_ns_old([ kk[i] for i in ip ], specnew, specnew_dict)
+      # if p != p_old
+      #    @infiltrate
+      # end
       score = _score_partition(p)
-      if !any(isnothing.(p)) && score < bestscore
+      if !isempty(p) && score < bestscore
          bestp = p
          bestscore = score
       end
@@ -105,23 +100,36 @@ function _find_partition(kk, specnew, specnew_dict)
    return bestp
 end
 
+
+# function _insert_node!(nodes, coeffsnew, specnew, specnew_dict,
+#                        newnode)
+
+
+
 # return value is the number of fake nodes added to the dag
-function _insert_partition!(nodes, coeffsnew, specnew,
+function _insert_partition!(nodes, coeffsnew, specnew, specnew_dict,
                             kk, p,
                             ikk, coeffsN, specN,
                             TI = Int)
    if length(p) == 2
-      push!(nodes, BinDagNode{TI}((p[1], p[2])))
+      newnode = BinDagNode{TI}((p[1], p[2]))
+      # _insert_node!(nodes, coeffsnew, specnew, specnew_dict, newnode)
+      push!(nodes, newnode)
       push!(coeffsnew, coeffsN[ikk])
       push!(specnew, kk)
+      specnew_dict[kk] = length(specnew)
       return 0
    else
+      # @show kk, p
+      # @infiltrate
       # reduce the partition by pushing a new node
       push!(nodes, BinDagNode{TI}((p[1], p[2])))
       push!(coeffsnew, 0)
-      push!(specnew, sort(vcat(specnew[p[1]], specnew[p[2]])))
+      kk1 = sort(vcat(specnew[p[1]], specnew[p[2]]))
+      push!(specnew, kk1)
+      specnew_dict[kk1] = length(specnew)
       # and now recurse with the reduced partition
-      return 1 + _insert_partition!(nodes, coeffsnew, specnew,
+      return 1 + _insert_partition!(nodes, coeffsnew, specnew, specnew_dict,
                          kk, vcat( [length(nodes)], p[3:end] ),
                          ikk, coeffsN, specN, TI)
    end
@@ -173,7 +181,7 @@ function get_eval_graph(inner::InnerPIBasis, coeffs;
    for (ikk, kk) in enumerate(specN)
       # find a good partition of kk
       p = _find_partition(kk, specnew, specnew_dict)
-      extranodes += _insert_partition!(nodes, coeffsnew, specnew,
+      extranodes += _insert_partition!(nodes, coeffsnew, specnew, specnew_dict,
                                        kk, p, ikk, coeffsN, specN, TI)
    end
 

@@ -39,14 +39,13 @@ dv = evaluate_d(V, Rs, Zs, z0)
 dvtr = evaluate_d(Vtr, Rs, Zs, z0)
 println(@test(dv ≈ dvtr))
 
-
-JuLIP.Testing.test_fio(Vtr)
+println(@test(all(JuLIP.Testing.test_fio(Vtr))))
 
 #---
 
 @info("Check several properties of GraphPIPot")
 for species in (:X, :Si, [:C, :O], [:C, :O, :H]), N = 1:5
-   local Rs, Zs, z0, v, vtr, V, Vtr, basis
+   local Rs, Zs, z0, v, vtr, V, Vtr, basis, Nat
    Nat = 15
    basis = SHIPs.Utils.rpi_basis(species = species, N = N, maxdeg = 10)
    Pr = basis.pibasis.basis1p.J
