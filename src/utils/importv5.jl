@@ -4,7 +4,7 @@ module Import
 
 using SHIPs, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
-using SHIPs: PIBasisFcn
+using SHIPs: PIBasisFcn, DAGEvaluator
 using SHIPs.RPI: BasicPSH1pBasis, PSH1pBasisFcn
 
 
@@ -134,7 +134,7 @@ function import_pipot_v05(D::Dict)
    # construct the inner PI basis from the specification
    inner = SHIPs.InnerPIBasis(spec1, pispec, AAindices, zlist.list[1])
    # ... and finally put it all together
-   pibasis = PIBasis(basis1p, zlist, (inner,))
+   pibasis = PIBasis(basis1p, zlist, (inner,), DAGEvaluator())
 
    # now the inner basis has sorted the basis functins so we need to
    # fix the permutation of the coefficients

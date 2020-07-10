@@ -1,8 +1,7 @@
 
 module DAG
 
-include("extimports.jl")
-include("shipimports.jl")
+import Base: ==, length
 
 using Combinatorics: combinations, partitions
 
@@ -16,11 +15,11 @@ struct CorrEvalGraph{T, TI}
    numstore::TI
 end
 
-Base.length(dag::CorrEvalGraph) = length(dag.nodes)
+length(dag::CorrEvalGraph) = length(dag.nodes)
 
 ==(dag1::CorrEvalGraph, dag2::CorrEvalGraph) = SHIPs._allfieldsequal(dag1, dag2)
 
-CorrEvalGraph{T, TI} where {T, TI} =
+CorrEvalGraph{T, TI}() where {T, TI} =
       CorrEvalGraph(Vector{BinDagNode{TI}}(undef, 0),
                     Vector{T}(undef, 0),
                     0, 0)
