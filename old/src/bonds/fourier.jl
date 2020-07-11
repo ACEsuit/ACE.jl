@@ -24,7 +24,7 @@ cyl_i2l(i, b::FourierBasis) = cyl_l2i(i, b.deg)
 
 FourierBasis(deg::Integer) = FourierBasis(deg, Float64)
 
-Base.eltype(::FourierBasis{T}) where {T} = T
+fltype(::FourierBasis{T}) where {T} = T
 Base.length(fB::FourierBasis) = 2 * fB.deg + 1
 
 write_dict(b::FourierBasis) =

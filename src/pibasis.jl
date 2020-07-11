@@ -207,7 +207,7 @@ cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
 ==(B1::PIBasis, B2::PIBasis) = SHIPs._allfieldsequal(B1, B2)
 
-Base.eltype(basis::PIBasis) = eltype(basis.basis1p)
+fltype(basis::PIBasis) = fltype(basis.basis1p)
 
 Base.length(basis::PIBasis) = sum(length(basis, iz) for iz = 1:numz(basis))
 Base.length(basis::PIBasis, iz0::Integer) = length(basis.inner[iz0])
@@ -325,7 +325,7 @@ end
 # Evaluation codes
 
 site_alloc_B(basis::PIBasis, args...) =
-      zeros( eltype(basis), maximum(length.(basis.inner)) )
+      zeros( fltype(basis), maximum(length.(basis.inner)) )
 
 alloc_temp(basis::PIBasis, args...) =
       ( A = alloc_B(basis.basis1p, args...),
@@ -364,7 +364,7 @@ site_alloc_dB(basis::PIBasis, Rs::AbstractVector, args...) =
    site_alloc_dB(basis, length(Rs))
 
 site_alloc_dB(basis::PIBasis, nmax::Integer) =
-      zeros( JVec{eltype(basis)}, maximum(length.(basis.inner)), nmax )
+      zeros( JVec{fltype(basis)}, maximum(length.(basis.inner)), nmax )
 
 alloc_temp_d(basis::PIBasis, Rs::AbstractVector, args...) =
    alloc_temp_d(basis, length(Rs))
@@ -474,14 +474,14 @@ end
 
 
 alloc_temp(::DAGEvaluator, basis::PIBasis) =
-   zeros(eltype(basis), maximum(inner.dag.numstore for inner in basis.inner))
+   zeros(fltype(basis), maximum(inner.dag.numstore for inner in basis.inner))
 
 
 function alloc_temp_d(::DAGEvaluator, basis::PIBasis,  nmax::Integer)
    maxstore = maximum(inner.dag.numstore for inner in basis.inner)
    return (
-      AA = zeros(eltype(basis), maxstore),
-      dAA = zeros(JVec{eltype(basis)}, maxstore, nmax)
+      AA = zeros(fltype(basis), maxstore),
+      dAA = zeros(JVec{fltype(basis)}, maxstore, nmax)
    )
 end
 
