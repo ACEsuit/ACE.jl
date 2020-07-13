@@ -30,5 +30,5 @@ import JuLIP: alloc_temp, alloc_temp_d,
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, combine
 
-import JuLIP.Potentials: ZList, SZList
+import JuLIP.Potentials: ZList, SZList, zlist 
 import JuLIP: JVec, AtomicNumber
