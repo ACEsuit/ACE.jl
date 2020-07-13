@@ -109,7 +109,7 @@ function PSH1pBasis(J::ScalarBasis, maxn;
       spec[iz, iz0] = _build_PSH_1p_spec(maxn_zz0, D, zlist.list)
       nls = sort( unique( [(n = b.n, l = b.l)  for b in spec[iz, iz0]] ) )
       nlmap[iz, iz0] = _build_nlmap(nls)
-      C[iz, iz0] = _init_radial_params(eltype(J), nlmap[iz, iz0], max_p)
+      C[iz, iz0] = _init_radial_params(fltype(J), nlmap[iz, iz0], max_p)
    end
    # now we can produce the
    return PSH1pBasis(J, zlist, spec, C, nlmap)
@@ -125,7 +125,7 @@ end
 function PSH1pBasis(J::ScalarBasis{T}, zlist::SZList, spec::AbstractMatrix,
                     C::AbstractMatrix, nlmap::AbstractMatrix) where {T}
    maxL = maximum( maximum(b.l for b in spec12)  for spec12 in spec )
-   SH = SHBasis(maxL, eltype(J))
+   SH = SHBasis(maxL, fltype(J))
    NZ = length(zlist)
    C = _smatrix(C)
    spec = _smatrix(spec)
@@ -226,15 +226,14 @@ end
 #  Evaluation code
 
 
-Base.eltype(basis::PSH1pBasis{T}) where T = Complex{T}
-reltype(basis::PSH1pBasis{T}) where T = T
-# eltype and length should provide automatic allocation of alloc_B, alloc_dB
+fltype(basis::PSH1pBasis{T}) where T = Complex{T}
+rfltype(basis::PSH1pBasis{T}) where T = T
 
 
 alloc_temp(basis::PSH1pBasis, args...) =
       (
         BJ = alloc_B(basis.J, args...),
-        BP = zeros(eltype(basis), _maxnl(basis)),
+        BP = zeros(fltype(basis), _maxnl(basis)),
         BY = alloc_B(basis.SH, args...),
         tmpJ = alloc_temp(basis.J, args...),
         tmpY = alloc_temp(basis.SH, args...),

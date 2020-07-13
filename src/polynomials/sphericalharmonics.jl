@@ -12,7 +12,7 @@ using StaticArrays, LinearAlgebra
 
 import SHIPs
 
-import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB
+import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, fltype
 import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!,
 			     write_dict, read_dict
 
@@ -482,8 +482,11 @@ SHBasis(maxL::Integer, T::Type=Float64) =
 RSHBasis(maxL::Integer, T::Type=Float64) =
 		RSHBasis(Int(maxL), compute_coefficients(maxL, T))
 
-Base.eltype(SH::AbstractSHBasis{T}) where {T} = T
+rfltype(SH::AbstractSHBasis{T}) where {T} = T
 Base.length(S::AbstractSHBasis) = sizeY(S.maxL)
+
+fltype(::SHBasis{T}) where {T} = Complex{T}
+fltype(::RSHBasis{T}) where {T} = T
 
 alloc_B( S::SHBasis{T}, args...) where {T} =
 		Vector{Complex{T}}(undef, length(S))

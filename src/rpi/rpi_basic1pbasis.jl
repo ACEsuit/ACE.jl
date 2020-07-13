@@ -150,9 +150,8 @@ end
 #  Evaluation code
 
 
-Base.eltype(basis::BasicPSH1pBasis{T}) where T = Complex{T}
-reltype(basis::BasicPSH1pBasis{T}) where T = T
-# eltype and length should provide automatic allocation of alloc_B, alloc_dB
+fltype(basis::BasicPSH1pBasis{T}) where T = Complex{T}
+rfltype(basis::BasicPSH1pBasis{T}) where T = T
 
 alloc_temp(basis::BasicPSH1pBasis, args...) =
       (

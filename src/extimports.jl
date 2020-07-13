@@ -33,7 +33,8 @@ import JuLIP: alloc_temp, alloc_temp_d,
               read_dict, write_dict,
               AbstractCalculator,
               Atoms,
-              chemical_symbol
+              chemical_symbol,
+              fltype, rfltype 
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, combine
 

@@ -36,7 +36,7 @@ cutoff(V::PIPotential) = cutoff(V.pibasis)
       (V1.pibasis == V2.pibasis) && (V1.coeffs == V2.coeffs)
 
 # TODO: this doesn't feel right ... should be real(T)?
-Base.eltype(::PIPotential{T}) where {T} = real(T)
+fltype(::PIPotential{T}) where {T} = real(T)
 
 zlist(V::PIPotential) = zlist(V.pibasis)
 
@@ -51,7 +51,8 @@ standardevaluator(V::PIPotential) =
 #   Initialisation code
 # ------------------------------------------------------------
 
-combine(basis::PIBasis, coeffs) = PIPotential(basis, coeffs)
+combine(basis::PIBasis, coeffs::AbstractVector) =
+      PIPotential(basis, identity.(collect(coeffs)))
 
 # assemble from basis with global coeff vector
 function PIPotential(basis::PIBasis, coeffs::Vector{<: Number})
@@ -158,7 +159,7 @@ end
 # TODO: generalise the R, Z, allocation
 alloc_temp_d(::StandardEvaluator, V::PIPotential{T}, N::Integer) where {T} =
       (
-      dAco = zeros(eltype(V.pibasis),
+      dAco = zeros(fltype(V.pibasis),
                    maximum(length(V.pibasis.basis1p, iz) for iz=1:numz(V))),
        tmpd_pibasis = alloc_temp_d(V.pibasis, N),
        dV = zeros(JVec{real(T)}, N),
@@ -224,7 +225,7 @@ alloc_temp(::DAGEvaluator, V::PIPotential{T}, maxN::Integer) where {T} =
    R = zeros(JVec{real(T)}, maxN),
    Z = zeros(AtomicNumber, maxN),
    tmp_basis1p = alloc_temp(V.pibasis.basis1p),
-   AA = zeros(eltype(V.pibasis.basis1p), _maxstore(V)),
+   AA = zeros(fltype(V.pibasis.basis1p), _maxstore(V)),
    A = alloc_B(V.pibasis.basis1p)
    )
 
@@ -241,7 +242,7 @@ function evaluate!(tmp, V::PIPotential, ::DAGEvaluator, Rs, Zs, z0)
 
    evaluate!(A, tmp.tmp_basis1p, V.pibasis.basis1p, Rs, Zs, z0)
 
-   Es = zero(eltype(V))
+   Es = zero(fltype(V))
    @inbounds for i = 1:dag.num1
       AAdag[i] = a = A[i]
       Es = muladd(vals[i], real(a), Es)
@@ -270,8 +271,8 @@ alloc_temp_d(::DAGEvaluator, V::PIPotential{T}, maxN::Integer) where {T} =
    Z = zeros(AtomicNumber, maxN),
     dV = zeros(JVec{real(T)}, maxN),
    tmpd_basis1p = alloc_temp_d(V.pibasis.basis1p),
-   AA = zeros(eltype(V.pibasis.basis1p), _maxstore(V)),
-   B = zeros(eltype(V.pibasis.basis1p), _maxstore(V)),
+   AA = zeros(fltype(V.pibasis.basis1p), _maxstore(V)),
+   B = zeros(fltype(V.pibasis.basis1p), _maxstore(V)),
    A = alloc_B(V.pibasis.basis1p),
    dA = alloc_dB(V.pibasis.basis1p)
     )

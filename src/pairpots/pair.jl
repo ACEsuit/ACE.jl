@@ -23,7 +23,8 @@ import JuLIP: evaluate!, evaluate_d!, cutoff,
               read_dict, write_dict,
               energy, forces, virial,
               alloc_temp, alloc_temp_d,
-              z2i, i2z, numz
+              z2i, i2z, numz,
+              fltype, rfltype
 
 
 import JuLIP.MLIPs: alloc_B, alloc_dB

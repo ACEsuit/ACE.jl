@@ -14,7 +14,8 @@ import LinearAlgebra: norm
 import SHIPs: ScalarBasis, ZList, rand_radial, scaling
 
 using Random: shuffle
-using JuLIP: JVecF, AbstractCalculator, rnn, chemical_symbol, bulk, rattle!
+using JuLIP: JVecF, AbstractCalculator, rnn, chemical_symbol, bulk, rattle!,
+             fltype, rfltype 
 using JuLIP.MLIPs: combine
 using JuLIP.Potentials: zlist, ZList, SZList
 using StaticArrays: @SMatrix
@@ -95,7 +96,7 @@ rand_sym(Rs, Zs) = rand_refl(rand_rot(rand_perm(Rs, Zs)...)...)
 
 function randcoeffs(basis; diff = 2)
    ww = scaling(basis, diff)
-   c = 2 * (rand(real(eltype(basis)), length(basis)) .- 0.5) ./ ww
+   c = 2 * (rand(rfltype(basis), length(basis)) .- 0.5) ./ ww
    return c / norm(c)
 end
 

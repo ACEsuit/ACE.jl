@@ -17,7 +17,7 @@ struct PolyPairBasis{TJ, NZ} <: IPBasis
    bidx0::SMatrix{NZ,NZ,Int}
 end
 
-Base.eltype(pB::PolyPairBasis) = eltype(pB.J)
+fltype(pB::PolyPairBasis) = fltype(pB.J)
 
 Base.length(pB::PolyPairBasis) = length(pB.J) * (numz(pB) * (numz(pB) + 1)) ÷ 2
 Base.length(pB::PolyPairBasis, z0::AtomicNumber) = length(pB, z2i(pB, z0))
