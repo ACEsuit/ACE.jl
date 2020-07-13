@@ -37,8 +37,8 @@ using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
 
     # ----------------------
     #   miscallaneous ...
-    include("test_compat.jl")
-
+    include("compat/test_compat_v05.jl")
+    include("compat/test_compat.jl")
 
     # ----------------------------------
     #    old tests to be re-introduced

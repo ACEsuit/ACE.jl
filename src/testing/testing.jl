@@ -25,6 +25,13 @@ include("testlsq.jl")
 
 # ---------- code for consistency tests
 
+test_basis(D::Dict) = SHIPs.Utils.rpi_basis(;
+               species = Symbol.(D["species"]), N = D["N"],
+               maxdeg = D["maxdeg"],
+               r0 = D["r0"], rcut = D["rcut"],
+               D = SHIPs.RPI.SparsePSHDegree(wL = D["wL"]) )
+
+
 _evaltest(::Val{:E}, V, at) = energy(V, at)
 _evaltest(::Val{:F}, V, at) = vec(forces(V, at))
 
