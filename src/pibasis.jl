@@ -244,7 +244,7 @@ function pibasis_from_specs(basis1p, innerspecs)
       push!(inner, InnerPIBasis(Aspec_z0, AAspec_z0, AAindices, z0))
       idx += length(AAspec_z0)
    end
-   return PIBasis(basis1p, basis1p.zlist, tuple(inner...), DAGEvaluator())
+   return PIBasis(basis1p, zlist(basis1p), tuple(inner...), DAGEvaluator())
 end
 
 
@@ -295,10 +295,10 @@ end
 
 
 graphevaluator(basis::PIBasis) =
-   PIBasis(basis.basis1p, basis.zlist, basis.inner, DAGEvaluator())
+   PIBasis(basis.basis1p, zlist(basis), basis.inner, DAGEvaluator())
 
 standardevaluator(basis::PIBasis) =
-   PIBasis(basis.basis1p, basis.zlist, basis.inner, StandardEvaluator())
+   PIBasis(basis.basis1p, zlist(basis), basis.inner, StandardEvaluator())
 
 
 

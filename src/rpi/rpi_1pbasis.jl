@@ -76,9 +76,11 @@ Base.length(basis::PSH1pBasis, z0::AtomicNumber) =
 Base.length(basis::PSH1pBasis, iz0::Integer) =
       sum(length(basis, iz, iz0) for iz = 1:numz(basis))
 
-i2z(basis::PSH1pBasis, i::Integer) = i2z(basis.zlist, i)
-z2i(basis::PSH1pBasis, z::AtomicNumber) = z2i(basis.zlist, z)
-numz(basis::PSH1pBasis) = length(basis.zlist)
+
+# TODO: delete after testing 
+# i2z(basis::PSH1pBasis, i::Integer) = i2z(basis.zlist, i)
+# z2i(basis::PSH1pBasis, z::AtomicNumber) = z2i(basis.zlist, z)
+# numz(basis::PSH1pBasis) = length(basis.zlist)
 
 # ----------------------------------------
 # basis construction

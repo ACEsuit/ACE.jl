@@ -26,9 +26,7 @@ Base.length(basis::RPIBasis) = sum(length(basis, iz0)
 
 Base.eltype(::RPIBasis{T}) where {T}  = T
 
-numz(basis::RPIBasis) = numz(basis.pibasis)
-i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
-z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
+zlist(basis::RPIBasis) = zlist(basis.pibasis)
 
 cutoff(basis::RPIBasis) = cutoff(basis.pibasis)
 
