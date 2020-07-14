@@ -14,14 +14,17 @@ import LinearAlgebra: norm
 import SHIPs: ScalarBasis, ZList, rand_radial, scaling
 
 using Random: shuffle
-using JuLIP: JVecF
+using JuLIP: JVecF, AbstractCalculator, rnn, chemical_symbol, bulk, rattle!,
+             fltype, rfltype 
 using JuLIP.MLIPs: combine
+using JuLIP.Potentials: zlist, ZList, SZList
 using StaticArrays: @SMatrix
 
-export rand_nhd, rand_sym, randcoeffs, randcombine
+export rand_nhd, rand_config, rand_sym, randcoeffs, randcombine
 
 # -------------------------------------------
-#   random configurations
+#   random neighbourhoods and  configurations
+
 # TODO: JVecF is hard-coded
 function rand_sphere()
    R = randn(JVecF)
@@ -41,6 +44,28 @@ function rand_nhd(Nat, J::ScalarBasis, species = :X)
    z0 = rand(zlist.list)
    return Rs, Zs, z0
 end
+
+
+rand_config(species; kwargs...) =
+      rand_config(ZList(species); kwargs...)
+
+rand_config(V::AbstractCalculator; kwargs...) =
+      rand_config(zlist(V); kwargs...)
+
+function rand_config(zlist::Union{ZList, SZList};
+                     absrattle = 0.0, relrattle = 0.2, repeat = 3,
+                     kwargs...)
+   # start with the longest rnn
+   rnns = rnn.(zlist.list)
+   sym = chemical_symbol( zlist.list[findmax(rnns)[2]] )
+   at = bulk(sym; kwargs...) * repeat
+   for n = 1:length(at)
+      at.Z[n] = rand(zlist.list)
+   end
+   rattle!(at, maximum(rnns) * relrattle + absrattle)
+   return at
+end
+
 
 # --------------------------------------------------------------
 # random operations on neighbourhoods, mostly for testing
@@ -71,7 +96,7 @@ rand_sym(Rs, Zs) = rand_refl(rand_rot(rand_perm(Rs, Zs)...)...)
 
 function randcoeffs(basis; diff = 2)
    ww = scaling(basis, diff)
-   c = 2 * (rand(real(eltype(basis)), length(basis)) .- 0.5) ./ ww
+   c = 2 * (rand(rfltype(basis), length(basis)) .- 0.5) ./ ww
    return c / norm(c)
 end
 

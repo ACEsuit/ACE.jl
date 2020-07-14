@@ -87,12 +87,5 @@ function forces(V::ToyModel, at::Atoms)
 end
 
 
-function rand_config(V; rattle = 0.4, nrepeat = 3)
-   at = bulk(:Fe, cubic=true, pbc=false) * nrepeat
-   for n = 1:length(at)
-      at.Z[n] = rand(V.zlist.list)
-   end
-   return rattle!(at, rattle)
-end
 
 Base.rand(V::ToyModel; kwargs...) = rand_config(V; kwargs...)

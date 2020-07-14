@@ -59,9 +59,9 @@ end
 
 Base.length(basis::EnvPairBasis) = length(basis.aalist)
 
-Base.eltype(basis::EnvPairBasis) = Complex{Float64}   # eltype(basis.Pr)
+fltype(basis::EnvPairBasis) = Complex{Float64}   # fltype(basis.Pr)
 
-alloc_B(basis::EnvPairBasis, args...) = zeros(eltype(basis), length(basis))
+alloc_B(basis::EnvPairBasis, args...) = zeros(fltype(basis), length(basis))
 
 alloc_temp(basis::EnvPairBasis, args...) =
    ( P0 = alloc_B(basis.P0),

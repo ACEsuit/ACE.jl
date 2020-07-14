@@ -21,7 +21,7 @@ end
 PolyPairPot(pB::PolyPairBasis, coeffs::Vector) = PolyPairPot(coeffs, pB)
 
 JuLIP.MLIPs.combine(pB::PolyPairBasis, coeffs::AbstractVector) =
-            PolyPairPot(collect(coeffs), pB)
+            PolyPairPot(identity.(collect(coeffs)), pB)
 
 JuLIP.cutoff(V::PolyPairPot) = cutoff(V.basis)
 

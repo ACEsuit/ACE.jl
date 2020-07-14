@@ -24,11 +24,9 @@ Base.length(basis::RPIBasis, iz0::Integer) = size(basis.A2Bmaps[iz0], 1)
 Base.length(basis::RPIBasis) = sum(length(basis, iz0)
                                     for iz0 = 1:numz(basis.pibasis))
 
-Base.eltype(::RPIBasis{T}) where {T}  = T
+fltype(::RPIBasis{T}) where {T}  = T
 
-numz(basis::RPIBasis) = numz(basis.pibasis)
-i2z(basis::RPIBasis, i::Integer) = i2z(basis.pibasis, i)
-z2i(basis::RPIBasis, z::AtomicNumber) = z2i(basis.pibasis, z)
+zlist(basis::RPIBasis) = zlist(basis.pibasis)
 
 cutoff(basis::RPIBasis) = cutoff(basis.pibasis)
 
@@ -104,7 +102,7 @@ function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
                          pibasis::PIBasis,
                          iz0)
    # allocate triplet format
-   Irow, Jcol, vals = Int[], Int[], real(eltype(pibasis.basis1p))[]
+   Irow, Jcol, vals = Int[], Int[], real(fltype(pibasis.basis1p))[]
    # count the number of PI basis functions = number of rows
    idxB = 0
    # loop through all (zz, kk, ll) tuples; each specifies 1 to several B
