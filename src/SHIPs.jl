@@ -15,7 +15,7 @@ using Reexport
 include("extimports.jl")
 
 
-include("aux.jl")
+include("auxiliary.jl")
 include("prototypes.jl")
 
 
