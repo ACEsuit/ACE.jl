@@ -12,14 +12,19 @@ JULIA=$1
 shift
 
 echo "Using Julia binary $JULIA"
-echo "Run regressions.jl at HEAD which is at $HEAD"
+echo "Make temporary copy of regressions.jl"
+cp regressions.jl _4u10r39s_.jl
+
+echo "Run regressions at HEAD which is at $HEAD; this also generates the tests"
+$JULIA -O3 --color=yes _4u10r39s_.jl
 
 for var in "$@"
 do
    echo "Checkout $var"
-   git checkout $var
+   git checkout -q $var
    echo "Run regressions.jl at $var"
-   $JULIA regressions.jl
+   $JULIA -O3 --color=yes _4u10r39s_.jl
 done
 
-git checkout $HEAD
+git checkout -q $HEAD
+rm _4u10r39s_.jl
