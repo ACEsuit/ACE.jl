@@ -39,8 +39,9 @@ Most of the time the regression tests will always be the same. In this case the 
 ```
 autoregressions j15 v0.7.0 v0.6.5
 ```
-will run exactly the sequence of commands above, with a few safety checks.s
+will run exactly the sequence of commands above, with a few safety checks.
 
+But this doesn't always work since the version restrictions are not always tidy. As a semi-automated way there is a script `runregressions.sh` which can be edited to provide more fine-grained control.
 
 
 ### Analysing the regression data
