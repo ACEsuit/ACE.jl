@@ -50,7 +50,7 @@ function alloc_B(basis::OneParticleBasis, args...)
    NZ = numz(basis)
    maxlen = maximum( sum( length(basis, iz, iz0) for iz = 1:NZ )
                      for iz0 = 1:NZ )
-   T = eltype(basis)
+   T = fltype(basis)
    return zeros(T, maxlen)
 end
 
@@ -64,7 +64,7 @@ function alloc_dB(basis::OneParticleBasis, maxN::Integer)
    NZ = numz(basis)
    maxlen = maximum( sum( length(basis, iz, iz0) for iz = 1:NZ )
                      for iz0 = 1:NZ )
-   T = eltype(basis)
+   T = fltype(basis)
    return zeros(JVec{T}, (maxlen, maxN))
 end
 
