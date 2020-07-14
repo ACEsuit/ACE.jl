@@ -34,13 +34,13 @@ if isfile(testfile)
 end
 
 # generate the set of parameters
-degrees = Dict(2 => [6, 7, 8],
-               3 => [7, 9, 11],
-               4 => [8, 10, 12])
-# degrees = Dict(2 => [8, 13, 18],
-#                4 => [8, 13, 18],
-#                6 => [10, 16, 18]),
-#                8 => [10, 13, 16])
+# degrees = Dict(2 => [6, 7, 8],
+#                3 => [7, 9, 11],
+#                4 => [8, 10, 12])
+degrees = Dict(2 => [8, 13, 18],
+               4 => [8, 13, 18],
+               6 => [10, 16, 18]),
+               8 => [10, 13, 16])
 species = ["Si"]
 r0 = rnn(:Si)
 rcuts = [5.5, ]
