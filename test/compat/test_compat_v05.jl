@@ -49,7 +49,7 @@ end
 ##
 
 # a randomly generated single-species potential
-fname = @__DIR__() * "/models/v05/randship_v05.json"
+fname = dirname(pathof(SHIPs))[1:end-3] * "test/models/v05/randship_v05.json"
 D = load_dict(fname)
 V = SHIPs.Import.import_pipot_v05(D)
 compat_tests(V, D["rtests"], D["tests"])
