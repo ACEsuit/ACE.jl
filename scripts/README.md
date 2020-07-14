@@ -41,7 +41,9 @@ autoregressions j15 v0.7.0 v0.6.5
 ```
 will run exactly the sequence of commands above, with a few safety checks.
 
-But this doesn't always work since the version restrictions are not always tidy. As a semi-automated way there is a script `runregressions.sh` which can be edited to provide more fine-grained control.
+But this doesn't always work since the version restrictions are not always tidy. As a semi-automated way there is a script `runregressions.sh` which can be edited to provide more fine-grained control. This seems to work well in practise.
 
 
 ### Analysing the regression data
+
+Running `scripts/show_regressions.jl` will print a regressions report, first some general statistics and then all tests where a measurement fell outside the tolerance.
