@@ -3,33 +3,26 @@
 
 @info("Testset Clebsch-Gordan")
 
-##
+#---
 
 using PyCall, Test, SHIPs, SHIPs.SphericalHarmonics, JuLIP.Testing, StaticArrays
 using JuLIP: evaluate
 using SHIPs.SphericalHarmonics: index_y
 using SHIPs.RPI.Rotations3D: ClebschGordan
 
-##
+#---
 
-imported_sympy = true
 
 try
 	sympy = pyimport("sympy")
 	spin = pyimport("sympy.physics.quantum.spin")
-catch e
-	@info "sympy didn't import"
-	imported_sympy = false
-end
 
-if(imported_sympy)
 
 	pycg(j1, m1, j2, m2, j3, m3, T=Float64) =
       		spin.CG(j1, m1, j2, m2, j3, m3).doit().evalf().__float__()
 
 	cg = ClebschGordan()
 
-	##
 
 	@info("compare implementation against `sympy`")
 	let ntest = 0
@@ -83,8 +76,11 @@ if(imported_sympy)
 	end
 	println()
 
+
+catch e   # try importing some python packages
+	@warn "sympy didn't import, No Clebsch-Gordan tests are running"
 end
 
-##
+#---
 
 end # @testset
