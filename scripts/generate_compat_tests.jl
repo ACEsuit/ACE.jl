@@ -14,7 +14,7 @@ species_list = [ [:Si], [:Al, :Ti] ] #, [:C, :O, :H] ]
 degrees = [ 15, 14, 13, 12, 11, 12 ]
 wLs = [ 1.5, 1.4, 1.3, 1.6, 1.55, 1.62 ]
 
-zipname = dirname(pathof(ACE))[1:end-3] * "test/models/v07_compat.zip"
+zipname = dirname(pathof(ACE))[1:end-3] * "test/models/v08_compat.zip"
 zipdir = ZipFile.Writer(zipname)
 
 @info("Exporting several test basis sets and test potentials.")

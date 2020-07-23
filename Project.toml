@@ -1,6 +1,6 @@
 name = "ACE"
-uuid = "07029e18-8f70-11e9-35ce-2d4df590abdc"
-version = "0.7.1"
+uuid = "3e8ccfd2-c8b0-11ea-32f1-f3a5990fd77a"
+version = "0.8.0"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
@@ -23,18 +23,17 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 
 [compat]
-JuLIP = "0.9.8"
+JuLIP = "0.9.9"
 NeighbourLists = "0.5.1"
 julia = "1.4"
 
 [extras]
-ASE = "51974c44-a7ed-5088-b8be-3e78c8ba416c"
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "PyCall", "BenchmarkTools", "ASE", "Random", "SymPy", "ForwardDiff"]
+test = ["Test", "PyCall", "SymPy", "ForwardDiff", "Pkg"]

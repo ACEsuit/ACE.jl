@@ -1,0 +1,7 @@
+["acedata_v0.8.1"]
+git-tree-sha1 = "23a2e3400188336105a4e47c31cdb7ce95a104cb"
+lazy = true
+
+    [["acedata_v0.8.1".download]]
+    sha256 = "91305df8a0b0572630b9be4b2f3b7e16fc14b2683182e25f18a338036eac0305"
+    url = "https://github.com/ACEsuit/ACEData/archive/v0.8.1.tar.gz"
