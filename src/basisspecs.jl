@@ -82,6 +82,8 @@ struct SparseSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
    filterfcn
 end
 
+
+
 get_filter(spec::SparseSHIP) = spec.filterfcn
 
 ==(s1::SparseSHIP, s2::SparseSHIP) =
@@ -161,6 +163,51 @@ convert(::Val{:SHIPs_SparseSHIP}, D::Dict) =
                  wL = D["wL"], csp = D["csp"],
                  chc = D["chc"], ahc = D["ahc"], bhc = D["bhc"] )
 
+
+
+struct TensorSHIP{BO, NZ} <: AnalyticBasisSpec{BO, NZ}
+   lmax::IntS
+   nmax::IntS
+   # --------------------
+   Zs::NTuple{NZ, Int16}
+   valbo::Val{BO}
+   z2i::Dict{Int16, Int16}
+   # --------------------
+   filterfcn
+end
+
+get_filter(spec::TensorSHIP) = spec.filterfcn
+
+TensorSHIP(bo::Integer, lmax::Integer, nmax::Integer; kwargs...) =
+      TensorSHIP(:X, bo, lmax, nmax; kwargs...)
+
+function TensorSHIP(Zs, bo::Integer, lmax::Integer, nmax::Integer;
+                    filterfcn = _ -> true)
+   @assert lmax > 2
+   @assert nmax > 2
+   @assert bo >= 1
+   Zs = _convert_Zs(Zs)
+   z2i = Dict([ Int16(z) => Int16(i) for (i, z) in enumerate(Zs) ]...)
+   return TensorSHIP(IntS(lmax), IntS(nmax), Zs, Val(bo), z2i,
+                     filterfcn )
+end
+
+
+deg(D::TensorSHIP, k::Integer, l::Integer) = max(k, l)
+
+deg(D::TensorSHIP, kk::VecOrTup, ll::VecOrTup) = maximum( deg.(Ref(D), kk, ll) )
+
+maxK(D::TensorSHIP) = D.nmax
+
+maxL(D::TensorSHIP{1}, k::Integer = 0) = 0
+
+maxL(D::TensorSHIP, k::Integer = 0) = D.lmax
+
+admissible(D::TensorSHIP, k::Number, l::Number) =
+      (k <= D.nmax) && (l <= D.lmax)
+
+admissible(D::TensorSHIP, k::VecOrTup, l::VecOrTup) =
+      (maximum(k) <= D.nmax) && (maximum(l) <= D.lmax)
 
 
 # ---------------------------------------------------------------

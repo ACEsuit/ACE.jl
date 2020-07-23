@@ -37,8 +37,11 @@ tensor products `Pk * Ylm` such that `k + wY * l ≦ deg`.
 function SHIPDescriptor(species = :X;
                         bodyorder=3, deg=nothing,
                         rcut=nothing, r0=2.5, p=2,
+                        spec = nothing,
                         kwargs... )
-   spec = SparseSHIP(species, bodyorder-1, deg; kwargs...)
+   if spec == nothing
+      spec = SparseSHIP(species, bodyorder-1, deg; kwargs...)
+   end
    trans = PolyTransform(p, r0)
    fcut = PolyCutoff1s(2, rcut)
    return SHIPBasis(spec, trans, fcut)

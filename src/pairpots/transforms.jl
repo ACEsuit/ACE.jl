@@ -192,6 +192,10 @@ Dict(J::TransformedJacobi) = Dict(
       "ru" => J.ru,
       "trans" => Dict(J.trans),
       "cutoff" => Dict(J.mult),
+      "jacobicoeffs" => Dict("A" => J.J.A,
+                             "B" => J.J.B,
+                             "C" => J.J.C,
+                             "nrm" => J.J.nrm)
    )
 
 TransformedJacobi(D::Dict) =
@@ -201,7 +205,6 @@ TransformedJacobi(D::Dict) =
       decode_dict(D["cutoff"]),
       D["rl"],
       D["ru"]
-
    )
 
 convert(::Val{:SHIPs_TransformedJacobi}, D::Dict) = TransformedJacobi(D)
