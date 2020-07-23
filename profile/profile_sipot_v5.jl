@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs, JuLIP, BenchmarkTools
+using ACE, JuLIP, BenchmarkTools
 
 #---
 

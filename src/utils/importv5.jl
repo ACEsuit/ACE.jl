@@ -9,15 +9,15 @@
 module Import
 
 
-using SHIPs, JuLIP, JuLIP.Testing
+using ACE, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
-using SHIPs: PIBasisFcn, DAGEvaluator
-using SHIPs.RPI: BasicPSH1pBasis, PSH1pBasisFcn
+using ACE: PIBasisFcn, DAGEvaluator
+using ACE.RPI: BasicPSH1pBasis, PSH1pBasisFcn
 
 
 function import_rbasis_v05(D, rtests = [])
    @assert D["__id__"] == "SHIPs_TransformedJacobi"
-   trans = SHIPs.Transforms.PolyTransform(D["trans"])
+   trans = ACE.Transforms.PolyTransform(D["trans"])
    ru, rl = D["ru"], D["rl"]
    tu, tl = trans(ru), trans(rl)
    cutoff_id = D["cutoff"]["__id__"]
@@ -63,9 +63,9 @@ function import_rbasis_v05(D, rtests = [])
    Ct = Cn
    At[1] = An[1] * a^(pl+pr)
 
-   Jt = SHIPs.OrthPolys.OrthPolyBasis(pl, tl, pr, tr, At, Bt, Ct,
+   Jt = ACE.OrthPolys.OrthPolyBasis(pl, tl, pr, tr, At, Bt, Ct,
                                       Float64[], Float64[])
-   Jr = SHIPs.OrthPolys.TransformedPolys(Jt, trans, rl, ru)
+   Jr = ACE.OrthPolys.TransformedPolys(Jt, trans, rl, ru)
 
    if !isempty(rtests) > 0
       r = rtests[1]["r"]
@@ -139,7 +139,7 @@ function import_pipot_v05(D::Dict)
    # build a naive index allocation (we have only one species!!)
    AAindices = 1:length(pispec)
    # construct the inner PI basis from the specification
-   inner = SHIPs.InnerPIBasis(spec1, pispec, AAindices, zlist.list[1])
+   inner = ACE.InnerPIBasis(spec1, pispec, AAindices, zlist.list[1])
    # ... and finally put it all together
    pibasis = PIBasis(basis1p, zlist, (inner,), DAGEvaluator())
 

@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+
 # -----------------------------------------------------------------------------
 # modules external to our own eco-system, rigorously separate using and import
 
@@ -20,7 +21,7 @@ using LinearAlgebra: norm, dot, mul!, I
 using StaticArrays
 
 # -----------------------------------------------------------------------------
-# JuLIP, SHIPs, etc : just use import throughout, this avoids bugs
+# JuLIP, ACE, etc : just use import throughout, this avoids bugs
 
 import JuLIP
 
@@ -34,9 +35,9 @@ import JuLIP: alloc_temp, alloc_temp_d,
               AbstractCalculator,
               Atoms,
               chemical_symbol,
-              fltype, rfltype 
+              fltype, rfltype
 
 import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, combine
 
-import JuLIP.Potentials: ZList, SZList, zlist 
+import JuLIP.Potentials: ZList, SZList, zlist
 import JuLIP: JVec, AtomicNumber

@@ -6,10 +6,10 @@
 # --------------------------------------------------------------------------
 
 
-using StaticArrays, SHIPs, BenchmarkTools, LinearAlgebra
-using SHIPs.SphericalHarmonics
-SH = SHIPs.SphericalHarmonics
-using SHIPs: alloc_temp, alloc_temp_d, alloc_B, alloc_dB, evaluate!, evaluate_d!
+using StaticArrays, ACE, BenchmarkTools, LinearAlgebra
+using ACE.SphericalHarmonics
+SH = ACE.SphericalHarmonics
+using ACE: alloc_temp, alloc_temp_d, alloc_B, alloc_dB, evaluate!, evaluate_d!
 
 @info("Spherical Harmonics Evaluation")
 
@@ -20,7 +20,7 @@ suite = BenchmarkGroup()
 # (@benchmark runmany!($Y, $tmp, $basis, 100)) |> display
 # @btime runmany!($Y, $tmp, $basis, 100)
 #
-# R = SHIPs.rand_sphere()
+# R = ACE.rand_sphere()
 # @btime evaluate!($Y, $tmp, $basis, $R)
 
 R = JVecF(0.4, 0.7, -0.9)

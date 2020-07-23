@@ -10,7 +10,7 @@
 # l : θ-degree
 # m : z-degree
 
-import SHIPs: alloc_B, alloc_dB
+import ACE: alloc_B, alloc_dB
 import Base: ==
 import JuLIP: evaluate!, evaluate_d!,
               alloc_temp, alloc_temp_d,
@@ -34,7 +34,7 @@ symmetries:
 
 ### Construction
 
-Use `SHIPs.Bonds.envpairbasis` to construct a basis.
+Use `ACE.Bonds.envpairbasis` to construct a basis.
 
 ### Evaluation
 
@@ -175,14 +175,14 @@ end
 import JuLIP: write_dict, read_dict
 
 write_dict(b::EnvPairBasis) =
-      Dict( "__id__" => "SHIPs_EnvPairBasis",
+      Dict( "__id__" => "ACE_EnvPairBasis",
             "P0"     => write_dict(b.P0),
             "Pr"     => write_dict(b.Pr),
             "Ptheta" => write_dict(b.Pθ),
             "Pz"     => write_dict(b.Pz),
             "aalist" => write_dict(b.aalist) )
 
-read_dict(::Val{:SHIPs_EnvPairBasis}, D::Dict) =
+read_dict(::Val{:ACE_EnvPairBasis}, D::Dict) =
       EnvPairBasis(read_dict(D["P0"]),
                    read_dict(D["Pr"]),
                    read_dict(D["Ptheta"]),
@@ -190,12 +190,12 @@ read_dict(::Val{:SHIPs_EnvPairBasis}, D::Dict) =
                    read_dict(D["aalist"]))
 
 write_dict(V::EnvPairPot) =
-      Dict( "__id__" => "SHIPs_EnvPairPot",
+      Dict( "__id__" => "ACE_EnvPairPot",
             "basis" => write_dict(V.basis),
             "cr" => real.(V.c),
             "ci" => imag.(V.c) )
 
-read_dict(::Val{:SHIPs_EnvPairPot}, D::Dict) =
+read_dict(::Val{:ACE_EnvPairPot}, D::Dict) =
       EnvPairPot( read_dict(D["basis"]),
                   D["cr"] + im * D["ci"] )
 

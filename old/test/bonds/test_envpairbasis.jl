@@ -19,10 +19,10 @@ using JuLIP.Testing: print_tf
 using JuLIP: alloc_temp
 using JuLIP.FIO: read_dict, write_dict, load_dict, save_dict
 
-using SHIPs
+using ACE
 using JuLIP: evaluate!, evaluate, evaluate_d!
-using SHIPs: alloc_B, alloc_dB
-using SHIPs.Bonds: envpairbasis
+using ACE: alloc_B, alloc_dB
+using ACE.Bonds: envpairbasis
 
 ##
 

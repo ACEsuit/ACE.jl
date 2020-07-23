@@ -7,7 +7,7 @@
 
 
 
-import SHIPs
+import ACE
 import Base: ==, convert, Dict, vec
 import JuLIP.FIO: read_dict, write_dict
 
@@ -56,11 +56,11 @@ _inttype(b::StaticArray{DIMS, TI}) where {DIMS, TI <: Integer} = TI
 
 # --------------(de-)serialisation----------------------------------------
 write_dict(alist::BondAList{TI}) where {TI} =
-      Dict( "__id__" => "SHIPs_BondAList",
+      Dict( "__id__" => "ACE_BondAList",
             "TI"     => string(TI),
             "i2krθz" => vec.(alist.i2krθz))
 
-read_dict(::Val{:SHIPs_BondAList}, D::Dict) =
+read_dict(::Val{:ACE_BondAList}, D::Dict) =
       BondAList( Bond1ParticleFcn.(D["i2krθz"],
                  Meta.eval(Meta.parse(D["TI"])))  )
 
@@ -130,7 +130,7 @@ end
 
 Base.length(b::BondBasisFcnIdx) = length(b.kkrθz)
 
-SHIPs.bodyorder(b::BondBasisFcnIdx{N}) where {N} = N
+ACE.bodyorder(b::BondBasisFcnIdx{N}) where {N} = N
 
 BondBasisFcnIdx(k0::Integer, ainds::AbstractVector) =
       BondBasisFcnIdx(k0, tuple(ainds...))
@@ -217,13 +217,13 @@ end
 # --------------(de-)serialisation----------------------------------------
 
 write_dict(aalist::BondAAList) =
-      Dict( "__id__" => "SHIPs_BondAAList",
+      Dict( "__id__" => "ACE_BondAAList",
             "alist"  => write_dict(aalist.alist),
             "i2Aidx" => write_dict(aalist.i2Aidx),
             "i2k0"   => aalist.i2k0,
             "len"    => aalist.len )
 
-function read_dict(::Val{:SHIPs_BondAAList}, D::Dict)
+function read_dict(::Val{:ACE_BondAAList}, D::Dict)
    alist = read_dict(D["alist"])
    TI = _inttype(alist)
    i2Aidx = read_dict(D["i2Aidx"])::Matrix{TI}

@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs, JuLIP, BenchmarkTools
+using ACE, JuLIP, BenchmarkTools
 using JuLIP: alloc_temp, alloc_temp_d
 
 trans = PolyTransform(2, 1.0)
@@ -21,24 +21,24 @@ z0 = 0
 
 @info("profile `precompute_A!`")
 tmp = alloc_temp(ships[1], NR)
-@btime SHIPs.precompute_A!($tmp, $(ships[1]), $Rs, $Zs)
-@btime SHIPs.precompute_A!($tmp, $(ships[1]), $Rs, $Zs)
+@btime ACE.precompute_A!($tmp, $(ships[1]), $Rs, $Zs)
+@btime ACE.precompute_A!($tmp, $(ships[1]), $Rs, $Zs)
 @info("profile `precompute_grads!`")
 tmpd = alloc_temp_d(ships[1], NR)
-@btime SHIPs.precompute_grads!($tmpd, $(ships[1]), $Rs, $Zs)
-@btime SHIPs.precompute_grads!($tmpd, $(ships[1]), $Rs, $Zs)
+@btime ACE.precompute_grads!($tmpd, $(ships[1]), $Rs, $Zs)
+@btime ACE.precompute_grads!($tmpd, $(ships[1]), $Rs, $Zs)
 
 
 @info("profile basis computation")
 for n = 2:4
    @info("  body-order $(n+1):")
    🚢 = ships[n-1]
-   B = SHIPs.alloc_B(🚢)
+   B = ACE.alloc_B(🚢)
    @info("     evaluate:")
    @btime evaluate!($B, $tmp, $🚢, $Rs, $Zs, $z0)
    @btime evaluate!($B, $tmp, $🚢, $Rs, $Zs, $z0)
    @info("     evaluate_d:")
-   dB = SHIPs.alloc_dB(🚢, Rs)
+   dB = ACE.alloc_dB(🚢, Rs)
    @btime evaluate_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
    @btime evaluate_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
 end
@@ -46,14 +46,14 @@ end
 # ##
 # using Profile
 # 🚢 = ships[2]
-# B = SHIPs.alloc_B(🚢)
-# dB = SHIPs.alloc_dB(🚢, Rs)
+# B = ACE.alloc_B(🚢)
+# dB = ACE.alloc_dB(🚢, Rs)
 # @btime evaluate!($B, $tmp, $🚢, $Rs, $Zs, $z0)
 # @btime evaluate_d!($B, $dB, $tmpd, $🚢, $Rs, $Zs, $z0)
 #
-# @code_warntype SHIPs._evaluate!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
+# @code_warntype ACE._evaluate!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
 #
-# SHIPs._evaluate!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
+# ACE._evaluate!(B, tmp, 🚢, Val{3}(), 1, 🚢.NuZ[3,1])
 #
 # ##
 #

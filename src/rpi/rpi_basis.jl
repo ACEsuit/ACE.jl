@@ -6,7 +6,8 @@
 # --------------------------------------------------------------------------
 
 
-import SHIPs: standardevaluator, graphevaluator
+
+import ACE: standardevaluator, graphevaluator
 using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: mul!
 
@@ -45,11 +46,15 @@ graphevaluator(basis::RPIBasis) =
 ==(B1::RPIBasis, B2::RPIBasis) = (B1.pibasis == B2.pibasis)
 
 write_dict(basis::RPIBasis) = Dict(
-      "__id__" => "SHIPs_RPIBasis",
+      "__id__" => "ACE_RPIBasis",
       "pibasis" => write_dict(basis.pibasis),
    )
 
+
 read_dict(::Val{:SHIPs_RPIBasis}, D::Dict) =
+   read_dict(Val{:ACE_RPIBasis}(), D)
+
+read_dict(::Val{:ACE_RPIBasis}, D::Dict) =
    RPIBasis(read_dict(D["pibasis"]))
 
 # ------------------------------------------------------------------------
@@ -126,7 +131,7 @@ function _rpi_A2B_matrix(rotc::Rot3DCoeffs,
             # permutation-invariant basis functions. This means we will
             # add the same PI basis function several times, but in the call to
             # `sparse` the values will just be added.
-            bcol_ordered = SHIPs._get_ordered(pibasis, bcol)
+            bcol_ordered = ACE._get_ordered(pibasis, bcol)
             idxAA = pibasis.inner[iz0].b2iAA[bcol_ordered]
             push!(Irow, idxB)
             push!(Jcol, idxAA)

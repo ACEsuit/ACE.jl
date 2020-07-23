@@ -11,7 +11,7 @@
 #---
 
 
-using SHIPs, Random
+using ACE, Random
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 
@@ -26,15 +26,15 @@ r0 = 1.0
 rcut = 3.0
 trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-D = SHIPs.SparsePSHDegree()
-P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X, D = D)
+D = ACE.SparsePSHDegree()
+P1 = ACE.BasicPSH1pBasis(Pr; species = :X, D = D)
 
-dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg)
+dagbasis = ACE.PIBasis(P1, ord, D, maxdeg)
 basis = standardevaluator(dagbasis)
 
 # check single-species
 Nat = 15
-Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
+Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, :X)
 AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 
@@ -54,10 +54,10 @@ maxdeg = 5
 ord = 3
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
-P1 = SHIPs.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
-dagbasis = SHIPs.PIBasis(P1, ord, D, maxdeg)
+P1 = ACE.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
+dagbasis = ACE.PIBasis(P1, ord, D, maxdeg)
 basis = standardevaluator(dagbasis)
-Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
 AA = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(AA)))
 dAA = evaluate_d(basis, Rs, Zs, z0)
@@ -79,8 +79,8 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    local AA, AAdag, dAA, dAAdag, dagbasis, basis, Rs, Zs, z0
    maxdeg = 7
    Nat = 15
-   P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
-   dagbasis = SHIPs.PIBasis(P1, N, D, maxdeg)
+   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   dagbasis = ACE.PIBasis(P1, N, D, maxdeg)
    basis = standardevaluator(dagbasis)
    @info("species = $species; N = $N; length = $(length(basis))")
    @info("test (de-)serialisation")
@@ -88,7 +88,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    println(@test all(JuLIP.Testing.test_fio(dagbasis)))
    @info("Check Permutation invariance")
    for ntest = 1:20
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
       p = randperm(length(Rs))
       print_tf(@test(evaluate(basis, Rs, Zs, z0) ≈
                      evaluate(basis, Rs[p], Zs[p], z0)))
@@ -96,7 +96,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    println()
    @info("Check gradients")
    for ntest = 1:20
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
       AA = evaluate(basis, Rs, Zs, z0)
       dAA = evaluate_d(basis, Rs, Zs, z0)
       Us = [ rand(eltype(Rs)) .- 0.5 for _=1:length(Rs) ]
@@ -116,7 +116,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    println()
    @info("Check Standard=DAG Evaluator")
    for ntest = 1:20
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
       AA = evaluate(basis, Rs, Zs, z0)
       AAdag = evaluate(dagbasis, Rs, Zs, z0)
       print_tf(@test AA ≈ AAdag)

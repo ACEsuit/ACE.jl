@@ -7,13 +7,13 @@
 
 
 
-using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra
-using SHIPs: _mrange
+using ACE, ACE.SphericalHarmonics, StaticArrays, LinearAlgebra
+using ACE: _mrange
 
 module RotationCoeffs
 
-   using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra
-   using SHIPs: _mrange
+   using ACE, ACE.SphericalHarmonics, StaticArrays, LinearAlgebra
+   using ACE: _mrange
 
    struct Rot3DCoeffs{NMAX}
       vals::SVector{NMAX, Dict}

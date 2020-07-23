@@ -9,7 +9,7 @@
 
 ##
 
-using SHIPs, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
+using ACE, JuLIP, BenchmarkTools, LinearAlgebra, Test, Random, StaticArrays
 using JuLIP
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Testing
@@ -23,26 +23,26 @@ randcoeffs(B) = rand(length(B)) .* (1:length(B)).^(-2)
 
 ##
 @info("Generate a basis")
-basis = SHIPs.Utils.TestBasis(6,13)
+basis = ACE.Utils.TestBasis(6,13)
 @show length(basis)
 @info("Convert to the SHIP")
 ship = SHIP(basis, randcoeffs(basis))
 @info("Compress the coefficients")
-shipc = SHIPs.compressA(ship)
+shipc = ACE.compressA(ship)
 @info("check the lengths")
 length(ship.coeffs[1])
 length(shipc.coeffs[1])
 
 @info("Evaluation test")
-Rs = SHIPs.rand_vec(ship.J, 30)
+Rs = ACE.rand_vec(ship.J, 30)
 Zs = zeros(Int16, length(Rs))
 z0 = 0
-tmp = SHIPs.alloc_temp(ship, length(Rs))
-tmp_d = SHIPs.alloc_temp_d(ship, length(Rs))
+tmp = ACE.alloc_temp(ship, length(Rs))
+tmp_d = ACE.alloc_temp_d(ship, length(Rs))
 dEs = zeros(JVecF, 30)
 @info("  evaluate!:")
-@btime SHIPs.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
-@btime SHIPs.evaluate!($tmp, $shipc, $Rs, $Zs, $z0)
+@btime ACE.evaluate!($tmp, $ship, $Rs, $Zs, $z0)
+@btime ACE.evaluate!($tmp, $shipc, $Rs, $Zs, $z0)
 @info("  evaluate_d!:")
-@btime SHIPs.evaluate_d!($dEs, $tmp_d, $ship, $Rs, $Zs, $z0)
-@btime SHIPs.evaluate_d!($dEs, $tmp_d, $shipc, $Rs, $Zs, $z0)
+@btime ACE.evaluate_d!($dEs, $tmp_d, $ship, $Rs, $Zs, $z0)
+@btime ACE.evaluate_d!($dEs, $tmp_d, $shipc, $Rs, $Zs, $z0)

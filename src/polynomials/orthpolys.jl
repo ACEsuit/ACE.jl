@@ -6,17 +6,18 @@
 # --------------------------------------------------------------------------
 
 
+
 module OrthPolys
 
 using SparseArrays
 using LinearAlgebra: dot
 
-import JuLIP: evaluate!, evaluate_d!, JVec, cutoff, fltype 
+import JuLIP: evaluate!, evaluate_d!, JVec, cutoff, fltype
 import JuLIP.FIO: read_dict, write_dict
 import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
-import SHIPs
-using SHIPs.Transforms: DistanceTransform, transform, transform_d,
+import ACE
+using ACE.Transforms: DistanceTransform, transform, transform_d,
                         inv_transform
 
 import Base: ==
@@ -45,7 +46,7 @@ function _fcut_d_(pl, tl, pr, tr, t)
 end
 
 
-struct OrthPolyBasis{T} <: SHIPs.ScalarBasis{T}
+struct OrthPolyBasis{T} <: ACE.ScalarBasis{T}
    # ----------------- the parameters for the cutoff function
    pl::Int        # cutoff power left
    tl::T          # cutoff left (transformed variable)
@@ -69,7 +70,7 @@ Base.length(P::OrthPolyBasis) = length(P.A)
            for sym in (:pr, :tr, :pl, :tl, :A, :B, :C) )
 
 write_dict(J::OrthPolyBasis{T}) where {T} = Dict(
-      "__id__" => "SHIPs_OrthPolyBasis",
+      "__id__" => "ACE_OrthPolyBasis",
       "T" => write_dict(T),
       "pr" => J.pr,
       "tr" => J.tr,
@@ -87,12 +88,15 @@ OrthPolyBasis(D::Dict, T=read_dict(D["T"])) =
       T[], T[]
    )
 
-read_dict(::Val{:SHIPs_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
+read_dict(::Val{:SHIPs_OrthPolyBasis}, D::Dict) =
+   read_dict(Val{:ACE_OrthPolyBasis}(), D::Dict)
+
+read_dict(::Val{:ACE_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
 
 # rand applied to a J will return a random transformed distance drawn from
 # the measure w.r.t. which the polynomials were constructed.
 # TODO: allow non-constant weights!
-function SHIPs.rand_radial(J::OrthPolyBasis)
+function ACE.rand_radial(J::OrthPolyBasis)
    @assert maximum(abs, diff(J.ww)) == 0
    return rand(J.tdf)
 end
@@ -227,7 +231,7 @@ end
 # ----------------------------------------------------------------
 
 
-struct TransformedPolys{T, TT, TJ} <: SHIPs.ScalarBasis{T}
+struct TransformedPolys{T, TT, TJ} <: ACE.ScalarBasis{T}
    J::TJ          # the actual basis
    trans::TT      # coordinate transform
    rl::T          # lower bound r
@@ -244,7 +248,7 @@ TransformedPolys(J, trans, rl, ru) =
    TransformedPolys(J, trans, rl, ru)
 
 write_dict(J::TransformedPolys) = Dict(
-      "__id__" => "SHIPs_TransformedPolys",
+      "__id__" => "ACE_TransformedPolys",
       "J" => write_dict(J.J),
       "rl" => J.rl,
       "ru" => J.ru,
@@ -259,13 +263,16 @@ TransformedPolys(D::Dict) =
       D["ru"]
    )
 
-read_dict(::Val{:SHIPs_TransformedPolys}, D::Dict) = TransformedPolys(D)
+read_dict(::Val{:SHIPs_TransformedPolys}, D::Dict) =
+   read_dict(Val{:ACE_TransformedPolys}(), D)
+
+read_dict(::Val{:ACE_TransformedPolys}, D::Dict) = TransformedPolys(D)
 
 Base.length(J::TransformedPolys) = length(J.J)
 fltype(P::TransformedPolys{T}) where {T} = T
 
-function SHIPs.rand_radial(J::TransformedPolys)
-   t = SHIPs.rand_radial(J.J)
+function ACE.rand_radial(J::TransformedPolys)
+   t = ACE.rand_radial(J.J)
    return inv_transform(J.trans, t)
 end
 

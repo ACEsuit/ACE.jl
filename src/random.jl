@@ -6,16 +6,17 @@
 # --------------------------------------------------------------------------
 
 
+
 module Random
 
 # TODO: rename rand_radial -> rand???
 
 import LinearAlgebra: norm
-import SHIPs: ScalarBasis, ZList, rand_radial, scaling
+import ACE: ScalarBasis, ZList, rand_radial, scaling
 
 using Random: shuffle
 using JuLIP: JVecF, AbstractCalculator, rnn, chemical_symbol, bulk, rattle!,
-             fltype, rfltype 
+             fltype, rfltype
 using JuLIP.MLIPs: combine
 using JuLIP.Potentials: zlist, ZList, SZList
 using StaticArrays: @SMatrix
@@ -104,7 +105,7 @@ randcombine(basis; diff = 2) =
    combine(basis, randcoeffs(basis; diff = diff))
 
 # # move to utility???
-# function rand(::Type{SHIPs.RPI.RPIBasis}; kwargs...)
+# function rand(::Type{ACE.RPI.RPIBasis}; kwargs...)
 #
 # end
 

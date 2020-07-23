@@ -11,10 +11,10 @@
 @info("--------- Testing OrthogonalPolynomials ----------")
 
 ##
-using SHIPs, Test, ForwardDiff, JuLIP, JuLIP.Testing
+using ACE, Test, ForwardDiff, JuLIP, JuLIP.Testing
 
 using LinearAlgebra: norm, cond
-using SHIPs.OrthPolys: OrthPolyBasis
+using ACE.OrthPolys: OrthPolyBasis
 using JuLIP: evaluate, evaluate_d
 
 ##
@@ -79,7 +79,7 @@ end
 @info("Testing TransformedPolys")
 
 trans = PolyTransform(2, 1.0)
-Pnew = SHIPs.OrthPolys.transformed_jacobi(10, trans, 2.0, 0.5; pcut = 2, pin = 2)
+Pnew = ACE.OrthPolys.transformed_jacobi(10, trans, 2.0, 0.5; pcut = 2, pin = 2)
 
 @info("   ... consistency of derivatives")
 for ntest = 1:30
@@ -100,23 +100,23 @@ println()
 # @info("Testing the orthogonality (via A-basis)")
 #
 # spec = SparseSHIP(3, 10)
-# P = SHIPs.OrthPolys.transformed_jacobi(SHIPs.maxK(spec)+1, trans, 2.0, 0.5;
+# P = ACE.OrthPolys.transformed_jacobi(ACE.maxK(spec)+1, trans, 2.0, 0.5;
 #                                       pcut = 2, pin = 2)
-# shpB = SHIPBasis(spec, P)
+# aceB = SHIPBasis(spec, P)
 #
-# function evalA(shpB, tmp, Rs)
+# function evalA(aceB, tmp, Rs)
 #    Zs = zeros(Int16, length(Rs))
-#    SHIPs.precompute_A!(tmp, shpB, Rs, Zs, 1)
+#    ACE.precompute_A!(tmp, aceB, Rs, Zs, 1)
 #    return tmp.A[1]
 # end
 #
-# function A_gramian(shpB, Nsamples = 100_000)
-#    tmp = SHIPs.alloc_temp(shpB)
+# function A_gramian(aceB, Nsamples = 100_000)
+#    tmp = ACE.alloc_temp(aceB)
 #    lenA = length(tmp.A[1])
 #    G = zeros(ComplexF64, lenA, lenA)
 #    for n = 1:Nsamples
-#       R = SHIPs.rand_vec(shpB.J)
-#       A = evalA(shpB, tmp, [R])
+#       R = ACE.rand_vec(aceB.J)
+#       A = evalA(aceB, tmp, [R])
 #       for i = 1:lenA, j = 1:lenA
 #          G[i,j] +=  A[i] * A[j]'
 #       end
@@ -124,7 +124,7 @@ println()
 #    return G
 # end
 #
-# G = A_gramian(shpB)
+# G = A_gramian(aceB)
 # println(@test cond(G) < 1.2)
 
 ##
@@ -134,7 +134,7 @@ end
 # ## Quick look at the basis
 # using Plots
 # N = 5
-# Jd = SHIPs.OrthPolys.discrete_jacobi(N; pcut = 3, pin = 2)
+# Jd = ACE.OrthPolys.discrete_jacobi(N; pcut = 3, pin = 2)
 # tp = range(-1, 1, length=100)
 # Jp = zeros(length(tp), N)
 # for (i,t) in enumerate(tp)

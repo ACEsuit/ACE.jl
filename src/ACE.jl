@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-module SHIPs
+module ACE
 
 using Reexport
 @reexport using JuLIP
@@ -21,8 +21,8 @@ include("prototypes.jl")
 
 # basic polynomial building blocks
 include("polynomials/sphericalharmonics.jl")
-include("polynomials/transforms.jl"); @reexport using SHIPs.Transforms
-include("polynomials/orthpolys.jl"); @reexport using SHIPs.OrthPolys
+include("polynomials/transforms.jl"); @reexport using ACE.Transforms
+include("polynomials/orthpolys.jl"); @reexport using ACE.OrthPolys
 
 
 # The One-particle basis is the first proper building block
@@ -33,27 +33,26 @@ include("grapheval.jl")
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
-# include("grapheval.jl")   # temporarily? Or permanently? ...
 include("pipot.jl")
 
 # rotation-invariant site potentials (incl the ACE model)
 include("rpi/rpi.jl")
-@reexport using SHIPs.RPI
+@reexport using ACE.RPI
 
 # pair potentials + repulsion
 include("pairpots/pair.jl");
-@reexport using SHIPs.PairPotentials
+@reexport using ACE.PairPotentials
 
 # lots of stuff related to random samples:
 #  - random configurations
 #  - random potentials
 #  ...
 include("random.jl")
-@reexport using SHIPs.Random
+@reexport using ACE.Random
 
 
 include("utils.jl")
-@reexport using SHIPs.Utils
+@reexport using ACE.Utils
 
 include("utils/importv5.jl")
 

@@ -8,9 +8,9 @@
 
 module Utils
 
-import SHIPs.RPI: BasicPSH1pBasis, SparsePSHDegree, RPIBasis, get_maxn
-import SHIPs: PolyTransform, transformed_jacobi
-import SHIPs.PairPotentials: PolyPairBasis
+import ACE.RPI: BasicPSH1pBasis, SparsePSHDegree, RPIBasis, get_maxn
+import ACE: PolyTransform, transformed_jacobi
+import ACE.PairPotentials: PolyPairBasis
 
 # - simple ways to construct a radial basis
 # - construct a descriptor

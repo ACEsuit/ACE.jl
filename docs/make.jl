@@ -6,9 +6,9 @@
 # --------------------------------------------------------------------------
 
 
-using Documenter, SHIPs
+using Documenter, ACE
 
-makedocs(sitename="SHIPs.jl Documentation",
+makedocs(sitename="ACE.jl Documentation",
          pages = [
         "Home" => "index.md",
         "Introduction" => "intro.md",
@@ -21,5 +21,5 @@ makedocs(sitename="SHIPs.jl Documentation",
         ])
 
 # deploydocs(
-#     repo = "github.com/JuliaMolSim/SHIPs.jl.git",
+#     repo = "github.com/JuliaMolSim/ACE.jl.git",
 # )

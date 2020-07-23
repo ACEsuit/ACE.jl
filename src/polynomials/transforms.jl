@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+
 module Transforms
 
 import Base:   ==
@@ -44,11 +45,14 @@ struct PolyTransform{TP, T} <: DistanceTransform
 end
 
 write_dict(T::PolyTransform) =
-   Dict("__id__" => "SHIPs_PolyTransform", "p" => T.p, "r0" => T.r0)
+   Dict("__id__" => "ACE_PolyTransform", "p" => T.p, "r0" => T.r0)
 
 PolyTransform(D::Dict) = PolyTransform(D["p"], D["r0"])
 
-read_dict(::Val{:SHIPs_PolyTransform}, D::Dict) = PolyTransform(D)
+read_dict(::Val{:SHIPs_PolyTransform}, D::Dict) =
+   read_dict(Val{:ACE_PolyTransform}(), D::Dict)
+
+read_dict(::Val{:ACE_PolyTransform}, D::Dict) = PolyTransform(D)
 
 transform(t::PolyTransform, r::Number) = poly_trans(t.p, t.r0, r)
 
@@ -67,12 +71,14 @@ Constructor: `IdTransform()`
 struct IdTransform <: DistanceTransform
 end
 
-write_dict(T::IdTransform) =  Dict("__id__" => "SHIPs_IdTransform")
+write_dict(T::IdTransform) =  Dict("__id__" => "ACE_IdTransform")
 IdTransform(D::Dict) = IdTransform()
-read_dict(::Val{:SHIPs_IdTransform}, D::Dict) = IdTransform(D)
+read_dict(::Val{:ACE_IdTransform}, D::Dict) = IdTransform(D)
 transform(t::IdTransform, z::Number) = z
 transform_d(t::IdTransform, r::Number) = one(r)
 inv_transform(t::IdTransform, x::Number) = x
 
+read_dict(::Val{:SHIPs_IdTransform}, D::Dict) =
+   read_dict(Val{:ACE_IdTransform}(), D)
 
 end

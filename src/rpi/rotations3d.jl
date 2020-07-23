@@ -6,11 +6,12 @@
 # --------------------------------------------------------------------------
 
 
+
 module Rotations3D
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
-using SHIPs.SphericalHarmonics: index_y
+using ACE.SphericalHarmonics: index_y
 using Combinatorics: permutations
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis

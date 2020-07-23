@@ -9,11 +9,11 @@
 
 module Export
 
-import SHIPs, JuLIP
-using SHIPs.RPI: BasicPSH1pBasis, PSH1pBasisFcn
-using SHIPs: PIBasis, PIBasisFcn, PIPotential
-using SHIPs.OrthPolys: TransformedPolys
-using SHIPs: rand_radial, cutoff, numz
+import ACE, JuLIP
+using ACE.RPI: BasicPSH1pBasis, PSH1pBasisFcn
+using ACE: PIBasis, PIBasisFcn, PIPotential
+using ACE.OrthPolys: TransformedPolys
+using ACE: rand_radial, cutoff, numz
 using JuLIP: energy, bulk, i2z, z2i, chemical_symbol
 
 function export_ace(fname::AbstractString, V;  kwargs...)
@@ -33,7 +33,7 @@ function export_ace(fptr::IOStream, Pr::TransformedPolys; ntests=0, kwargs...)
    rcut = cutoff(Pr)
    maxn = length(Pr)
 
-   println(fptr, "radbasename=SHIPsBasic")
+   println(fptr, "radbasename=ACEBasic")
    println(fptr, "transform parameters: p=$(p) r0=$(r0)")
    println(fptr, "cutoff parameters: rcut=$rcut xl=$xl xr=$xr pl=$pl pr=$pr")
    println(fptr, "recursion coefficients: maxn=$(maxn)")
@@ -44,9 +44,9 @@ function export_ace(fptr::IOStream, Pr::TransformedPolys; ntests=0, kwargs...)
    # save some tests
    println(fptr, "tests: ntests=$(ntests)")
    for itest = 1:ntests
-      r = SHIPs.rand_radial(Pr)
-      P = SHIPs.evaluate(Pr, r)
-      dP = SHIPs.evaluate_d(Pr, r)
+      r = ACE.rand_radial(Pr)
+      P = ACE.evaluate(Pr, r)
+      dP = ACE.evaluate_d(Pr, r)
       println(fptr, " r=$(r)")
       for n = 1:length(P)
          println(fptr, " $(P[n]) $(dP[n])")

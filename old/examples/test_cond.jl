@@ -9,26 +9,26 @@
 @info("Testing conditioning of non-orth 3B SHIP Basis")
 
 using Test
-using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys
-using SHIPs: TransformedJacobi, transform, transform_d,
+using ACE, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, ACE.JacobiPolys
+using ACE: TransformedJacobi, transform, transform_d,
              alloc_B, alloc_temp
 
 import JuLIP: evaluate!
 ##
 
-get_IN(N) = collect((shpB.idx_Bll[N][1]+1):(shpB.idx_Bll[N][end]+shpB.len_Bll[N][end]))
+get_IN(N) = collect((aceB.idx_Bll[N][1]+1):(aceB.idx_Bll[N][end]+aceB.len_Bll[N][end]))
 
 # function barrier
-gramian(N, shpB, Nsamples=100_000; normalise=false) =
-   gramian(N, get_IN(N), alloc_temp(shpB), alloc_B(shpB), shpB, Nsamples, normalise)
+gramian(N, aceB, Nsamples=100_000; normalise=false) =
+   gramian(N, get_IN(N), alloc_temp(aceB), alloc_B(aceB), aceB, Nsamples, normalise)
 
-function gramian(N, IN, tmp, B, shpB, Nsamples = 100_000, normalise = false)
+function gramian(N, IN, tmp, B, aceB, Nsamples = 100_000, normalise = false)
    Zs = zeros(Int16, N)
    lenB = length(IN)
    G = zeros(Float64, lenB, lenB)
    for n = 1:Nsamples
-      Rs = SHIPs.rand_vec(shpB.J, N)
-      evaluate!(B, tmp, shpB, Rs, Zs, 0)
+      Rs = ACE.rand_vec(aceB.J, N)
+      evaluate!(B, tmp, aceB, Rs, Zs, 0)
       for j = 1:lenB
          Bj = B[IN[j]]'
          @simd for i = 1:lenB
@@ -51,16 +51,16 @@ Nsamples = 100_000
 rl, ru = 0.5, 3.0
 fcut =  PolyCutoff2s(2, rl, ru)
 trans = PolyTransform(2, 1.0)
-shpB = SHIPBasis( SparseSHIP(Nmax, 10), trans, fcut )
+aceB = SHIPBasis( SparseSHIP(Nmax, 10), trans, fcut )
 
 @info("Conditions numbers of gramians")
 for N = 1:Nmax
-   GN = gramian(N, shpB, Nsamples, normalise=false)
+   GN = gramian(N, aceB, Nsamples, normalise=false)
    @show N, cond(GN)
 end
 
 @info("Conditions numbers of normalised gramians")
 for N = 1:Nmax
-   GN = gramian(N, shpB, Nsamples, normalise=true)
+   GN = gramian(N, aceB, Nsamples, normalise=true)
    @show N, cond(GN)
 end

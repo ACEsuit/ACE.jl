@@ -7,8 +7,8 @@
 
 
 
-using SHIPs, JuLIP, Test
-using SHIPs: evaluate
+using ACE, JuLIP, Test
+using ACE: evaluate
 using JuLIP.Testing: print_tf
 
 
@@ -23,22 +23,22 @@ maxn = 5
 species = [:X ]
 D = SparsePSHDegree(wL = 1.0)
 
-trans = SHIPs.PolyTransform(1, r0)
-J = SHIPs.OrthPolys.transformed_jacobi(10, trans, rcut, rin)
-P1 = SHIPs.RPI.PSH1pBasis(J, maxn, D=D, species = species)
+trans = ACE.PolyTransform(1, r0)
+J = ACE.OrthPolys.transformed_jacobi(10, trans, rcut, rin)
+P1 = ACE.RPI.PSH1pBasis(J, maxn, D=D, species = species)
 
 basis = RPIBasis(P1, 3, D, maxn)
 
-J5 = SHIPs.OrthPolys.transformed_jacobi(5, trans, rcut, rin)
-P1basic = SHIPs.RPI.BasicPSH1pBasis(J5)
+J5 = ACE.OrthPolys.transformed_jacobi(5, trans, rcut, rin)
+P1basic = ACE.RPI.BasicPSH1pBasis(J5)
 basic = RPIBasis(P1basic, 3, D, maxn)
 
 #--- first test: make sure the bases are equivalent
 
 @info("Test bases with and without parameters match")
 for ntest = 1:30
-   local R, Z, z0 = SHIPs.Random.rand_nhd(12, J, species)
-   print_tf(@test SHIPs.evaluate(basis, R, Z, z0) ≈ SHIPs.evaluate(basic, R, Z, z0))
+   local R, Z, z0 = ACE.Random.rand_nhd(12, J, species)
+   print_tf(@test ACE.evaluate(basis, R, Z, z0) ≈ ACE.evaluate(basic, R, Z, z0))
 end
 println()
 
@@ -48,7 +48,7 @@ println()
 params = basis.pibasis.basis1p.C[1]
 basis.pibasis.basis1p.C[1] .+= 0.1 * (rand(size(params)...) .- 0.5)
 for ntest = 1:30
-   local R, Z, z0 = SHIPs.Random.rand_nhd(12, J, species)
-   print_tf(@test !(SHIPs.evaluate(basis, R, Z, z0) ≈ SHIPs.evaluate(basic, R, Z, z0)))
+   local R, Z, z0 = ACE.Random.rand_nhd(12, J, species)
+   print_tf(@test !(ACE.evaluate(basis, R, Z, z0) ≈ ACE.evaluate(basic, R, Z, z0)))
 end
 println()

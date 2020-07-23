@@ -12,8 +12,8 @@
 ##
 @info("--------- Testing OneOrthogonal ----------")
 using LinearAlgebra, Test
-using SHIPs
-using SHIPs.OrthPolys: OrthPolyBasis, OneOrthogonal
+using ACE
+using ACE.OrthPolys: OrthPolyBasis, OneOrthogonal
 using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!
 using JuLIP: evaluate
 ##
@@ -61,35 +61,35 @@ tdf = range(t0, tcut, length=1000)
 ww = ones(Nquad) / Nquad
 J = OrthPolyBasis(deg,  0, trans(r0), 2, trans(rcut), tdf, ww)
 J1 = OneOrthogonal(J)
-P = SHIPs.TransformedPolys(J1, trans, r0, rcut)
+P = ACE.TransformedPolys(J1, trans, r0, rcut)
 
 # SHIPBasis(spec::BasisSpec, J; T=Float64, kwargs...)
 spec = SparseSHIP(2, deg; wL = 1.5,
-                  filterfcn = ν -> SHIPs.OrthPolys.filter_oneorth(ν, J1))
-shpB = SHIPBasis(spec, P)
-pureB = SHIPs.PureBasis(shpB)
+                  filterfcn = ν -> ACE.OrthPolys.filter_oneorth(ν, J1))
+aceB = SHIPBasis(spec, P)
+pureB = ACE.PureBasis(aceB)
 
-I2 = findall(shpB.aalists[1].len .== 1)
-B2 = SHIPs.Utils.SubBasis(shpB, I2)
-
-##
-
-pureB = SHIPs.PureBasis(shpB, 2)
+I2 = findall(aceB.aalists[1].len .== 1)
+B2 = ACE.Utils.SubBasis(aceB, I2)
 
 ##
 
+pureB = ACE.PureBasis(aceB, 2)
 
-Rs = SHIPs.rand_vec(shpB.J, 3)
+##
+
+
+Rs = ACE.rand_vec(aceB.J, 3)
 Zs = zeros(Int16, 5)
-b = evaluate(shpB, Rs, Zs, 0)
+b = evaluate(aceB, Rs, Zs, 0)
 bp = pureB(Rs)
-# @assert length(b) == length(shpB) == length(bp)
+# @assert length(b) == length(aceB) == length(bp)
 
 G, A_dot_1 = let nsamples = 10_000
    G = zeros(length(pureB), length(pureB))
    A_dot_1 = zeros(length(I2))
    for _ = 1:nsamples
-      Rs = SHIPs.rand_vec(shpB.J, 2)
+      Rs = ACE.rand_vec(aceB.J, 2)
       b = pureB(Rs)
       G += b * b' / nsamples
       A_dot_1 += b[I2] / nsamples

@@ -12,7 +12,7 @@
 
 ##
 
-using SHIPs
+using ACE
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Potentials: i2z, numz
@@ -29,7 +29,7 @@ rcut = 3.0
 
 trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-pB = SHIPs.PairPotentials.PolyPairBasis(Pr, :W)
+pB = ACE.PairPotentials.PolyPairBasis(Pr, :W)
 coeffs = randcoeffs(pB)
 V = combine(pB, coeffs)
 

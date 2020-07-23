@@ -7,10 +7,10 @@
 
 
 # A demonstration how to use the new SparsePSHDegreeM degree type
-# see also ?SHIPs.RPI.SparsePSHDegreeM
+# see also ?ACE.RPI.SparsePSHDegreeM
 
-using SHIPs, JuLIP
-using SHIPs: z2i, i2z, order
+using ACE, JuLIP
+using ACE: z2i, i2z, order
 #---
 
 zTi = AtomicNumber(:Ti)
@@ -36,14 +36,14 @@ Dd = Dict( "default" => 10,
            (2, zTi) => 25   # an extra push for the 3-body Ti basis
         )                   # (probably a dumb idea, just for illustration!)
 
-Deg = SHIPs.RPI.SparsePSHDegreeM(Dn, Dl, Dd)
+Deg = ACE.RPI.SparsePSHDegreeM(Dn, Dl, Dd)
 
 #---
 
 # generate basis
 # - note that degree is already incorporated into Deg
 #   but we can still enlarge it e.g. by using maxdeg = 1.2, 1.5, 2.0, ...
-basis = SHIPs.Utils.rpi_basis(species = [:Ti, :Al],
+basis = ACE.Utils.rpi_basis(species = [:Ti, :Al],
                               N = 5,
                               r0 = rnn(:Ti),
                               D = Deg,

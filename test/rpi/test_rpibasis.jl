@@ -11,7 +11,7 @@
 #---
 
 
-using SHIPs
+using ACE
 using Random, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d, evaluate_ed
 using JuLIP.MLIPs: combine
@@ -51,9 +51,9 @@ println(@test (B_ ≈ B) && (dB_ ≈ dB))
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
-P1 = SHIPs.BasicPSH1pBasis(Pr; species = species, D = D)
-basis = SHIPs.RPIBasis(P1, N, D, maxdeg)
-Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+P1 = ACE.BasicPSH1pBasis(Pr; species = species, D = D)
+basis = ACE.RPIBasis(P1, N, D, maxdeg)
+Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
 B = evaluate(basis, Rs, Zs, z0)
 println(@test(length(basis) == length(B)))
 dB = evaluate_d(basis, Rs, Zs, z0)
@@ -71,22 +71,22 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    local Rs, Zs, z0, B, dB, basis, D, P1, Nat
    Nat = 15
    D = SparsePSHDegree()
-   P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
-   basis = SHIPs.RPIBasis(P1, N, D, degrees[N])
+   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   basis = ACE.RPIBasis(P1, N, D, degrees[N])
    @info("species = $species; N = $N; deg = $(degrees[N]); len = $(length(basis))")
    @info("   check (de-)serialization")
    println(@test(all(JuLIP.Testing.test_fio(basis))))
    @info("   isometry and permutation invariance")
    for ntest = 1:30
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
-      Rsp, Zsp = SHIPs.rand_sym(Rs, Zs)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
+      Rsp, Zsp = ACE.rand_sym(Rs, Zs)
       print_tf(@test(evaluate(basis, Rs, Zs, z0) ≈
                      evaluate(basis, Rsp, Zsp, z0)))
    end
    println()
    @info("   check derivatives")
    for ntest = 1:30
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
       B = evaluate(basis, Rs, Zs, z0)
       dB = evaluate_d(basis, Rs, Zs, z0)
       Us = [ rand(eltype(Rs)) .- 0.5 for _=1:length(Rs) ]
@@ -108,7 +108,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    V = combine(basis, coeffs)
    Vst = standardevaluator(V)
    for ntest = 1:30
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
       v = evaluate(V, Rs, Zs, z0)
       vst = evaluate(Vst, Rs, Zs, z0)
       cdotB = dot(coeffs, evaluate(basis, Rs, Zs, z0))
@@ -118,7 +118,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    @info("   check graph evaluator")
    basisst = standardevaluator(basis)
    for ntest = 1:30
-      env = SHIPs.rand_nhd(Nat, Pr, species)
+      env = ACE.rand_nhd(Nat, Pr, species)
       print_tf(@test evaluate(basisst, env...) ≈ evaluate(basis, env...))
       print_tf(@test evaluate_d(basisst, env...) ≈ evaluate_d(basis, env...))
    end

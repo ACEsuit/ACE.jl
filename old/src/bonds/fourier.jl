@@ -7,7 +7,7 @@
 
 
 import JuLIP: evaluate!, evaluate_d!, SVec, write_dict, read_dict
-import SHIPs: alloc_B, alloc_dB
+import ACE: alloc_B, alloc_dB
 
 # ------------------------------------------------------------
 #   Fourier Basis evaluation
@@ -28,13 +28,13 @@ fltype(::FourierBasis{T}) where {T} = T
 Base.length(fB::FourierBasis) = 2 * fB.deg + 1
 
 write_dict(b::FourierBasis) =
-      Dict("__id__" => "SHIPs_FourierBasis",
+      Dict("__id__" => "ACE_FourierBasis",
               "deg" => b.deg)
-read_dict(::Val{:SHIPs_FourierBasis}, D::Dict) =
+read_dict(::Val{:ACE_FourierBasis}, D::Dict) =
       FourierBasis(D["deg"], Float64)
 
 # Dict(fB::FourierBasis) = Dict(
-#       "__id__" => "SHIPs_FourierBasis",
+#       "__id__" => "ACE_FourierBasis",
 #       "deg" => deg,
 #       "fltt" => "$(fG._fltt)"
 #    )
@@ -43,7 +43,7 @@ read_dict(::Val{:SHIPs_FourierBasis}, D::Dict) =
 # FourierBasis(deg::Integer, fltt::AbstractString) =
 #       FourierBasis(deg, eval(Meta.parse(fltt)))
 #
-# convert(::Val{:SHIPs_FourierBasis}, D::Dict) = FourierBasis(D)
+# convert(::Val{:ACE_FourierBasis}, D::Dict) = FourierBasis(D)
 
 
 alloc_B(fB::FourierBasis{T}) where {T}  = zeros(Complex{T}, length(fB))

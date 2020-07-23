@@ -11,8 +11,8 @@
 #---
 ##
 
-using Test, SHIPs, JuLIP
-using SHIPs.Testing: ToyModel
+using Test, ACE, JuLIP
+using ACE.Testing: ToyModel
 
 #---
 

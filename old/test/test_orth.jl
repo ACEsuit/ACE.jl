@@ -11,8 +11,8 @@
 ##
 
 using Test
-using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra
-using SHIPs: TransformedJacobi, transform, transform_d, alloc_B, alloc_temp
+using ACE, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra
+using ACE: TransformedJacobi, transform, transform_d, alloc_B, alloc_temp
 using JuLIP: evaluate!
 
 ##
@@ -66,7 +66,7 @@ Nsamples = 100_000
 G = let
    G = zeros(length(P), length(P))
    for n = 1:Nsamples
-      evaluate!(B, tmp, P, SHIPs.Utils.rand_radial(P))
+      evaluate!(B, tmp, P, ACE.Utils.rand_radial(P))
       G += B * B'
    end
    G
@@ -79,15 +79,15 @@ println(@test cond(G) < 1.1)
 
 @info("Testing (near-)orthonormality of Ylm-basis via sampling")
 
-SH = SHIPs.SphericalHarmonics.SHBasis(5)
+SH = ACE.SphericalHarmonics.SHBasis(5)
 
-function gramian(SH::SHIPs.SphericalHarmonics.SHBasis, Nsamples=100_000)
+function gramian(SH::ACE.SphericalHarmonics.SHBasis, Nsamples=100_000)
    lenY = length(SH)
    G = zeros(ComplexF64, lenY, lenY)
    Y = alloc_B(SH)
    tmp = alloc_temp(SH)
    for n = 1:Nsamples
-      evaluate!(Y, tmp, SH, SHIPs.Utils.rand_sphere())
+      evaluate!(Y, tmp, SH, ACE.Utils.rand_sphere())
       for i = 1:lenY, j = 1:lenY
          G[i,j] += Y[i] * Y[j]'
       end
@@ -103,20 +103,20 @@ println(@test cond(G) < 1.1)
 
 @info("Testing (near-)orthonormality of A-basis via sampling")
 
-shpB = SHIPBasis( SparseSHIP(3, 5), trans, fcut )
-function evalA(shpB, tmp, Rs)
+aceB = SHIPBasis( SparseSHIP(3, 5), trans, fcut )
+function evalA(aceB, tmp, Rs)
    Zs = zeros(Int16, length(Rs))
-   SHIPs.precompute_A!(tmp, shpB, Rs, Zs, 1)
+   ACE.precompute_A!(tmp, aceB, Rs, Zs, 1)
    return tmp.A[1]
 end
 
-function A_gramian(shpB, Nsamples = 100_000)
-   tmp = alloc_temp(shpB)
+function A_gramian(aceB, Nsamples = 100_000)
+   tmp = alloc_temp(aceB)
    lenA = length(tmp.A[1])
    G = zeros(ComplexF64, lenA, lenA)
    for n = 1:Nsamples
-      R = SHIPs.rand_vec(shpB.J)
-      A = evalA(shpB, tmp, [R])
+      R = ACE.rand_vec(aceB.J)
+      A = evalA(aceB, tmp, [R])
       for i = 1:lenA, j = 1:lenA
          G[i,j] +=  A[i] * A[j]'
       end
@@ -124,7 +124,7 @@ function A_gramian(shpB, Nsamples = 100_000)
    return G
 end
 
-G = A_gramian(shpB)
+G = A_gramian(aceB)
 println(@test cond(G) < 1.2)
 
 

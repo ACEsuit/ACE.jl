@@ -16,10 +16,10 @@ using StaticArrays, Test
 using LinearAlgebra
 using JuLIP.Testing: print_tf
 
-using SHIPs
+using ACE
 using JuLIP: evaluate!, evaluate, evaluate_d!
-using SHIPs: alloc_B, alloc_dB
-using SHIPs.Bonds: CylindricalCoordinateSystem, cylindrical,
+using ACE: alloc_B, alloc_dB
+using ACE.Bonds: CylindricalCoordinateSystem, cylindrical,
                   cartesian,
                   FourierBasis,
                   CylindricalCoordinates
@@ -33,11 +33,11 @@ fB = FourierBasis(10, Float64)
 ##
 
 @info("test cyl_l2i ∘ cyl_i2l = id")
-is = sort([ SHIPs.Bonds.cyl_l2i(k) for k = -deg:deg ])
+is = sort([ ACE.Bonds.cyl_l2i(k) for k = -deg:deg ])
 println(@test is == 1:(2*deg+1))
 for i = 1:(2*deg+1)
-   k = SHIPs.Bonds.cyl_i2l(i)
-   print_tf(@test SHIPs.Bonds.cyl_l2i(k) == i)
+   k = ACE.Bonds.cyl_i2l(i)
+   print_tf(@test ACE.Bonds.cyl_l2i(k) == i)
 end
 
 ##
@@ -54,7 +54,7 @@ for ntest = 1:30
    P = evaluate!(alloc_B(fB), nothing, fB, c)
    Px = zeros(ComplexF64, 2*deg+1)
    for l = -deg:deg
-      Px[SHIPs.Bonds.cyl_l2i(l)] = exp(im * l * θ)
+      Px[ACE.Bonds.cyl_l2i(l)] = exp(im * l * θ)
    end
    print_tf(@test P ≈ Px)
 end

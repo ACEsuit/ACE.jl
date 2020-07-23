@@ -7,7 +7,8 @@
 
 
 
-import SHIPs.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
+
+import ACE.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
 
 export PIBasis
 
@@ -49,11 +50,14 @@ function PIBasisFcn(Aspec, t, z0::AtomicNumber)
 end
 
 write_dict(b::PIBasisFcn) =
-   Dict("__id__" => "SHIPs_PIBasisFcn",
+   Dict("__id__" => "ACE_PIBasisFcn",
         "z0" => write_dict(b.z0),
         "oneps" => write_dict.(b.oneps))
 
 read_dict(::Val{:SHIPs_PIBasisFcn}, D::Dict) =
+   read_dict(Val{:ACE_PIBasisFcn}(), D::Dict)
+
+read_dict(::Val{:ACE_PIBasisFcn}, D::Dict) =
    PIBasisFcn( read_dict(D["z0"]),
                tuple( read_dict.(D["oneps"]) ... ) )
 
@@ -205,7 +209,7 @@ end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
-==(B1::PIBasis, B2::PIBasis) = SHIPs._allfieldsequal(B1, B2)
+==(B1::PIBasis, B2::PIBasis) = ACE._allfieldsequal(B1, B2)
 
 fltype(basis::PIBasis) = fltype(basis.basis1p)
 
@@ -309,12 +313,15 @@ standardevaluator(basis::PIBasis) =
 #       every time we load the basis...
 
 write_dict(basis::PIBasis) =
-   Dict(  "__id__" => "SHIPs_PIBasis",
+   Dict(  "__id__" => "ACE_PIBasis",
          "basis1p" => write_dict(basis.basis1p),
            "inner" => [ write_dict.( collect(keys(basis.inner[iz0].b2iAA)) )
                          for iz0 = 1:numz(basis) ], )
 
-function read_dict(::Val{:SHIPs_PIBasis}, D::Dict)
+read_dict(::Val{:SHIPs_PIBasis}, D::Dict) =
+   read_dict(Val{:ACE_PIBasis}(), D::Dict)
+
+function read_dict(::Val{:ACE_PIBasis}, D::Dict)
    basis1p = read_dict(D["basis1p"])
    innerspecs = [ read_dict.(D["inner"][iz0])  for iz0 = 1:numz(basis1p) ]
    return pibasis_from_specs(basis1p, innerspecs)

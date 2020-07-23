@@ -7,10 +7,10 @@
 
 
 
-using SHIPs, Printf, Test, LinearAlgebra
-using SHIPs: PolyTransform, rbasis,
+using ACE, Printf, Test, LinearAlgebra
+using ACE: PolyTransform, rbasis,
 using JuLIP: evaluate, evaluate_d
-using SHIPs.JacobiPolys: Jacobi
+using ACE.JacobiPolys: Jacobi
 using PyPlot
 
 trans = PolyTransform(1, 1)

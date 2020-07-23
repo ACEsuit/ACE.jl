@@ -11,9 +11,9 @@
 
 #---
 
-using SHIPs, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
+using ACE, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
-using SHIPs: PIPotential
+using ACE: PIPotential
 
 #---
 
@@ -49,9 +49,9 @@ end
 ##
 
 # a randomly generated single-species potential
-fname = dirname(pathof(SHIPs))[1:end-3] * "test/models/v05/randship_v05.json"
+fname = dirname(pathof(ACE))[1:end-3] * "test/models/v05/randship_v05.json"
 D = load_dict(fname)
-V = SHIPs.Import.import_pipot_v05(D)
+V = ACE.Import.import_pipot_v05(D)
 compat_tests(V, D["rtests"], D["tests"])
 
 ##
@@ -61,7 +61,7 @@ compat_tests(V, D["rtests"], D["tests"])
 sifile = "/users/ortner/Dropbox/Public/SHIPPots/Si_split_1.2_reg_test_v05.json"
 if isfile(sifile)
    D = load_dict(sifile)
-   V = SHIPs.Import.import_pipot_v05(D)
+   V = ACE.Import.import_pipot_v05(D)
    compat_tests(V, D["rtests"], D["tests"])
 end
 

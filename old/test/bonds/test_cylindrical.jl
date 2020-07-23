@@ -15,8 +15,8 @@ using StaticArrays, Test
 using LinearAlgebra
 using JuLIP.Testing: print_tf
 
-using SHIPs
-using SHIPs.Bonds: CylindricalCoordinateSystem, cylindrical,
+using ACE
+using ACE.Bonds: CylindricalCoordinateSystem, cylindrical,
                   cartesian, CylindricalCoordinates
 
 

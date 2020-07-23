@@ -22,7 +22,7 @@ PureBasis(ship::SHIPBasis) = PureBasis(ship, collect(1:length(ship)))
 
 function PureBasis(ship::SHIPBasis, N::Integer)
    @assert length(ship.zlist) == 1
-   Ibas = SHIPs.Utils.findall_basis_N(ship, N)
+   Ibas = ACE.Utils.findall_basis_N(ship, N)
    return PureBasis(ship, Ibas)
 end
 

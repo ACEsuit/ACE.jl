@@ -7,10 +7,10 @@
 
 
 
-A = SHIPs.Rotations3D.Rot3DCoeffs()
-SHIPs.Rotations3D.basis(A, SVector(2, 2, 1, 1))
+A = ACE.Rotations3D.Rot3DCoeffs()
+ACE.Rotations3D.basis(A, SVector(2, 2, 1, 1))
 
-using SHIPs, LinearAlgebra
+using ACE, LinearAlgebra
 
 trans = PolyTransform(2, 1.0)
 fcut = PolyCutoff1s(2, 0.1, 2.0)
@@ -18,7 +18,7 @@ basis = SHIPBasis(SparseSHIP(5, 8, 1.0), trans, fcut)
 
 length(basis)
 
-A = SHIPs.Rotations.Rot3DCoeffs(20)
+A = ACE.Rotations.Rot3DCoeffs(20)
 
 for bo = 2:5
    ctr = 0
@@ -31,8 +31,8 @@ for bo = 2:5
          continue
       end
       ll = getfield.(basis.KL[1][ν], :l)
-      U = SHIPs.Rotations.basis(A, ll)
-      c = [ SHIPs._Bcoeff(ll, mm, A.cg) for mm in SHIPs._mrange(ll) ]
+      U = ACE.Rotations.basis(A, ll)
+      c = [ ACE._Bcoeff(ll, mm, A.cg) for mm in ACE._mrange(ll) ]
       def = norm(U * (U' * c) - c) > 1e-12
       if def > 1e-12
          @show ll, def
@@ -58,13 +58,13 @@ for bo = 2:5
       ll = SVector(ill.I...)
       if issorted(ll) && sum(ll) <= 20
          U =  try
-            SHIPs.Rotations.basis(A, ll)
+            ACE.Rotations.basis(A, ll)
          catch
             println()
             @show ll
             continue
          end
-         c = [ SHIPs._Bcoeff(ll, mm, A.cg) for mm in SHIPs._mrange(ll) ]
+         c = [ ACE._Bcoeff(ll, mm, A.cg) for mm in ACE._mrange(ll) ]
          def = norm(U * (U' * c) - c)
          if def > 1e-12
             @show ll, def

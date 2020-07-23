@@ -23,7 +23,7 @@ end
 
 Base.length(P::OneOrthogonal) = length(P.nested)
 
-SHIPs.rand_radial(J::OneOrthogonal) = SHIPs.rand_radial(J.nested)
+ACE.rand_radial(J::OneOrthogonal) = ACE.rand_radial(J.nested)
 
 
 """

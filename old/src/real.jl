@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs.SphericalHarmonics: RSHBasis, index_y
+using ACE.SphericalHarmonics: RSHBasis, index_y
 using StaticArrays
 using JuLIP: AbstractCalculator, Atoms, JVec
 using JuLIP.Potentials: MSitePotential, SZList, ZList
@@ -48,7 +48,7 @@ bodyorder(ship::RSHIP{BO}) where {BO} = BO + 1
 # ------------------------------------------------------------
 
 Dict(ship::RSHIP{T,NZ}) where {T, NZ} = Dict(
-      "__id__" => "SHIPs_RSHIP",
+      "__id__" => "ACE_RSHIP",
       "J" => Dict(ship.J),
       "SH_maxL" => ship.SH.maxL,   # TODO: replace this with Dict(SH)
       "T" => string(fltype(ship.SH)),
@@ -58,7 +58,7 @@ Dict(ship::RSHIP{T,NZ}) where {T, NZ} = Dict(
       "coeffs" => [ ship.coeffs[i] for i = 1:NZ  ]
    )
 
-convert(::Val{:SHIPs_RSHIP}, D::Dict) = RSHIP(D)
+convert(::Val{:ACE_RSHIP}, D::Dict) = RSHIP(D)
 
 # bodyorder - 1 is because BO is the number of neighbours
 # not the actual body-order

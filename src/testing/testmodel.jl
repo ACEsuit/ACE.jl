@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+
 """
 `mutable struct ToyModel` : a tight-binding type toy model admitting
 multiple species, for testing the completeness of basis sets.

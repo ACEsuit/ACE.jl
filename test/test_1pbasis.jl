@@ -10,7 +10,7 @@
 
 ##
 
-using SHIPs
+using ACE
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Potentials: i2z, numz
@@ -26,8 +26,8 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 
 
 Nat = 15
-P1 = SHIPs.BasicPSH1pBasis(Pr; species = :X)
-Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, :X)
+P1 = ACE.BasicPSH1pBasis(Pr; species = :X)
+Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, :X)
 evaluate(P1, Rs, Zs, z0)
 evaluate_d(P1, Rs[1], Zs[1], z0)
 
@@ -36,13 +36,13 @@ evaluate_d(P1, Rs[1], Zs[1], z0)
 for species in (:X, :Si, [:C, :O, :H])
    @info("species = $species")
    Nat = 15
-   P1 = SHIPs.BasicPSH1pBasis(Pr; species = species)
+   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
    @info("   test de-serialisation")
    println(@test(all(JuLIP.Testing.test_fio(P1))))
 
    @info("   test evaluation")
    for ntest = 1:10
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
       A = evaluate(P1, Rs, Zs, z0)
       A_ = sum( evaluate(P1, R, Z, z0) for (R, Z) in zip(Rs, Zs) )
       print_tf(@test A ≈ A_)
@@ -52,14 +52,14 @@ for species in (:X, :Si, [:C, :O, :H])
    @info("    Check specification is correct")
    for iz0 in numz(P1)
       z0 = i2z(P1, iz0)
-      P1_spec = SHIPs.get_basis_spec(P1, z0)
-      P1_spec_2 = [ SHIPs.get_basis_spec(P1, z0, i) for i = 1:length(P1, z0) ]
+      P1_spec = ACE.get_basis_spec(P1, z0)
+      P1_spec_2 = [ ACE.get_basis_spec(P1, z0, i) for i = 1:length(P1, z0) ]
       println(@test P1_spec == P1_spec_2)
    end
    # Check gradients
    @info("    Check gradients")
    for ntest = 1:30
-      Rs, Zs, z0 = SHIPs.rand_nhd(Nat, Pr, species)
+      Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
       R, Z = Rs[1], Zs[1]
       U = rand(JVecF) .- 0.5; U /= norm(U)
       A = evaluate(P1, R, Z, z0)

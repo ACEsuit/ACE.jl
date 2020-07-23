@@ -9,11 +9,11 @@
 @testset "Real  Ylm" begin
 
 ##
-import SHIPs
+import ACE
 using JuLIP.Testing
 using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
-using SHIPs.SphericalHarmonics
-using SHIPs.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
+using ACE.SphericalHarmonics
+using ACE.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart, RSHBasis, index_y
 using JuLIP: evaluate, evaluate_d, evaluate_ed
 
@@ -46,7 +46,7 @@ cSH = SHBasis(maxL)
 rSH = RSHBasis(maxL)
 
 for nsamples = 1:30
-   R = SHIPs.Random.rand_sphere()
+   R = ACE.Random.rand_sphere()
    cY = evaluate(cSH, R)
    rY = evaluate(rSH, R)
    print_tf(@test test_r2c(maxL, cY, rY))

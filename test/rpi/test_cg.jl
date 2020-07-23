@@ -12,10 +12,10 @@
 
 #---
 
-using PyCall, Test, SHIPs, SHIPs.SphericalHarmonics, JuLIP.Testing, StaticArrays
+using PyCall, Test, ACE, ACE.SphericalHarmonics, JuLIP.Testing, StaticArrays
 using JuLIP: evaluate
-using SHIPs.SphericalHarmonics: index_y
-using SHIPs.RPI.Rotations3D: ClebschGordan
+using ACE.SphericalHarmonics: index_y
+using ACE.RPI.Rotations3D: ClebschGordan
 
 #---
 

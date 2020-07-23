@@ -5,8 +5,8 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using SHIPs, BenchmarkTools
-using SHIPs.JacobiPolys: Jacobi
+using ACE, BenchmarkTools
+using ACE.JacobiPolys: Jacobi
 using JuLIP: evaluate
 
 

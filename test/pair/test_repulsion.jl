@@ -11,7 +11,7 @@
 
 #---
 
-using SHIPs
+using ACE
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Potentials: i2z, numz
@@ -34,7 +34,7 @@ r0 = 1.0
 rcut = 3.0
 
 Pr = transformed_jacobi(maxdeg, PolyTransform(1, r0), rcut; pcut = 2)
-pB = SHIPs.PairPotentials.PolyPairBasis(Pr, :W)
+pB = ACE.PairPotentials.PolyPairBasis(Pr, :W)
 coeffs = randcoeffs(pB)
 V = combine(pB, coeffs)
 
@@ -44,7 +44,7 @@ Vfit = V
 ri = 2.1
 @show (@D Vfit(ri))
 e0 = Vfit(ri) - 1.0
-Vrep = SHIPs.PairPotentials.RepulsiveCore(Vfit, ri)
+Vrep = ACE.PairPotentials.RepulsiveCore(Vfit, ri)
 
 rout = range(ri+1e-15, 4.0, length=100)
 println(@test all(Vfit(r) == Vrep(r,z,z) for r in rout))
@@ -68,7 +68,7 @@ rattle!(at, 0.03)
 r0 = rnn(:W)
 
 Pr = transformed_jacobi(maxdeg, PolyTransform(1, r0), rcut; pcut = 2)
-pB = SHIPs.PairPotentials.PolyPairBasis(Pr, [:W, :Fe])
+pB = ACE.PairPotentials.PolyPairBasis(Pr, [:W, :Fe])
 coeffs = randcoeffs(pB)
 V = combine(pB, coeffs)
 
@@ -84,7 +84,7 @@ e0 = min(Vfit(ri, z1, z2), Vfit(ri, z1, z1), Vfit(ri, z2, z2)) - 1.0
 e0s = rand(2,2) .+ (e0 - 0.5); e0s = 0.5 * (e0s + e0s')
 ris = rand(2,2) .+ (ri - 0.5); ris = 0.5 * (ris + ris')
 
-Vrep = SHIPs.PairPotentials.RepulsiveCore(Vfit,
+Vrep = ACE.PairPotentials.RepulsiveCore(Vfit,
             Dict( ( :W,  :W) => (ri = ris[1,1], e0 = e0s[1,1]),
                   ( :W, :Fe) => (ri = ris[1,2], e0 = e0s[1,2]),
                   (:Fe, :Fe) => (ri = ris[2,2], e0 = e0s[2,2]) ) )

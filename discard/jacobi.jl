@@ -74,14 +74,16 @@ end
    )
 
 write_dict(J::Jacobi{T}) where {T} =
-      Dict( "__id__" => "SHIPs_Jacobi",
+      Dict( "__id__" => "ACE_Jacobi",
             "T" => write_dict(T),
             "alpha" => J.alpha,
             "beta" => J.beta,
             "N" => length(J.A),
             "normalise" => !isempty(J.nrm) )
 
-read_dict(::Val{:SHIPs_Jacobi}, D::Dict; T = read_dict(D["T"])) =
+read_dict(::Val{SHIPs_Jacobi}, D::Dict) = read_dict(Val{ACE_Jacobi}(), D)
+
+read_dict(::Val{:ACE_Jacobi}, D::Dict; T = read_dict(D["T"])) =
       Jacobi(T(D["alpha"]), T(D["beta"]), D["N"], T = T;
              normalise = D["normalise"])
 

@@ -10,11 +10,11 @@
 module Exp
 
 using LinearAlgebra
-import SHIPs
-using SHIPs: alloc_B, alloc_temp, evaluate!, order
+import ACE
+using ACE: alloc_B, alloc_temp, evaluate!, order
 
 _get_samples(basis, nargs, nsamples) =
-   [  [ SHIPs.rand_vec(basis.J) for _=1:nargs ]
+   [  [ ACE.rand_vec(basis.J) for _=1:nargs ]
        for _=1:nsamples ]
 
 
@@ -44,7 +44,7 @@ function determine_order(f, nargs, basis;
    rmse = zeros(order(basis))
    for N = 1:order(basis)
       # indices in the basis corresponding to order N
-      IN = SHIPs.Utils.findall_basis_N(basis, N; verbose=false)
+      IN = ACE.Utils.findall_basis_N(basis, N; verbose=false)
       # the relevant subset of the lsq system is
       AN = A[:, IN]
       # now solve the lsq system and record the relative RMSE

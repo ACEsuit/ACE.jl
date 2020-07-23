@@ -7,7 +7,7 @@
 
 
 using Test
-import SHIPs, JuLIP
+import ACE, JuLIP
 import InteractiveUtils
 
 
@@ -23,7 +23,7 @@ import JuLIP.MLIPs: combine
 import JuLIP.Testing: print_tf
 
 # include("../src/extimports.jl")
-include("../src/shipimports.jl")
+include("../src/aceimports.jl")
 
 #---
 
@@ -51,7 +51,7 @@ for (N, degs) in degrees, maxdeg in degs, rcut in rcuts
                         "rcut" => rcut, "wL" => 1.3 ) )
 end
 D = Dict("paramsets" => params,
-               "at" => write_dict(SHIPs.Random.rand_config(:Si; repeat=3)))
+               "at" => write_dict(ACE.Random.rand_config(:Si; repeat=3)))
 
 
 # generate and save the basis sets if they don't  exist yet
@@ -60,8 +60,8 @@ D["results"] = []
 D["labels"] = []
 D["versioninfo"] = Dict{String, Any}()
 @showprogress for params in D["paramsets"]
-   basis = SHIPs.Testing.test_basis(params)
-   coeffs = SHIPs.Random.randcoeffs(basis; diff=2)
+   basis = ACE.Testing.test_basis(params)
+   coeffs = ACE.Random.randcoeffs(basis; diff=2)
    push!(D["results"], Dict("basis" => write_dict(basis), "coeffs" => coeffs))
 end
 JuLIP.save_dict(testfile, D)

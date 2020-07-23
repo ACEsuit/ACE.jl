@@ -13,8 +13,8 @@
 ##
 @info("--------- Testing PureBasis ----------")
 using LinearAlgebra, Test
-using SHIPs
-using SHIPs.OrthPolys: OrthPolyBasis, OneOrthogonal
+using ACE
+using ACE.OrthPolys: OrthPolyBasis, OneOrthogonal
 using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!
 
 ##
@@ -28,29 +28,29 @@ t0, tcut = trans(r0), trans(rcut)
 tdf = range(t0, tcut, length=1000)
 ww = ones(length(tdf))
 J = OrthPolyBasis(deg,  0, trans(r0), 2, trans(rcut), tdf, ww)
-P = SHIPs.TransformedPolys(J, trans, r0, rcut)
+P = ACE.TransformedPolys(J, trans, r0, rcut)
 
 spec = SparseSHIP(2, deg-1; wL = 1.5)
-shpB = SHIPBasis(spec, P)
+aceB = SHIPBasis(spec, P)
 
-pureB = SHIPs.PureBasis(shpB)
-pureB1 = SHIPs.PureBasis(shpB, 1)
-pureB2 = SHIPs.PureBasis(shpB, 2)
+pureB = ACE.PureBasis(aceB)
+pureB1 = ACE.PureBasis(aceB, 1)
+pureB2 = ACE.PureBasis(aceB, 2)
 
 ##
 
-Rs = SHIPs.rand_vec(shpB.J, 2)
+Rs = ACE.rand_vec(aceB.J, 2)
 Zs = zeros(Int16, 2)
-b = evaluate(shpB, Rs, Zs, 0)
+b = evaluate(aceB, Rs, Zs, 0)
 bp = pureB2(Rs)
 norm(bp)
-# @assert length(b) == length(shpB) == length(bp)
+# @assert length(b) == length(aceB) == length(bp)
 
 ##
 
 function condtest(basis, nneigs;
                   nsamples = 10_000,
-                  randfun = ()->SHIPs.rand_vec(shpB.J, nneigs) )
+                  randfun = ()->ACE.rand_vec(aceB.J, nneigs) )
    G = zeros(length(basis), length(basis))
    for _ = 1:nsamples
       Rs = randfun()
@@ -89,14 +89,14 @@ end
 # now we try the same with a 1-orthogonal basis
 @info("Construct 1-orthogonal basis")
 J1 = OneOrthogonal(J)
-P1 = SHIPs.TransformedPolys(J1, trans, r0, rcut)
+P1 = ACE.TransformedPolys(J1, trans, r0, rcut)
 spec = SparseSHIP(2, deg-1; wL = 1.5,
-                  filterfcn = ν -> SHIPs.OrthPolys.filter_oneorth(ν, J1))
-shpBoo = SHIPBasis(spec, P1)
+                  filterfcn = ν -> ACE.OrthPolys.filter_oneorth(ν, J1))
+aceBoo = SHIPBasis(spec, P1)
 
-pureB1oo = SHIPs.PureBasis(shpBoo, 1)
-pureB2oo = SHIPs.PureBasis(shpBoo, 2)
-pureBoo = SHIPs.PureBasis(shpBoo)
+pureB1oo = ACE.PureBasis(aceBoo, 1)
+pureB2oo = ACE.PureBasis(aceBoo, 2)
+pureBoo = ACE.PureBasis(aceBoo)
 
 ##
 

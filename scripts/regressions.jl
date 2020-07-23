@@ -7,7 +7,7 @@
 
 @assert length(ARGS) in [0, 1]
 
-using SHIPs, JuLIP, InteractiveUtils, ProgressMeter
+using ACE, JuLIP, InteractiveUtils, ProgressMeter
 using JuLIP.MLIPs: combine
 using BenchmarkTools: @belapsed
 

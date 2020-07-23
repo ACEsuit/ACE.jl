@@ -6,15 +6,15 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs, JuLIP, BenchmarkTools
+using ACE, JuLIP, BenchmarkTools
 
 #---
 
 
 
-basis = SHIPs.Utils.rpi_basis(; species=:Si, N = 5, maxdeg = 14)
+basis = ACE.Utils.rpi_basis(; species=:Si, N = 5, maxdeg = 14)
 @show length(basis)
-V = SHIPs.Random.randcombine(basis)
+V = ACE.Random.randcombine(basis)
 
 #---
 

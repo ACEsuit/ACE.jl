@@ -7,9 +7,9 @@
 
 
 using Test
-using SHIPs, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, SHIPs.JacobiPolys,
+using ACE, JuLIP, JuLIP.Testing, QuadGK, LinearAlgebra, ACE.JacobiPolys,
       BenchmarkTools
-using SHIPs: TransformedJacobi, transform, transform_d,
+using ACE: TransformedJacobi, transform, transform_d,
              alloc_B, alloc_temp, alloc_temp_d, alloc_dB, IntS
 
 using JuLIP: evaluate!, evaluate_d!
@@ -29,50 +29,50 @@ rl, ru = 0.5, 3.0
 fcut =  PolyCutoff2s(2, rl, ru)
 trans = PolyTransform(2, 1.0)
 spec = SparseSHIP(Nmax, 10)
-shpB = SHIPBasis(spec, trans, fcut)
+aceB = SHIPBasis(spec, trans, fcut)
 
-bgrp = shpB.bgrps[1]
+bgrp = aceB.bgrps[1]
 
 
 ##
 
 Nr = 50
 Rs, Zs = randR(Nr)
-tmp = alloc_temp(shpB, Nr)
-B = SHIPs.alloc_B(shpB)
-tmp2 = alloc_temp(shpB2, Nr)
-B2 = SHIPs.alloc_B(shpB2)
+tmp = alloc_temp(aceB, Nr)
+B = ACE.alloc_B(aceB)
+tmp2 = alloc_temp(aceB2, Nr)
+B2 = ACE.alloc_B(aceB2)
 
-evaluate!(B, tmp, shpB, Rs, Zs, 0)
-evaluate!(B2, tmp2, shpB2, Rs, Zs, 0)
+evaluate!(B, tmp, aceB, Rs, Zs, 0)
+evaluate!(B2, tmp2, aceB2, Rs, Zs, 0)
 @show B ≈ B2
 
-@btime evaluate!($B, $tmp, $shpB, $Rs, $Zs, 0);
-@btime evaluate!($B2, $tmp2, $shpB2, $Rs, $Zs, 0);
+@btime evaluate!($B, $tmp, $aceB, $Rs, $Zs, 0);
+@btime evaluate!($B2, $tmp2, $aceB2, $Rs, $Zs, 0);
 
 ##
 
-tmpd = alloc_temp_d(shpB, Nr)
-dB = alloc_dB(shpB, Nr)
-evaluate_d!(B, dB, tmpd, shpB, Rs, Zs, 0)
+tmpd = alloc_temp_d(aceB, Nr)
+dB = alloc_dB(aceB, Nr)
+evaluate_d!(B, dB, tmpd, aceB, Rs, Zs, 0)
 
 
-tmpd2 = alloc_temp_d(shpB2, Nr)
-dB2 = alloc_dB(shpB2, Nr)
-evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
+tmpd2 = alloc_temp_d(aceB2, Nr)
+dB2 = alloc_dB(aceB2, Nr)
+evaluate_d!(dB2, tmpd2, aceB2, Rs, Zs, 0)
 
 @show dB2 ≈ dB
 
-@btime evaluate_d!($B, $dB, $tmpd, $shpB, $Rs, $Zs, 0)
-@btime evaluate_d!($dB2, $tmpd2, $shpB2, $Rs, $Zs, 0)
+@btime evaluate_d!($B, $dB, $tmpd, $aceB, $Rs, $Zs, 0)
+@btime evaluate_d!($dB2, $tmpd2, $aceB2, $Rs, $Zs, 0)
 
 ##
 
 
 # ##
 #
-# f = let dB2 = dB2, tmpd2 = tmpd2, shpB2 = shpB2, Rs = Rs, Zs = Zs
-#    () -> evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
+# f = let dB2 = dB2, tmpd2 = tmpd2, aceB2 = aceB2, Rs = Rs, Zs = Zs
+#    () -> evaluate_d!(dB2, tmpd2, aceB2, Rs, Zs, 0)
 # end
 # runn(f, N) = (for n=1:N; f(); end)
 # runn(f, 1)
@@ -86,18 +86,18 @@ evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # ##
 #
 #
-# # debugging -> shows that SHIPs.grad_AA_Rj! is correct...
+# # debugging -> shows that ACE.grad_AA_Rj! is correct...
 #
 # _AA(Rs) = (
-#    SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
-#    SHIPs.precompute_AA!(tmp2, shpB2, 1);
+#    ACE.precompute_A!(tmp2, aceB2, Rs, Zs, 1);
+#    ACE.precompute_AA!(tmp2, aceB2, 1);
 #    return copy(tmp2.AA[1])
 #    )
 #
 # _dAA(Rs, j) = (
-#    SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
-#    SHIPs.precompute_AA!(tmpd2, shpB2, 1);
-#    SHIPs.grad_AA_Rj!(tmpd2, shpB2, j, Rs, Zs, 1);
+#    ACE.precompute_dA!(tmpd2, aceB2, Rs, Zs, 1);
+#    ACE.precompute_AA!(tmpd2, aceB2, 1);
+#    ACE.grad_AA_Rj!(tmpd2, aceB2, j, Rs, Zs, 1);
 #    return copy(tmpd2.dAAj[1])
 #    )
 #
@@ -146,17 +146,17 @@ evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 #
 #
 # _A(Rs) = (
-#    SHIPs.precompute_A!(tmp2, shpB2, Rs, Zs, 1);
+#    ACE.precompute_A!(tmp2, aceB2, Rs, Zs, 1);
 #    return copy(tmp2.A[1])
 #    )
 #
 # _dA1(Rs) = begin
-#       SHIPs.precompute_dA!(tmpd2, shpB2, Rs, Zs, 1);
-#       alist = shpB2.alists[1]
+#       ACE.precompute_dA!(tmpd2, aceB2, Rs, Zs, 1);
+#       alist = aceB2.alists[1]
 #       dA = zeros(JVec{ComplexF64}, length(alist))
 #       for n = 1:length(alist)
 #          zklm = alist[n]
-#          dA[n] = SHIPs.grad_phi_Rj(Rs[1], 1, zklm, tmpd2)
+#          dA[n] = ACE.grad_phi_Rj(Rs[1], 1, zklm, tmpd2)
 #       end
 #       return dA
 #    end
@@ -181,12 +181,12 @@ evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # R = Rs[1]
 # _phi(R) = _A([R])
 # _dphi(R) = begin
-#       SHIPs.precompute_dA!(tmpd2, shpB2, [R], [0], 1);
-#       alist = shpB2.alists[1]
+#       ACE.precompute_dA!(tmpd2, aceB2, [R], [0], 1);
+#       alist = aceB2.alists[1]
 #       dphi = zeros(JVec{ComplexF64}, length(alist))
 #       for n = 1:length(alist)
 #          zklm = alist[n]
-#          dphi[n] = SHIPs.grad_phi_Rj(R, 1, zklm, tmpd2)
+#          dphi[n] = ACE.grad_phi_Rj(R, 1, zklm, tmpd2)
 #       end
 #       return dphi
 #    end
@@ -214,7 +214,7 @@ evaluate_d!(dB2, tmpd2, shpB2, Rs, Zs, 0)
 # tmpd.dY ≈ tmpd2.dYY
 #
 #
-# SH = shpB2.SH
+# SH = aceB2.SH
 # Y = copy(tmpd2.Y)
 # dY = copy(tmpd2.dY)
 #

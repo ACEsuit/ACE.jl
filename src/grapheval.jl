@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+
 module DAG
 
 import Base: ==, length
@@ -24,7 +25,7 @@ end
 
 length(dag::CorrEvalGraph) = length(dag.nodes)
 
-==(dag1::CorrEvalGraph, dag2::CorrEvalGraph) = SHIPs._allfieldsequal(dag1, dag2)
+==(dag1::CorrEvalGraph, dag2::CorrEvalGraph) = ACE._allfieldsequal(dag1, dag2)
 
 CorrEvalGraph{T, TI}() where {T, TI} =
       CorrEvalGraph(Vector{BinDagNode{TI}}(undef, 0),
@@ -37,7 +38,7 @@ CorrEvalGraph{T, TI}() where {T, TI} =
 #       a quick hack to make sure it can be read without any ambiguity
 
 write_dict(gr::CorrEvalGraph{T, TI}) where {T <: Real, TI <: Integer} =
-   Dict( "__id__" => "SHIPs_CorrEvalGraph",
+   Dict( "__id__" => "ACE_CorrEvalGraph",
          "T" => write_dict(T),
          "TI" => write_dict(TI),
          "nodes1" => [ n[1] for n in gr.nodes ],
@@ -48,7 +49,10 @@ write_dict(gr::CorrEvalGraph{T, TI}) where {T <: Real, TI <: Integer} =
       )
 
 
-function read_dict(::Val{:SHIPs_CorrEvalGraph}, D::Dict)
+read_dict(::Val{:SHIPs_CorrEvalGraph}, D::Dict) =
+   read_dict(Val{:ACE_CorrEvalGraph}(), D)
+
+function read_dict(::Val{:ACE_CorrEvalGraph}, D::Dict)
    T = read_dict(D["T"])
    TI = read_dict(D["TI"])
    @assert T <: Real

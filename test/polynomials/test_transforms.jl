@@ -9,7 +9,7 @@
 
 @testset "Transforms" begin
 
-using SHIPs, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
+using ACE, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 
 verbose = false

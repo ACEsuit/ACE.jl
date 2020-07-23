@@ -6,13 +6,13 @@
 # --------------------------------------------------------------------------
 
 
-@testset "SHIPs Descriptor" begin
+@testset "ACE Descriptor" begin
 
 
 @info("-------- TEST 🚢 DESCRIPTOR ---------")
 @info("I'm really just checking that the constructor and evaluator run ok")
-using SHIPs, JuLIP, Test, ASE
-using SHIPs.Descriptors
+using ACE, JuLIP, Test, ASE
+using ACE.Descriptors
 
 try
    desc = SHIPDescriptor(:Si, deg = 5, rcut = 5.0)

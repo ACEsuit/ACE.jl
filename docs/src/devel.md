@@ -11,7 +11,7 @@
 
 ## Types and type hierarchy
 
-The `SHIPs.jl` package heavily utilizes composition (as opposed to inheritance), which is well aligned with Julia's type system and recommended style. Basis sets and calculators are built from the following two base types:
+The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), which is well aligned with Julia's type system and recommended style. Basis sets and calculators are built from the following two base types:
 
 * `OneParticleBasis` : abstract supertype of a 1-particle basis
 * `PIBasis` : concrete implementation of a permutation-invariant basis
@@ -118,7 +118,7 @@ TODO
 
 ## RPI Basis (ACE and Extensions)
 
-The ACE basis (Atomic Cluster Expansion; Drautz 2019) and its modifications and extensions is one of the main user-facing objects provided by `SHIPs.jl`.
+The ACE basis (Atomic Cluster Expansion; Drautz 2019) and its modifications and extensions is one of the main user-facing objects provided by `ACE.jl`.
 It is constructed by reducing a permutation invariant `PIBasis` to a permutation and rotation invariant basis through a single sparse matrix-vector multiplication.
 ```math
  B = C \cdot {\bm A},

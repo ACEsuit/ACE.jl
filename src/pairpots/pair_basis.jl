@@ -48,11 +48,14 @@ end
 JuLIP.cutoff(pB::PolyPairBasis) = cutoff(pB.J)
 
 write_dict(pB::PolyPairBasis) = Dict(
-      "__id__" => "SHIPs_PolyPairBasis",
+      "__id__" => "ACE_PolyPairBasis",
           "Pr" => write_dict(pB.J),
        "zlist" => write_dict(pB.zlist) )
 
 read_dict(::Val{:SHIPs_PolyPairBasis}, D::Dict) =
+   read_dict(Val{:ACE_PolyPairBasis}(), D)
+
+read_dict(::Val{:ACE_PolyPairBasis}, D::Dict) =
       PolyPairBasis( read_dict(D["Pr"]), read_dict(D["zlist"]) )
 
 alloc_temp(pB::PolyPairBasis, args...) = (

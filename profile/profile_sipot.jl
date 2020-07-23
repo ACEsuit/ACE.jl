@@ -6,13 +6,13 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs, JuLIP, BenchmarkTools
+using ACE, JuLIP, BenchmarkTools
 
 #---
 
 fname = "/Users/ortner/Dropbox/Public/SHIPPots/Si_split_1.2_reg_test_v05.json"
 D = load_dict(fname)
-V = SHIPs.Import.import_pipot_v05(D)
+V = ACE.Import.import_pipot_v05(D)
 
 at = bulk(:Si, cubic=true) * 3;
 @show length(at)
@@ -41,7 +41,7 @@ println(" $((@timed forces(V, at)).time / length(at) * 1000) ms")
 
 @info("Graph Evaluator")
 println("(it takes a long time to generate the graph - sorry!")
-Vgr = SHIPs.GraphPIPot(V)
+Vgr = ACE.GraphPIPot(V)
 println("Number of nodes")
 @show length(Vgr.dags[1].nodes)
 

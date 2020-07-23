@@ -5,6 +5,8 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
+
+
 export SparsePSHDegree
 
 @doc raw"""
@@ -30,10 +32,13 @@ end
 Base.show(io::IO, b::PSH1pBasisFcn) = print(io, "znlm[$(b.z.z)|$(b.n),$(b.l),$(b.m)]")
 
 write_dict(b::PSH1pBasisFcn) =
-   Dict("__id__" => "SHIPs_PSH1pBasisFcn",
+   Dict("__id__" => "ACE_PSH1pBasisFcn",
         "nlmz" => [ b.n, b.l, b.m, Int(b.z) ] )
 
 read_dict(::Val{:SHIPs_PSH1pBasisFcn}, D::Dict) =
+   read_dict(Val{:ACE_PSH1pBasisFcn}(), D)
+
+read_dict(::Val{:ACE_PSH1pBasisFcn}, D::Dict) =
    PSH1pBasisFcn(D["nlmz"]...)
 
 scaling(b::PSH1pBasisFcn, p) = b.n^p + b.l^p

@@ -6,7 +6,7 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs: PolyTransform,
+using ACE: PolyTransform,
              IdTransform,
              TransformedJacobi,
              PolyCutoff1s,

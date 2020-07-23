@@ -5,8 +5,8 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using JuLIP, SHIPs, JuLIP.Potentials, LinearAlgebra
-using SHIPs.Testing: lsq, get_V0
+using JuLIP, ACE, JuLIP.Potentials, LinearAlgebra
+using ACE.Testing: lsq, get_V0
 using LinearAlgebra: qr, cond
 using JuLIP: Atoms
 using Plots

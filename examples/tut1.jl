@@ -5,8 +5,8 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-using JuLIP, SHIPs, JuLIP.Potentials, LinearAlgebra
-using SHIPs.Testing: lsq, get_V0
+using JuLIP, ACE, JuLIP.Potentials, LinearAlgebra
+using ACE.Testing: lsq, get_V0
 using LinearAlgebra: qr, cond
 using Plots
 
@@ -17,7 +17,7 @@ end
 
 function get_basis(species; N = 3, maxdeg = 10, rcut = 7.0 )
    rcut = 7.0
-   basis = SHIPs.Utils.rpi_basis(; species=species, N = N, r0 = 2.5,
+   basis = ACE.Utils.rpi_basis(; species=species, N = N, r0 = 2.5,
    maxdeg = maxdeg, rcut = rcut,
    rin = rnn(:W) * 0.6,
    constants = false )

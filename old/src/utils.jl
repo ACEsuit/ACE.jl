@@ -11,12 +11,12 @@ module Utils
 using StaticArrays
 using LinearAlgebra: norm
 using JuLIP: JVecF
-using SHIPs: TransformedJacobi,  inv_transform,
+using ACE: TransformedJacobi,  inv_transform,
             PolyTransform, PolyCutoff1s, SparseSHIP, SHIPBasis,
             TransformedPolys
 
-import SHIPs
-import SHIPs: rand_sphere, rand_radial
+import ACE
+import ACE: rand_sphere, rand_radial
 import Base: rand
 import JuLIP: evaluate
 import JuLIP.MLIPs: IPBasis
@@ -76,8 +76,8 @@ function findall_basis_ll(basis, ll)
    @warn("This code assumes there is only one species. (not checked!)")
    @info(" ll = $(ll)")
    @info("Get the purely rotation-invariant basis:")
-   CA = SHIPs.Rotations.Rot3DCoeffs()
-   Brot = SHIPs.Rotations.basis(CA, ll)
+   CA = ACE.Rotations.Rot3DCoeffs()
+   Brot = ACE.Rotations.basis(CA, ll)
    @info("   ... there are $(size(Brot, 2)) rotation-invariance basis functions")
 
    @info("Find the RPI basis")

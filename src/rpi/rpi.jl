@@ -11,17 +11,17 @@ module RPI
 
 include("../extimports.jl")
 
-include("../shipimports.jl")
+include("../aceimports.jl")
 
 
-import SHIPs.SphericalHarmonics: SHBasis, index_y
+import ACE.SphericalHarmonics: SHBasis, index_y
 
 export RPIBasis, SparsePSHDegree, BasicPSH1pBasis,
        diagonal_regulariser
 
 # specify the `Rotations3D` submodule for CLebsch-Gordan and related
 include("rotations3d.jl")
-using SHIPs.RPI.Rotations3D
+using ACE.RPI.Rotations3D
 
 # some basic degree types useful for RPI type constructions
 # (this file also specifies the PSH1pBasisFcn

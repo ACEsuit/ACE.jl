@@ -7,13 +7,13 @@
 
 
 
-using JuLIP, SHIPs, JuLIP.Potentials, LinearAlgebra
+using JuLIP, ACE, JuLIP.Potentials, LinearAlgebra
 using JuLIP.Potentials: SZList, ZList
-using SHIPs.Testing: ToyModel, trainset, lsq
+using ACE.Testing: ToyModel, trainset, lsq
 
 function get_basis(species; N = 3, maxdeg = 10, rcut = 7.0 )
    rcut = 7.0
-   basis = SHIPs.Utils.rpi_basis(; species=species, N = N, r0 = 2.5,
+   basis = ACE.Utils.rpi_basis(; species=species, N = N, r0 = 2.5,
    maxdeg = maxdeg, rcut = rcut,
    rin = rnn(:Fe) * 0.6,
    constants = false )
@@ -37,7 +37,7 @@ end
 #---
 
 species = [:Fe, :Al]
-at = SHIPs.Testing.rand_config(ToyModel(species))
+at = ACE.Testing.rand_config(ToyModel(species))
 
 basis = get_basis(species; N = 3, maxdeg = 6, rcut = 6.0)
 c = rand(length(basis)) .- 0.5

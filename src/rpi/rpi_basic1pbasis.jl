@@ -123,17 +123,20 @@ _build_PSH_1p_spec(maxn::Integer, D::AbstractDegree, species::Symbol) =
 #  FIO code
 
 
-==(P1::BasicPSH1pBasis, P2::BasicPSH1pBasis) =  SHIPs._allfieldsequal(P1, P2)
+==(P1::BasicPSH1pBasis, P2::BasicPSH1pBasis) =  ACE._allfieldsequal(P1, P2)
 
 write_dict(basis::BasicPSH1pBasis{T}) where {T} = Dict(
-      "__id__" => "SHIPs_BasicPSH1pBasis",
+      "__id__" => "ACE_BasicPSH1pBasis",
            "J" => write_dict(basis.J),
           "SH" => write_dict(basis.SH),
         "spec" => write_dict.(basis.spec),
        "zlist" => write_dict(basis.zlist),
    )
 
-function read_dict(::Val{:SHIPs_BasicPSH1pBasis}, D::Dict)
+read_dict(::Val{:SHIPs_BasicPSH1pBasis}, D::Dict) =
+   read_dict(Val{:ACE_BasicPSH1pBasis}(), D::Dict)
+
+function read_dict(::Val{:ACE_BasicPSH1pBasis}, D::Dict)
    J = read_dict(D["J"])
    SH = read_dict(D["SH"])
    zlist = read_dict(D["zlist"])

@@ -6,11 +6,11 @@
 # --------------------------------------------------------------------------
 
 
-using SHIPs, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
+using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
       JuLIP, JuLIP.Testing
 
 ##
-@testset "SHIPs.jl" begin
+@testset "ACE.jl" begin
     # ------------------------------------------
     #   basic polynomial basis building blocks
     include("polynomials/test_ylm.jl")

@@ -6,6 +6,7 @@
 # --------------------------------------------------------------------------
 
 
+
 module PairPotentials
 
 import JuLIP
@@ -16,7 +17,7 @@ using JuLIP.Potentials: ZList, SZList, @pot, @D,
                         PairPotential, SimplePairPotential
 using StaticArrays: SMatrix
 
-using SHIPs: ScalarBasis, _allfieldsequal
+using ACE: ScalarBasis, _allfieldsequal
 
 import JuLIP: evaluate!, evaluate_d!, cutoff,
               evaluate, evaluate_d,

@@ -7,19 +7,19 @@
 
 
 using JuLIP
-using SHIPs, SHIPs.SphericalHarmonics, StaticArrays, LinearAlgebra,
+using ACE, ACE.SphericalHarmonics, StaticArrays, LinearAlgebra,
       Combinatorics
-using SHIPs: _mrange
-using SHIPs.Rotations
+using ACE: _mrange
+using ACE.Rotations
 
 ##
 lmax = 3
-A = SHIPs.Rotations.Rot3DCoeffs(Float64)
+A = ACE.Rotations.Rot3DCoeffs(Float64)
 for l1 = 0:lmax, l2=0:lmax, l3=0:lmax, l4=0:lmax
    global A
    ll = SVector(l1, l2, l3, l4)
-   Uslim = SHIPs.Rotations.compute_Al(A, ll, ordered=true)
-   Uall = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
+   Uslim = ACE.Rotations.compute_Al(A, ll, ordered=true)
+   Uall = ACE.Rotations.compute_Al(A, ll, ordered=false)
    if rank(Uslim) != rank(Uall)
       @show ll, rank(Uslim), rank(Uall)
    end
@@ -28,7 +28,7 @@ end
 <<<<<<< HEAD
 =======
 ll = SVector(1,1,1,0)
-U = SHIPs.Rotations.compute_Al(A, ll, ordered=false)
+U = ACE.Rotations.compute_Al(A, ll, ordered=false)
 
 
 >>>>>>> 14ee199fe32862737cd306ae0033dac552f4f512
@@ -55,14 +55,14 @@ end
 
 rank(G)
 ship4.NuZ[end][end]
-SHIPs._get_ll(ship4.KL[end], ship4.NuZ[end][end])
+ACE._get_ll(ship4.KL[end], ship4.NuZ[end][end])
 # i.e. ll = (1,1,1,1)
 
 
 
 # --------------------
 
-const SH = SHIPs.SphericalHarmonics.SHBasis(10)
+const SH = ACE.SphericalHarmonics.SHBasis(10)
 
 ip(t1, t2) = (t1 == t2)
 
