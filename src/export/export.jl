@@ -15,10 +15,11 @@ using ACE: PIBasis, PIBasisFcn, PIPotential
 using ACE.OrthPolys: TransformedPolys
 using ACE: rand_radial, cutoff, numz
 using JuLIP: energy, bulk, i2z, z2i, chemical_symbol
+using ACE.PairPotentials: RepulsiveCore, PolyPairPot
 
-function export_ace(fname::AbstractString, V;  kwargs...)
+function export_ace(fname::AbstractString, args...;  kwargs...)
    fptr = open(fname; write=true)
-   export_ace(fptr, V; kwargs...)
+   export_ace(fptr, args...; kwargs...)
    close(fptr)
 end
 
@@ -33,7 +34,7 @@ function export_ace(fptr::IOStream, Pr::TransformedPolys; ntests=0, kwargs...)
    rcut = cutoff(Pr)
    maxn = length(Pr)
 
-   println(fptr, "radbasename=ACEBasic")
+   println(fptr, "radbasename=ACE.jl.Basic")
    println(fptr, "transform parameters: p=$(p) r0=$(r0)")
    println(fptr, "cutoff parameters: rcut=$rcut xl=$xl xr=$xr pl=$pl pr=$pr")
    println(fptr, "recursion coefficients: maxn=$(maxn)")
@@ -54,14 +55,43 @@ function export_ace(fptr::IOStream, Pr::TransformedPolys; ntests=0, kwargs...)
    end
 end
 
+function export_ace(fptr::IOStream, Vpair::PolyPairPot; kwargs...)
+   println(fptr, "begin polypairpot")
+   # this exports everything except the coefficients
+   export_ace(fptr, Vpair.basis.J; kwargs...)
+   println(fptr, "coefficients")
+   c = Vpair.coeffs
+   for n = 1:length(c)
+      println(fptr, "$(c[n])")
+   end
+   println(fptr, "end polypairpot")
+end
 
-function export_ace(fptr::IOStream, V::PIPotential; kwargs...)
+function export_ace(fptr::IOStream, Vrep::RepulsiveCore; kwargs...)
+   println(fptr, "begin repulsive potential")
+   # export the pair potential part
+   export_ace(fptr, Vrep.Vout; kwargs...)
+   println(fptr, "spline parameters")
+   println(fptr, "   e_0 + B  exp(-A*(r/ri-1)) * (ri/r)")
+   Vin = Vrep.Vin[1]
+   println(fptr, "ri=$(Vin.ri)")
+   println(fptr, "e0=$(Vin.e0)")
+   println(fptr, "A=$(Vin.A)")
+   println(fptr, "B=$(Vin.B)")
+   println(fptr, "end repulsive potential")
+end
+
+
+function export_ace(fptr::IOStream, V::PIPotential, Vpair=nothing, V0=nothing; kwargs...)
    @assert numz(V) == 1
    inner = V.pibasis.inner[1]
    coeffs = V.coeffs[1]
    # sort the basis functions into groups the way the ace evaluator wants it
    groups = _basis_groups(inner, coeffs)
    lmax = maximum(maximum(g["l"]) for g in groups)
+
+   haspair = (Vpair == nothing) ? "f" : "t"
+   hasE0 = (V0 == nothing) ? "f" : "t"
 
    # header
    println(fptr, "nelements=1")
@@ -72,12 +102,21 @@ function export_ace(fptr::IOStream, V::PIPotential; kwargs...)
    println(fptr, "2 FS parameters:  1.000000 1.000000")
    println(fptr, "core energy-cutoff parameters: 100000.000000000000000000 1.000000000000000000")
    println(fptr, "")
+   println(fptr, "hasE0: $(hasE0)")
+   println(fptr, "haspair: $(haspair)")
+   println(fptr, "")
 
    # export_ace the radial basis
    export_ace(fptr, V.pibasis.basis1p.J; kwargs...)
-
-   # an empty line to separate it from the n-body basis
    println(fptr, "")
+
+   if haspair == "t"
+      export_ace(fptr, Vpair)
+      println(fptr, "")
+   end
+
+   # for now we assume that there is no E0
+   @assert hasE0 == "f"
 
    # header
    rankmax = maximum(length(g["l"]) for g in groups)

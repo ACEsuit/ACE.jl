@@ -14,7 +14,7 @@
 @doc raw"""
 `struct BuckPot` : Buckingham potential,
 ```math
-   V(r) = e_0 + B  \exp\big( - A (r/r_i - 1)\big) \cdot \frac{r}{r_i}
+   V(r) = e_0 + B  \exp\big( - A (r/r_i - 1)\big) \cdot \frac{r_i}{r}
 ```
 """
 struct BuckPot{T} <: SimplePairPotential

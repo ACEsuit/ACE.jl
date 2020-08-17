@@ -7,7 +7,7 @@
 
 
 using JuLIP, ACE, LinearAlgebra
-
+using JuLIP.MLIPs: combine
 
 #--- radial basis test
 
@@ -156,4 +156,16 @@ end
 
 
 #---
-# export the Si potential
+# a potential with pair potential and repulsive core
+
+# TODO:
+#  - add on also E0
+#  - move pairpot rcut to 7.0
+
+basis = ACE.Utils.rpi_basis(; species = :Al, N = 4, maxdeg=8, pin = 2)
+VN = randcombine(basis; diff=2)
+pairbasis = ACE.Utils.pair_basis(; maxdeg = 8, rcut = 5.0)
+V2 = combine(pairbasis, rand(8) .* (1:8).^(-2))
+V2rep = ACE.PairPotentials.RepulsiveCore(V2, 2.0, -0.1234)
+
+ACE.Export.export_ace(@__DIR__() * "/testrep.jace", VN, V2rep)
