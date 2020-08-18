@@ -60,7 +60,7 @@ for maxdeg = 8:8
    global V = ACE.Random.randcombine(basis)
    # V.coeffs[1][3] = 0.0
    fname = "/testpot_ord=$(N)_maxn=$(maxdeg)"
-   ACE.Export.export_ace(@__DIR__() * fname * ".ace", V)
+   ACE.Export.export_ace(@__DIR__() * fname * ".acejl", V)
    JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
    # ACE.Export.export_ace_tests(@__DIR__() * "/testpot_$(N)_test", V, 3)
    export_dimer_test(V, fname)
@@ -71,7 +71,7 @@ end
 
 for maxdeg = 8:8
    fname = "testpot_ord=$(N)_maxn=$(maxdeg)"
-   filelist = [ fname * ".ace",
+   filelist = [ fname * ".acejl",
                 fname * ".json",
                 fname * "_dimer_test.dat", ]
                 # fname * _test_1.dat",
@@ -107,13 +107,13 @@ for b in keys(inner.b2iAA)
 end
 
 fname = "/testpot_ord=$(ord)_mini"
-ACE.Export.export_ace(@__DIR__() * fname * ".ace", V)
+ACE.Export.export_ace(@__DIR__() * fname * ".acejl", V)
 JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
 ACE.Export.export_ace_tests(@__DIR__() * fname * "_test", V, 1, nrepeat=2)
 export_dimer_test(V, fname, :Al)
 export_trimer_test(V, fname, :Al)
 
-filelist = [ fname * ".ace",
+filelist = [ fname * ".acejl",
              fname * ".json",
              fname * "_dimer_test.dat",
              fname * "_trimer_test.dat",
@@ -135,13 +135,13 @@ for N in [2, 3, 5], maxdeg in [6, 10]
    basis = ACE.Utils.rpi_basis(; species = :Al, N = N, maxdeg=maxdeg, rcut=rcut)
    V = ACE.Random.randcombine(basis)
    fname = "/testpot_ord=$(N)_maxn=$(maxdeg)"
-   ACE.Export.export_ace(@__DIR__() * fname * ".ace", V)
+   ACE.Export.export_ace(@__DIR__() * fname * ".acejl", V)
    JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
    ACE.Export.export_ace_tests(@__DIR__() * fname * "_test", V, 1)
    export_dimer_test(V, fname, :Al)
    export_trimer_test(V, fname, :Al)
 
-   filelist = [ fname * ".ace",
+   filelist = [ fname * ".acejl",
                 fname * ".json",
                 fname * "_dimer_test.dat",
                 fname * "_trimer_test.dat",
@@ -164,8 +164,26 @@ end
 
 basis = ACE.Utils.rpi_basis(; species = :Al, N = 4, maxdeg=8, pin = 2)
 VN = randcombine(basis; diff=2)
-pairbasis = ACE.Utils.pair_basis(; maxdeg = 8, rcut = 5.0)
+pairbasis = ACE.Utils.pair_basis(; species = :Al, maxdeg = 8, rcut = 5.0)
 V2 = combine(pairbasis, rand(8) .* (1:8).^(-2))
 V2rep = ACE.PairPotentials.RepulsiveCore(V2, 2.0, -0.1234)
+V = JuLIP.MLIPs.SumIP(V2rep, VN)
 
-ACE.Export.export_ace(@__DIR__() * "/testrep.jace", VN, V2rep)
+fname = "/ace_reppair"
+JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
+ACE.Export.export_ace(@__DIR__() * fname * ".acejl", VN, V2rep)
+ACE.Export.export_ace_tests(@__DIR__() * fname * "_test", V, 1, s=:Al)
+export_dimer_test(V, fname, :Al)
+export_trimer_test(V, fname, :Al)
+
+filelist = [ fname * ".acejl",
+             fname * ".json",
+             fname * "_dimer_test.dat",
+             fname * "_trimer_test.dat",
+             fname * "_test_1.dat"]
+for f in filelist
+   try
+      run(`mv ./scripts/$f /Users/ortner/gits/ace-evaluator/test/julia/`)
+   catch
+   end
+end

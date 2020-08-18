@@ -34,7 +34,6 @@ function export_ace(fptr::IOStream, Pr::TransformedPolys; ntests=0, kwargs...)
    rcut = cutoff(Pr)
    maxn = length(Pr)
 
-   println(fptr, "radbasename=ACE.jl.Basic")
    println(fptr, "transform parameters: p=$(p) r0=$(r0)")
    println(fptr, "cutoff parameters: rcut=$rcut xl=$xl xr=$xr pl=$pl pr=$pr")
    println(fptr, "recursion coefficients: maxn=$(maxn)")
@@ -102,6 +101,7 @@ function export_ace(fptr::IOStream, V::PIPotential, Vpair=nothing, V0=nothing; k
    println(fptr, "2 FS parameters:  1.000000 1.000000")
    println(fptr, "core energy-cutoff parameters: 100000.000000000000000000 1.000000000000000000")
    println(fptr, "")
+   println(fptr, "radbasename=ACE.jl.Basic")
    println(fptr, "hasE0: $(hasE0)")
    println(fptr, "haspair: $(haspair)")
    println(fptr, "")
@@ -161,9 +161,9 @@ end
 
 
 
-function export_ace_tests(fname::AbstractString, V::PIPotential, ntests = 1;
-                          nrepeat = 3, pert=0.05)
-   s = JuLIP.chemical_symbol(i2z(V, 1))
+function export_ace_tests(fname::AbstractString, V, ntests = 1;
+                          nrepeat = 3, pert=0.05,
+                          s = JuLIP.chemical_symbol(i2z(V, 1)))
    at = bulk(s, cubic=true) * nrepeat
    JuLIP.set_pbc!(at, false)
    r0 = JuLIP.rnn(s)
