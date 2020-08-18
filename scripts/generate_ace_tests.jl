@@ -167,11 +167,12 @@ VN = randcombine(basis; diff=2)
 pairbasis = ACE.Utils.pair_basis(; species = :Al, maxdeg = 8, rcut = 5.0)
 V2 = combine(pairbasis, rand(8) .* (1:8).^(-2))
 V2rep = ACE.PairPotentials.RepulsiveCore(V2, 2.0, -0.1234)
-V = JuLIP.MLIPs.SumIP(V2rep, VN)
+V0 = OneBody(:Al => -1.5 + rand())
+V = JuLIP.MLIPs.SumIP(V0, V2rep, VN)
 
 fname = "/ace_reppair"
 JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
-ACE.Export.export_ace(@__DIR__() * fname * ".acejl", VN, V2rep)
+ACE.Export.export_ace(@__DIR__() * fname * ".acejl", VN, V2rep, V0)
 ACE.Export.export_ace_tests(@__DIR__() * fname * "_test", V, 1, s=:Al)
 export_dimer_test(V, fname, :Al)
 export_trimer_test(V, fname, :Al)
@@ -187,3 +188,9 @@ for f in filelist
    catch
    end
 end
+
+
+
+
+#---
+# Cas Si potential

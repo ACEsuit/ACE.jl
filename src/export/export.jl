@@ -89,20 +89,27 @@ function export_ace(fptr::IOStream, V::PIPotential, Vpair=nothing, V0=nothing; k
    groups = _basis_groups(inner, coeffs)
    lmax = maximum(maximum(g["l"]) for g in groups)
 
+   sym = chemical_symbol(i2z(V, 1))
    haspair = (Vpair == nothing) ? "f" : "t"
-   hasE0 = (V0 == nothing) ? "f" : "t"
 
    # header
    println(fptr, "nelements=1")
-   println(fptr, "elements: $(chemical_symbol(i2z(V, 1)))")
+   println(fptr, "elements: $sym")
    println(fptr, "")
    println(fptr, "lmax=$lmax")
    println(fptr, "")
    println(fptr, "2 FS parameters:  1.000000 1.000000")
    println(fptr, "core energy-cutoff parameters: 100000.000000000000000000 1.000000000000000000")
+
+   # write E0 values
+   if V0 == nothing
+      println(fptr, "E0: 0.0")
+   else
+      println(fptr, "E0: $(V0(sym))")
+   end
+
    println(fptr, "")
    println(fptr, "radbasename=ACE.jl.Basic")
-   println(fptr, "hasE0: $(hasE0)")
    println(fptr, "haspair: $(haspair)")
    println(fptr, "")
 
@@ -114,9 +121,6 @@ function export_ace(fptr::IOStream, V::PIPotential, Vpair=nothing, V0=nothing; k
       export_ace(fptr, Vpair)
       println(fptr, "")
    end
-
-   # for now we assume that there is no E0
-   @assert hasE0 == "f"
 
    # header
    rankmax = maximum(length(g["l"]) for g in groups)
