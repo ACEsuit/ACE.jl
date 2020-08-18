@@ -128,7 +128,7 @@ end
 
 #--- export a random many-body potential
 
-for N in [2, 3, 5], maxdeg in [6, 10]
+for N in [2, 3, 5], maxdeg in [10, ]
 
    rcut = 6.5
 
@@ -167,12 +167,14 @@ VN = randcombine(basis; diff=2)
 pairbasis = ACE.Utils.pair_basis(; species = :Al, maxdeg = 8, rcut = 5.0)
 V2 = combine(pairbasis, rand(8) .* (1:8).^(-2))
 V2rep = ACE.PairPotentials.RepulsiveCore(V2, 2.0, -0.1234)
-V0 = OneBody(:Al => -1.5 + rand())
-V = JuLIP.MLIPs.SumIP(V0, V2rep, VN)
+V1 = OneBody(:Al => -1.5 + rand())
+V = JuLIP.MLIPs.SumIP(V1, V2rep, VN)
 
 fname = "/ace_reppair"
 JuLIP.save_dict(@__DIR__() * fname * ".json", write_dict(V))
-ACE.Export.export_ace(@__DIR__() * fname * ".acejl", VN, V2rep, V0)
+# Vl = read_dict(load_dict(@__DIR__() * fname * ".json"))
+# V1, V2rep, VN = tuple(Vl.components...)
+ACE.Export.export_ace(@__DIR__() * fname * ".acejl", VN, V2rep, V1)
 ACE.Export.export_ace_tests(@__DIR__() * fname * "_test", V, 1, s=:Al)
 export_dimer_test(V, fname, :Al)
 export_trimer_test(V, fname, :Al)
@@ -194,3 +196,71 @@ end
 
 #---
 # Cas Si potential
+
+fname = "/Si_B6_N7_18_lap_1.1_rep"
+D = load_dict(@__DIR__() * fname * ".json")
+Vsi = read_dict(D["IP"])
+ACE.Export.export_ace(@__DIR__() * fname * ".acejl",
+                      Vsi.components[3], Vsi.components[2], Vsi.components[1])
+ACE.Export.export_ace_tests(@__DIR__() * fname * "_test", Vsi, 1, s=:Si)
+export_dimer_test(Vsi, fname, :Si)
+export_trimer_test(Vsi, fname, :Si)
+
+filelist = [ fname * ".acejl",
+             fname * ".json",
+             fname * "_dimer_test.dat",
+             fname * "_trimer_test.dat",
+             fname * "_test_1.dat"]
+for f in filelist
+   try
+      run(`mv ./scripts/$f /Users/ortner/gits/ace-evaluator/test/julia/`)
+   catch
+   end
+end
+
+
+#---
+
+fname = "/Si_B6_N7_18_lap_1"
+VN = Vsi.components[3]
+V2 = Vsi.components[2]
+V1 = Vsi.components[1]
+ACE.Export.export_ace(@__DIR__() * fname * ".acejl", VN)
+ACE.Export.export_ace_tests(@__DIR__() * fname * "_test", VN, 1, s=:Si)
+export_dimer_test(VN, fname, :Si)
+export_trimer_test(VN, fname, :Si)
+filelist = [ fname * ".acejl",
+             fname * ".json",
+             fname * "_dimer_test.dat",
+             fname * "_trimer_test.dat",
+             fname * "_test_1.dat"]
+for f in filelist
+   try
+      run(`mv ./scripts$f /Users/ortner/gits/ace-evaluator/test/julia/`)
+   catch
+   end
+end
+
+#---
+#
+# at = Atoms(:Si, [ JVecF(0.0, 0.0, -1.0),
+#                       JVecF(1.0, 2.0, 2.0),
+#                       JVecF(0.0, 1.0, 1.0)  ])
+# set_pbc!(at, false)
+#
+# energy(VN, at)
+#
+# site_energies(VN, at)
+#
+# X = at.X
+# [ norm(X[i] - X[j]) for i = 1:2 for j = i+1:3 ]
+#
+# VN
+#
+#
+# r = 1.732051
+# z = AtomicNumber(:Si)
+#
+# J = VN.pibasis.basis1p.J
+# ACE.evaluate(J, r)
+# J
