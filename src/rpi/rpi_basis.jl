@@ -66,6 +66,10 @@ end
 read_dict(::Val{:ACE_RPIBasis}, D::Dict) =
    RPIBasis(read_dict(D["pibasis"]))
 
+read_dict(::Val{:SHIPs_RPIBasis}, D::Dict) =
+   read_dict(Val{:ACE_RPIBasis}(), D)
+
+
 # ------------------------------------------------------------------------
 #    Basis construction code
 # ------------------------------------------------------------------------

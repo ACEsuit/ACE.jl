@@ -1,6 +1,6 @@
 name = "ACE"
 uuid = "3e8ccfd2-c8b0-11ea-32f1-f3a5990fd77a"
-version = "0.8.1"
+version = "0.8.2"
 
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
@@ -23,7 +23,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 
 [compat]
-JuLIP = "0.10"
+JuLIP = "0.10.1"
 NeighbourLists = "0.5.1"
 julia = "1.4"
 
