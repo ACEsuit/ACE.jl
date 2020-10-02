@@ -47,13 +47,22 @@ graphevaluator(basis::RPIBasis) =
 
 write_dict(basis::RPIBasis) = Dict(
       "__id__" => "ACE_RPIBasis",
+      "__v__"  => "v0_8_2",
       "pibasis" => write_dict(basis.pibasis),
+      "A2Bmaps" => write_dict.(basis.A2Bmaps),
+      "Bz0inds" => [ [ur.start, ur.stop] for ur in basis.Bz0inds ]
    )
 
 
-read_dict(::Val{:SHIPs_RPIBasis}, D::Dict) =
-   read_dict(Val{:ACE_RPIBasis}(), D)
+# v0.8.2 onwards
+function read_dict(::Val{:ACE_RPIBasis}, ::Val{:v0_8_2}, D::Dict)
+   pibasis = read_dict(D["pibasis"])
+   A2Bmaps = tuple( read_dict.(D["A2Bmaps"])... )
+   Bz0inds = tuple( [ ur[1]:ur[2] for ur in D["Bz0inds"] ]... )
+   return RPIBasis(pibasis, A2Bmaps, Bz0inds)
+end
 
+# old version
 read_dict(::Val{:ACE_RPIBasis}, D::Dict) =
    RPIBasis(read_dict(D["pibasis"]))
 
