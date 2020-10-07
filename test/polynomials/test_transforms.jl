@@ -43,5 +43,47 @@ for p in 2:4
    end
 end
 
+#---
+@info("Testing PolyTransforms")
+for p = 2:4
+   r0 = 1+rand()
+   trans = PolyTransform(p, r0)
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
+end
 
+#---
+@info("Testing Morse Transform")
+for lam = 1.0:3.0
+   r0 = 1+rand()
+   trans = ACE.Transforms.MorseTransform(lam, r0)
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
+end
+
+#---
+
+@info("Testing Agnesi Transform")
+for p = 2:4
+   r0 = 1+rand()
+   trans = ACE.Transforms.AgnesiTransform(r0, p)
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
+end
+
+#---
+
+# using Plots
+# r0 = 1.0
+# rr = range(0.0, 3*r0, length=200)
+# plot(; size = (500, 300))
+# for p = 2:4
+#    tpoly = PolyTransform(p, r0)
+#    tagnesi = ACE.Transforms.AgnesiTransform(r0, p)
+#    plot!(rr, tagnesi.(rr), lw=2, c=p-1, label = "p = $p")
+#    plot!(rr, tpoly.(rr), lw=2, c=p-1, ls = :dash, label = "")
+# end
+# xlabel!("r")
+# ylabel!("x")
+# title!("solid = Agnesi, dashed = Poly")
+# vline!([1.0], lw=2, c=:black, label = "r0")
+# ylims!(0.0, 2.0)
+#---
 end
