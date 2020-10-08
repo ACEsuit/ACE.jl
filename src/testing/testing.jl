@@ -82,14 +82,14 @@ function test_transform(T, rrange, ntests = 100)
    xx = [ transform(T, r) for r in rr ]
    # check syntactic sugar
    xx1 = [ T(r) for r in rr ]
-   println(@test xx1 == xx)
+   print_tf(@test xx1 == xx)
    # check inversion
    rr1 =  inv_transform.(Ref(T), xx)
-   println(@test rr1 ≈ rr)
+   print_tf(@test rr1 ≈ rr)
    # check gradient
    dx = transform_d.(Ref(T), rr)
    adx = ForwardDiff.derivative.(Ref(r -> transform(T, r)), rr)
-   println(@test dx ≈ adx)
+   print_tf(@test dx ≈ adx)
 
    # TODO: check that the transform doesn't allocate
    @allocated begin
@@ -99,6 +99,7 @@ function test_transform(T, rrange, ntests = 100)
       end
    end
 end
+
 
 
 end
