@@ -17,15 +17,18 @@ One-particle basis of the form
 ```
 where ``J_{n}`` denotes a radial basis.
 """
-struct BasicPSH1pBasis{T, NZ, TJ <: ScalarBasis{T}} <: OneParticleBasis{T}
+struct BasicPSH1pBasis{T,
+                       TZL <: AbstractZList,
+                       TJ <: ScalarBasis{T}} <: OneParticleBasis{T}
    J::TJ
    SH::SHBasis{T}
-   zlist::SZList{NZ}
+   zlist::TZL
    spec::Vector{PSH1pBasisFcn}
    Aindices::Matrix{UnitRange{Int}}
 end
 
-function BasicPSH1pBasis(J::ScalarBasis{T}, zlist::SZList,
+
+function BasicPSH1pBasis(J::ScalarBasis{T}, zlist::AbstractZList,
                          spec::Vector{PSH1pBasisFcn}) where {T}
    # now get the maximum L-degree to generate the SH basis
    maxL = maximum(b.l for b in spec)

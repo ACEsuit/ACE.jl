@@ -58,7 +58,7 @@ function add_into_A_dA! end
 `function scaling(b, p)`:
 
 a scaling factor for a basis functions ϕ, which gives a rought estimate on
-   the magnitude of ∇ᵖϕ e.g.,
+   the magnitude of ∇ᵖϕ, e.g.,
 ```
 ϕ = r^n Ylm
 ```
