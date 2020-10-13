@@ -39,6 +39,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     #   miscallaneous ...
     include("compat/test_compat_v05.jl")
     include("compat/test_compat.jl")
+    include("test_any.jl")
 
     # ----------------------------------
     #    old tests to be re-introduced
