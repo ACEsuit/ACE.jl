@@ -23,6 +23,22 @@ Base.length(pB::PolyPairBasis) = length(pB.J) * (numz(pB) * (numz(pB) + 1)) ÷ 2
 Base.length(pB::PolyPairBasis, z0::AtomicNumber) = length(pB, z2i(pB, z0))
 Base.length(pB::PolyPairBasis, iz0::Integer) = length(pB.J)
 
+zlist(pB::PolyPairBasis) = pB.zlist
+
+function scaling(pB::PolyPairBasis, p)
+   ww = zeros(Float64, length(pB))
+   for iz0 = 1:numz(pB), iz = 1:numz(pB)
+      idx0 = _Bidx0(pB, iz0, iz)
+      for n = 1:length(pB.J)
+         # TODO: very crude, can we do better?
+         #       -> need a proper H2-orthogonbality?
+         ww[idx0+n] = n^p
+      end
+   end
+   return ww
+end
+
+
 PolyPairBasis(J::ScalarBasis, species) =
    PolyPairBasis( J, ZList(species; static=true) )
 
@@ -73,6 +89,7 @@ compute the zeroth index of the basis corresponding to the potential between
 two species zi, zj; as precomputed in `PolyPairBasis.bidx0`
 """
 _Bidx0(pB, zi, zj) = pB.bidx0[ z2i(pB, zi), z2i(pB, zj) ]
+_Bidx0(pB, i::Integer, j::Integer) = pB.bidx0[ i, j ]
 
 function energy(pB::PolyPairBasis, at::Atoms{T}) where {T}
    E = zeros(T, length(pB))

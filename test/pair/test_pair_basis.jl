@@ -30,6 +30,9 @@ trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 pB = ACE.PairPotentials.PolyPairBasis(Pr, :W)
 
+@info("Scaling Test")
+println(@test ACE.scaling(pB, 1) == 1:length(pB))
+println(@test ACE.scaling(pB, 2) == (1:length(pB)).^2)
 
 ##
 
