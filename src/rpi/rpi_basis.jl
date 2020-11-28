@@ -202,7 +202,7 @@ function scaling(basis::RPIBasis, p)
    wwrpi = zeros(Float64, length(basis))
    for iz0 = 1:numz(basis)
       wwpi_iz0 = wwpi[basis.pibasis.inner[iz0].AAindices]
-      wwrpi[basis.Bz0inds[iz0]] = basis.A2Bmaps[iz0] * wwpi_iz0
+      wwrpi[basis.Bz0inds[iz0]] = abs.(basis.A2Bmaps[iz0]) * wwpi_iz0
    end
    return wwrpi
 end
