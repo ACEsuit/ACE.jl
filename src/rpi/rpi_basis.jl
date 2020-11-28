@@ -196,13 +196,20 @@ function combine(basis::RPIBasis, coeffs)
    return PIPotential(basis.pibasis, picoeffs)
 end
 
-
-function scaling(basis::RPIBasis, p)
+"""
+`scaling(basis::RPIBasis, p[; a2b = abs])` : same as usual but adds a keyword
+argument `use` :
+* `a2b = identity` : the old buggy scaling
+* `a2b = abs` : the bugfix which keeps the behaviour same/similar
+* `a2b = abs2` : a different kind of scaling which I believe is the right one
+but behaves a bit differently especially for high body-orders.
+"""
+function scaling(basis::RPIBasis, p; a2b = abs)
    wwpi = scaling(basis.pibasis, p)
    wwrpi = zeros(Float64, length(basis))
    for iz0 = 1:numz(basis)
       wwpi_iz0 = wwpi[basis.pibasis.inner[iz0].AAindices]
-      wwrpi[basis.Bz0inds[iz0]] = abs.(basis.A2Bmaps[iz0]) * wwpi_iz0
+      wwrpi[basis.Bz0inds[iz0]] = a2b.(basis.A2Bmaps[iz0]) * wwpi_iz0
    end
    return wwrpi
 end
