@@ -25,10 +25,11 @@ import JuLIP: evaluate!, evaluate_d!, cutoff,
               energy, forces, virial,
               alloc_temp, alloc_temp_d,
               z2i, i2z, numz,
-              fltype, rfltype,
-              zlist
+              fltype, rfltype
 
-import ACE: scaling 
+import JuLIP.Potentials: zlist               
+
+import ACE: scaling
 
 import JuLIP.MLIPs: alloc_B, alloc_dB
 

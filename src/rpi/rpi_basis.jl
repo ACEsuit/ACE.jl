@@ -5,7 +5,7 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-
+export get_orders
 
 import ACE: standardevaluator, graphevaluator
 using SparseArrays: SparseMatrixCSC, sparse
@@ -38,6 +38,34 @@ standardevaluator(basis::RPIBasis) =
 graphevaluator(basis::RPIBasis) =
       RPIBasis( graphevaluator(basis.pibasis),
                 basis.A2Bmaps, basis.Bz0inds )
+
+_basisfcnidx(basis::RPIBasis, iz0::Integer, ib::Integer) = basis.Bz0inds[iz0][ib]
+
+# ------------------------------------------------------------------------
+#    Utilities / Basis analysis code
+# ------------------------------------------------------------------------
+
+function get_orders(basis::RPIBasis)
+   # get the correlation orders of the PIbasis ...
+   Ns_pi = zeros(Int, length(basis.pibasis))
+   for iz0 = 1:numz(basis)
+      inner = basis.pibasis.inner[iz0]
+      Ns_pi[inner.AAindices] .= inner.orders
+   end
+   # ... and use them to construct the correlation orders of the RPI basis
+   Ns = zeros(Int, length(basis))
+   for iz0 = 1:numz(basis)
+      # loop over basis functions belonging to centre-species iz0
+      for ib = 1:length(basis, iz0)
+         # find one of the indices of the PI basis that the current
+         # RPI basis function belongs to; they are all equivalent in
+         # terms of correlation-order, so only one of them matters.
+         iPI = findfirst(basis.A2Bmaps[1][ib,:] .!= 0)
+         Ns[_basisfcnidx(basis, iz0, ib)] = Ns_pi[iPI]
+      end
+   end
+   return Ns
+end
 
 # ------------------------------------------------------------------------
 #    FIO code
