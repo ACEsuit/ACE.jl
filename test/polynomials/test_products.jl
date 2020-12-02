@@ -20,7 +20,7 @@ Jd = OrthPolyBasis(maxn, 2, 1.0, 1, -1.0, tdf, ww)
 
 ##
 
-@info("Testing the radial products")
+@info("Testing the Expansion of products of radial polynomials")
 coeffs = ACE.OrthPolys.OrthPolyProdCoeffs(Jd)
 
 for n1 = 1:5, n2 = 1:5
@@ -36,4 +36,32 @@ for n1 = 1:5, n2 = 1:5
 end
 
 ##
+
+@info("Testing Expansion of Products of Spherical Harmonics")
+using ACE.Orth: SHProdCoeffs
+using ACE.SphericalHarmonics: SHBasis, index_y
+
+coeffs = SHProdCoeffs()
+for l1 = 0:4, l2=0:4, m1 = -l1:l1, m2 = -l2:l2
+   f1 = let SH = SHBasis(10)
+      x -> ( Y = evaluate(SH, x);
+             Y[index_y(l1, m1)] * Y[index_y(l2, m2)] )
+   end
+   f2 = let P = coeffs(l1, m1, l2, m2), SH = SHBasis(10)
+      x -> sum( p * evaluate(SH, x)[index_y(L, M)]
+                for (L, M, p) in P )
+   end
+   nfail = 0
+   for ntest = 1:10
+      x = randn(JVec); x /= norm(x)
+      nfail += (abs(f1(x) - f2(x)) > 1e-12)
+   end
+   print_tf(@test nfail == 0)
+end
+
+##
+
+
+
+
 end

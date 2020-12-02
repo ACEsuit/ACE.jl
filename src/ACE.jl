@@ -35,6 +35,9 @@ include("grapheval.jl")
 include("pibasis.jl")
 include("pipot.jl")
 
+# orthogonal basis
+include("orth.jl")
+
 # rotation-invariant site potentials (incl the ACE model)
 include("rpi/rpi.jl")
 @reexport using ACE.RPI

@@ -28,6 +28,54 @@ returns a vector `P` such that `P[nu]` is the value of $P^{n_1,n_2}_\nu$, allowi
 
 The precomputation is done by explicit evaluation of the inner products as described above.
 
+Alternatively we can access $P_{n_1 n_2}^\nu$ with an iterator
+```
+for (nu, Pnu) in coeffs(n1, n2)
+   # ...
+end
+```
+will iterate only over the non-zero coefficients.
+
+### Products of spherical harmonics
+
+A product of two spherical harmonics can again be expanded in terms of spherical harmonics,
+```math
+   Y_{l_1}^{m_1} Y_{l_2}^{m_2}
+       = \sum_{\lambda, \mu} P_{l_1 m_1 l_2 m_2}^{\lambda \mu} Y_\lambda^\mu
+```
+where the "coupling coefficients" are given by
+```math
+   P_{l_1 m_1 l_2 m_2}^{\lambda \mu}
+   =
+   \sqrt{\frac{(2l_1+1)(2l_2+1)}{2\pi (2\lambda+1)} }
+   C_{l_1 m_1 l_2 m_2}^{LM} C_{l_1 0 l_2 0}^{L0}
+```
+where $C_{l_1 m_1 l_2 m_2}^{L,M}$ are the Clebsch-Gordan coefficients. These are non-zero only for
+```math
+   |l_1 - l_2| \leq L \leq l_1 + l_2, \qquad
+   -L \leq M \leq L
+```
+
+#### Implementation
+
+The coefficients $P_{l_1 m_1 l_2 m_2}^{\lambda \mu}$ are implemented in
+the datastructure
+```julia
+struct SHProdCoeffs
+```
+To get the coefficients for a specific `l1, m1, l2, m2` we can call
+```julia
+P = coeffs(l1, m1, l2, m2)
+```
+where `coeffs::SHProdCoeffs`. To iterate over all non-zero coefficients,
+```julia
+for (L, M, p) in P
+   # ...
+end
+```
+
+### Appendices
+
 
 #### Three-term recurrance
 
