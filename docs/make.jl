@@ -15,8 +15,10 @@ makedocs(sitename="ACE.jl Documentation",
         "Getting Started" => "gettingstarted.md",
         "Developer Docs" => "devel.md",
         "ED-Bonds" => "envpairbasis.md",
-        "Orthogonal ACE" => [
-            "Products of Radial Polynomials" => "polyproducts.md",
+        "Pure ACE" => [
+            "What is Pure ACE" => "pureintro.md",
+            "Pure Basis Recursion" => "purerecursion.md",
+            "Products of Polynomials" => "polyproducts.md",
         ]
         ])
 

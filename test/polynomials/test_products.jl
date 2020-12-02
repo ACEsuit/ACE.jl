@@ -35,6 +35,7 @@ for n1 = 1:5, n2 = 1:5
    end
 end
 
+
 ##
 
 @info("Testing Expansion of Products of Spherical Harmonics")
@@ -42,7 +43,7 @@ using ACE.Orth: SHProdCoeffs
 using ACE.SphericalHarmonics: SHBasis, index_y
 
 coeffs = SHProdCoeffs()
-for l1 = 0:4, l2=0:4, m1 = -l1:l1, m2 = -l2:l2
+for l1 = 0:4, l2=l1:4, m1 = -l1:l1, m2 = -l2:l2
    f1 = let SH = SHBasis(10)
       x -> ( Y = evaluate(SH, x);
              Y[index_y(l1, m1)] * Y[index_y(l2, m2)] )
