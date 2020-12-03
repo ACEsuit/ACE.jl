@@ -65,13 +65,8 @@ Since we already have access to $\mathcal{A}_{\bm k'}, \mathcal{A}_{\bm k''}$ we
    \prod_{\alpha = 1}^\nu \phi_{k_\alpha}(\bm r_{j_\alpha})
 ```
 The challenge now is to convert this into a $\sum_{j_1 \neq \cdots \neq j_\nu}$.
-
-!!! note "Alternative Path"
-      For a general recursion  ${\bm k} = {\bm k}' \cup {\bm k}''$ this looks
-      quite difficult. It may be preferrable to construct an alternative, much
-      larger DAG and allow only ${\bm k} = (k_1, \dots, k_{\nu-1}) \cup (k_\nu,)$
-      recursions. In this case, the next steps are much easier, but we would pay
-      for it through the cost of the much larger DAG.
+For a general recursion  ${\bm k} = {\bm k}' \cup {\bm k}''$ this looks
+quite difficult.
 
 Let us assume that $\nu' \leq \nu''$ then we can write
 ```math
@@ -99,4 +94,58 @@ Clearly,
    \sum_{j_1 \neq \cdots \neq j_\nu}
 ```
 i.e. this is the term we want to keep. It remains to express
-$\sum_{p \text{matches}}$ in terms of $A_{\bm k}$ with $\mathcal{A}_{\bm k}$ with ${\rm len}({\bm k}) < \nu$.
+$\sum_{p \text{matches}}$ in terms of $A_{\bm k}$ with $\mathcal{A}_{\bm k}$ with ${\rm len}({\bm k}) < \nu$. It appears that for $p$ there are
+```math
+   \binom{\nu'}{p}
+      \cdot
+   \binom{\nu''}{p}
+```
+sums to evaluate. This cost clearly explodes rapidly with increasing body-order.
+
+#### Simplified recursion
+
+To control this cost we can replace an optimized DAG with a much simpler DAG that contains only decompositions ${\bm k'} = {\bm k} \cup (k_{\nu+1},)$ (note the modified notation to avoid clutter below). In this case, the term we need to manipulate is
+```math
+\begin{aligned}
+   \mathcal{A}_{\bm k} A_{k_{\nu+1}}
+   &=
+   \sum_{j_1 \neq \cdots \neq j_\nu} \sum_{j_{\nu+1}} \prod_{\alpha = 1}^{\nu+1} \phi_{k_\alpha}(r_{j_\alpha}) \\
+   &=
+   \sum_{j_1 \neq \cdots \neq j_\nu \neq j_{\nu+1}} \prod_{\alpha = 1}^{\nu+1} \phi_{k_\alpha}(r_{j_\alpha})
+   +
+   \sum_{\beta = 1}^{\nu} \sum_{j_1 \neq \cdots \neq j_\nu}
+      \phi_{k_{\nu+1}}(r_{j_\beta}) \prod_{\alpha = 1}^{\nu} \phi_{k_\alpha}(r_{j_\alpha}).
+\end{aligned}
+```
+
+We can now insert the expression for [Products of Polynomials](@ref) to write
+```math
+   \phi_{k_\beta}(r_{j_\beta}) \phi_{k_{\nu+1}}(r_{j_\beta})
+   =
+   \sum_{K} P_{k_\beta k_{\nu+1}}^K
+   \phi_K(r_{j_\beta})
+```
+and obtain
+```math
+   \mathcal{A}_{\bm k} A_{k_{\nu+1}}
+   =
+   \mathcal{A}_{({\bm k}, k_{\nu+1})}
+   +
+   \sum_{\beta = 1}^\nu
+   \sum_{K} P_{k_\beta k_{\nu+1}}^K
+   \mathcal{A}_{{\bm k}[\beta]}
+```
+where
+```math
+   {\bm k}[\beta] := (k_1, \dots, k_{\beta-1}, K, k_{\beta+1}, \dots, k_\nu).
+```
+With this definition we have obtained a recursive expression the ``pure'' $\mathcal{A}$  basis,
+```math
+   \mathcal{A}_{({\bm k}, k_{\nu+1})}
+   =
+   \mathcal{A}_{\bm k} A_{k_{\nu+1}}
+   -
+   \sum_{\beta = 1}^\nu
+   \sum_{K} P_{k_\beta k_{\nu+1}}^K
+   \mathcal{A}_{{\bm k}[\beta]}
+```
