@@ -1,4 +1,6 @@
 
+### Products of Polynomials
+
 ### Products of Radial Polynomials
 
 Suppose we have a basis of orthonormal radial polynomials
