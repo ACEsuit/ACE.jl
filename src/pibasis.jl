@@ -12,7 +12,7 @@ import ACE.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
 
 export PIBasis
 
-export graphevaluator, standardevaluator
+export graphevaluator, standardevaluator, dag1evaluator
 
 
 """
@@ -181,7 +181,14 @@ end
 
 # ---------------------- PIBasis
 
-struct DAGEvaluator end
+struct DAGEvaluator{TF}
+   __find_partition::TF
+end
+
+DAGEvaluator() = DAGEvaluator(ACE.DAG._find_partition_byscore)
+
+DAG1Evaluator() = DAGEvaluator(ACE.DAG._find_partition_1)
+
 struct StandardEvaluator end
 
 
@@ -303,6 +310,9 @@ graphevaluator(basis::PIBasis) =
 
 standardevaluator(basis::PIBasis) =
    PIBasis(basis.basis1p, zlist(basis), basis.inner, StandardEvaluator())
+
+dag1evaluator(basis::PIBasis) =
+   PIBasis(basis.basis1p, zlist(basis), basis.inner, DAG1Evaluator())
 
 
 

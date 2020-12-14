@@ -32,6 +32,9 @@ P1 = ACE.BasicPSH1pBasis(Pr; species = :X, D = D)
 dagbasis = ACE.PIBasis(P1, ord, D, maxdeg)
 basis = standardevaluator(dagbasis)
 
+basis1 = dag1evaluator(basis)
+
+
 # check single-species
 Nat = 15
 Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, :X)

@@ -84,7 +84,7 @@ function _get_ns(p, specnew, specnew_dict)
 end
 
 
-function _find_partition(kk, specnew, specnew_dict)
+function _find_partition_byscore(kk, specnew, specnew_dict)
    worstp = _get_ns([ [k] for k in kk ], specnew, specnew_dict)
    @assert worstp == kk
    bestp = worstp
@@ -92,10 +92,6 @@ function _find_partition(kk, specnew, specnew_dict)
 
    for ip in partitions(1:length(kk))
       p = _get_ns([ kk[i] for i in ip ], specnew, specnew_dict)
-      # p_old = _get_ns_old([ kk[i] for i in ip ], specnew, specnew_dict)
-      # if p != p_old
-      #    @infiltrate
-      # end
       score = _score_partition(p)
       if !isempty(p) && score < bestscore
          bestp = p
@@ -106,9 +102,30 @@ function _find_partition(kk, specnew, specnew_dict)
    return bestp
 end
 
-
-# function _insert_node!(nodes, coeffsnew, specnew, specnew_dict,
-#                        newnode)
+"""
+Construct a recursion of the form
+```
+   (k1...kν) => (k1...kν-1) ∪ (kν,)
+```
+"""
+function _find_partition_1(kk, specnew, specnew_dict)
+   # try to see whether one of the partitions
+   #    (kk ∖ kk[i]) ∪ (kk[i],)
+   # can be constructed directly.
+   for i = 1:length(kk)
+      kk1 = deleteat!(copy(kk), i)
+      if haskey(specnew_dict, kk1)
+         return [ kk1, [kk[i]] ]
+      end
+   end
+   # if this didn't work, then choose the largest kk and split it off
+   # TODO: should use m but we don't seem to have access here?
+   # construct a partition recursively
+   i = argmax(kk)
+   kk1 = deleteat!(copy(kk), i)
+   p_kk1 = _find_partition_1(kk1)
+   return push!(p_kk1, [kk[i]])
+end
 
 
 
@@ -119,15 +136,12 @@ function _insert_partition!(nodes, coeffsnew, specnew, specnew_dict,
                             TI = Int)
    if length(p) == 2
       newnode = BinDagNode{TI}((p[1], p[2]))
-      # _insert_node!(nodes, coeffsnew, specnew, specnew_dict, newnode)
       push!(nodes, newnode)
       push!(coeffsnew, coeffsN[ikk])
       push!(specnew, kk)
       specnew_dict[kk] = length(specnew)
       return 0
    else
-      # @show kk, p
-      # @infiltrate
       # reduce the partition by pushing a new node
       push!(nodes, BinDagNode{TI}((p[1], p[2])))
       push!(coeffsnew, 0)
@@ -141,10 +155,14 @@ function _insert_partition!(nodes, coeffsnew, specnew, specnew_dict,
    end
 end
 
+
+
+
 function get_eval_graph(inner, coeffs;   # inner::InnerPIBasis
                         filter = _->true,
                         TI = Int,
-                        verbose = false)
+                        verbose = false,
+                        _find_partition = _find_partition_byscore)
    # make a list of all basis functions as vectors so we can search it
    # TODO: should also check the tuples are sorted lexicographically
    spec = [ inner.iAA2iA[iAA, 1:inner.orders[iAA]]
