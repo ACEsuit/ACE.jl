@@ -225,21 +225,25 @@ function combine(basis::RPIBasis, coeffs)
 end
 
 """
-`scaling(basis::RPIBasis, p[; a2b = abs])` : same as usual but adds a keyword
+`scaling(basis::RPIBasis, p[; a2b = abs2, fin = ...])` : same as usual but adds a keyword
 argument `use` :
 * `a2b = identity` : the old buggy scaling
 * `a2b = abs` : the bugfix which keeps the behaviour same/similar
 * `a2b = abs2` : a different kind of scaling which I believe is the right one
 but behaves a bit differently especially for high body-orders.
+
+The `fin` keyword argument is the "finishing" map. E.g. if we take `a2b = abs2`,
+then we should apply a sqrt at the end. This is done automatically here.
 """
-function scaling(basis::RPIBasis, p; a2b = abs)
+function scaling(basis::RPIBasis, p; a2b = abs2,
+                 fin = (a2b == abs2 ? sqrt : identity) )
    wwpi = scaling(basis.pibasis, p)
    wwrpi = zeros(Float64, length(basis))
    for iz0 = 1:numz(basis)
       wwpi_iz0 = wwpi[basis.pibasis.inner[iz0].AAindices]
-      wwrpi[basis.Bz0inds[iz0]] = a2b.(basis.A2Bmaps[iz0]) * wwpi_iz0
+      wwrpi[basis.Bz0inds[iz0]] = a2b.(basis.A2Bmaps[iz0]) * a2b.(wwpi_iz0)
    end
-   return wwrpi
+   return fin.(wwrpi)
 end
 
 
