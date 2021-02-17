@@ -11,6 +11,25 @@ import ACE: standardevaluator, graphevaluator
 using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: mul!
 
+
+# TODO: how to incorporate multiple ACE outputs?
+
+abstract type AbstractSymmetry end
+
+struct O3Inv <: AbstractSymmetry end
+
+struct 𝒟1Symm <: AbstractSymmetry end
+
+"""
+`struct SymmetricBasis`
+"""
+struct SymmetricBasis{T, SYM, BOP, NZ, TIN} <: IPBasis
+   pibasis::PIBasis{BOP, NZ, TIN}
+   symmetry::SYM
+   A2Bmaps::NTuple{NZ, SparseMatrixCSC{T, Int}}
+   Bz0inds::NTuple{NZ, UnitRange{Int}}
+end
+
 """
 `struct RPIBasis`
 """
