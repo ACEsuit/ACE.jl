@@ -45,7 +45,22 @@ function _fcut_d_(pl, tl, pr, tr, t)
    return df
 end
 
+@doc raw"""
+`OrthPolyBasis:` defined a basis of orthonormal polynomials in terms of the
+recursion coefficients. What is slightly unusual is that the polynomials have
+an "envelope". This results in the recursion
+```math
+\begin{aligned}
+   J_1(x) &= A_1 (x - x_l)^{p_l} (x - x_r)^{p_r} \\
+   J_2 &= (A_2 x + B_2) J_1(x) \\
+   J_{n} &= (A_n x + B_n) J_{n-1}(x) + C_n J_{n-2}(x)
+\end{aligned}
+```
+Orthogonality is achieved with respect to a user-specified distribution, which
+can be either continuous or discrete.
 
+TODO: say more on the distribution!
+"""
 struct OrthPolyBasis{T} <: ACE.ScalarBasis{T}
    # ----------------- the parameters for the cutoff function
    pl::Int        # cutoff power left
@@ -181,9 +196,12 @@ alloc_dB( J::OrthPolyBasis,
          ::Union{JVec{TX}, AbstractVector{JVec{TX}}}) where {TX} =
    zeros(TX, length(J))
 
+evaluate_P1(J::OrthPolyBasis, t) =
+   J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+
 function evaluate!(P, tmp, J::OrthPolyBasis, t; maxn=length(J))
    @assert length(P) >= maxn
-   P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+   P[1] = evaluate_P1(J, t)
    if maxn == 1; return P; end
    P[2] = (J.A[2] * t + J.B[2]) * P[1]
    if maxn == 2; return P; end
@@ -325,6 +343,11 @@ function transformed_jacobi(maxdeg::Integer,
                                 kwargs...)
    return TransformedPolys(J, trans, rin, rcut)
 end
+
+
+# ------------- MORE FUNCTIONALITY -------------
+
+include("products.jl"); 
 
 
 end

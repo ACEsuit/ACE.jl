@@ -39,6 +39,9 @@ include("pipot.jl")
 include("rpi/rpi.jl")
 @reexport using ACE.RPI
 
+# orthogonal basis
+include("orth.jl")
+
 # pair potentials + repulsion
 include("pairpots/pair.jl");
 @reexport using ACE.PairPotentials

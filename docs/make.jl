@@ -12,12 +12,14 @@ makedocs(sitename="ACE.jl Documentation",
          pages = [
         "Home" => "index.md",
         "Introduction" => "intro.md",
-        "Getting Started" => "gettingstarted.md", 
+        "Getting Started" => "gettingstarted.md",
         "Developer Docs" => "devel.md",
-        "ED-Bonds" => "envpairbasis.md"
-        # "Subsection" => [
-        #     ...
-        # ]
+        "ED-Bonds" => "envpairbasis.md",
+        "Pure ACE" => [
+            "What is Pure ACE" => "pureintro.md",
+            "Pure Basis Recursion" => "purerecursion.md",
+            "Products of Polynomials" => "polyproducts.md",
+        ]
         ])
 
 # deploydocs(
