@@ -15,29 +15,50 @@ export PIBasis
 export graphevaluator, standardevaluator
 
 
-"""
+@doc raw"""
 `PIBasisFcn{N, TOP}` : represents a single multivariate basis function
-in terms of 1-particle pasis functions in each coordinate direction. Crucially,
-this function will be interpreted as a *permutation invariant* basis function!
+in terms of 1-particle pasis functions in each coordinate direction.
+If $X_0$ is the state of the centre atom, and $X_t$ the state of neighbour t then the function is
+   given by
+```math
+   \phi_0(X_0) \prod_{t = 1}^N \phi_{v_t}(X_{t})
+```
+If it is interpreted as a *permutation invariant* basis function then
+its specification is
+```math
+   \phi_0(X_i) \prod_{t = 1}^N A_{v_t}
+```
+where $X_i$ is the state of the centre-atom.
+
+### Fields
+* `phi0` : specification of $$\phi_0$$
+* `Phi` : specification of the $$\phi_{v_t}$$, $$t = 1, \dots, N$$
+
+In addition an auxiliary field `top` is used to store the type information
+in case `N == 0$.
 """
-struct PIBasisFcn{N, TOP <: OnepBasisFcn}
-   z0::AtomicNumber
-   oneps::NTuple{N, TOP}
-   top::Type{TOP}
+struct PIBasisFcn{N, TOP <: OnepBasisFcn, TOP0}
+   phi0::TOP0
+   Phi::NTuple{N, TOP}
+   top::Type{TOP}    # need this in case N == 0
 end
 
 _top(::PIBasisFcn{N, TOP}) where {N, TOP} = TOP
 
-PIBasisFcn(z0::AtomicNumber, oneps) =
+PIBasisFcn(phi0, oneps) =
    PIBasisFcn(z0, tuple(oneps...), typeof(oneps[1]))
 
 order(b::PIBasisFcn{N}) where {N} = N
 
-degree(d::AbstractDegree, pphi::PIBasisFcn) = degree(d, pphi.oneps)
+degree(d::AbstractDegree, pphi::PIBasisFcn) = degree(d, pphi.oneps, pphi.phi0)
 
 # TODO: this is very rough - can we do better?
-scaling(b::PIBasisFcn, p) = sum(scaling(bb, p) for bb in b.oneps)
+scaling(b::PIBasisFcn, p) =
+   scaling(bb.phi0, p) + sum(scaling(bb, p) for bb in b.oneps)
 
+
+# REVISIT
+# we somehow need to build in the phi0 specification!
 # TODO: can we replace this with get_basis_spec?
 function PIBasisFcn(Aspec, t, z0::AtomicNumber)
    if isempty(t) || sum(abs, t) == 0
@@ -49,18 +70,19 @@ function PIBasisFcn(Aspec, t, z0::AtomicNumber)
    return PIBasisFcn(z0, Aspec[[tnz...]])
 end
 
+
+# -------------- FIO
+# TODO: is this ever needed?????
 write_dict(b::PIBasisFcn) =
    Dict("__id__" => "ACE_PIBasisFcn",
-        "z0" => write_dict(b.z0),
-        "oneps" => write_dict.(b.oneps))
+        "phi0" => write_dict(b.phi0),
+        "Phi" => write_dict.(b.oneps))
 
-read_dict(::Val{:SHIPs_PIBasisFcn}, D::Dict) =
-   read_dict(Val{:ACE_PIBasisFcn}(), D::Dict)
-
+# REVISIT after deciding how to specify and construc the phi0 basis!
 read_dict(::Val{:ACE_PIBasisFcn}, D::Dict) =
    PIBasisFcn( read_dict(D["z0"]),
                tuple( read_dict.(D["oneps"]) ... ) )
-
+# --------------
 
 """
 note this function doesn't return an ordered specification, this is due
@@ -106,7 +128,6 @@ mutable struct InnerPIBasis
    b2iAA::Dict{PIBasisFcn, Int}  # mapping PIBasisFcn -> iAA =  index in AA[z0]
    b2iA::Dict{Any, Int}          # mapping from 1-p basis fcn to index in A[z0]
    AAindices::UnitRange{Int}     # where in AA does AA[z0] fit?
-   z0::AtomicNumber              # inner basis for which species?
    dag::CorrEvalGraph{Int, Int}  # for fast evaluation
 end
 
