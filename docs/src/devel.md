@@ -18,26 +18,39 @@ The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), w
 
 For example, a rotation-invariant site energy basis set (ACE and extensions) `RPIBasis` is built from a `PIBasis` and the coupling coefficients. The `PIBasis` itself is specified in terms of the `OneParticleBasis`.
 
+## Input space
+
+Each particle is described by one or more variables, including e.g. its
+position, species, etc. The input space ``\mathbb{X}'' is simply the
+space in which those variables reside.
+
+#### Examples
+
+- Original ACE : ``\mathbb{X} = \mathbb{R}^3 \times \mathbb{N}`` i.e. position and species
+- In addition we may annotate an atom with a neighbour counter, then we obtain
+   ``\mathbb{X} = \mathbb{R}^3 \times \mathbb{N}  \times \mathbb{R}``
+- ... todo add more examples ...
+-
 ## One Particle Basis
 
-A one-particle basis is a basis of functions ``\phi_k : \mathbb{R}^3 \to \mathbb{R}`` defined through a subtype of
+A one-particle basis is a basis of functions ``\phi_v : \mathbb{X} \to \mathbb{C}`` defined through a subtype of
 ```julia
 abstract type OneParticleBasis end
 ```
-Concrete subtypes must be able to compute the projection of the atom density onto the one-particle basis:
+Concrete subtypes must implement the projection of the atom density onto the one-particle basis:
 ```math
-  A_{k}^{z z_0}( \{ ({\bm r}_j, z_j) \}_{j = 1}^J, z_0 )
-   = \sum_{j : z_j = z} \phi_k^{z_j z_0}({\bm r}_j),
+  A_{v}( \{ X_j \}_{j \neq i}; X_i )
+   = \sum_{j} \phi_v(X_i, X_j),
 ```
-where ``z_0`` is the atom number of the centre-atom, and ``({\bm r}_j, z_j)`` are relative positions and atom numbers of neighbours.
+where including the centre-atom ``X_i`` in the argument allows us to compute relative positions, and incorporate centre-atom information into the basis. For example, this can be used to construct a different radial basis for all species pairs, incorporating information such as atomic radii.
 
-The "standard" evaluation of a single ``\phi_k({\bm r}; z, z_0)`` is of course a special case. In addition, the gradients of individual basis functions, ``\nabla \phi_k({\bm r}; z, z_0)`` must be provided; this gradient is taken with respect to ``{\bm r}``.
+The "standard" evaluation of a single ``\phi_v(X; X_0)`` is of course a special case. In addition, the gradients of individual basis functions, ``\nabla \phi_v(X; X_0)`` must be provided; this gradient may be taken with respect to all continuous variables.
 
 Assuming that `basis isa OneParticleBasis`, this is done with the following interface:
 ```julia
-A = alloc_B(basis)                # allocate storage for A = [ A_z for iz=1:NZ ]
-tmp = alloc_temp(basis, args...)        # allocate temporary arrays
-evaluate!(A, tmp, basis, Rs, Zs, z0)    # fill A = [ A_z for iz=1:NZ ]
+A = alloc_B(basis)               # allocate storage for A = [ A_z for iz=1:NZ ]
+tmp = alloc_temp(basis, args...)    # allocate temporary arrays
+evaluate!(A, tmp, basis, Xs, X0)    # fill A = [ A_z for iz=1:NZ ]
 ```
 For the gradients the following must be provided:
 ```julia
