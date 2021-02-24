@@ -31,7 +31,8 @@ include("polynomials/orthpolys.jl"); @reexport using ACE.OrthPolys
 include("oneparticlebasis.jl")
 
 include("species_1pbasis.jl")
-include("RnYlm_1pbasis.jl")
+include("Ylm1pbasis.jl")
+include("Rn1pbasis.jl")
 
 include("product_1pbasis.jl")
 

@@ -21,7 +21,7 @@ function get_maxn(d::AbstractPSHDegree, maxdeg, species)
       n = 1
       z  = AtomicNumber(s1)
       z0 = AtomicNumber(s2)
-      while degree(d, RnYlmBasisFcn(n, 0, 0, z), z0) < maxdeg
+      while degree(d, RnYlmBasisFcn(n, 0, 0)) < maxdeg
          n += 1
       end
       maxn = max(maxn, n)

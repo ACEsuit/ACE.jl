@@ -30,7 +30,7 @@ Fundamental building block of ACE basis sets of the form
 This type basically just translates the `SHBasis` into a valid one-particle
 basis.
 """
-mutable struct Ylm1pBasis{T} <: OnepBasis{Complex{T}}
+mutable struct Ylm1pBasis{T} <: OneParticleBasis{Complex{T}}
    SH::SHBasis{T}  # SH = Ylm
 end
 

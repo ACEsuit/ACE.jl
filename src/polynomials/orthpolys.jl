@@ -72,7 +72,7 @@ struct OrthPolyBasis{T} <: ACE.ScalarBasis{T}
    B::Vector{T}
    C::Vector{T}
    # ----------------- used only for construction ...
-   #                   but useful to have since it defines the notion or orth.
+   #                   but useful to have since it defines the notion of orth.
    tdf::Vector{T}
    ww::Vector{T}
 end
@@ -347,7 +347,7 @@ end
 
 # ------------- MORE FUNCTIONALITY -------------
 
-include("products.jl"); 
+include("products.jl");
 
 
 end
