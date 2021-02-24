@@ -27,7 +27,7 @@ rcut = 3.0
 trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = ACE.SparsePSHDegree()
-P1 = ACE.BasicPSH1pBasis(Pr; species = :X, D = D)
+P1 = ACE.RnYlm1pBasis(Pr; species = :X, D = D)
 
 dagbasis = ACE.PIBasis(P1, ord, D, maxdeg)
 basis = standardevaluator(dagbasis)
@@ -54,7 +54,7 @@ maxdeg = 5
 ord = 3
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
-P1 = ACE.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
+P1 = ACE.RnYlm1pBasis(Pr; species = [:C, :O, :H], D = D)
 dagbasis = ACE.PIBasis(P1, ord, D, maxdeg)
 basis = standardevaluator(dagbasis)
 Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
@@ -79,7 +79,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    local AA, AAdag, dAA, dAAdag, dagbasis, basis, Rs, Zs, z0
    maxdeg = 7
    Nat = 15
-   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   P1 = ACE.RnYlm1pBasis(Pr; species = species)
    dagbasis = ACE.PIBasis(P1, N, D, maxdeg)
    basis = standardevaluator(dagbasis)
    @info("species = $species; N = $N; length = $(length(basis))")

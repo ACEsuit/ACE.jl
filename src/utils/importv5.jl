@@ -12,7 +12,7 @@ module Import
 using ACE, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 using ACE: PIBasisFcn, DAGEvaluator
-using ACE.RPI: BasicPSH1pBasis, PSH1pBasisFcn
+using ACE.RPI: RnYlm1pBasis, RnYlmBasisFcn
 
 
 function import_rbasis_v05(D, rtests = [])
@@ -103,10 +103,10 @@ function import_pipot_v05(D::Dict)
       ms = ZNLM[4]
       order = length(ns)
       zs = [AtomicNumber(species[iz]) for iz in izs]
-      bs = PSH1pBasisFcn[]
+      bs = RnYlmBasisFcn[]
       bs_i = Int[]
       for α = 1:order
-         b = PSH1pBasisFcn(ns[α], ls[α], ms[α], zs[α])
+         b = RnYlmBasisFcn(ns[α], ls[α], ms[α], zs[α])
          I1 = findall(isequal(b), spec1)
          if isempty(I1)
             push!(spec1, b)
@@ -135,7 +135,7 @@ function import_pipot_v05(D::Dict)
    end
 
    # construct 1p basis from the specs
-   basis1p = BasicPSH1pBasis(Pr, zlist, identity.(spec1))
+   basis1p = RnYlm1pBasis(Pr, zlist, identity.(spec1))
    # build a naive index allocation (we have only one species!!)
    AAindices = 1:length(pispec)
    # construct the inner PI basis from the specification

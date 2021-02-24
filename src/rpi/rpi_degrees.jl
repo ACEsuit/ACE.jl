@@ -9,39 +9,6 @@
 
 export SparsePSHDegree
 
-@doc raw"""
-`struct PSH1pBasisFcn` : 1-particle basis function specification
-for bases of the type ``P \otimes Y`` with `P::ScalarBasis` and `Y::SHBasis`
-"""
-struct PSH1pBasisFcn <: OnepBasisFcn
-   n::Int
-   l::Int
-   m::Int
-   z::AtomicNumber
-end
-
-function PSH1pBasisFcn(t::VecOrTup)
-   if length(t) == 3
-      return PSH1pBasisFcn(t[1], t[2], t[3], 0)
-   elseif length(t) == 4
-      return PSH1pBasisFcn(t...)
-   end
-   error("`PSH1pBasisFcn(t::VecOrTup)` : `t` must have length 3 or 4")
-end
-
-Base.show(io::IO, b::PSH1pBasisFcn) = print(io, "znlm[$(b.z.z)|$(b.n),$(b.l),$(b.m)]")
-
-write_dict(b::PSH1pBasisFcn) =
-   Dict("__id__" => "ACE_PSH1pBasisFcn",
-        "nlmz" => [ b.n, b.l, b.m, Int(b.z) ] )
-
-read_dict(::Val{:SHIPs_PSH1pBasisFcn}, D::Dict) =
-   read_dict(Val{:ACE_PSH1pBasisFcn}(), D)
-
-read_dict(::Val{:ACE_PSH1pBasisFcn}, D::Dict) =
-   PSH1pBasisFcn(D["nlmz"]...)
-
-scaling(b::PSH1pBasisFcn, p) = b.n^p + b.l^p + abs(b.m)^p
 
 abstract type AbstractPSHDegree <: AbstractDegree end
 
@@ -54,7 +21,7 @@ function get_maxn(d::AbstractPSHDegree, maxdeg, species)
       n = 1
       z  = AtomicNumber(s1)
       z0 = AtomicNumber(s2)
-      while degree(d, PSH1pBasisFcn(n, 0, 0, z), z0) < maxdeg
+      while degree(d, RnYlmBasisFcn(n, 0, 0, z), z0) < maxdeg
          n += 1
       end
       maxn = max(maxn, n)
@@ -86,7 +53,7 @@ SparsePSHDegree(wL = 1.5, csp = 1.0, chc = 0.0, ahc = 0.0, bhc = 0.0)
 end
 
 
-degree(d::SparsePSHDegree, phi::PSH1pBasisFcn, z0=nothing) =
+degree(d::SparsePSHDegree, phi::RnYlmBasisFcn, z0=nothing) =
       phi.n + d.wL * phi.l
 
 function degree(d::SparsePSHDegree, pphi::VecOrTup, z0=nothing)
@@ -149,18 +116,18 @@ struct SparsePSHDegreeM <: AbstractPSHDegree
 end
 
 
-degree(d::SparsePSHDegreeM, phi::PSH1pBasisFcn, z0::AtomicNumber) =
+degree(d::SparsePSHDegreeM, phi::RnYlmBasisFcn, z0::AtomicNumber) =
       (    d.wNfun(1, phi.z, z0) * phi.n
          + d.wLfun(1, phi.z, z0) * phi.l )
 
-function degree(d::SparsePSHDegreeM, b::PIBasisFcn)
-   pphi = b.oneps
-   z0 = b.z0
-   N = length(pphi)
-   if N == 0; return 0; end
-   return sum( (  d.wNfun(N, phi.z, z0) * phi.n
-                + d.wLfun(N, phi.z, z0) * phi.l)    for phi in pphi )
-end
+# function degree(d::SparsePSHDegreeM, b::PIBasisFcn)
+#    pphi = b.oneps
+#    z0 = b.z0
+#    N = length(pphi)
+#    if N == 0; return 0; end
+#    return sum( (  d.wNfun(N, phi.z, z0) * phi.n
+#                 + d.wLfun(N, phi.z, z0) * phi.l)    for phi in pphi )
+# end
 
 function _finddegree(D::Dict, N, z0)
    if haskey(D, (N, z0))

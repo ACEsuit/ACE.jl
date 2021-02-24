@@ -10,7 +10,7 @@
 module Export
 
 import ACE, JuLIP
-using ACE.RPI: BasicPSH1pBasis, PSH1pBasisFcn
+using ACE.RPI: RnYlm1pBasis, RnYlmBasisFcn
 using ACE: PIBasis, PIBasisFcn, PIPotential
 using ACE.OrthPolys: TransformedPolys
 using ACE: rand_radial, cutoff, numz

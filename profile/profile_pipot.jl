@@ -12,7 +12,7 @@ rcut = 3.0
 trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = ACE.SparsePSHDegree()
-P1 = ACE.BasicPSH1pBasis(Pr; species = :X, D = D)
+P1 = ACE.RnYlm1pBasis(Pr; species = :X, D = D)
 basis = ACE.PIBasis(P1, 2, D, maxdeg)
 c = ACE.Random.randcoeffs(basis)
 V = combine(basis, c)

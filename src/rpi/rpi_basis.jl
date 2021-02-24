@@ -233,7 +233,7 @@ _b2znlms(pib::PIBasisFcn{N}) where {N} = (
    SVector(ntuple(n -> pib.oneps[n].m, N)...) )
 
 _znlms2b(zz, nn, ll, mm = zero(ll), z0 = AtomicNumber(0)) =
-   PIBasisFcn( z0, ntuple(i -> PSH1pBasisFcn(nn[i], ll[i], mm[i], zz[i]),
+   PIBasisFcn( z0, ntuple(i -> RnYlmBasisFcn(nn[i], ll[i], mm[i], zz[i]),
                           length(zz)) )
 
 

@@ -25,7 +25,7 @@ rcut = 3.0
 trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = ACE.SparsePSHDegree()
-P1 = ACE.BasicPSH1pBasis(Pr; species = :X, D = D)
+P1 = ACE.RnYlm1pBasis(Pr; species = :X, D = D)
 basis = ACE.PIBasis(P1, 2, D, maxdeg)
 c = ACE.Random.randcoeffs(basis)
 Vdag = combine(basis, c)
@@ -50,7 +50,7 @@ println(@test(all(JuLIP.Testing.test_fio(V))))
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
-P1 = ACE.BasicPSH1pBasis(Pr; species = [:C, :O, :H], D = D)
+P1 = ACE.RnYlm1pBasis(Pr; species = [:C, :O, :H], D = D)
 basis = ACE.PIBasis(P1, 3, D, maxdeg)
 c = randcoeffs(basis)
 Vdag = combine(basis, c)
@@ -76,7 +76,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    local Rs, Zs, z0, V, Vdag, basis, P1, maxdeg, Nat, c, val_basis, val_V
    maxdeg = 7
    Nat = 15
-   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   P1 = ACE.RnYlm1pBasis(Pr; species = species)
    basis = ACE.PIBasis(P1, N, D, maxdeg)
    @info("species = $species; N = $N; length = $(length(basis))")
    c = randcoeffs(basis)
@@ -135,7 +135,7 @@ for N = 1:5
    species = :Si
    maxdeg = 7
    Pr = transformed_jacobi(maxdeg, trans, 4.0; pcut = 2)
-   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   P1 = ACE.RnYlm1pBasis(Pr; species = species)
    basis = ACE.PIBasis(P1, N, D, maxdeg)
    @info("N = $N; length = $(length(basis))")
    c = randcoeffs(basis)

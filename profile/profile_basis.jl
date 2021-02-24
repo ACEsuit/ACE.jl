@@ -26,7 +26,7 @@ for species in (:Si, ), N = 2:2:6, maxdeg in degrees[N]
    rcut = 5.0
    trans = PolyTransform(1, r0)
    Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   P1 = ACE.RnYlm1pBasis(Pr; species = species)
    D = ACE.SparsePSHDegree()
 
    basis = ACE.PIBasis(P1, N, D, maxdeg, evaluator = :classic)
@@ -65,7 +65,7 @@ end
 # rcut = 5.0
 # trans = PolyTransform(1, r0)
 # Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-# P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+# P1 = ACE.RnYlm1pBasis(Pr; species = species)
 # D = ACE.SparsePSHDegree()
 #
 # Rs, Zs, z0 = ACE.Random.rand_nhd(30, Pr, species)

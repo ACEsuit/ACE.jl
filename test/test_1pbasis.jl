@@ -26,7 +26,7 @@ Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 
 
 Nat = 15
-P1 = ACE.BasicPSH1pBasis(Pr; species = :X)
+P1 = ACE.RnYlm1pBasis(Pr; species = :X)
 Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, :X)
 evaluate(P1, Rs, Zs, z0)
 evaluate_d(P1, Rs[1], Zs[1], z0)
@@ -36,7 +36,7 @@ evaluate_d(P1, Rs[1], Zs[1], z0)
 for species in (:X, :Si, [:C, :O, :H])
    @info("species = $species")
    Nat = 15
-   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   P1 = ACE.RnYlm1pBasis(Pr; species = species)
    @info("   test de-serialisation")
    println(@test(all(JuLIP.Testing.test_fio(P1))))
 

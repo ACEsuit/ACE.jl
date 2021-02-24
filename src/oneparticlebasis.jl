@@ -5,7 +5,7 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-# ----------- This file implements the abstract one-particle basis interface 
+# ----------- This file implements the abstract one-particle basis interface
 
 function alloc_B(basis::OneParticleBasis, args...)
    NZ = numz(basis)

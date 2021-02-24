@@ -25,7 +25,7 @@ struct PSH1pBasis{T, NZ, TJ <: ScalarBasis{T}} <: OneParticleBasis{T}
    SH::SHBasis{T}
    zlist::SZList{NZ}
    C::SMatrix{NZ, NZ, Matrix{T}}
-   spec::SMatrix{NZ, NZ, Vector{PSH1pBasisFcn}}
+   spec::SMatrix{NZ, NZ, Vector{RnYlmBasisFcn}}
    nlmap::SMatrix{NZ, NZ, Matrix{Int}}
    Aindices::Matrix{UnitRange{Int}}
 end
@@ -97,7 +97,7 @@ function PSH1pBasis(J::ScalarBasis, maxn;
    # produce the specifications for all s1, s2 pairs
    zlist = ZList(species...; static=true)
    NZ = length(zlist)
-   spec = Matrix{Vector{PSH1pBasisFcn}}(undef, NZ, NZ)
+   spec = Matrix{Vector{RnYlmBasisFcn}}(undef, NZ, NZ)
    C = Matrix{Matrix}(undef, NZ, NZ)
    nlmap = Matrix{Matrix{Int}}(undef, NZ, NZ)
    for iz = 1:NZ, iz0 = 1:NZ
@@ -164,28 +164,28 @@ function _init_radial_params(T, nlmap, maxp)
 end
 
 
-# function BasicPSH1pBasis(J::ScalarBasis{T}, zlist::SZList,
-#                          spec::Vector{PSH1pBasisFcn}) where {T}
+# function RnYlm1pBasis(J::ScalarBasis{T}, zlist::SZList,
+#                          spec::Vector{RnYlmBasisFcn}) where {T}
 #    # now get the maximum L-degree to generate the SH basis
 #    maxL = maximum(b.l for b in spec)
 #    SH = SHBasis(maxL, T)
 #    # construct a preliminary Aindices array to get an incorrect basis
 #    NZ = length(zlist)
-#    P = BasicPSH1pBasis(J, SH, zlist, spec,
+#    P = RnYlm1pBasis(J, SH, zlist, spec,
 #                        Matrix{UnitRange{Int}}(undef, NZ, NZ))
 #    # ... now fix the Aindices array
 #    set_Aindices!(P)
 #    return P
 # end
 
-# function BasicPSH1pBasis(J::ScalarBasis;
+# function RnYlm1pBasis(J::ScalarBasis;
 #                          species = :X,
 #                          D::AbstractDegree = SparsePSHDegree())
 #    # get a generic basis spec
 #    spec = _get_PSH_1p_spec(J::ScalarBasis, D::AbstractDegree, species)
 #    # construct the basis
 #    zlist = ZList(species; static=true)
-#    return BasicPSH1pBasis(J, zlist, spec)
+#    return RnYlm1pBasis(J, zlist, spec)
 # end
 
 
@@ -197,22 +197,22 @@ end
 # #  FIO code
 
 
-# ==(P1::BasicPSH1pBasis, P2::BasicPSH1pBasis) =  ACE._allfieldsequal(P1, P2)
+# ==(P1::RnYlm1pBasis, P2::RnYlm1pBasis) =  ACE._allfieldsequal(P1, P2)
 
-# write_dict(basis::BasicPSH1pBasis{T}) where {T} = Dict(
-#       "__id__" => "ACE_BasicPSH1pBasis",
+# write_dict(basis::RnYlm1pBasis{T}) where {T} = Dict(
+#       "__id__" => "ACE_RnYlm1pBasis",
 #            "J" => write_dict(basis.J),
 #           "SH" => write_dict(basis.SH),
 #         "spec" => write_dict.(basis.spec),
 #        "zlist" => write_dict(basis.zlist),
 #    )
 
-# function read_dict(::Val{:ACE_BasicPSH1pBasis}, D::Dict)
+# function read_dict(::Val{:ACE_RnYlm1pBasis}, D::Dict)
 #    J = read_dict(D["J"])
 #    SH = read_dict(D["SH"])
 #    zlist = read_dict(D["zlist"])
 #    spec = read_dict.(D["spec"])
-#    P = BasicPSH1pBasis(J, SH, zlist, spec,
+#    P = RnYlm1pBasis(J, SH, zlist, spec,
 #                  Matrix{UnitRange{Int}}(undef, length(zlist), length(zlist)))
 #    set_Aindices!(P)
 #    return P
@@ -260,7 +260,7 @@ function add_into_A!(A, tmp, basis::PSH1pBasis,
 end
 
 
-# alloc_temp_d(basis::BasicPSH1pBasis, args...) =
+# alloc_temp_d(basis::RnYlm1pBasis, args...) =
 #       (
 #         BJ = alloc_B(basis.J, args...),
 #         tmpJ = alloc_temp(basis.J, args...),
@@ -272,7 +272,7 @@ end
 #         tmpdY = alloc_temp_d(basis.SH, args...),
 #        )
 
-# function add_into_A_dA!(A, dA, tmpd, basis::BasicPSH1pBasis, R, iz::Integer, iz0::Integer)
+# function add_into_A_dA!(A, dA, tmpd, basis::RnYlm1pBasis, R, iz::Integer, iz0::Integer)
 #    r = norm(R)
 #    R̂ = R / r
 #    # evaluate the r-basis and the R̂-basis for the current neighbour at R

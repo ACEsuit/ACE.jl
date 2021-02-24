@@ -22,8 +22,8 @@ evaluate!(B, tmp, basis::Species1PBasisNeig, Xj, Xi) = evaluate!(B, tmp, basis, 
 
 function evaluate!(B, tmp, basis::SpeciesBasis{NZ}, X) where {NZ}
    fill!(B, 0)
-   B[z2i(X.mu.z)] = 1
+   B[z2i(basis.zlist, X.mu)] = 1
    return B
 end
 
-outtype(::SpeciesBasis) = Bool
+fltype(::SpeciesBasis) = Bool

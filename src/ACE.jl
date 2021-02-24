@@ -29,9 +29,14 @@ include("polynomials/orthpolys.jl"); @reexport using ACE.OrthPolys
 
 # The One-particle basis is the first proper building block
 include("oneparticlebasis.jl")
+
 include("species_1pbasis.jl")
+include("RnYlm_1pbasis.jl")
 
+include("product_1pbasis.jl")
 
+# TODO -> move elsewhere!!!
+include("rpi/rpi_degrees.jl")
 
 # include("grapheval.jl")
 
@@ -52,16 +57,16 @@ include("species_1pbasis.jl")
 # include("pairpots/pair.jl");
 # @reexport using ACE.PairPotentials
 #
-# # lots of stuff related to random samples:
-# #  - random configurations
-# #  - random potentials
-# #  ...
-# include("random.jl")
-# @reexport using ACE.Random
-#
-#
-# include("utils.jl")
-# @reexport using ACE.Utils
+# lots of stuff related to random samples:
+#  - random configurations
+#  - random potentials
+#  ...
+include("random.jl")
+@reexport using ACE.Random
+
+
+include("utils.jl")
+@reexport using ACE.Utils
 #
 # include("utils/importv5.jl")
 #

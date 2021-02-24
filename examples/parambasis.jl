@@ -30,7 +30,7 @@ P1 = ACE.RPI.PSH1pBasis(J, maxn, D=D, species = species)
 basis = RPIBasis(P1, 3, D, maxn)
 
 J5 = ACE.OrthPolys.transformed_jacobi(5, trans, rcut, rin)
-P1basic = ACE.RPI.BasicPSH1pBasis(J5)
+P1basic = ACE.RPI.RnYlm1pBasis(J5)
 basic = RPIBasis(P1basic, 3, D, maxn)
 
 #--- first test: make sure the bases are equivalent

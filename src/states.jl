@@ -2,6 +2,7 @@
 export EuclideanVectorState,
        PositionState,
        SpeciesState,
+       AtomState,
        ⊗
 
 abstract type AbstractState end
@@ -68,54 +69,16 @@ Base.show(io::IO, s::SpeciesState) =
 
 
 
-"""
-`struct State` : Cartesian product state. If `s1, ..., sn` are `AbstractState`s
-then `s1 ⊗ ... ⊗ sn` will be of type `State` and defines the Cartesian product.
-This operation goes hand-in-hand with the tensor product operation on
-the corresponding one-particle bases.
-
-Remarks:
-(1) The symbol `⊗` is used instead of `×` which in Julia is reserved for the
-cross product.
-(2) Not clear this `State` struct is a good idea, it seems that the way we
-access the fields has very poor performance. Probably best to just
-do this by hand.
-"""
-struct State{T <: NamedTuple} <: AbstractState
-   __vals::T
-end
-
-Base.getproperty(X::State, sym::Symbol) = (
-      sym === :__vals ? getfield(X, :__vals)
-                      : getfield(getfield(X.__vals, sym), sym) )
-
-function kron(s1::AbstractState, args...)
-   states = tuple(s1, args...)
-   names = getindex.(fieldnames.(typeof.(states)), 1)
-   return State( NamedTuple{names}(states) )
-end
-
-kron(s1::Type{<: AbstractState}, args...) =
-   State( tuple( [ [s1()]; [ arg() for arg in args ] ]... ) )
-
-⊗(s1::AbstractState, s2::AbstractState) = kron(s1, s2)
-⊗(s1::State{T}, s2::AbstractState) where {T} = kron(T..., s2)
-⊗(s1::AbstractState, s2::State{T}) where {T} = s2 ⊗ s1
-⊗(s1::State{T1}, s2::State{T2}) where {T1, T2} = kron(T1..., T2...)
-
-Base.length(X::State) = length(X.vals)
-
-Base.show(io::IO, X::State) = print(io, X.__vals)
-
 
 # a starting point how to construct general states
+# using a macro instead of writing them by hand
 # macro state(name, args...)
 #    @show name
 #    for x in args
 #       @assert x.args[1] === Symbol("=>")
 #    end
 #    fields = [:($(x.args[2])::$(x.args[3])) for x in args]
-#    esc(quote struct $name
+#    esc(quote struct $name <: AbstractState 
 #       $(fields...)
 #       end
 #    end)

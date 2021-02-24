@@ -69,8 +69,8 @@ For this to work, the type of the 1-particle basis must contain a field `zlist` 
 
 To build a `PIBasis` (see below) the `OneParticleBasis` musts also provide methods that specify it:
 ```
-get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber)
-get_basis_spec(basis::BasicPSH1pBasis, z0::AtomicNumber, i::Integer)
+get_basis_spec(basis::RnYlm1pBasis, z0::AtomicNumber)
+get_basis_spec(basis::RnYlm1pBasis, z0::AtomicNumber, i::Integer)
 ```
 The first of these should return a `Vector` containing `OnepBasisFcn` objects that specify the list of 1-particle basis functions for a centre atom of species `z0`. The second method should return precisely the ith element of this vector. A concrete `OneParticleBasis` may either simply keep these specifications stored throughout its lifetime, or generate them on the fly, whichever is most convenient.
 

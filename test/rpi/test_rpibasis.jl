@@ -27,7 +27,7 @@ rcut = 3.0
 trans = PolyTransform(1, r0)
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 D = SparsePSHDegree()
-P1 = BasicPSH1pBasis(Pr; species = :X, D = D)
+P1 = RnYlm1pBasis(Pr; species = :X, D = D)
 
 #---
 
@@ -51,7 +51,7 @@ println(@test (B_ ≈ B) && (dB_ ≈ dB))
 maxdeg = 5
 Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 species = [:C, :O, :H]
-P1 = ACE.BasicPSH1pBasis(Pr; species = species, D = D)
+P1 = ACE.RnYlm1pBasis(Pr; species = species, D = D)
 basis = ACE.RPIBasis(P1, N, D, maxdeg)
 Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
 B = evaluate(basis, Rs, Zs, z0)
@@ -71,7 +71,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:length(degrees)
    local Rs, Zs, z0, B, dB, basis, D, P1, Nat
    Nat = 15
    D = SparsePSHDegree()
-   P1 = ACE.BasicPSH1pBasis(Pr; species = species)
+   P1 = ACE.RnYlm1pBasis(Pr; species = species)
    basis = ACE.RPIBasis(P1, N, D, degrees[N])
    @info("species = $species; N = $N; deg = $(degrees[N]); len = $(length(basis))")
    @info("   check (de-)serialization")

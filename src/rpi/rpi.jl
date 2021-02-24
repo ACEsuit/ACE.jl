@@ -16,7 +16,7 @@ include("../aceimports.jl")
 
 import ACE.SphericalHarmonics: SHBasis, index_y
 
-export RPIBasis, SparsePSHDegree, BasicPSH1pBasis,
+export RPIBasis, SparsePSHDegree, RnYlm1pBasis,
        diagonal_regulariser
 
 # specify the `Rotations3D` submodule for CLebsch-Gordan and related
@@ -24,7 +24,7 @@ include("rotations3d.jl")
 using ACE.RPI.Rotations3D
 
 # some basic degree types useful for RPI type constructions
-# (this file also specifies the PSH1pBasisFcn
+# (this file also specifies the RnYlmBasisFcn
 include("rpi_degrees.jl")
 
 # the basic RPI type 1-particle basis
