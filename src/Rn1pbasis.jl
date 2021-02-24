@@ -50,7 +50,7 @@ scaling(b::Rn1pBasisFcn, p) = b.n^p
 
 degree(b::Rn1pBasisFcn, p) = b.n
 
-# ---------------------- Implementation of Ylm1pBasis
+# ---------------------- Implementation of Rn1pBasis
 
 # use default constructor...
 
@@ -75,6 +75,7 @@ read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) = Rn1pBasis(read_dict(D["R"]))
 
 fltype(basis::Rn1pBasis{T}) where T = T
 
+symbols(::Rn1pBasis) = [:n]
 
 # ---------------------------  Evaluation code
 #

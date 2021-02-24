@@ -27,3 +27,6 @@ function evaluate!(B, tmp, basis::SpeciesBasis{NZ}, X) where {NZ}
 end
 
 fltype(::SpeciesBasis) = Bool
+
+symbols(::Species1PBasisCtr) = [:μ0]
+symbols(::Species1PBasisNeig) = [:μ]

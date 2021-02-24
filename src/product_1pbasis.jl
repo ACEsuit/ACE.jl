@@ -37,3 +37,5 @@ alloc_temp(basis::Product1PBasis) =
       return nothing
    end
 end
+
+symbols(basis::Product1PBasis) = union( symbols.(basis.bases)... )

@@ -30,6 +30,8 @@ include("polynomials/orthpolys.jl"); @reexport using ACE.OrthPolys
 # The One-particle basis is the first proper building block
 include("oneparticlebasis.jl")
 
+# three specific 1p-bases that are useful
+# TODO: species basis should be moved into the atomistic modelling toolkit
 include("species_1pbasis.jl")
 include("Ylm1pbasis.jl")
 include("Rn1pbasis.jl")
@@ -37,13 +39,14 @@ include("Rn1pbasis.jl")
 include("product_1pbasis.jl")
 
 # TODO -> move elsewhere!!!
-include("rpi/rpi_degrees.jl")
+# include("rpi/rpi_degrees.jl")
 
+# leave this for much later ...
 # include("grapheval.jl")
 
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
-# include("pibasis.jl")
+include("pibasis.jl")
 
 # include("pipot.jl")
 #

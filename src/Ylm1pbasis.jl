@@ -87,6 +87,8 @@ read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) = Ylm1pBasis(read_dict(D["SH"]))
 fltype(basis::Ylm1pBasis{T}) where T = Complex{T}
 rfltype(basis::Ylm1pBasis{T}) where T = T
 
+symbols(::Ylm1pBasis) = [:l, :m]
+
 # ---------------------------  Evaluation code
 #
 

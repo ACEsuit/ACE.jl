@@ -2,7 +2,7 @@
 using ACE
 using ACE: alloc_temp, alloc_B
 
-X = AtomState()
+X = AtomState(:C)
 
 species = [:Ti, :Mo]
 Bμ0 = ACE.Species1PBasisCtr(species)
@@ -22,13 +22,18 @@ function rand_state()
 end
 
 # generate a random specification
-spec = [ (rand(1:2), rand(1:2), rand(1:10), rand(1:10)) for _=1:10 ]
+spec = [ (rand(1:2), rand(1:2), rand(1:10), rand(1:10)) for _=1:1_000 ]
 append!(B1p.spec, spec)
 
 tmp = alloc_temp(B1p)
 A = zeros(ComplexF64, length(B1p))
-alloc_B(B1p)
-Xs = [ rand_state() for _ = 1:10 ]
+
+Xs = [ rand_state() for _ = 1:50 ]
 X0 = rand_state()
 
 ACE.evaluate!(A, tmp, B1p, Xs, X0)
+
+using BenchmarkTools
+@btime ACE.evaluate!($A, $tmp, $B1p, $Xs, $X0)
+
+ACE.symbols(B1p)

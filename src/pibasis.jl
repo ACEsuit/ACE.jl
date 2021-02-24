@@ -8,11 +8,11 @@
 
 
 
-import ACE.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
+# import ACE.DAG: CorrEvalGraph, get_eval_graph, traverse_fwd!
 
 export PIBasis
 
-export graphevaluator, standardevaluator
+# export graphevaluator, standardevaluator
 
 
 @doc raw"""
@@ -115,95 +115,90 @@ function get_PI_spec(basis1p::OneParticleBasis, N::Integer,
 end
 
 
+
+
+
+
 """
-`mutable struct InnerPIBasis` : this type is just an auxilary type to
-make the implementation of `PIBasis` clearer. It implements the
-permutation-invariant basis for a single centre-atom species. The main
-type `PIBasis` then stores `NZ` objects of type `InnerPIBasis`
-and "dispatches" the work accordingly.
+`mutable struct PIBasisSpec`
 """
-mutable struct InnerPIBasis
+mutable struct PIBasisSpec
    orders::Vector{Int}           # order (length) of ith basis function
    iAA2iA::Matrix{Int}           # where in A can we find the ith basis function
    b2iAA::Dict{PIBasisFcn, Int}  # mapping PIBasisFcn -> iAA =  index in AA[z0]
-   b2iA::Dict{Any, Int}          # mapping from 1-p basis fcn to index in A[z0]
-   AAindices::UnitRange{Int}     # where in AA does AA[z0] fit?
-   dag::CorrEvalGraph{Int, Int}  # for fast evaluation
+   # b2iA::Dict{Any, Int}          # mapping from 1-p basis fcn to index in A[z0]
 end
 
 
-==(B1::InnerPIBasis, B2::InnerPIBasis) = (
-   (B1.b2iA == B2.b2iA) &&
-   (B1.iAA2iA == B2.iAA2iA) )
+==(B1::PIBasisSpec, B2::PIBasisSpec) = (
+         (B1.b2iA == B2.b2iA) &&
+         (B1.iAA2iA == B2.iAA2iA) )
 
-Base.length(basis::InnerPIBasis) = length(basis.orders)
+Base.length(spec::PIBasisSpec) = length(spec.orders)
 
-function InnerPIBasis(Aspec, AAspec, AAindices, z0)
-   len = length(AAspec)
-   maxorder = maximum(order, AAspec)
+# function PIBasisSpec(Aspec, AAspec, AAindices, z0)
+#    len = length(AAspec)
+#    maxorder = maximum(order, AAspec)
+#
+#    # construct the b2iA mapping
+#    b2iA = Dict{Any, Int}()
+#    for (iA, b) in enumerate(Aspec)
+#       if haskey(b2iA, b)
+#          @show b
+#          error("b2iA already has the key b. This means the basis spec is invalid.")
+#       end
+#       b2iA[b] = iA
+#    end
+#
+#    # allocate the two main arrays used for evaluation ...
+#    orders = zeros(Int, len)
+#    iAA2iA = zeros(Int, len, maxorder)
+#    # ... and fill them up with the cross-indices
+#    for (iAA, b) in enumerate(AAspec)
+#       @assert b.z0 == z0
+#       b = _get_ordered(b2iA, b)
+#       AAspec[iAA] = b
+#
+#       orders[iAA] = order(b)
+#       for α = 1:order(b)
+#          iAA2iA[iAA, α] = b2iA[ b.oneps[α] ]
+#       end
+#    end
+#
+#    # now sort iAA2iA lexicographically by rows to make sure the representation
+#    perm = sortperm( [ vcat([orders[iAA]], iAA2iA[iAA,:]) for iAA = 1:len ] )
+#    iAA2iA = iAA2iA[perm, :]
+#    AAspec = AAspec[perm]
+#    orders = orders[perm]
+#
+#    # construct the b2iAA mapping
+#    b2iAA = Dict{PIBasisFcn, Int}()
+#    for (iAA, b) in enumerate(AAspec)
+#       if haskey(b2iAA, b)
+#          @show b
+#          error("b2iAA already has the key b. This means the basis spec is invalid.")
+#       end
+#       b2iAA[b] = iAA
+#    end
+#
+#    # putting it all together :
+#    # an empty dag, to assemble the basis ...
+#    emptydag = DAG.CorrEvalGraph{Int, Int}()
+#    inner = InnerPIBasis(orders, iAA2iA, b2iAA, b2iA, AAindices, z0, emptydag)
+#    # ... generate the actual dag to return
+#    generate_dag!(inner)
+#    return inner
+# end
+#
+#
+# function generate_dag!(inner; kwargs...)
+#    len = length(inner)
+#    inner.dag = get_eval_graph(inner, collect(1:len); kwargs...)
+#    return inner
+# end
 
-   # construct the b2iA mapping
-   b2iA = Dict{Any, Int}()
-   for (iA, b) in enumerate(Aspec)
-      if haskey(b2iA, b)
-         @show b
-         error("b2iA already has the key b. This means the basis spec is invalid.")
-      end
-      b2iA[b] = iA
-   end
 
-   # allocate the two main arrays used for evaluation ...
-   orders = zeros(Int, len)
-   iAA2iA = zeros(Int, len, maxorder)
-   # ... and fill them up with the cross-indices
-   for (iAA, b) in enumerate(AAspec)
-      @assert b.z0 == z0
-      b = _get_ordered(b2iA, b)
-      AAspec[iAA] = b
-
-      orders[iAA] = order(b)
-      for α = 1:order(b)
-         iAA2iA[iAA, α] = b2iA[ b.oneps[α] ]
-      end
-   end
-
-   # now sort iAA2iA lexicographically by rows to make sure the representation
-   perm = sortperm( [ vcat([orders[iAA]], iAA2iA[iAA,:]) for iAA = 1:len ] )
-   iAA2iA = iAA2iA[perm, :]
-   AAspec = AAspec[perm]
-   orders = orders[perm]
-
-   # construct the b2iAA mapping
-   b2iAA = Dict{PIBasisFcn, Int}()
-   for (iAA, b) in enumerate(AAspec)
-      if haskey(b2iAA, b)
-         @show b
-         error("b2iAA already has the key b. This means the basis spec is invalid.")
-      end
-      b2iAA[b] = iAA
-   end
-
-   # putting it all together :
-   # an empty dag, to assemble the basis ...
-   emptydag = DAG.CorrEvalGraph{Int, Int}()
-   inner = InnerPIBasis(orders, iAA2iA, b2iAA, b2iA, AAindices, z0, emptydag)
-   # ... generate the actual dag to return
-   generate_dag!(inner)
-   return inner
-end
-
-
-function generate_dag!(inner; kwargs...)
-   len = length(inner)
-   inner.dag = get_eval_graph(inner, collect(1:len); kwargs...)
-   return inner
-end
-
-
-# ---------------------- PIBasis
-
-struct DAGEvaluator end
-struct StandardEvaluator end
+# --------------------------------- PIBasis
 
 
 """
@@ -218,25 +213,20 @@ PIBasis(basis1p, N, D, maxdeg)
 * `N` : maximum interaction order
 * `D` : an abstract degee specification, e.g., SparsePSHDegree
 * `maxdeg` : the maximum polynomial degree as measured by `D`
-
-Note the species list will be taken from `basis1p`
 """
-mutable struct PIBasis{BOP, NZ, TEV} <: IPBasis
+mutable struct PIBasis{BOP} <: IPBasis
    basis1p::BOP             # a one-particle basis
-   zlist::SZList{NZ}
-   inner::NTuple{NZ, InnerPIBasis}
-   evaluator::TEV
+   spec::PIBasisSpec
 end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
 ==(B1::PIBasis, B2::PIBasis) = ACE._allfieldsequal(B1, B2)
 
+# TODO: allow the option of converting to real part?
 fltype(basis::PIBasis) = fltype(basis.basis1p)
 
-Base.length(basis::PIBasis) = sum(length(basis, iz) for iz = 1:numz(basis))
-Base.length(basis::PIBasis, iz0::Integer) = length(basis.inner[iz0])
-Base.length(basis::PIBasis, z0::AtomicNumber) = length(basis, z2i(basis, z0))
+Base.length(basis::PIBasis) = length(basis.spec)
 
 function PIBasis(basis1p::OneParticleBasis,
                  N::Integer,
