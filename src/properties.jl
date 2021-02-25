@@ -30,7 +30,7 @@ Base.size(::EuclideanVector{D}) where D = (3, D)
 Base.zero(::Type{EuclideanVector{D, T}}) where {D,T} = zero(SMatrix{3, D, T})
 
 
-struct SphericalVector{L, D, LEN} <: AbstractProperty
+struct SphericalVector{L, D, LEN, T} <: AbstractProperty
    _valL::Val{L}
    _valD::Val{D}
    _vallen::Val{LEN}

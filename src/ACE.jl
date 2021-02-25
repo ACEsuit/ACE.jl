@@ -16,6 +16,7 @@ include("extimports.jl")
 include("julip_imports.jl")
 
 include("states.jl")
+include("properties.jl")
 
 include("auxiliary.jl")
 
@@ -38,6 +39,8 @@ include("Rn1pbasis.jl")
 
 include("product_1pbasis.jl")
 
+include("sparsegrids.jl")
+
 # TODO -> move elsewhere!!!
 # include("rpi/rpi_degrees.jl")
 
@@ -46,7 +49,7 @@ include("product_1pbasis.jl")
 
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
-include("pibasis.jl")
+# include("pibasis.jl")
 
 # include("pipot.jl")
 #

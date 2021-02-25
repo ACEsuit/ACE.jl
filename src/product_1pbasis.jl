@@ -39,3 +39,36 @@ alloc_temp(basis::Product1PBasis) =
 end
 
 symbols(basis::Product1PBasis) = union( symbols.(basis.bases)... )
+
+function indexrange(basis::Product1PBasis)
+   rg = Dict{Symbol, Vector{Int}}()
+   allsyms = symbols(basis)
+   for sym in allsyms
+      rg[sym] = Int[]
+   end
+   for b in basis.bases
+      rgb = indexrange(b)
+      for sym in allsyms
+         if haskey(rgb, sym)
+            rg[sym] = union(rg[sym], rgb[sym])
+         end
+      end
+   end
+
+   # HACK: fix the m range based on the maximal l-range
+   #       this needs to be suitably generalised if we have multiple
+   #       (l, m) pairs, e.g. (l1, m1), (l2, m2)
+   if haskey(rg, :m)
+      maxl = maximum(rg[:l])
+      rg[:m] = collect(-maxl:maxl)
+   end
+
+   return rg
+end
+
+isadmissible(b, basis::Product1PBasis) = all(isadmissible.(Ref(b), basis.bases))
+
+function set_spec!(basis::Product1PBasis, spec)
+   basis.spec = spec
+   return basis
+end 

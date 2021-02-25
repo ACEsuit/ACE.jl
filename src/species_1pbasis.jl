@@ -30,3 +30,12 @@ fltype(::SpeciesBasis) = Bool
 
 symbols(::Species1PBasisCtr) = [:μ0]
 symbols(::Species1PBasisNeig) = [:μ]
+
+indexrange(basis::Species1PBasisCtr) = Dict( :μ0 => Int.(basis.zlist.list) )
+indexrange(basis::Species1PBasisNeig) = Dict( :μ => Int.(basis.zlist.list) )
+
+isadmissible(b, basis::Species1PBasisCtr) = (AtomicNumber(b.μ0) in basis.zlist.list)
+isadmissible(b, basis::Species1PBasisNeig) = (AtomicNumber(b.μ) in basis.zlist.list)
+
+# indexrange(basis::Species1PBasisCtr) = Dict( :μ0 => 1:length(basis.zlist) )
+# indexrange(basis::Species1PBasisNeig) = Dict( :μ => 1:length(basis.zlist) )

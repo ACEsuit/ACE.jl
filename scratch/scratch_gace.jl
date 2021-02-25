@@ -1,6 +1,6 @@
 
 using ACE
-using ACE: alloc_temp, alloc_B
+using ACE: alloc_temp, alloc_B, AtomState
 
 X = AtomState(:C)
 
@@ -37,3 +37,6 @@ using BenchmarkTools
 @btime ACE.evaluate!($A, $tmp, $B1p, $Xs, $X0)
 
 ACE.symbols(B1p)
+ACE.indexrange(B1p)
+
+ACE.init1pspec!(B1p)

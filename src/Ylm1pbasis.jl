@@ -89,6 +89,18 @@ rfltype(basis::Ylm1pBasis{T}) where T = T
 
 symbols(::Ylm1pBasis) = [:l, :m]
 
+
+function indexrange(basis::Ylm1pBasis)
+   maxl = basis.SH.maxL
+   # note we create a stupid tensor product domain and then make up for it
+   # by using an index filter during the basis generation process
+   return Dict( :l => 0:maxl, :m => -maxl:maxl )
+end
+
+isadmissible(b, basis::Ylm1pBasis) =
+      (  (0 <= b.l <= basis.SH.maxL) &&
+         (-b.l <= b.m <= b.l) )
+
 # ---------------------------  Evaluation code
 #
 
