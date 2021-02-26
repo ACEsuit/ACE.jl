@@ -81,6 +81,11 @@ indexrange(basis::Rn1pBasis) = Dict( :n => 1:length(basis) )
 
 isadmissible(b, basis::Rn1pBasis) = (1 <= b.n <= length(basis))
 
+degree(b, basis::Rn1pBasis) = b.n - 1
+
+get_index(basis::Rn1pBasis, b) = b.n
+
+
 # ---------------------------  Evaluation code
 #
 

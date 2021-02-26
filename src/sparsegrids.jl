@@ -6,7 +6,7 @@
 `function init1pspec!` : initialize the specification of the 1-particle basis,
 generates all possible 1-p basis functions, sorted by degree.
 """
-function init1pspec!(B1p::OneParticleBasis)
+function init1pspec!(B1p::OneParticleBasis; maxdeg = Inf, Deg = B1p)
    syms = tuple(symbols(B1p)...)
    rgs = indexrange(B1p)
    lens = [ length(rgs[sym]) for sym in syms ]
@@ -16,60 +16,83 @@ function init1pspec!(B1p::OneParticleBasis)
       b = NamedTuple{syms}(J)
       # check whether valid
       if isadmissible(b, B1p)
-         push!(spec, b)
+         deg = degree(b, Deg)
+         if deg <= maxdeg
+            push!(spec, b)
+         end
       end
    end
+   sort!(spec, by = b -> degree(b, Deg))
    return set_spec!(B1p, spec)
 end
 
 
-
-function gensparse( maxν::Integer,
-                    maxdeg::Real,
-                    B1p::OneParticleBasis,
-                    D::AbstractDegree)
-   # make the maximum correlation-order static
-   valN = Val(maxν)
-   #
-end
-
 gensparse(N::Integer, deg::Real; degfun = ν -> sum(ν), kwargs...) =
    gensparse(N; admissible = ν -> (degfun(ν) <= deg), kwargs...)
 
-gensparse(N::Integer;
-          admissible = _-> false,
-          filter = _-> true,
-          tup2b = ν -> SVector(ν),
-          INT = Int,
-          ordered = false,
-          maxν = Inf) =
-      _gensparse(Val(N), admissible, filter, tup2b, INT, ordered, maxν)
+"""
+`gensparse(...)` : utility function to generate high-dimensional sparse grids
+which are downsets.
 
-function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
-                   ) where {N}
+All arguments are keyword arguments (with defaults):
+* `NU` : maximum correlation order
+* `minvv = 0` : `minvv[i] gives the minimum value for `vv[i]`
+* `maxvv = Inf` : `maxvv[i] gives the minimum value for `vv[i]`
+* `tup2b = vv -> vv` :
+* `admissible = _ -> false` : determines whether a tuple belongs to the downset
+* `filter = _ -> true` : a callable object that returns true of tuple is to be kept and
+false otherwise (whether or not it is part of the downset!) This is used, e.g.
+to enfore conditions such as ∑ lₐ = even or |∑ mₐ| ≦ M
+* `INT = Int` : integer type to be used
+* `ordered = false` : whether only ordered tuples are produced; ordered tuples
+correspond to  permutation-invariant basis functions
+"""
+gensparse(; NU::Integer = nothing,
+            minvv = [0 for _=1:NU],
+            maxvv = [Inf for _=1:NU],
+            tup2b = vv -> vv,
+            admissible = _-> false,
+            filter = _-> true,
+            INT = Int,
+            ordered = false) =
+      _gensparse(Val(NU), tup2b, admissible, filter, INT, ordered,
+                 SVector(minvv...), SVector(maxvv...))
+
+"""
+`_gensparse` : function barrier for `gensparse`
+"""
+function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
+                    minvv, maxvv) where {NU}
    @assert INT <: Integer
 
    lastidx = 0
-   ν = @MVector zeros(INT, N)
-   b = tup2b(ν)
-   Nu = Vector{Any}(undef, 0)
-   orig_Nu = []
+   vv = @MVector zeros(INT, NU)
+   for i = 1:NU; vv[i] = minvv[i]; end
 
-   if N == 0
-      push!(Nu, b)
-      return Nu
+   spec = SVector{NU, INT}[]
+   orig_spec = SVector{NU, INT}[]
+
+   if NU == 0
+      if all(minvv .== 0) && isadmissible(vv) && filter(vv)
+         push!(spec, SVector(vv))
+      end
+      return spec
    end
 
    while true
-      # check whether the current ν tuple is admissible
+      # check whether the current vv tuple is admissible
       # the first condition is that its max index is small enough
       # we want to increment `curindex`, but if we've reach the maximum degree
       # then we need to move to the next index down
       isadmissible = true
-      if maximum(ν) > maxν
+      if any(vv .> maxvv)
          isadmissible = false
       else
-         b = tup2b(ν)
+         b = tup2b(vv)
+         # @show vv
+         # @show b
+         # @show ACE.degree(b, Main.Deg, Main.B1p)
+         # @show admissible(b)
          isadmissible = admissible(b)
       end
 
@@ -77,14 +100,20 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
          # ... then we add it to the stack  ...
          # (unless some filtering mechanism prevents it)
          if filter(b)
-            push!(Nu, b)
-            push!(orig_Nu, copy(ν))
+            push!(spec, SVector(vv))
+            push!(orig_spec, copy(SVector(vv)))
          end
          # ... and increment it
-         lastidx = N
-         ν[lastidx] += 1
+         lastidx = NU
+         vv[lastidx] += 1
       else
-         # we have overshot, e.g. degfun(ν) > deg; we must go back down, by
+         if lastidx == 0
+            error("""lastidx == 0 should never occur; this means that the
+                     smallest basis function is already inadmissible and therefore
+                     the basis is empty.""")
+         end
+
+         # we have overshot, e.g. degfun(vv) > deg; we must go back down, by
          # decreasing the index at which we increment
          if lastidx == 1
             # if we have gone all the way down to lastindex==1 and are still
@@ -92,11 +121,11 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
             break
          end
          # reset
-         ν[lastidx-1] += 1
+         vv[lastidx-1] += 1
          if ordered   #   ordered tuples (permutation symmetry)
-            ν[lastidx:end] .= ν[lastidx-1]
+            vv[lastidx:end] .= vv[lastidx-1]
          else         # unordered tuples (no permutation symmetry)
-            ν[lastidx:end] .= 0
+            vv[lastidx:end] .= 0
          end
          lastidx -= 1
       end
@@ -104,9 +133,9 @@ function _gensparse(::Val{N}, admissible, filter, tup2b, INT, ordered, maxν
 
    if ordered
       # @info("sanity test")
-      @assert all(issorted, orig_Nu)
-      @assert length(unique(orig_Nu)) == length(orig_Nu)
+      @assert all(issorted, orig_spec)
+      @assert length(unique(orig_spec)) == length(orig_spec)
    end
 
-   return identity.(Nu)
+   return identity.(spec)
 end

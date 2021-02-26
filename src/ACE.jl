@@ -49,7 +49,7 @@ include("sparsegrids.jl")
 
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
-# include("pibasis.jl")
+include("pibasis.jl")
 
 # include("pipot.jl")
 #

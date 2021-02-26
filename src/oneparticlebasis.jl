@@ -8,11 +8,8 @@
 # ----------- This file implements the abstract one-particle basis interface
 
 function alloc_B(basis::OneParticleBasis, args...)
-   NZ = numz(basis)
-   maxlen = maximum( sum( length(basis, iz, iz0) for iz = 1:NZ )
-                     for iz0 = 1:NZ )
    T = fltype(basis)
-   return zeros(T, maxlen)
+   return zeros(T, length(basis))
 end
 
 function evaluate!(A, tmp, basis::OneParticleBasis,
@@ -99,3 +96,33 @@ end
 #
 # get_basis_spec(basis::OneParticleBasis, s::Symbol) =
 #       get_basis_spec(basis, atomic_number(s))
+
+
+
+
+# --------------------
+
+"""
+`struct One1p` : the 1-p basis where everything just maps to 1
+"""
+struct One1pBasis <: OneParticleBasis{Bool}
+end
+
+struct One1pBasisFcn <: OnepBasisFcn
+end
+
+Base.length(::One1pBasis) = 1
+
+evaluate!(B, tmp, basis::One1pBasis, Xj, Xi) = (B[1] = 1; B)
+
+fltype(::One1pBasis) = Bool
+
+symbols(::One1pBasis) = Symbol[]
+
+indexrange(::One1pBasis) = Dict()
+
+isadmissible(b, ::One1pBasis) = true
+
+degree(b, ::One1pBasis) = 0
+
+get_spec(::One1pBasis) = [(1,)]

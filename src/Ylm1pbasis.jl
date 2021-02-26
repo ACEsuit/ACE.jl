@@ -111,8 +111,9 @@ alloc_temp(basis::Ylm1pBasis) = alloc_temp(basis.SH)
 evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState, X0::AbstractState) =
       evaluate!(B, tmp, basis.SH, X.rr)
 
+degree(b, basis::Ylm1pBasis) = b.l
 
-
+get_index(basis::Ylm1pBasis, b) = index_y(b.l, b.m)
 
 # alloc_temp_d(basis::RnYlm1pBasis, args...) =
 #       (

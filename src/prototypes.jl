@@ -76,3 +76,14 @@ diagonal_regulariser(basis; diff = 0) = Diagonal(scaling(basis, diff))
 every scalar basis must implement this
 """
 function rand_radial end
+
+
+
+
+struct NaiveTotalDegree end
+
+degree(b::NamedTuple, Deg::NaiveTotalDegree, basis::OneParticleBasis) =
+      degree(b, basis)
+
+degree(b, Deg::NaiveTotalDegree, basis::OneParticleBasis) =
+      length(b) == 0 ? 0 : sum( degree(bi, basis) for bi in b )

@@ -1,5 +1,6 @@
 
-abstract type SpeciesBasis{NZ} end
+
+abstract type SpeciesBasis{NZ} <: OneParticleBasis{Bool} end
 
 struct Species1PBasisCtr{NZ} <: SpeciesBasis{NZ}
    zlist::SZList{NZ}
@@ -17,8 +18,10 @@ Species1PBasisNeig(species) = Species1PBasisNeig(ZList(species, static=true))
 
 Base.length(basis::SpeciesBasis) = length(basis.zlist)^2
 
-evaluate!(B, tmp, basis::Species1PBasisCtr, Xj, Xi) = evaluate!(B, tmp, basis, Xi)
-evaluate!(B, tmp, basis::Species1PBasisNeig, Xj, Xi) = evaluate!(B, tmp, basis, Xj)
+evaluate!(B, tmp, basis::Species1PBasisCtr,
+          Xj::AbstractState, Xi::AbstractState) = evaluate!(B, tmp, basis, Xi)
+evaluate!(B, tmp, basis::Species1PBasisNeig,
+          Xj::AbstractState, Xi::AbstractState) = evaluate!(B, tmp, basis, Xj)
 
 function evaluate!(B, tmp, basis::SpeciesBasis{NZ}, X) where {NZ}
    fill!(B, 0)
@@ -36,6 +39,12 @@ indexrange(basis::Species1PBasisNeig) = Dict( :μ => Int.(basis.zlist.list) )
 
 isadmissible(b, basis::Species1PBasisCtr) = (AtomicNumber(b.μ0) in basis.zlist.list)
 isadmissible(b, basis::Species1PBasisNeig) = (AtomicNumber(b.μ) in basis.zlist.list)
+
+degree(b, basis::SpeciesBasis) = 0
+
+get_index(basis::Species1PBasisCtr, b) = z2i(basis.zlist, AtomicNumber(b.μ0))
+get_index(basis::Species1PBasisNeig, b) = z2i(basis.zlist, AtomicNumber(b.μ))
+
 
 # indexrange(basis::Species1PBasisCtr) = Dict( :μ0 => 1:length(basis.zlist) )
 # indexrange(basis::Species1PBasisNeig) = Dict( :μ => 1:length(basis.zlist) )
