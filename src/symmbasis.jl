@@ -14,10 +14,10 @@ struct SymmetricBasis{BOP, PROP} <: IPBasis
 end
 
 
-Base.length(basis::SymmetricBasis{T}) where {T} =
-      length(zero(T)) * size(basis.A2Bmaps, 1)
+Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
+      size(basis.A2Bmap, 1)
 
-# fltype(basis::SymmetricBasis) = fltype(basis.pibasis)
+fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  PROP
 # rfltype(basis::SymmetricBasis) = rfltype(basis.pibasis)
 
 # TODO: move into atoms stuff
@@ -174,12 +174,18 @@ end
 
 # ---------------- Evaluation code
 
+alloc_temp(basis::SymmetricBasis) =
+      (  AA = alloc_B(basis.pibasis),
+         tmppi = alloc_temp(basis.pibasis) )
+
+alloc_B(basis::SymmetricBasis) =
+      zeros(fltype(basis), length(basis))
 
 function evaluate!(B, tmp, basis::SymmetricBasis,
                    Xs::AbstractVector{<: AbstractState}, X0::AbstractState)
    # compute AA
    evaluate!(tmp.AA, tmp.tmppi, basis.pibasis, Xs, X0)
-   evaluate!(B, tmp, basis, AA)
+   evaluate!(B, tmp, basis, tmp.AA)
    return B
 end
 

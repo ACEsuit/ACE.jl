@@ -1,14 +1,20 @@
 
-import Base: +, *, filter
+import Base: -, +, *, filter
+import LinearAlgebra: norm
 
 abstract type AbstractProperty end
 
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
+@inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
 @inline *(φ::T, λ::Number) where {T <: AbstractProperty} = T(φ.val * λ)
+@inline norm(φ::T) where {T <: AbstractProperty} = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
+@inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
+Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
+      isapprox(φ1.val, φ2.val)
 
 """
 `struct Invariant{D}` : specifies that the output of an ACE is
@@ -18,7 +24,9 @@ struct Invariant{T} <: AbstractProperty
    val::T
 end
 
-Invariant(T::Type{Number}) = Invariant{T}(zero(T))
+Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))
+
+Invariant(T::DataType = Float64) = Invariant{T}()
 
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )

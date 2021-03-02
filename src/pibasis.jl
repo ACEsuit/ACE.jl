@@ -126,10 +126,11 @@ PIBasis(basis1p, N, D, maxdeg)
 * `D` : an abstract degee specification, e.g., SparsePSHDegree
 * `maxdeg` : the maximum polynomial degree as measured by `D`
 """
-mutable struct PIBasis{BOP} <: IPBasis
+mutable struct PIBasis{BOP, REAL} <: IPBasis
    basis1p::BOP             # a one-particle basis
    # basis0      # center-atom basis
    spec::PIBasisSpec
+   real::REAL     # could be `real` or `identity` to keep AA complex
    # evaluator    # classic vs graph
 end
 
@@ -138,12 +139,13 @@ cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 ==(B1::PIBasis, B2::PIBasis) = ACE._allfieldsequal(B1, B2)
 
 # TODO: allow the option of converting to real part?
-fltype(basis::PIBasis) = fltype(basis.basis1p)
+fltype(basis::PIBasis) = basis.real( fltype(basis.basis1p) )
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
-PIBasis(basis1p, args...; kwargs...) =
-   PIBasis(basis1p, PIBasisSpec(basis1p, args...; kwargs...))
+PIBasis(basis1p, args...; isreal = true, kwargs...) =
+   PIBasis(basis1p, PIBasisSpec(basis1p, args...; kwargs...),
+           isreal ? Base.real : Bases.identity )
 
 
 get_spec(pibasis::PIBasis) =
@@ -152,7 +154,8 @@ get_spec(pibasis::PIBasis) =
 get_spec(pibasis::PIBasis, i::Integer) =
       get_spec.( Ref(pibasis.basis1p), get_spec(pibasis.spec, i) )
 
-
+setreal(basis::PIBasis, isreal::Bool) =
+   PIBasis(basis.basis1p, basis.spec, isreal)
 
 
 # function scaling(pibasis::PIBasis, p)
@@ -214,9 +217,11 @@ function evaluate!(AA, tmp, basis::PIBasis, Xs, X0)
    fill!(AA, 1)
    A = evaluate!(tmp.A, tmp.tmp1p, basis.basis1p, Xs, X0)
    for iAA = 1:length(basis)
+      aa = one(eltype(A))
       for t = 1:basis.spec.orders[iAA]
-         AA[iAA] *= A[ basis.spec.iAA2iA[ iAA, t ] ]
+         aa *= A[ basis.spec.iAA2iA[ iAA, t ] ]
       end
+      AA[iAA] = basis.real(aa)
    end
 end
 
