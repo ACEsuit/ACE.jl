@@ -18,12 +18,12 @@ length(B1p)
 
 φ = ACE.Invariant{Float64}(0.0)
 ace = PIBasis(B1p, ACE.One1pBasis(), 3, 5) |> length #  length ~ 62,000
-ace = PIBasis(B1p, ACE.One1pBasis(), 3, 5;
-              property = φ)   # filtered: length ~ 7,000  !!!
+ace = PIBasis(B1p, ACE.One1pBasis(), 3, 5; property = φ)   # filtered: length ~ 7,000  !!!
 
 # full specification of the 𝑨 Basis
 ACE.get_spec(ace)
 
+symace = ACE.SymmetricBasis(ace, φ)
 
 function rand_state()
    𝒓 = ACE.rand_radial(Rn.R) * ACE.Random.rand_sphere()

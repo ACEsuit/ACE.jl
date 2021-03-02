@@ -332,12 +332,11 @@ rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
 			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
 
 function rpi_basis(A::Rot3DCoeffs,
-						 zz::SVector{N},
-						 nn::SVector{N, Int},
-						 ll::SVector{N, Int}) where {N}
+						 nn::SVector{N, TN},
+						 ll::SVector{N, Int}) where {N, TN}
 	Uri = ri_basis(A, ll)
 	Mri = collect( _mrange(ll) )   # rows...
-	G = _gramian(zz, nn, ll, Uri, Mri)
+	G = _gramian(nn, ll, Uri, Mri)
    S = svd(G)
    rk = rank(G; rtol =  1e-7)
 	Urpi = S.U[:, 1:rk]'
@@ -345,13 +344,13 @@ function rpi_basis(A::Rot3DCoeffs,
 end
 
 
-function _gramian(zz, nn, ll, Uri, Mri)
+function _gramian(nn, ll, Uri, Mri)
    N = length(nn)
    nri = size(Uri, 1)
    @assert size(Uri, 1) == nri
    G = zeros(nri, nri)
    for σ in permutations(1:N)
-      if (zz[σ] != zz) || (nn[σ] != nn) || (ll[σ] != ll); continue; end
+      if (nn[σ] != nn) || (ll[σ] != ll); continue; end
       for (iU1, mm1) in enumerate(Mri), (iU2, mm2) in enumerate(Mri)
          if mm1[σ] == mm2
             for i1 = 1:nri, i2 = 1:nri
