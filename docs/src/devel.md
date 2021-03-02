@@ -2,38 +2,40 @@
 # Developer Documentation
 
 !!! warning "WARNING"
-    This documentation described what will be implemented on the `rewrite` branch, and not what is currently implemented!
+    This documentation describes what will be implemented on the `rewrite` branch, and not what is currently implemented!
 
-## General Notes
 
- * Always use `Int` for indexing, never `Int16, Int32`, etc.
- * There is a lot of switching between a species given by an `AtomicNumber` type and the index of that species in a list, given by an `Int`. Functions dispatch on `Int` vs `AtomicNumber` to make sure there is no confusion.
-
-## Types and type hierarchy
+## Summary of types and type hierarchy
 
 The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), which is well aligned with Julia's type system and recommended style. Basis sets and calculators are built from the following two base types:
 
 * `OneParticleBasis` : abstract supertype of a 1-particle basis
-* `PIBasis` : concrete implementation of a permutation-invariant basis
+* `PIBasis` : concrete implementation of a permutation-invariant basis, employing a `OneParticleBasis` and a specification of all possible correlations
+* `SymmetricBasis` : implementation of the "coupling" to achieve O(3) symmetries
 
-For example, a rotation-invariant site energy basis set (ACE and extensions) `RPIBasis` is built from a `PIBasis` and the coupling coefficients. The `PIBasis` itself is specified in terms of the `OneParticleBasis`.
+TODO: this section could be expanded significantly
 
-## Input space
+## States (Input variables)
 
 Each particle is described by one or more variables, including e.g. its
-position, species, etc. The input space ``\mathbb{X}'' is simply the
-space in which those variables reside.
+position, species, etc. The input space ``\mathbb{X}`` is simply the
+space in which those variables reside. The input variable must be a subtype `AbstractState` following some strict conventions.
 
-#### Examples
+#### Example
 
-- Original ACE : ``\mathbb{X} = \mathbb{R}^3 \times \mathbb{N}`` i.e. position and species
-- In addition we may annotate an atom with a neighbour counter, then we obtain
-   ``\mathbb{X} = \mathbb{R}^3 \times \mathbb{N}  \times \mathbb{R}``
-- ... todo add more examples ...
--
+The original ACE models interatomic interaction with each state describing one atom in terms of its (relative) position and species. In this case the state could be defined as follow:
+```julia
+struct AtomState{T} <: AbstractState
+   mu::AtomicNumber
+   rr::SVector{3, T}
+end
+```
+It is crucial that the properties `mu, rr` are known to the one-particle basis, i.e. when evaluating ``\phi_v(X)`` the one-particle basis ``\phi_v`` must "know" that it can obtain the position by calling `X.rr`.
+
+
 ## One Particle Basis
 
-A one-particle basis is a basis of functions ``\phi_v : \mathbb{X} \to \mathbb{C}`` defined through a subtype of
+A one-particle basis is a basis of functions ``\phi_v : \mathbb{X} \to \mathbb{C}`` (or, ``\mathbb{R}``) defined through a subtype of
 ```julia
 abstract type OneParticleBasis end
 ```
@@ -43,46 +45,65 @@ Concrete subtypes must implement the projection of the atom density onto the one
    = \sum_{j} \phi_v(X_i, X_j),
 ```
 where including the centre-atom ``X_i`` in the argument allows us to compute relative positions, and incorporate centre-atom information into the basis. For example, this can be used to construct a different radial basis for all species pairs, incorporating information such as atomic radii.
-
 The "standard" evaluation of a single ``\phi_v(X; X_0)`` is of course a special case. In addition, the gradients of individual basis functions, ``\nabla \phi_v(X; X_0)`` must be provided; this gradient may be taken with respect to all continuous variables.
 
-Assuming that `basis isa OneParticleBasis`, this is done with the following interface:
+Assuming that `basis1p isa OneParticleBasis`, this is done with the following interface:
 ```julia
-A = alloc_B(basis)               # allocate storage for A = [ A_z for iz=1:NZ ]
-tmp = alloc_temp(basis, args...)    # allocate temporary arrays
-evaluate!(A, tmp, basis, Xs, X0)    # fill A = [ A_z for iz=1:NZ ]
+A = alloc_B(basis1p)               # allocate storage for A = [ A_z for iz=1:NZ ]
+tmp = alloc_temp(basis1p, args...)    # allocate temporary arrays
+evaluate!(A, tmp, basis1p, Xs, X0)    # fill A = [ A_z for iz=1:NZ ]
 ```
+
+!!! warning "WARNING"
+    The gradient interface is not really done yet and needs some design work!
+
 For the gradients the following must be provided:
 ```julia
-dPhi = alloc_dB(basis)                     # storage for (∇ϕ_k)_k
-tmpd = alloc_temp_d(basis, args...)        # temporary storage
-evaluate_d!(dPhi, tmpd, basis, R, z, z0)   # fill dPhi with (∇ϕ_k)_k
+dPhi = alloc_dB(basis1p)                     # storage for (∇ϕ_k)_k
+tmpd = alloc_temp_d(basis1p, args...)        # temporary storage
+evaluate_d!(dPhi, tmpd, basis1p, X, X0)   # fill dPhi with (∇ϕ_k)_k
 ```
-The interface does not require `evaluate_d!(dPhi, tmpd, basis, Rs, Zs, z0)`.
+The interface does not require `evaluate_d!(dPhi, tmpd, basis1p, Xs, X0)`.
 
-There is a lot of code duplication in the implementation of `OneParticleBasis`, which we can avoid by a generic implementation of `evaluate!` which loops through all `(R, z) in zip(Rs, Zs)` and then calls
+There is a lot of code duplication in the implementation of `OneParticleBasis`, which we can avoid by a generic implementation of `evaluate!` which loops through all `X in Xs` and then calls
 ```julia
-add_into_A!(A[iz], tmp, basis, R, iz, iz0)
+add_into_A!(A, tmp, basis1p, X, X0)
 ```
-an implementation of `OneParticleBasis` then only needs to overload `add_into_A!` which should evaluate ``\phi_k^{z z_0}({\bm r})`` (where `R` represents ``{\bm r}``) and *add* these values into `A[k]`.
-For this to work, the type of the 1-particle basis must contain a field `zlist` which implements the interface defined by `JuLIP.Potentials.ZList` and `JuLIP.Potentials.SZList`.
+an implementation of `OneParticleBasis` then only needs to overload `add_into_A!` which evaluates all ``\phi_v`` at one state pair `(X, X0)` and adds the basis values into a pre-allocated vector `A`.
+
+The most common situation is that `basis1p` is a product of basis functions acting on different variables. This can be constructed using `Product1pBasis`. For example, a one-particle basis of the kind
+```math
+   \phi_{\mu n l m}(X) = \delta(\mu_X - \mu) R_n(r_X) Y_l^m({\bm r}_X)
+```
+can be constructed as
+```julia
+Bμ = Species1PBasisNeig(species)
+Rn = Rn1pBasis(ACE.Utils.radial_basis())
+Ylm = Ylm1pBasis(10)
+basis1p = Product1PBasis( (Bμ, Rn, Ylm) )
+```
 
 To build a `PIBasis` (see below) the `OneParticleBasis` musts also provide methods that specify it:
 ```
-get_basis_spec(basis::RnYlm1pBasis, z0::AtomicNumber)
-get_basis_spec(basis::RnYlm1pBasis, z0::AtomicNumber, i::Integer)
+get_spec(basis, i::Integer)   # specification of the ith basis function
+get_spec(basis)               # vector containing all basis function specs
 ```
-The first of these should return a `Vector` containing `OnepBasisFcn` objects that specify the list of 1-particle basis functions for a centre atom of species `z0`. The second method should return precisely the ith element of this vector. A concrete `OneParticleBasis` may either simply keep these specifications stored throughout its lifetime, or generate them on the fly, whichever is most convenient.
+A basis function is specified as a `NamedTuple`. For instance, in the above
+example the values of the ``\mu, n, l, m`` indices would specify ``\phi_{\mu n l m}``. Thus the basis function is specified by
+```julia
+   b = (μ = ..., n = ..., l = ..., m = ...)
+```
+This framework is particularly useful if some tuples overlap across different
+components of a product one-particle basis. For example, if ``R_n`` depends
+also on the species, or if the radial basis is given as ``R_{nl}``.
 
-!!! note "Concrete subtypes of `OneParticleBasis`"
-    Concrete subtypes of `OneParticleBasis` are
+To let the generic code know which indices are available and what the range
+of each index is the one-particle basis must implement `symbols` and `indexrange`.
 
-    * `BasicPSH1PBasis` : implemented and tested
-    * `PSH1PBasis` : parameterised version of `BasicPSH1Basis`; under construction
-    * `BondEnv1PBasis` : implemented in old code, needs to be ported
-    * `Tensor1PBasis` : not yet done
+### Concrete Implementations of One-particle Bases
 
-    Should revisit this and maybe add another abstract layer in-between since all of these are really tensor product bases! (Reference relevant sections below)
+!!! note "TODO"
+    Provide a list of all 1p-basis implementations to build from
 
 
 ## Permutation-Invariant Basis
@@ -118,30 +139,63 @@ where the storage arrays are
 
 We don't provide a detailed description here of the implementation, since it is already the final product. But we can summarize the functionality that is provided that can be used to construct further basis sets from it.
 
-TODO
+
 
 ## Generating a `OneParticleBasis` and `PIBasis` via `gen_sparse`
 
-TODO
+!!! note TODO
+      explain how the basis sets are generated, and what options there are,
+      discuss what a degree is etc.
 
 
-## Derived Potentials
 
+## Properties and symmetries
 
-
-## RPI Basis (ACE and Extensions)
-
-The ACE basis (Atomic Cluster Expansion; Drautz 2019) and its modifications and extensions is one of the main user-facing objects provided by `ACE.jl`.
-It is constructed by reducing a permutation invariant `PIBasis` to a permutation and rotation invariant basis through a single sparse matrix-vector multiplication.
+A property ``\varphi`` is the output of an ACE model. Each property has
+certain symmetries attached to it. For example, an invariant ``\varphi``
+satisfies
 ```math
- B = C \cdot {\bm A},
+   \varphi \circ Q = \varphi
 ```
-where ``B`` is the new RPI basis, ``{\bm A}`` the "inner" PI basis and ``C`` the coupling coefficients that achieve the rotation-invariance. This relies on a specific choice of the one-particle basis. This construction is outlined in (Atomic Cluster Expansion; Drautz 2019) and an extended derivation with full details in (Bachmayr, Drautz, Dusson, Etter, Van der Oort, Csanyi, Ortner, arXiv:19..). The implementation of the ``C`` coefficients in `rpi/rotations3d.jl` is based on a numerical SVD as opposed to an analytic SVD.
+An equivariant Euclidean vector ``\varphi \in \mathbb{R}^3`` satisfies
+```math
+   \varphi \circ Q = Q \varphi.
+```
+An equi-variant spherical vector ``\varphi`` satisfies,
+```math
+   \varphi \circ Q = D(Q) \varphi.
+```
+and there are many more options as we move to higher-order tensors.
 
-The `RPIBasis` type stores only three fields: the `PIBasis`, the coefficients ``C``, and some index management to map the local site basis into a global basis (only needed for multiple species).
+To model these symmetries we introduce the `SymmetricBasis` in the next
+section. To generate it a property must specify what its symmetries are.
 
-TODO: discuss the classes of 1-particle bases that are allowed.
+All properties must be subtypes of `AbstractProperty`. For example
+```math
+struct Invariant{T} <: AbstractProperty
+   val::T
+end
+```
+The actual value(s) should always be encoded in the field `val` since this
+allows for generic implementation of several methods required for properties,
+such as arithmetic operations.
 
 
+!!! note "TODO"
+      discuss the interface how the properties specify their symmetry
 
-## Bond-Environment Potentials
+## The symmetric basis
+
+A key aspect of `ACE.jl` is to treat permutation symmetry *AND* O(3) symmetries.
+Given a propert ``\varphi`` which has certain symmetries attached to it we want
+to generate a basis ``\mathbf{B}`` which respects these symmetries as well.
+In `ACE.jl` this is provided by the `SymmetricBasis` type, which transforms
+from the density correlation basis ``\mathbf{A}`` to a symmetry adapted variant
+by computing all possible couplings of the spherical harmonics that produce
+the desired symmetry.
+```math
+ {\bm B} = C \cdot {\bm A}.
+```
+Note this relies on a specific choice of the one-particle basis; see references. The implementation of the ``C`` coefficients in `rotations3d.jl` is based on a numerical SVD as opposed to an analytic SVD.
+
+The `RPIBasis` type stores only two fields: the `PIBasis` and the coefficients ``C``.
