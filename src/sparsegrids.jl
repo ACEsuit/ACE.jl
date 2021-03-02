@@ -89,10 +89,6 @@ function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
          isadmissible = false
       else
          b = tup2b(vv)
-         # @show vv
-         # @show b
-         # @show ACE.degree(b, Main.Deg, Main.B1p)
-         # @show admissible(b)
          isadmissible = admissible(b)
       end
 
@@ -132,7 +128,7 @@ function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
    end
 
    if ordered
-      # @info("sanity test")
+      # sanity check, to make sure all is as intended...
       @assert all(issorted, orig_spec)
       @assert length(unique(orig_spec)) == length(orig_spec)
    end

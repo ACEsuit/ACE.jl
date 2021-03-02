@@ -16,8 +16,13 @@ ACE.indexrange(B1p)
 ACE.init1pspec!(B1p, maxdeg=5)
 length(B1p)
 
-ace = PIBasis(B1p, ACE.One1pBasis(), 3, 5)
+φ = ACE.Invariant{Float64}(0.0)
+ace = PIBasis(B1p, ACE.One1pBasis(), 3, 5) |> length #  length ~ 62,000
+ace = PIBasis(B1p, ACE.One1pBasis(), 3, 5;
+              property = φ)   # filtered: length ~ 7,000  !!!
 
+# full specification of the 𝑨 Basis
+ACE.get_spec(ace)
 
 
 function rand_state()

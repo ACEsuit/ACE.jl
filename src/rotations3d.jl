@@ -200,8 +200,8 @@ _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
       (SVector{N, Int}(ll), SVector{N, Int}(mm), SVector{N, Int}(kk))
 
 function (A::Rot3DCoeffs{T})(ll::StaticVector{N},
-                            mm::StaticVector{N},
-                            kk::StaticVector{N}) where {T, N}
+                             mm::StaticVector{N},
+                             kk::StaticVector{N}) where {T, N}
    if       sum(mm) != 0 ||
             sum(kk) != 0 ||
             !all(abs.(mm) .<= ll) ||

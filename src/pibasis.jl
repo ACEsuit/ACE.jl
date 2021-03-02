@@ -43,7 +43,8 @@ function PIBasisSpec( basis1p::OneParticleBasis,
                       basis0::OneParticleBasis,
                       maxν::Integer, maxdeg::Real;
                       Deg = NaiveTotalDegree(),
-                      filter = _->true )
+                      property = nothing,
+                      filterfun = _->true )
    # get the basis spec of the one-particle basis
    #  Aspec[i] described the basis function that will get written into A[i]
    Aspec = get_spec(basis1p)
@@ -69,14 +70,21 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    # to evaluate the degree
    admissible = b -> (degree(b, Deg, basis1p) <= maxdeg)
 
+   if property != nothing
+      filter1 = b -> filterfun(b) && filter(property, b)
+   else
+      filter1 = filterfun
+   end
+
+
    # we can now construct the basis specification; the `ordered = true`
    # keyword signifies that this is a permutation-invariant basis
    AAspec = gensparse(; NU = maxν,
-                      tup2b = tup2b,
-                      admissible = admissible,
-                      ordered = true,
-                      maxvv = [length(Aspec) for _=1:maxν],
-                      filter = filter)
+                        tup2b = tup2b,
+                        admissible = admissible,
+                        ordered = true,
+                        maxvv = [length(Aspec) for _=1:maxν],
+                        filter = filter1)
 
    # need to properly implement the ϕ₀ basis, for now assume this is just the
    # trivial basis
@@ -99,7 +107,7 @@ function PIBasisSpec(AAspec)
 end
 
 
-
+get_spec(AAspec::PIBasisSpec, i::Integer) = AAspec.iAA2iA[i, 1:AAspec.orders[i]]
 
 
 # --------------------------------- PIBasis implementation
@@ -136,6 +144,15 @@ Base.length(basis::PIBasis) = length(basis.spec)
 
 PIBasis(basis1p, args...; kwargs...) =
    PIBasis(basis1p, PIBasisSpec(basis1p, args...; kwargs...))
+
+
+get_spec(pibasis::PIBasis) =
+   [ get_spec(pibasis, i) for i = 1:length(pibasis) ]
+
+get_spec(pibasis::PIBasis, i::Integer) =
+      get_spec.( Ref(pibasis.basis1p), get_spec(pibasis.spec, i) )
+
+
 
 
 # function scaling(pibasis::PIBasis, p)

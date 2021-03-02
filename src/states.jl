@@ -78,7 +78,7 @@ Base.show(io::IO, s::SpeciesState) =
 #       @assert x.args[1] === Symbol("=>")
 #    end
 #    fields = [:($(x.args[2])::$(x.args[3])) for x in args]
-#    esc(quote struct $name <: AbstractState 
+#    esc(quote struct $name <: AbstractState
 #       $(fields...)
 #       end
 #    end)

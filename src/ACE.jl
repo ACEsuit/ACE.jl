@@ -51,6 +51,12 @@ include("sparsegrids.jl")
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
 
+include("rotations3d.jl")
+using ACE.Rotations3D
+
+include("symmbasis.jl")
+
+
 # include("pipot.jl")
 #
 # # rotation-invariant site potentials (incl the ACE model)

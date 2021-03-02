@@ -14,7 +14,7 @@ using Parameters: @with_kw
 
 using Random: shuffle
 
-import Base: ==, length, kron 
+import Base: ==, length, kron, filter 
 
 # for some reason it seems we need to export this to be used outside?!?!
 

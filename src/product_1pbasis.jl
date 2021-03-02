@@ -90,4 +90,6 @@ end
 
 get_spec(basis::Product1PBasis) = basis.spec
 
+get_spec(basis::Product1PBasis, i::Integer) = basis.spec[i]
+
 degree(b, basis::Product1PBasis) = sum( degree(b, B) for B in basis.bases )
