@@ -11,11 +11,11 @@
 @info("--------- Testing OrthogonalPolynomials ----------")
 
 ##
-using ACE, Test, ForwardDiff, JuLIP, JuLIP.Testing
+using ACE, Test, ForwardDiff
 
 using LinearAlgebra: norm, cond
 using ACE.OrthPolys: OrthPolyBasis
-using JuLIP: evaluate, evaluate_d
+using ACE: evaluate, evaluate_d
 
 ##
 
@@ -47,9 +47,10 @@ for ntest = 1:10
    tdf = rand(1000)
    ww = 1.0 .+ rand(1000)
    Jd = OrthPolyBasis(N, 2, 1.0, 1, -1.0, tdf, ww)
-   print_tf(@test all(JuLIP.Testing.test_fio(Jd)))
+   print_tf(@test all(ACE.Testing.test_fio(Jd)))
 end
 println()
+
 
 ##
 @info("Construction and FD vs Grad for randomly generated OrthPolyBasis")
@@ -73,6 +74,8 @@ let errtol = 1e-12, ntest = 100
    end
    println((@test nfail == 0))
 end
+
+
 
 ##
 

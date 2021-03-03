@@ -9,16 +9,15 @@
 module ACE
 
 using Reexport
-@reexport using JuLIP
 
 # external imports that are useful for all submodules
 include("extimports.jl")
-include("julip_imports.jl")
+
+include("auxiliary.jl")
 
 include("states.jl")
 include("properties.jl")
 
-include("auxiliary.jl")
 
 include("prototypes.jl")
 
@@ -33,7 +32,6 @@ include("oneparticlebasis.jl")
 
 # three specific 1p-bases that are useful
 # TODO: species basis should be moved into the atomistic modelling toolkit
-include("species_1pbasis.jl")
 include("Ylm1pbasis.jl")
 include("Rn1pbasis.jl")
 
@@ -56,19 +54,11 @@ using ACE.Rotations3D
 
 include("symmbasis.jl")
 
-
 # include("pipot.jl")
-#
-# # rotation-invariant site potentials (incl the ACE model)
-# include("rpi/rpi.jl")
-# @reexport using ACE.RPI
-#
+
+
 # # orthogonal basis
 # include("orth.jl")
-#
-# # pair potentials + repulsion
-# include("pairpots/pair.jl");
-# @reexport using ACE.PairPotentials
 #
 # lots of stuff related to random samples:
 #  - random configurations
@@ -80,17 +70,13 @@ include("random.jl")
 
 include("utils.jl")
 @reexport using ACE.Utils
-#
+
 # include("utils/importv5.jl")
-#
-#
 # include("compat/compat.jl")
-#
-#
 # include("export/export.jl")
-#
-#
-# include("testing/testing.jl")
+
+
+include("testing/testing.jl")
 
 # - bond model
 # - pure basis

@@ -1,7 +1,12 @@
+# --------------------------------------------------------------------------
+# ACE.jl: Julia implementation of the Atomic Cluster Expansion
+# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
+# All rights reserved.
+# --------------------------------------------------------------------------
 
 
 
-using JuLIP: evaluate
+using ACE: evaluate
 
 # ------- EndlessVector
 #   auxiliary datastructure wrapping sparse vectors

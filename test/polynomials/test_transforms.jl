@@ -10,8 +10,9 @@
 @testset "Transforms" begin
 
 #---
-using ACE, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
-using JuLIP: evaluate, evaluate_d
+using ACE, Printf, Test, LinearAlgebra
+using ACE: evaluate, evaluate_d, read_dict, write_dict
+using ACE.Testing
 
 verbose = false
 maxdeg = 10
@@ -21,7 +22,7 @@ for p in 2:4
    @info("p = $p, random transform")
    trans = PolyTransform(1+rand(), 1+rand())
    @info("      test (de-)dictionisation")
-   println(@test read_dict(write_dict(trans)) == trans)
+   @test all(ACE.Testing.test_fio(trans))
    B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = p)
    B2 = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = p, pcut = p)
    for B in [B1, B2]
@@ -70,7 +71,10 @@ for p = 2:4
 end
 
 # #---
-#
+
+# TODO: This could be moved to some Tools package
+#       to visualize the good transforms
+
 # using Plots
 # r0 = 1.0
 # rr = range(0.0, 3*r0, length=200)

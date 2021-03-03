@@ -9,30 +9,15 @@
 module Utils
 
 # import ACE.RPI: RnYlm1pBasis, SparsePSHDegree, RPIBasis, get_maxn
-import ACE: PolyTransform, transformed_jacobi, RnYlm1pBasis,
-            SparsePSHDegree, get_maxn
+
+import ACE: PolyTransform, transformed_jacobi
+
 # import ACE.PairPotentials: PolyPairBasis
 
 # - simple ways to construct a radial basis
 # - construct a descriptor
 # - simple wrappers to generate RPI basis functions (ACE + relatives)
 
-# export rpi_basis, descriptor, pair_basis, ace_basis
-
-radial_basis(; r0 = 2.5,
-               trans = PolyTransform(2, r0),
-               maxn = 10,
-               rcut = 5.0,
-               rin = 0.5 * r0,
-               pcut = 2,
-               pin = 0 ) =
-      transformed_jacobi(maxn, trans, rcut, rin;
-                                  pcut=pcut, pin=pin)
-
-RnYlm_basis(; species = :X, D = SparsePSHDegree(), maxdeg = 8, kwargs...)  =
-      RnYlm1pBasis(
-            radial_basis(maxn = get_maxn(D, maxdeg, species), kwargs...);
-            species = species, D = D )
 
 
 

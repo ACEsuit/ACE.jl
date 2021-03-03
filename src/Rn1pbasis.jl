@@ -7,13 +7,7 @@
 
 import ACE.OrthPolys: TransformedPolys
 
-@doc raw"""
-`struct Rn1pBasisFcn` : 1-particle basis function specification
-for the `Rn1pBasis`.
-"""
-struct Rn1pBasisFcn <: OnepBasisFcn
-   n::Int
-end
+
 
 @doc raw"""
 `struct Rn1pBasis <: OneParticleBasis`
@@ -34,27 +28,8 @@ end
 # TODO: Should we drop this type altogether and just
 #       rewrite TransformedPolys to become a 1pbasis?
 
-# ---------------------- Implementation of Rn1pBasisFcn
-
-Rn1pBasisFcn(t::VecOrTup) = Rn1pBasisFcn(t...)
-
-Base.show(io::IO, b::Rn1pBasisFcn) = print(io, "n[$(b.n)]")
-
-write_dict(b::Rn1pBasisFcn) =
-   Dict("__id__" => "ACE_Rn1pBasisFcn",
-        "n" => b.n )
-
-read_dict(::Val{:ACE_Rn1pBasisFcn}, D::Dict) = Rn1pBasisFcn(D["n"])
-
-scaling(b::Rn1pBasisFcn, p) = b.n^p
-
-degree(b::Rn1pBasisFcn, p) = b.n
-
 # ---------------------- Implementation of Rn1pBasis
 
-# use default constructor...
-
-cutoff(basis::Rn1pBasis) = cutoff(basis.R)
 
 Base.length(basis::Rn1pBasis) = length(basis.R)
 
@@ -62,8 +37,8 @@ Base.length(basis::Rn1pBasis) = length(basis.R)
 # Base.rand(basis::Ylm1pBasis) =
 #       AtomState(rand(basis.zlist.list), ACE.Random.rand_vec(basis.J))
 
-get_basis_spec(basis::Rn1pBasis) =
-      [ Rn1pBasisFcn(n) for n = 1:length(basis) ]
+get_spec(basis::Rn1pBasis) =
+      [ (n = n) for n = 1:length(basis) ]
 
 ==(P1::Rn1pBasis, P2::Rn1pBasis) =  ACE._allfieldsequal(P1, P2)
 
@@ -85,6 +60,7 @@ degree(b, basis::Rn1pBasis) = b.n - 1
 
 get_index(basis::Rn1pBasis, b) = b.n
 
+rand_radial(basis::Rn1pBasis) = rand_radial(basis.R)
 
 # ---------------------------  Evaluation code
 #

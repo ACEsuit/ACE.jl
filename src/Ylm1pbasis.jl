@@ -7,14 +7,6 @@
 
 import ACE.SphericalHarmonics: SHBasis, index_y
 
-@doc raw"""
-`struct YlmBasisFcn` : 1-particle basis function specification
-for for the standard complex spherical harmonics basis.
-"""
-struct Ylm1pBasisFcn <: OnepBasisFcn
-   l::Int
-   m::Int
-end
 
 @doc raw"""
 `struct Ylm1pBasis <: OneParticleBasis`
@@ -39,28 +31,11 @@ end
 #
 # TODO: Should we drop this type altogether and just replace it with SHBasis?
 
-# ---------------------- Implementation of Ylm1pBasisFcn
-
-Ylm1pBasisFcn(t::VecOrTup) = Ylm1pBasisFcn(t...)
-
-Base.show(io::IO, b::Ylm1pBasisFcn) = print(io, "lm[$(b.l),$(b.m)]")
-
-write_dict(b::Ylm1pBasisFcn) =
-   Dict("__id__" => "ACE_Ylm1pBasisFcn",
-        "lm" => [ b.l, b.m ] )
-
-read_dict(::Val{:ACE_Ylm1pBasisFcn}, D::Dict) = Ylm1pBasisFcn(D["lm"]...)
-
-scaling(b::Ylm1pBasisFcn, p) = b.l^p + abs(b.m)^p
-
-degree(b::Ylm1pBasisFcn, p) = b.l
 
 # ---------------------- Implementation of Ylm1pBasis
 
 
 Ylm1pBasis(maxL::Integer, T = Float64) = Ylm1pBasis(SHBasis(maxL, T))
-
-cutoff(basis::Ylm1pBasis{T}) where {T} = T(Inf)
 
 Base.length(basis::Ylm1pBasis) = length(basis.SH)
 
@@ -68,8 +43,8 @@ Base.length(basis::Ylm1pBasis) = length(basis.SH)
 # Base.rand(basis::Ylm1pBasis) =
 #       AtomState(rand(basis.zlist.list), ACE.Random.rand_vec(basis.J))
 
-function get_basis_spec(basis::Ylm1pBasis)
-   spec = Ylm1pBasisFcn[]
+function get_spec(basis::Ylm1pBasis)
+   spec = NamedTuple{(:n, :l), (Int, Int)}[]
    for l = 0:basis.SH.maxL, m = -l:l
       spec[index_y(l, m)] = Ylm1pBasisFcn(l, m)
    end

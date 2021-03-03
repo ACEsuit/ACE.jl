@@ -5,6 +5,22 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
+
+# ----------- definitions of possible symmetries a 1-p basis may possess
+
+# TODO: attach these properties to the one-particle basis sets
+
+abstract type AbstractSymmetry end
+
+struct EuclideanO3Equivariance  <: AbstractSymmetry end
+
+struct SphericalO3Equivariance  <: AbstractSymmetry end
+
+struct O3Invariance <: AbstractSymmetry end
+
+groupaction(X::AbstractState) = groupaction(typeof(X))
+
+
 # ----------- This file implements the abstract one-particle basis interface
 
 function alloc_B(basis::OneParticleBasis, args...)
@@ -106,9 +122,6 @@ end
 `struct One1p` : the 1-p basis where everything just maps to 1
 """
 struct One1pBasis <: OneParticleBasis{Bool}
-end
-
-struct One1pBasisFcn <: OnepBasisFcn
 end
 
 Base.length(::One1pBasis) = 1

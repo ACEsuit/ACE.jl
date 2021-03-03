@@ -10,9 +10,7 @@
 module Transforms
 
 import Base:   ==
-import JuLIP:  cutoff
-import JuLIP.FIO: read_dict, write_dict
-
+import ACE: read_dict, write_dict, transform, transform_d, inv_transform
 abstract type DistanceTransform end
 
 export PolyTransform, IdTransform, MorseTransform, AgnesiTransform
@@ -48,9 +46,6 @@ write_dict(T::PolyTransform) =
    Dict("__id__" => "ACE_PolyTransform", "p" => T.p, "r0" => T.r0)
 
 PolyTransform(D::Dict) = PolyTransform(D["p"], D["r0"])
-
-read_dict(::Val{:SHIPs_PolyTransform}, D::Dict) =
-   read_dict(Val{:ACE_PolyTransform}(), D::Dict)
 
 read_dict(::Val{:ACE_PolyTransform}, D::Dict) = PolyTransform(D)
 

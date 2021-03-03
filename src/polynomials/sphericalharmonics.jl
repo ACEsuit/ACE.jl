@@ -13,11 +13,10 @@ using StaticArrays, LinearAlgebra
 
 import ACE
 
-import JuLIP.MLIPs: IPBasis, alloc_B, alloc_dB, fltype
-import JuLIP: alloc_temp, alloc_temp_d, evaluate!, evaluate_d!,
-			     write_dict, read_dict
-
-const JVec = SVector{3}
+import ACE: alloc_B, alloc_dB, fltype,
+		      alloc_temp, alloc_temp_d, evaluate!, evaluate_d!,
+			   write_dict, read_dict,
+				ACEBasis
 
 export SHBasis, RSHBasis
 
@@ -43,7 +42,7 @@ struct PseudoSpherical{T}
 	sinθ::T
 end
 
-spher2cart(S::PseudoSpherical) = S.r * JVec(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
+spher2cart(S::PseudoSpherical) = S.r * SVector(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
 
 function cart2spher(R::AbstractVector)
 	@assert length(R) == 3
@@ -327,7 +326,41 @@ end
 """
 evaluate gradients of complex spherical harmonics
 """
-function cYlm_d!(Y, dY, L, S::PseudoSpherical, P, dP)
+function cYlm_d!(dY, L, S::PseudoSpherical, P, dP)
+	@assert length(P) >= sizeP(L)
+	@assert length(dY) >= sizeY(L)
+   # @assert abs(S.cosθ) < 1.0
+
+	# m = 0 case
+	ep = 1 / sqrt(2)
+	for l = 0:L
+		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * ep)
+	end
+
+   sig = 1
+   ep_fact = S.cosφ + im * S.sinφ
+
+	for m in 1:L
+		sig *= -1
+		ep *= ep_fact            # ep =   exp(i *   m  * φ)
+		em = sig * conj(ep)      # ep = ± exp(i * (-m) * φ)
+		dep_dφ = im *   m  * ep
+		dem_dφ = im * (-m) * em
+		for l in m:L
+			p_div_sinθ = P[index_p(l,m)]
+			dp_dθ = dP[index_p(l,m)]
+			@inbounds dY[index_y(l, -m)] = dspher_to_dcart(S, dem_dφ * p_div_sinθ, em * dp_dθ)
+			@inbounds dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p_div_sinθ, ep * dp_dθ)
+		end
+	end
+	return dY
+end
+
+
+"""
+evaluate gradients of complex spherical harmonics
+"""
+function cYlm_ed!(Y, dY, L, S::PseudoSpherical, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
 	@assert length(dY) >= sizeY(L)
@@ -445,7 +478,7 @@ end
 #      The nice basis interface
 # ---------------------------------------------
 
-abstract type AbstractSHBasis{T} <: IPBasis end
+abstract type AbstractSHBasis{T} <: ACEBasis end
 
 """
 complex spherical harmonics
@@ -499,10 +532,10 @@ alloc_B( S::RSHBasis{T}, args...) where {T} =
 		Vector{T}(undef, length(S))
 
 alloc_dB(S::SHBasis{T}) where {T} =
-		Vector{JVec{Complex{T}}}(undef, length(S))
+		Vector{SVector{3, Complex{T}}}(undef, length(S))
 
 alloc_dB(S::RSHBasis{T}) where {T} =
-		Vector{JVec{T}}(undef, length(S))
+		Vector{SVector{3, T}}(undef, length(S))
 
 alloc_dB(S::AbstractSHBasis, N::Integer) = alloc_dB(S)
 
@@ -517,10 +550,13 @@ alloc_temp_d(SH::AbstractSHBasis{T}, args...) where {T} = (
 _evaluate!(Y, L, S, P, ::SHBasis) = cYlm!(Y, L, S, P)
 _evaluate!(Y, L, S, P, ::RSHBasis) = rYlm!(Y, L, S, P)
 
-_evaluate_d!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_d!(Y, dY, L, S, P, dP)
-_evaluate_d!(Y, dY, L, S, P, dP, ::RSHBasis) = rYlm_d!(Y, dY, L, S, P, dP)
+_evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)
+# _evaluate_d!(dY, L, S, P, dP, ::RSHBasis) = rYlm_d!(dY, L, S, P, dP)
 
-function evaluate!(Y, tmp, SH::AbstractSHBasis, R::JVec)
+_evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_d!(Y, dY, L, S, P, dP)
+_evaluate_ed!(Y, dY, L, S, P, dP, ::RSHBasis) = rYlm_d!(Y, dY, L, S, P, dP)
+
+function evaluate!(Y, tmp, SH::AbstractSHBasis, R::SVector{3})
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
@@ -530,13 +566,20 @@ function evaluate!(Y, tmp, SH::AbstractSHBasis, R::JVec)
 	return Y
 end
 
+function evaluate_d!(dY, tmp, SH::AbstractSHBasis, R::SVector{3})
+	L=SH.maxL
+	@assert 0 <= L <= SH.maxL
+	S = cart2spher(R)
+	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
+	_evaluate_d!(dY, L, S, tmp.P, tmp.dP, SH)
+end
 
-function evaluate_d!(Y, dY, tmp, SH::AbstractSHBasis, R::JVec)
+function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
 	# if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
-	# 	R = JVec(R[1]+1e-9, R[2], R[3])
+	# 	R = SVector(R[1]+1e-9, R[2], R[3])
 	# end
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)

@@ -12,97 +12,72 @@ module Random
 # TODO: rename rand_radial -> rand???
 
 import LinearAlgebra: norm
-import ACE: ScalarBasis, ZList, rand_radial, scaling
+import ACE: rand_radial, scaling, fltype, rfltype,
+            EuclideanVectorState, ACEBasis
 
 using Random: shuffle
-using JuLIP: JVecF, AbstractCalculator, rnn, chemical_symbol, bulk, rattle!,
-             fltype, rfltype
-using JuLIP.MLIPs: combine
-using JuLIP.Potentials: zlist, ZList, SZList
-using StaticArrays: @SMatrix
+
+using StaticArrays: @SMatrix, SVector
 
 export rand_nhd, rand_config, rand_sym, randcoeffs, randcombine
 
 # -------------------------------------------
 #   random neighbourhoods and  configurations
 
-# TODO: JVecF is hard-coded
-function rand_sphere()
-   R = randn(JVecF)
+function rand_sphere(T = Float64)
+   R = randn(SVector{3, T})
    return R / norm(R)
 end
 
-# TODO: this could be rand(PSH1BasisFcn) ...
-#       rand_sphere = rand(SphericalHarmonics)
-rand_vec(J::ScalarBasis) where T = rand_radial(J) *  rand_sphere()
-rand_vec(J::ScalarBasis, N::Integer) = [ rand_vec(J) for _ = 1:N ]
+Base.rand(::Type{EuclideanVectorState}, basis::ACEBasis) =
+         EuclideanVectorState(rand_radial(basis) * rand_sphere()
+      )
 
-# -> rand_config?
-function rand_nhd(Nat, J::ScalarBasis, species = :X)
-   zlist = ZList(species)
-   Rs = [ rand_vec(J) for _ = 1:Nat ]
-   Zs = [ rand(zlist.list) for _ = 1:Nat ]
-   z0 = rand(zlist.list)
-   return Rs, Zs, z0
+Base.rand(T::Type{EuclideanVectorState}, basis::ACEBasis, N::Integer) =
+         [ rand(T, basis) for _=1:N ]
+
+
+rand_sym(Rs, Zs) = rand_refl(rand_rot(rand_perm(Rs, Zs)...)...)
+
+rand_rot() = (K = (@SMatrix rand(3,3)) .- 0.5; exp(K - K'))
+
+rand_refl() = rand([-1,1])
+
+
+function rand_rot(Xs::AbstractVector)
+   Q = rand_rot()
+   return [ Q * X for X in Xs ]
 end
 
-
-rand_config(species; kwargs...) =
-      rand_config(ZList(species); kwargs...)
-
-rand_config(V::AbstractCalculator; kwargs...) =
-      rand_config(zlist(V); kwargs...)
-
-function rand_config(zlist::Union{ZList, SZList};
-                     absrattle = 0.0, relrattle = 0.2, repeat = 3,
-                     kwargs...)
-   # start with the longest rnn
-   rnns = rnn.(zlist.list)
-   sym = chemical_symbol( zlist.list[findmax(rnns)[2]] )
-   at = bulk(sym; kwargs...) * repeat
-   for n = 1:length(at)
-      at.Z[n] = rand(zlist.list)
-   end
-   rattle!(at, maximum(rnns) * relrattle + absrattle)
-   return at
+function rand_refl(Xs::AbstractVector)
+   σ = rand_refl()
+   return [ σ * X for X in Xs ]
 end
 
 
 # --------------------------------------------------------------
 # random operations on neighbourhoods, mostly for testing
 
-function rand_perm(Rs, Zs)
-   @assert length(Rs) == length(Zs)
-   p = shuffle(1:length(Rs))
-   return Rs[p], Zs[p]
-end
+# TODO: rewrite for generic ACE
 
-function rand_rot(Rs, Zs)
-   @assert length(Rs) == length(Zs)
-   K = (@SMatrix rand(3,3)) .- 0.5
-   K = K - K'
-   Q = exp(K)
-   return [ Q * R for R in Rs ], Zs
-end
+# function rand_perm(Rs, Zs)
+#    @assert length(Rs) == length(Zs)
+#    p = shuffle(1:length(Rs))
+#    return Rs[p], Zs[p]
+# end
+#
+#     random potentials / random basis / random potentials ???
 
-rand_refl(Rs, Zs) = (-1) .* Rs, Zs
-
-rand_sym(Rs, Zs) = rand_refl(rand_rot(rand_perm(Rs, Zs)...)...)
-
-
-# -------------------------------------------
-#     random potentials
-
-# TODO: we have an issue with eltypes that needs to be fixed!!!
-
-function randcoeffs(basis; diff = 2)
-   ww = scaling(basis, diff)
-   c = 2 * (rand(rfltype(basis), length(basis)) .- 0.5) ./ ww
-   return c / norm(c)
-end
-
-randcombine(basis; diff = 2) =
-   combine(basis, randcoeffs(basis; diff = diff))
+# # TODO: we have an issue with eltypes that needs to be fixed!!!
+#
+# function randcoeffs(basis; diff = 2)
+#    ww = scaling(basis, diff)
+#    c = 2 * (rand(rfltype(basis), length(basis)) .- 0.5) ./ ww
+#    return c / norm(c)
+# end
+#
+# randcombine(basis; diff = 2) =
+#    combine(basis, randcoeffs(basis; diff = diff))
 
 # # move to utility???
 # function rand(::Type{ACE.RPI.RPIBasis}; kwargs...)

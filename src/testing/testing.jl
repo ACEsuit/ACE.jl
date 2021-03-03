@@ -11,61 +11,91 @@ module Testing
 
 using Test
 import ACE
-import InteractiveUtils
 
 
 using BenchmarkTools: @belapsed
 using LinearAlgebra: eigvals, eigen
-using ProgressMeter: @showprogress
 
-import JuLIP.Potentials: F64fun
-import JuLIP: Atoms, bulk, rattle!, positions, energy, forces, JVec,
-              chemical_symbol, mat, rnn,
-              read_dict, write_dict
-import JuLIP.MLIPs: combine
-import JuLIP.Testing: print_tf
+using ACE: read_dict, write_dict, save_json, load_json,
+           transform, transform_d, inv_transform
+
+# import JuLIP.Potentials: F64fun
+# import JuLIP: Atoms, bulk, rattle!, positions, energy, forces, JVec,
+#               chemical_symbol, mat, rnn,
+#               read_dict, write_dict
+# import JuLIP.MLIPs: combine
+# import JuLIP.Testing: print_tf
+
+export print_tf, test_fio
 
 include("../extimports.jl")
 include("../aceimports.jl")
 
-include("testmodel.jl")
-include("testlsq.jl")
+# include("testmodel.jl")
+# include("testlsq.jl")
 
 
-# ---------- code for consistency tests
+# ---------- generic useful testing codes
 
-test_basis(D::Dict) = ACE.Utils.rpi_basis(;
-               species = Symbol.(D["species"]), N = D["N"],
-               maxdeg = D["maxdeg"],
-               r0 = D["r0"], rcut = D["rcut"],
-               D = ACE.RPI.SparsePSHDegree(wL = D["wL"]) )
+print_tf(::Test.Pass) = printstyled("+", bold=true, color=:green)
+print_tf(::Test.Fail) = printstyled("-", bold=true, color=:red)
+print_tf(::Tuple{Test.Error,Bool}) = printstyled("x", bold=true, color=:magenta)
 
+"""
+`test_fio(obj): `  performs two tests:
 
-_evaltest(::Val{:E}, V, at) = energy(V, at)
-_evaltest(::Val{:F}, V, at) = vec(forces(V, at))
+- encodes `obj` as a Dict using `write_dict`, then decodes it using
+`read_dict` and tests whether the two objects are equivalent using `==`
+- writes `Dict` to file then reads it and decodes it and test the result is
+again equivalent to `obj`
 
-function createtests(V, ntests; tests = ["E", "F"], kwargs...)
-   testset = Dict[]
-   for n = 1:ntests
-      at = ACE.Random.rand_config(V; kwargs...)
-      D = Dict("at" => write_dict(at), "tests" => Dict())
-      for t in tests
-         D["tests"][t] = _evaltest(Val(Symbol(t)), V, at)
-      end
-      push!(testset, D)
-   end
-   return testset
+The two results are returned as Booleans.
+"""
+function test_fio(obj)
+   D = write_dict(obj)
+   test1 = (obj == read_dict(D))
+   tmpf = tempname() * ".json"
+   save_json(tmpf, D)
+   test2 = (obj == read_dict(load_json(tmpf)))
+   return test1, test2
 end
 
 
-function runtests(V, tests; verbose = true)
-   for test in tests
-      at = read_dict(test["at"])
-      for (t, val) in test["tests"]
-         print_tf( @test( val ≈ _evaltest(Val(Symbol(t)), V, at) ) )
-      end
-   end
-end
+
+# # ---------- code for consistency tests
+#
+# test_basis(D::Dict) = ACE.Utils.rpi_basis(;
+#                species = Symbol.(D["species"]), N = D["N"],
+#                maxdeg = D["maxdeg"],
+#                r0 = D["r0"], rcut = D["rcut"],
+#                D = ACE.RPI.SparsePSHDegree(wL = D["wL"]) )
+#
+#
+# _evaltest(::Val{:E}, V, at) = energy(V, at)
+# _evaltest(::Val{:F}, V, at) = vec(forces(V, at))
+#
+# function createtests(V, ntests; tests = ["E", "F"], kwargs...)
+#    testset = Dict[]
+#    for n = 1:ntests
+#       at = ACE.Random.rand_config(V; kwargs...)
+#       D = Dict("at" => write_dict(at), "tests" => Dict())
+#       for t in tests
+#          D["tests"][t] = _evaltest(Val(Symbol(t)), V, at)
+#       end
+#       push!(testset, D)
+#    end
+#    return testset
+# end
+#
+#
+# function runtests(V, tests; verbose = true)
+#    for test in tests
+#       at = read_dict(test["at"])
+#       for (t, val) in test["tests"]
+#          print_tf( @test( val ≈ _evaltest(Val(Symbol(t)), V, at) ) )
+#       end
+#    end
+# end
 
 
 
@@ -73,7 +103,7 @@ end
 # ---------- code for transform tests
 
 import ForwardDiff
-import ACE.Transforms: transform, transform_d, inv_transform
+import ACE: transform, transform_d, inv_transform
 
 function test_transform(T, rrange, ntests = 100)
 

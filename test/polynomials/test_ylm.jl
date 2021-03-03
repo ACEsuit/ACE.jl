@@ -10,12 +10,12 @@
 
 ##
 import ACE
-using JuLIP.Testing
 using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
 using ACE.SphericalHarmonics
 using ACE.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
                cart2spher, spher2cart
-using JuLIP: evaluate, evaluate_d, evaluate_ed
+using ACE: evaluate, evaluate_d
+using ACE.Testing
 
 verbose = false
 
@@ -159,7 +159,7 @@ println()
 for nsamples = 1:30
    R = @SVector rand(3)
    SH = SHBasis(5)
-   Y, dY = evaluate_ed(SH, R)
+   Y, dY = evaluate(SH, R), evaluate_d(SH, R)
    DY = Matrix(transpose(hcat(dY...)))
    errs = []
    verbose && @printf("     h    | error \n")

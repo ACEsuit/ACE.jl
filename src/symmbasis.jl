@@ -13,7 +13,7 @@ using LinearAlgebra: mul!
 """
 `struct SymmetricBasis`
 """
-struct SymmetricBasis{BOP, PROP} <: IPBasis
+struct SymmetricBasis{BOP, PROP}
    pibasis::PIBasis{BOP}
    A2Bmap::SparseMatrixCSC{PROP, Int}
 end
@@ -162,19 +162,6 @@ to l and m keys
       n
    end
 end
-
-
-# function _all_but_lm(b)
-#    n = Int[]
-#    for k in keys(b)
-#       if !(k in [:l, :m])
-#          push!(n, b[k])
-#       end
-#    end
-#    return tuple(n...)
-# end
-
-
 
 
 # ---------------- Evaluation code

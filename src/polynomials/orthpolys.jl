@@ -12,13 +12,13 @@ module OrthPolys
 using SparseArrays
 using LinearAlgebra: dot
 
-import JuLIP: evaluate!, evaluate_d!, JVec, cutoff, fltype
-import JuLIP.FIO: read_dict, write_dict
-import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
-
 import ACE
-using ACE.Transforms: DistanceTransform, transform, transform_d,
-                        inv_transform
+
+import ACE: evaluate!, evaluate_d!, fltype, read_dict, write_dict,
+            alloc_B, alloc_dB, transform, transform_d, inv_transform,
+            ACEBasis, ScalarACEBasis
+
+using ACE.Transforms: DistanceTransform
 
 import Base: ==
 
@@ -61,7 +61,7 @@ can be either continuous or discrete.
 
 TODO: say more on the distribution!
 """
-struct OrthPolyBasis{T} <: ACE.ScalarBasis{T}
+struct OrthPolyBasis{T} <: ScalarACEBasis
    # ----------------- the parameters for the cutoff function
    pl::Int        # cutoff power left
    tl::T          # cutoff left (transformed variable)
@@ -102,9 +102,6 @@ OrthPolyBasis(D::Dict, T=read_dict(D["T"])) =
       Vector{T}(D["A"]), Vector{T}(D["B"]), Vector{T}(D["C"]),
       T[], T[]
    )
-
-read_dict(::Val{:SHIPs_OrthPolyBasis}, D::Dict) =
-   read_dict(Val{:ACE_OrthPolyBasis}(), D::Dict)
 
 read_dict(::Val{:ACE_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
 
@@ -183,18 +180,22 @@ end
 
 alloc_B( J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
 alloc_dB(J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
-alloc_B( J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
-alloc_dB(J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
+# alloc_B( J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
+# alloc_dB(J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
 
-# TODO: revisit this to allow type genericity!!!
+# # TODO: revisit this to allow type genericity!!!
+# alloc_B( J::OrthPolyBasis,
+#          ::Union{SVector{3, TX}, AbstractVector{SVector{3, TX}}}) where {TX} =
+#    zeros(TX, length(J))
+# alloc_dB( J::OrthPolyBasis,
+#          ::Union{SVector{3, TX}, AbstractVector{SVector{3, TX}}}) where {TX} =
+#    zeros(TX, length(J))
+
+# TODO -> should do a type promotion here???
 alloc_B( J::OrthPolyBasis, ::TX) where {TX <: Number} = zeros(TX, length(J))
 alloc_dB(J::OrthPolyBasis, ::TX) where {TX <: Number} = zeros(TX, length(J))
-alloc_B( J::OrthPolyBasis,
-         ::Union{JVec{TX}, AbstractVector{JVec{TX}}}) where {TX} =
-   zeros(TX, length(J))
-alloc_dB( J::OrthPolyBasis,
-         ::Union{JVec{TX}, AbstractVector{JVec{TX}}}) where {TX} =
-   zeros(TX, length(J))
+
+
 
 evaluate_P1(J::OrthPolyBasis, t) =
    J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
@@ -211,7 +212,28 @@ function evaluate!(P, tmp, J::OrthPolyBasis, t; maxn=length(J))
    return P
 end
 
-function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
+function evaluate_d!(dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
+   @assert maxn <= length(dP)
+
+   P1 = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+   dP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
+   if maxn == 1; return dP; end
+
+   α = J.A[2] * t + J.B[2]
+   P2 = α * P1
+   dP[2] = α * dP[1] + J.A[2] * P1
+   if maxn == 2; return dP; end
+
+   @inbounds for n = 3:maxn
+      α = J.A[n] * t + J.B[n]
+      P3 = α * P2 + J.C[n] * P1
+      P2, P1 = P3, P2
+      dP[n] = α * dP[n-1] + J.C[n] * dP[n-2] + J.A[n] * P1
+   end
+   return dP
+end
+
+function evaluate_ed!(P, dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
    @assert maxn <= min(length(P), length(dP))
 
    P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
@@ -231,6 +253,7 @@ function evaluate_d!(P, dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
    return dP
 end
 
+
 """
 `discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)`
 
@@ -249,7 +272,7 @@ end
 # ----------------------------------------------------------------
 
 
-struct TransformedPolys{T, TT, TJ} <: ACE.ScalarBasis{T}
+struct TransformedPolys{T, TT, TJ} <: ScalarACEBasis
    J::TJ          # the actual basis
    trans::TT      # coordinate transform
    rl::T          # lower bound r
@@ -308,7 +331,17 @@ function evaluate!(P, tmp, J::TransformedPolys, r; maxn=length(J))
    return P
 end
 
-function evaluate_d!(P, dP, tmp, J::TransformedPolys, r; maxn=length(J))
+function evaluate_d!(dP, tmp, J::TransformedPolys, r; maxn=length(J))
+   # transform coordinates
+   t = transform(J.trans, r)
+   dt = transform_d(J.trans, r)
+   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
+   evaluate_d!(dP, nothing, J.J, t, maxn=maxn)
+   @. dP *= dt
+   return dP
+end
+
+function evaluate_ed!(P, dP, tmp, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
    t = transform(J.trans, r)
    dt = transform_d(J.trans, r)
@@ -317,7 +350,6 @@ function evaluate_d!(P, dP, tmp, J::TransformedPolys, r; maxn=length(J))
    @. dP *= dt
    return dP
 end
-
 
 """
 `transformed_jacobi(maxdeg, trans, rcut, rin = 0.0; kwargs...)` : construct
@@ -347,7 +379,7 @@ end
 
 # ------------- MORE FUNCTIONALITY -------------
 
-include("products.jl");
+# include("products.jl");
 
 
 end

@@ -126,7 +126,7 @@ PIBasis(basis1p, N, D, maxdeg)
 * `D` : an abstract degee specification, e.g., SparsePSHDegree
 * `maxdeg` : the maximum polynomial degree as measured by `D`
 """
-mutable struct PIBasis{BOP, REAL} <: IPBasis
+mutable struct PIBasis{BOP, REAL}
    basis1p::BOP             # a one-particle basis
    # basis0      # center-atom basis
    spec::PIBasisSpec
