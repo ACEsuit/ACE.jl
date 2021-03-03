@@ -80,7 +80,7 @@ can be constructed as
 Bμ = Species1PBasisNeig(species)
 Rn = Rn1pBasis(ACE.Utils.radial_basis())
 Ylm = Ylm1pBasis(10)
-basis1p = Product1PBasis( (Bμ, Rn, Ylm) )
+basis1p = Product1pBasis( (Bμ, Rn, Ylm) )
 ```
 
 To build a `PIBasis` (see below) the `OneParticleBasis` musts also provide methods that specify it:

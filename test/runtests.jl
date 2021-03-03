@@ -20,14 +20,14 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # --------------------------------------------
     # core permutation-invariant functionality
     include("test_1pbasis.jl")
-    # include("test_pibasis.jl")
-    # include("test_pipot.jl")
+    include("test_pibasis.jl")
+    # include("test_pipot.jl")   # TODO...
 
     # # ------------------------
     # #   rotation_invariance
-    # include("rpi/test_cg.jl")
-    # include("rpi/test_rpibasis.jl")
-    #
+    include("test_cg.jl")
+    include("test_symmbasis.jl")
+
     # # ----------------------
     # #   miscallaneous ...
     # include("compat/test_compat_v05.jl")

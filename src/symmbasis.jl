@@ -13,7 +13,7 @@ using LinearAlgebra: mul!
 """
 `struct SymmetricBasis`
 """
-struct SymmetricBasis{BOP, PROP}
+struct SymmetricBasis{BOP, PROP} <: ACEBasis
    pibasis::PIBasis{BOP}
    A2Bmap::SparseMatrixCSC{PROP, Int}
 end
@@ -25,9 +25,9 @@ Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
 fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  PROP
 # rfltype(basis::SymmetricBasis) = rfltype(basis.pibasis)
 
-# TODO: move into atoms stuff
-cutoff(basis::SymmetricBasis) = cutoff(basis.pibasis)
 
+SymmetricBasis(φ::AbstractProperty, args...; kwargs...) =
+      SymmetricBasis(PIBasis(args...; kwargs...), φ)
 
 
 function SymmetricBasis(pibasis, φ::TP) where {TP}

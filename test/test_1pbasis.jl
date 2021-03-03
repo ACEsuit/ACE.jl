@@ -13,7 +13,7 @@
 using ACE
 using Printf, Test, LinearAlgebra
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      EuclideanVectorState, Product1PBasis
+      EuclideanVectorState, Product1pBasis
 using Random: shuffle
 
 ##
@@ -28,7 +28,7 @@ trans = PolyTransform(1, r0)
 J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
 Rn = Rn1pBasis(J)
 Ylm = Ylm1pBasis(maxdeg)
-B1p = Product1PBasis( (Rn, Ylm) )
+B1p = Product1pBasis( (Rn, Ylm) )
 ACE.init1pspec!(B1p)
 
 nX = 10

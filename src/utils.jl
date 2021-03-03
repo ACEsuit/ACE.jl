@@ -8,9 +8,11 @@
 
 module Utils
 
-# import ACE.RPI: RnYlm1pBasis, SparsePSHDegree, RPIBasis, get_maxn
+import ACE
 
-import ACE: PolyTransform, transformed_jacobi
+import ACE: PolyTransform, transformed_jacobi, Rn1pBasis,
+            NaiveTotalDegree, init1pspec!, Ylm1pBasis,
+            Product1pBasis
 
 # import ACE.PairPotentials: PolyPairBasis
 
@@ -19,7 +21,42 @@ import ACE: PolyTransform, transformed_jacobi
 # - simple wrappers to generate RPI basis functions (ACE + relatives)
 
 
+function Rn_basis(;
+      # transform parameters
+      r0 = 1.0,
+      trans = PolyTransform(2, r0),
+      # degree parameters
+      D = NaiveTotalDegree(),
+      maxdeg = 6,
+      # radial basis parameters
+      rcut = 2.5,
+      rin = 0.5 * r0,
+      pcut = 2,
+      pin = 0,
+      constants = false)
 
+   J = transformed_jacobi(maxdeg, trans, rcut, rin; pcut=pcut, pin=pin)
+   return Rn1pBasis(J)
+end
+
+function RnYlm_1pbasis(; maxdeg=6, kwargs...)
+   Rn = Rn_basis(; maxdeg = maxdeg)
+   Ylm = Ylm1pBasis(maxdeg)
+   B1p = ACE.Product1pBasis((Rn, Ylm))
+   init1pspec!(B1p)
+   return B1p
+end
+
+
+invariant_basis(; kwargs...) =
+      symm_basis(ACE.Invariant(); kwargs...)
+
+symm_basis(φ; maxν = 3, maxdeg = 6, kwargs...) =
+      ACE.SymmetricBasis(φ,
+                         RnYlm_1pbasis(; maxdeg=maxdeg, kwargs...),
+                         ACE.One1pBasis(),
+                         maxν,
+                         maxdeg)
 
 # function rpi_basis(; species = :X, N = 3,
 #       # transform parameters

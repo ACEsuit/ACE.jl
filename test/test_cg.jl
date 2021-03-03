@@ -12,10 +12,10 @@
 
 #---
 
-using PyCall, Test, ACE, ACE.SphericalHarmonics, JuLIP.Testing, StaticArrays
-using JuLIP: evaluate
+using PyCall, Test, ACE, ACE.SphericalHarmonics, ACE.Testing, StaticArrays
+using ACE: evaluate
 using ACE.SphericalHarmonics: index_y
-using ACE.RPI.Rotations3D: ClebschGordan
+using ACE.Rotations3D: ClebschGordan
 
 #---
 

@@ -44,7 +44,8 @@ function PIBasisSpec( basis1p::OneParticleBasis,
                       maxν::Integer, maxdeg::Real;
                       Deg = NaiveTotalDegree(),
                       property = nothing,
-                      filterfun = _->true )
+                      filterfun = _->true,
+                      constant = false )
    # get the basis spec of the one-particle basis
    #  Aspec[i] described the basis function that will get written into A[i]
    Aspec = get_spec(basis1p)
@@ -84,7 +85,8 @@ function PIBasisSpec( basis1p::OneParticleBasis,
                         admissible = admissible,
                         ordered = true,
                         maxvv = [length(Aspec) for _=1:maxν],
-                        filter = filter1)
+                        filter = filter1,
+                        constant = constant )
 
    # need to properly implement the ϕ₀ basis, for now assume this is just the
    # trivial basis
@@ -126,7 +128,7 @@ PIBasis(basis1p, N, D, maxdeg)
 * `D` : an abstract degee specification, e.g., SparsePSHDegree
 * `maxdeg` : the maximum polynomial degree as measured by `D`
 """
-mutable struct PIBasis{BOP, REAL}
+mutable struct PIBasis{BOP, REAL} <: ACEBasis
    basis1p::BOP             # a one-particle basis
    # basis0      # center-atom basis
    spec::PIBasisSpec
@@ -140,6 +142,7 @@ cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
 # TODO: allow the option of converting to real part?
 fltype(basis::PIBasis) = basis.real( fltype(basis.basis1p) )
+rfltype(basis::PIBasis) = real( fltype(basis) )
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
@@ -180,28 +183,29 @@ setreal(basis::PIBasis, isreal::Bool) =
 #
 #
 #
-# # -------------------------------------------------
-# # FIO codes
-#
-# # TODO: at the moment the DAGs will be generated from scratch
-# #       every time we load the basis...
-#
-# write_dict(basis::PIBasis) =
-#    Dict(  "__id__" => "ACE_PIBasis",
-#          "basis1p" => write_dict(basis.basis1p),
-#            "inner" => [ write_dict.( collect(keys(basis.inner[iz0].b2iAA)) )
-#                          for iz0 = 1:numz(basis) ], )
-#
-# read_dict(::Val{:SHIPs_PIBasis}, D::Dict) =
-#    read_dict(Val{:ACE_PIBasis}(), D::Dict)
-#
-# function read_dict(::Val{:ACE_PIBasis}, D::Dict)
-#    basis1p = read_dict(D["basis1p"])
-#    innerspecs = [ read_dict.(D["inner"][iz0])  for iz0 = 1:numz(basis1p) ]
-#    return pibasis_from_specs(basis1p, innerspecs)
-# end
-#
-#
+# -------------------------------------------------
+# FIO codes
+
+write_dict(basis::PIBasis) =
+   Dict(  "__id__" => "ACE_PIBasis",
+         "basis1p" => write_dict(basis.basis1p),
+            "spec" => write_dict(basis.spec),
+            "real" => basis.real )
+
+read_dict(::Val{:ACE_PIBasis}, D::Dict) =
+   PIBasis( read_dict(D["basis1p"]),
+            read_dict(D["spec"]),
+            D["real"] )
+
+write_dict(spec::PIBasisSpec) =
+   Dict( "__id__" => "ACE_PIBasisSpec",
+         "orders" => spec.orders,
+         "iAA2iA" => write_dict(spec.iAA2iA) )
+
+read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
+   PIBasisSpec( D["orders"], read_dict(D["iAA2iA"]) )
+
+
 # -------------------------------------------------
 # Evaluation codes
 
@@ -223,6 +227,7 @@ function evaluate!(AA, tmp, basis::PIBasis, Xs, X0)
       end
       AA[iAA] = basis.real(aa)
    end
+   return AA
 end
 
 

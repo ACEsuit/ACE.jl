@@ -59,15 +59,16 @@ gensparse(; NU::Integer = nothing,
             admissible = _-> false,
             filter = _-> true,
             INT = Int,
-            ordered = false) =
+            ordered = false,
+            constant = false) =
       _gensparse(Val(NU), tup2b, admissible, filter, INT, ordered,
-                 SVector(minvv...), SVector(maxvv...))
+                 SVector(minvv...), SVector(maxvv...), constant)
 
 """
 `_gensparse` : function barrier for `gensparse`
 """
 function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
-                    minvv, maxvv) where {NU}
+                    minvv, maxvv, constant) where {NU}
    @assert INT <: Integer
 
    lastidx = 0
@@ -138,5 +139,14 @@ function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
       @assert length(unique(orig_spec)) == length(orig_spec)
    end
 
-   return identity.(spec)
+   if !constant
+      Iz = findall(norm.(spec) .== 0)
+      if length(Iz) > 1
+         error("why do we have more than one constant?")
+      elseif  length(Iz) == 1
+         deleteat!(spec, Iz)
+      end
+   end
+
+   return spec
 end
