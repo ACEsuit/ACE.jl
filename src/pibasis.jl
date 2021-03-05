@@ -17,7 +17,6 @@ export PIBasis
 struct PIBasisSpec
    orders::Vector{Int}     # order (length) of ith basis function
    iAA2iA::Matrix{Int}     # where in A can we find the ith basis function
-   # iAA2i0::Vector{Int}     # The on-site term
 end
 
 ==(B1::PIBasisSpec, B2::PIBasisSpec) = (
@@ -40,16 +39,16 @@ end
 
 
 function PIBasisSpec( basis1p::OneParticleBasis,
-                      basis0::OneParticleBasis,
                       maxν::Integer, maxdeg::Real;
                       Deg = NaiveTotalDegree(),
                       property = nothing,
                       filterfun = _->true,
                       constant = false )
+   # would make sense to construct the basis1p spec here?
+
    # get the basis spec of the one-particle basis
    #  Aspec[i] described the basis function that will get written into A[i]
    Aspec = get_spec(basis1p)
-   spec0 = get_spec(basis0)
 
    # we assume that `Aspec` is sorted by degree, but best to double-check this
    # since the notion of degree used to construct `Aspec` might be different
@@ -61,14 +60,11 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    end
    # An AA basis function is given by a tuple 𝒗 = vv. Each index 𝒗ᵢ = vv[i]
    # corresponds to the basis function Aspec[𝒗ᵢ] and the tuple
-   # 𝒗 = (v₀, 𝒗₁, ...) to a product basis function
-   #  ϕ_{v₀} ∏ A_{vₐ}
-   # but the ordering is only within v₁... and does not include v₀.
-   # So we only generate a sparse grid for ∏ A and then construct the combined
-   # sparse grid by hand.
+   # 𝒗 = (𝒗₁, ...) to a product basis function
+   #   ∏ A_{vₐ}
    tup2b = vv -> _get_pibfcn(Aspec, vv)
 
-   # to evaluate the degree
+   #  degree of a basis function ↦ is it admissible?
    admissible = b -> (degree(b, Deg, basis1p) <= maxdeg)
 
    if property != nothing
@@ -88,10 +84,6 @@ function PIBasisSpec( basis1p::OneParticleBasis,
                         filter = filter1,
                         constant = constant )
 
-   # need to properly implement the ϕ₀ basis, for now assume this is just the
-   # trivial basis
-   @assert length(spec0) == 1
-
    return PIBasisSpec(AAspec)
 end
 
@@ -101,7 +93,8 @@ function PIBasisSpec(AAspec)
    iAA2iA = zeros(Int, (length(AAspec), length(AAspec[1])))
    for (iAA, vv) in enumerate(AAspec)
       # we use reverse because gensparse constructs the indices in
-      # ascending order
+      # ascending order, but we want descending here.
+      # (I don't remember why though)
       iAA2iA[iAA, :] .= reverse(vv)
       orders[iAA] = length( findall( vv .!= 0 ) )
    end
@@ -130,7 +123,6 @@ PIBasis(basis1p, N, D, maxdeg)
 """
 mutable struct PIBasis{BOP, REAL} <: ACEBasis
    basis1p::BOP             # a one-particle basis
-   # basis0      # center-atom basis
    spec::PIBasisSpec
    real::REAL     # could be `real` or `identity` to keep AA complex
    # evaluator    # classic vs graph

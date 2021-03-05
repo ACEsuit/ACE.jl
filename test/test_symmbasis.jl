@@ -34,7 +34,7 @@ Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
 @info("SymmetricBasis construction and evaluation: Invariant Scalar")
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, ACE.One1pBasis(), ord, maxdeg; property = φ)
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
 
 BB = evaluate(basis, Xs, X0)

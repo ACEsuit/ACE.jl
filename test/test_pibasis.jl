@@ -27,7 +27,7 @@ ord = 3
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
-pibasis = PIBasis(B1p, ACE.One1pBasis(), ord, maxdeg; property = φ)
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 
 # generate a configuration
 nX = 10

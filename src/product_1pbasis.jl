@@ -17,6 +17,9 @@ end
 function Product1pBasis(bases;
                         SYMS = _symbols_prod(bases),
                         T = promote_type(fltype.(bases)...) )
+   # TODO: discuss whether to construct an optimal ordering, e.g.
+   #       should the discrete bases come first once we implement the
+   #       "strongzero" method?
    NSYM = length(SYMS)
    NB = length(bases)
    Product1pBasis( tuple(bases...),
@@ -24,6 +27,18 @@ function Product1pBasis(bases;
                    NTuple{NB, Int}[],
                    T )
 end
+
+
+import Base.*
+*(B1::OneParticleBasis, B2::OneParticleBasis) =
+      Product1pBasis((B1, B2))
+*(B1::Product1pBasis, B2::OneParticleBasis) =
+      Product1pBasis((B1.bases..., B2))
+*(B1::OneParticleBasis, B2::Product1pBasis) =
+      Product1pBasis((B1, B2.bases...))
+*(B1::Product1pBasis, B2::Product1pBasis) =
+      Product1pBasis((B1.bases..., B2.bases...))
+
 
 _numb(b::Product1pBasis{NB}) where {NB} = NB
 
@@ -106,5 +121,5 @@ function rand_radial(basis::Product1pBasis)
          return rand_radial(B)
       end
    end
-   return nothing 
+   return nothing
 end
