@@ -27,6 +27,8 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # #   rotation_invariance
     include("test_cg.jl")
     include("test_symmbasis.jl")
+    # include("test_euclvec.jl")
+    # include("test_sphervec.jl")
 
     # # ----------------------
     # #   miscallaneous ...

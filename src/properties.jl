@@ -41,7 +41,7 @@ filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
 
 @doc raw"""
 `struct EuclideanVector{D, T}` : specifies that the output $\varphi$ of an
-ACE is an equivariant $\varphi \in \mathbb{R}^{3}$, i.e., it transform under
+ACE is an equivariant $\varphi \in \mathbb{R}^{3}$, i.e., it transforms under
 $O(3)$ as
 ```math
       \varphi \circ Q = Q \cdot \varphi,
@@ -53,6 +53,11 @@ struct EuclideanVector{T} <: AbstractProperty
 end
 
 EuclideanVector(T = Float64) = EuclideanVector(zero(SVector{3, T}))
+
+filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
+             isodd( sum(bi.l for bi in b)) &&
+            (abs(sum(bi.m for bi in b)) <= 1) )
+
 
 @doc raw"""
 `struct EuclideanTensor{D, T}` : specifies that the output $\varphi$ of an
@@ -78,7 +83,7 @@ end
 
 
 
-struct SphericalVector{L, D, LEN, T} <: AbstractProperty
+struct SphericalVector{L, LEN, T} <: AbstractProperty
    val::SVector{LEN, T}
    _valL::Val{L}
 end
@@ -88,10 +93,14 @@ end
 # L = 3 ->  ... + 5 -> 9
 # 1 + 3 + 5 + ... + 2*L+1
 # = L + 2 * (1 + ... + L) = L+1 + 2 * L * (L+1) / 2 = (L+1)^2
-function SphericalVector(L::Integer; T = Float64, D = 1)
-   LEN = (L+1)^2
-   return SphericalVector( zero(SMatrix{LEN, D, T}), Val(L) )
+function SphericalVector(L::Integer; T = Float64)
+   LEN = (L+1)^2   # length of SH basis up to L
+   return SphericalVector( zero(SMatrix{LEN, T}), Val(L) )
 end
 
-Base.zero(::SphericalVector{L, D, LEN, T}) where {L, D, LEN, T} =
-      SphericalVector( zero(SMatrix{LEN, D, T}), Val{L}() )
+Base.zero(::SphericalVector{L, LEN, T}) where {L, LEN, T} =
+      SphericalVector( zero(SVector{LEN, T}), Val{L}() )
+
+# filter(φ::SphericalVector{L}, b::Array) where {L} = ( length(b) <= 1 ? true :
+#              isodd( sum(bi.l for bi in b)) &&
+#             (abs(sum(bi.m for bi in b)) <= 1) )

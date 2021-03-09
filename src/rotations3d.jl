@@ -298,33 +298,6 @@ function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
    return CC
 end
 
-# # ordered; TODO: check this out, clean it up and test it!!!
-# function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{true}) where {T}
-# 	num_mm_sorted = sum(mm -> issorted(mm), _mrange(ll))
-# 	# @show num_mm_sorted
-# 	num_mm = length(_mrange(ll))
-#    CC = zeros(T, num_mm, num_mm_sorted)
-# 	im = 0
-#    for mm in _mrange(ll)
-# 		if issorted(mm) # -> make this sorted relative to ll!!!
-# 			im += 1
-# 			for (ik, kk) in enumerate(_mrange(ll))
-# 		      CC[ik, im] = A(ll, mm, kk)
-# 			end
-# 		end
-# 	end
-#    return CC
-# end
-#
-#
-# # two utility functions which are probably never used!
-#
-# compute_Al(ll::SVector{N}; ordered = false) where {N} =
-# 		compute_Al(Rot3DCoeffs(N, sum(ll)), ll; ordered=ordered)
-#
-# compute_Al(A::Rot3DCoeffs, ll::SVector{N}; ordered = false) where {N} =
-# 		compute_Al(A, ll, Val(ordered))
-
 
 # TODO: this could use some documentation
 

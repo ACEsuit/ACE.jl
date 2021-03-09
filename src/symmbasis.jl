@@ -130,6 +130,27 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
    return U, rpibs
 end
 
+function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::EuclideanVector)
+   if length(bb) == 0
+      error("an equivariant vector basis function cannot have length 0")
+   end
+   ll, nn = _b2llnn(bb)
+   U, Ms = Rotations3D.vec3_symm_basis(rotc, nn, ll)
+   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+   return U, rpibs
+end
+
+function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
+   if length(bb) == 0
+      error("an equivariant vector basis function cannot have length 0")
+   end
+   ll, nn = _b2llnn(bb)
+   U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll)
+   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+   return U, rpibs
+end
+
+
 _nnllmm2b(nn, ll, mm) = [ _nlm2b(n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
 
 @generated function _nlm2b(n::NamedTuple{KEYS}, l, m) where {KEYS}
