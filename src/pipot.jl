@@ -81,6 +81,50 @@ function _getdagfrombasis(inner, c)
 end
 
 # ------------------------------------------------------------
+#   experimental sparsification code
+
+function deletezeros(V::PIPotential)
+   idx0 = 0
+   innernew = []
+   coeffs = []
+   for iz0 = 1:length(V.coeffs)
+      # zeros
+      Iz = findall(V.coeffs[iz0] .== 0)
+      # non-zeros
+      Inz = findall(V.coeffs[iz0] .!= 0)
+      # inverse mapping from old to new (local) indices
+      invInz = Dict{Int, Int}()
+      for (i, val) in enumerate(Inz)
+         invInz[val] = i
+      end
+      # extract the inner basis to start rebuilding it
+      inner = V.pibasis.inner[iz0]     # old
+      iAA2iA = inner.iAA2iA[Inz, :]    # new
+      # construct the new b2iAA mapping
+      b2iAA = Dict{ACE.PIBasisFcn, Int}()   # new
+      for (b, iAA) in inner.b2iAA
+         if haskey(invInz, iAA)
+            b2iAA[b] = invInz[iAA]
+         end
+      end
+      # create the new inner basis
+      push!(innernew,
+            ACE.InnerPIBasis( inner.orders[Inz],
+                              iAA2iA,
+                              b2iAA,
+                              inner.b2iA,
+                              (idx0+1):(idx0+length(Inz)),
+                              inner.z0,
+                              ACE.DAG.CorrEvalGraph{Int, Int}() ) )
+      # and the new coefficients
+      push!(coeffs, V.coeffs[iz0][Inz])
+   end
+   pibasis = PIBasis( V.pibasis.basis1p, V.pibasis.zlist,
+                      tuple( innernew... ), V.pibasis.evaluator )
+   return standardevaluator(PIPotential( pibasis, tuple(coeffs...) ))
+end
+
+# ------------------------------------------------------------
 #   FIO code
 # ------------------------------------------------------------
 
