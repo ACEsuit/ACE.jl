@@ -47,6 +47,7 @@ graphevaluator(V::PIPotential) =
 standardevaluator(V::PIPotential) =
    PIPotential(V.pibasis, V.coeffs, V.dags, StandardEvaluator())
 
+maxorder(V::PIPotential) = maxorder(V.pibasis)
 
 # ------------------------------------------------------------
 #   Initialisation code
@@ -212,7 +213,8 @@ alloc_temp_d(::StandardEvaluator, V::PIPotential{T}, N::Integer) where {T} =
        tmpd_pibasis = alloc_temp_d(V.pibasis, N),
        dV = zeros(JVec{real(T)}, N),
         R = zeros(JVec{real(T)}, N),
-        Z = zeros(AtomicNumber, N)
+        Z = zeros(AtomicNumber, N),
+        dAAt = zero(MVector{maxorder(V), fltype(V.pibasis.basis1p)})
       )
 
 # compute one site energy
@@ -233,18 +235,37 @@ function evaluate_d!(dEs, tmpd, V::PIPotential, ::StandardEvaluator,
    dAco = tmpd.dAco
    c = V.coeffs[iz0]
    inner = V.pibasis.inner[iz0]
+   dAAt = tmpd.dAAt
    fill!(dAco, 0)
    for iAA = 1:length(inner)
-      for α = 1:inner.orders[iAA]
-         CxA_α = c[iAA]
-         for β = 1:inner.orders[iAA]
-            if β != α
-               CxA_α *= A[inner.iAA2iA[iAA, β]]
-            end
-         end
-         iAα = inner.iAA2iA[iAA, α]
-         dAco[iAα] += CxA_α
+      c_ = c[iAA]
+      ord = inner.orders[iAA]
+      Afwd = one(eltype(A))
+      dAAt[1] = 1
+      for α = 1:ord-1
+         Afwd *= A[inner.iAA2iA[iAA, α]]
+         dAAt[α+1] = Afwd
       end
+      Abwd = one(eltype(A))
+      for α = ord:-1:2
+         Abwd *= A[inner.iAA2iA[iAA, α]]
+         dAAt[α-1] *= Abwd
+      end
+      for α = 1:ord
+         iAα = inner.iAA2iA[iAA, α]
+         dAco[iAα] += c_ * dAAt[α]
+      end
+
+      # for α = 1:inner.orders[iAA]
+      #    CxA_α = c[iAA]
+      #    for β = 1:inner.orders[iAA]
+      #       if β != α
+      #          CxA_α *= A[inner.iAA2iA[iAA, β]]
+      #       end
+      #    end
+      #    iAα = inner.iAA2iA[iAA, α]
+      #    dAco[iAα] += CxA_α
+      # end
    end
 
    # stage 3: get the gradients

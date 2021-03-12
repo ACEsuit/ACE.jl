@@ -11,8 +11,8 @@ using BenchmarkTools
 
 #---
 
-maxdeg = 10
-N = 3
+maxdeg = 13
+N = 4
 species = [:Ti, :Al]
 r0 = 1.0
 rcut = 3.0
@@ -37,18 +37,21 @@ end
 
 Vdag = combine(basis, csp)
 V = standardevaluator(Vdag)
-Vdag_sp = ACE.deletezeros(V)
+Vdag_sp = ACE.deletezeros(Vdag)
 V_sp = standardevaluator(Vdag_sp)
+# Vdag_sp = graphevaluator(V_sp)
 
 #---
 
-Nat = 15
+Nat = 3
 Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
+
+# evaluate_d(Vdag_sp, Rs, Zs, z0)
 
 val0 = evaluate(V, Rs, Zs, z0)
 dV0 = evaluate_d(V, Rs, Zs, z0)
 for (V, str) in ( (Vdag, "Vdag"), (V_sp, "V_sp"), (Vdag_sp, "Vdag_sp") )
-   @show("Error for $str:")
+   @info("Error for $str:")
    val1 = evaluate(V, Rs, Zs, z0)
    @show abs(val0 - val1)
    dV1 = evaluate_d(V, Rs, Zs, z0)
@@ -65,6 +68,8 @@ for (pot, name) in ( (V, "V"), (Vdag, "Vdag"),
 end
 
 #---
+
+graphevaluator(Vdag_sp)
 
 for (pot, name) in ( (V, "V"), (Vdag, "Vdag"),
                    (V_sp, "V_sp"), (Vdag_sp, "Vdag_sp") )

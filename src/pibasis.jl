@@ -115,6 +115,8 @@ end
    (B1.b2iA == B2.b2iA) &&
    (B1.iAA2iA == B2.iAA2iA) )
 
+maxorder(basis::InnerPIBasis) = size(basis.iAA2iA, 2)
+
 Base.length(basis::InnerPIBasis) = length(basis.orders)
 
 function InnerPIBasis(Aspec, AAspec, AAindices, z0)
@@ -304,7 +306,7 @@ graphevaluator(basis::PIBasis) =
 standardevaluator(basis::PIBasis) =
    PIBasis(basis.basis1p, zlist(basis), basis.inner, StandardEvaluator())
 
-
+maxorder(basis::PIBasis) = maximum(maxorder.(basis.inner))
 
 # -------------------------------------------------
 # FIO codes
