@@ -5,7 +5,7 @@
 # All rights reserved.
 # --------------------------------------------------------------------------
 
-export get_orders
+export get_orders, get_nl
 
 import ACE: standardevaluator, graphevaluator
 using SparseArrays: SparseMatrixCSC, sparse
@@ -65,6 +65,31 @@ function get_orders(basis::RPIBasis)
       end
    end
    return Ns
+end
+
+function get_nl(basis::RPIBasis)
+   # get the correlation orders of the PIbasis ...
+   nnll_pi = Vector{Vector{Any}}(undef, length(basis.pibasis))
+   for iz0 = 1:numz(basis)
+      inner = basis.pibasis.inner[iz0]
+      for (key, val) in inner.b2iAA
+         b = [ (l = b.l, n = b.n) for b in key.oneps ]
+         nnll_pi[inner.AAindices[val]] = b
+      end
+   end
+   # ... and use them to construct the correlation orders of the RPI basis
+   nnll = Vector{Vector{Any}}(undef, length(basis))
+   for iz0 = 1:numz(basis)
+      # loop over basis functions belonging to centre-species iz0
+      for ib = 1:length(basis, iz0)
+         # find one of the indices of the PI basis that the current
+         # RPI basis function belongs to; they are all equivalent in
+         # terms of correlation-order, so only one of them matters.
+         iPI = findfirst(basis.A2Bmaps[iz0][ib,:] .!= 0)
+         nnll[_basisfcnidx(basis, iz0, ib)] = nnll_pi[iPI]
+      end
+   end
+   return nnll
 end
 
 # ------------------------------------------------------------------------
