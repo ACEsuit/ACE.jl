@@ -60,7 +60,7 @@ function get_orders(basis::RPIBasis)
          # find one of the indices of the PI basis that the current
          # RPI basis function belongs to; they are all equivalent in
          # terms of correlation-order, so only one of them matters.
-         iPI = findfirst(basis.A2Bmaps[1][ib,:] .!= 0)
+         iPI = findfirst(basis.A2Bmaps[iz0][ib,:] .!= 0)
          Ns[_basisfcnidx(basis, iz0, ib)] = Ns_pi[iPI]
       end
    end
