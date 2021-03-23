@@ -201,9 +201,9 @@ alloc_B(basis::SymmetricBasis) =
       zeros(fltype(basis), length(basis))
 
 function evaluate!(B, tmp, basis::SymmetricBasis,
-                   Xs::AbstractVector{<: AbstractState}, X0::AbstractState)
+                   cfg::AbstractConfiguration)
    # compute AA
-   evaluate!(tmp.AA, tmp.tmppi, basis.pibasis, Xs, X0)
+   evaluate!(tmp.AA, tmp.tmppi, basis.pibasis, cfg)
    evaluate!(B, tmp, basis, tmp.AA)
    return B
 end

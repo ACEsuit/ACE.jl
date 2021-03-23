@@ -26,8 +26,8 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
 # generate a configuration
 nX = 10
-X0 = rand(EuclideanVectorState, B1p.bases[1])
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+cfg = ACEConfig(Xs)
 
 #---
 
@@ -37,15 +37,15 @@ Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
 
-BB = evaluate(basis, Xs, X0)
+BB = evaluate(basis, cfg)
 
 # a stupid but necessary test
-BB1 = basis.A2Bmap * evaluate(basis.pibasis, Xs, X0)
+BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
 println(@test isapprox(BB, BB1, rtol=1e-10))
 
 for ntest = 1:30
       Xs1 = shuffle(rand_refl(rand_rot(Xs)))
-      BB1 = evaluate(basis, Xs1, X0)
+      BB1 = evaluate(basis, ACEConfig(Xs1))
       print_tf(@test isapprox(BB, BB1, rtol=1e-10))
 end
 
