@@ -64,8 +64,11 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
 
    # loop through AA basis, but skip most of them ...
    for (iAA, AA) in enumerate(AAspec)
+      # AA = [b1, b2, ...], each bi = (n = ..., l = .., m = ...)
       # skip it unless all m are zero, because we want to consider each
       # (nn, ll, ...) block only once.
+      # the loop over all possible `mm` must be taken care of inside
+      # the `coupling_coeffs` implementation
       if !all(b.m == 0 for b in AA)
          continue
       end
@@ -111,6 +114,9 @@ end
 
 
 function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
+   # bb = [ b1, b2, b3, ...)
+   # bi = (μ = ..., n = ..., l = ..., m = ...)
+   #    (μ, n) -> n; only the l and m are used in the angular basis
    if length(bb) == 0
       return [1.0,], [bb,]
    end
