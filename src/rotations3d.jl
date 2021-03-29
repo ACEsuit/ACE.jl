@@ -14,7 +14,7 @@ using LinearAlgebra: norm, rank, svd, Diagonal
 using ACE.SphericalHarmonics: index_y
 using Combinatorics: permutations
 
-export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis
+export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, clebschgordan
 
 
 """
@@ -291,11 +291,11 @@ end
 # unordered
 function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
 	len = length(_mrange(ll))
-   CC = zeros(T, len, len)
-   for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
-      CC[ik, im] = A(ll, mm, kk)
-   end
-   return CC
+	CC = zeros(T, len, len)
+	for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+		CC[ik, im] = A(ll, mm, kk)
+	end
+	return CC
 end
 
 
@@ -304,14 +304,14 @@ end
 rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
 			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
 
-function rpi_basis(A::Rot3DCoeffs,
-						 nn::SVector{N, TN},
-						 ll::SVector{N, Int}) where {N, TN}
+# No matter what structure do zz/nn/ll have, turn them into SVector
+
+function rpi_basis(A::Rot3DCoeffs, nn::SVector{N, TN}, ll::SVector{N, Int}) where {N, TN}
 	Uri = ri_basis(A, ll)
 	Mri = collect( _mrange(ll) )   # rows...
 	G = _gramian(nn, ll, Uri, Mri)
-   S = svd(G)
-   rk = rank(G; rtol =  1e-7)
+    S = svd(G)
+    rk = rank(G; rtol =  1e-7)
 	Urpi = S.U[:, 1:rk]'
 	return Diagonal(sqrt.(S.S[1:rk])) * Urpi * Uri, Mri
 end
@@ -335,6 +335,9 @@ function _gramian(nn, ll, Uri, Mri)
    return G
 end
 
+## Covariant construction for SphericalVector
 
 
+
+##
 end

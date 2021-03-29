@@ -234,15 +234,23 @@ function PIbasis(ll::T, mm::T, R::SVector{N, Float64}) where{T,N}
     return A
 end
 
-# Preliminary - from 3D-rotation matrix $$Q$$ to rotation angle $$α, β, γ$$
+# Preliminary - from 3D-rotation matrix $$Q$$ to euler angle $$α, β, γ$$
+# characterized by zyz convention (c.f. https://en.wikipedia.org/wiki/Wigner_D-matrix)
 function Mat2Ang(Q)
-	return atan(Q[1,3],Q[3,3]), asin(-Q[2,3]), atan(Q[2,1],Q[2,2]);
+	Q = Q';
+	return -atan(Q[3,2],-Q[3,1]), -acos(Q[3,3]), -atan(Q[2,3],Q[1,3]);
 end
 
+## Preliminary - Generate the rotation3D matrix D(Q)
+
+# Wigner_D ,c.f., https://en.wikipedia.org/wiki/Wigner_D-matrix
 function Wigner_D(μ,m,l,α,β,γ)
 	return exp(-im*α*μ) * wigner_d(μ,m,l,β)  * exp(-im*γ*m)
 end
 
+# Wigner small d, modified from
+# https://github.com/cortner/SlaterKoster.jl/blob/
+# 8dceecb073709e6448a7a219ed9d3a010fa06724/src/code_generation.jl#L73
 function wigner_d(μ, m, l, β)
     fc1 = factorial(l+m)
     fc2 = factorial(l-m)
@@ -273,19 +281,37 @@ function wigner_d(μ, m, l, β)
     return temp
 end
 
+# Rotation D matrix
 function rot_D(φ,Q)
 	Mat_D = zeros(Complex{Float64}, 2φ.val + 1, 2φ.val + 1);
 	D = Rotation_D_matrix(φ);
 	α, β, γ = Mat2Ang(Q);
 	for i = 1 : 2φ.val + 1
 		for j = 1 : 2φ.val + 1
-			#Mat_D[i,j] = (-1)^(i+j) * Wigner_D(D[i,j].μ, D[i,j].m, D[i,j].l, α, β, γ);
 			Mat_D[i,j] = Wigner_D(D[i,j].μ, D[i,j].m, D[i,j].l, α, β, γ);
 		end
 	end
 	return Mat_D
 end
+## End of this generation
 
+# Preliminary - Rotate R w.r.t. specific Q
+function Rot(R::SVector{N, Float64},Q) where {N}
+    RotR = []; RotTemp = []; ii = 1;
+    RotR = Q*R[3*ii-2:3*ii];
+    if N/3 > 1
+        for ii = 2:N/3
+            RotTemp = SVector(R.data[3*ii-2:3*ii]);
+            RotR = [RotR; Q*RotTemp];
+        end
+    end
+    RotR = SVector(RotR)
+    return RotR
+end
+
+## Check the correctness of Mat2Ang
+
+# A basic test
 function rot_D(φ,α::Float64,β::Float64,γ::Float64)
 	Mat_D = zeros(Complex{Float64}, 2φ.val + 1, 2φ.val + 1);
 	D = Rotation_D_matrix(φ);
@@ -298,43 +324,26 @@ function rot_D(φ,α::Float64,β::Float64,γ::Float64)
 	return Mat_D
 end
 
-# Preliminary - Rotate R w.r.t. specific Q
-function Rot(R::SVector{N, Float64},Q) where {N}
-    RotR = []; RotTemp = []; ii = 1;
-#    K = randn(3, 3);
-#    K = K - K';
-#    Q = SMatrix{3,3}(rand([-1,1]) * exp(K)...);
-    RotR = Q*R[3*ii-2:3*ii];
-    if N/3 > 1
-        for ii = 2:N/3
-            RotTemp = SVector(R.data[3*ii-2:3*ii]);
-            RotR = [RotR; Q*RotTemp];
-        end
-    end
-    RotR = SVector(RotR)
-    return RotR
-end
-
-# Check the correctness of Mat2Ang
 function rotz(α)
-	return [cos(α) sin(α) 0; -sin(α) cos(α) 0; 0 0 1];
+	return [cos(α) -sin(α) 0; sin(α) cos(α) 0; 0 0 1];
 end
 
-function rotx(α)
-	return [1 0 0; 0 cos(α) sin(α); 0 -sin(α) cos(α)];
+function roty(α)
+	return [cos(α) 0 sin(α); 0 1 0;-sin(α) 0 cos(α)];
 end
 
-function Ang2Mat(α,β,γ)
-	return rotz(γ)*rotx(β)*rotz(α);
+function Ang2Mat_zyz(α,β,γ)
+	return rotz(α)*roty(β)*rotz(γ);
 end
 
 function test_M2A(Q)
 	α, β, γ = Mat2Ang(Q);
-	return Ang2Mat(α,β,γ)
+	return SMatrix{3,3}(Ang2Mat_zyz(α,β,γ)) == Q
 end
+## End of this check
 
-# Begin of test
-function test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
+# Begin of main test
+function Evaluate(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
 	Z = zeros(Complex{Float64}, 2φ.val+1, 1);
 #	U, μ_list = rcpi_basis_all(ll, φ);
 	U, μ_list = Rcpi_basis_final(nn, ll, φ);
@@ -345,5 +354,16 @@ function test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVec
 	end
 	reshape(Z,2φ.val+1,1)
 	return Z, svd(Z).S
+end
+
+function main_test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
+	result_R = Evaluate(nn,ll,φ,R)[1];
+	K = randn(3, 3);
+	K = K - K';
+	Q = SMatrix{3,3}(rand([-1,1]) * exp(K)...);
+	RR = Rot(R, Q);
+	result_RR = Evaluate(nn,ll,φ,RR)[1];
+	println("Is F(R) ≈ D(Q)F(QR)?")
+	return result_RR ≈ rot_D(φ, Q) * result_R
 end
 ## End of the test

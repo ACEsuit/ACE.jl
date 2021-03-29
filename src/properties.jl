@@ -95,7 +95,7 @@ end
 # = L + 2 * (1 + ... + L) = L+1 + 2 * L * (L+1) / 2 = (L+1)^2
 function SphericalVector(L::Integer; T = Float64)
    LEN = (L+1)^2   # length of SH basis up to L
-   return SphericalVector( zero(SMatrix{LEN, T}), Val(L) )
+   return SphericalVector( zero(SVector{LEN, T}), Val(L) )
 end
 
 Base.zero(::SphericalVector{L, LEN, T}) where {L, LEN, T} =
