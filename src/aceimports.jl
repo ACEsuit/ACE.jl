@@ -3,8 +3,7 @@
 
 import ACE
 
-import ACE: ACEBasis, ScalarACEBasis, OneParticleBasis,
-              PIBasis,
+import ACE:   PIBasis,
               get_spec,
               AbstractDegree, degree,
               gensparse,
