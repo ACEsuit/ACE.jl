@@ -108,6 +108,8 @@ struct Sphericalvector{LEN, T} <: AbstractProperty
    _valL::Int64
 end
 
+getL(φ::Sphericalvector) = φ._valL
+
 function Sphericalvector(L::Integer; T = Float64)
    LEN = 2L+1   # length of SH basis up to L
    return Sphericalvector( zero(SVector{LEN, T}), L )
@@ -115,6 +117,11 @@ end
 
 Base.zero(::Sphericalvector{LEN, T}) where {L, LEN, T} =
       Sphericalvector( zero(SVector{LEN, T}), L )
+
+filter(φ::Sphericalvector, b::Array) = ( length(b) <= 1 ? true :
+     ( ( iseven(sum(bi.l for bi in b)) == iseven(getL(φ)) ) &&
+       ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
+
 
 # filter(φ::SphericalVector{L}, b::Array) where {L} = ( length(b) <= 1 ? true :
 #              isodd( sum(bi.l for bi in b)) &&

@@ -18,6 +18,7 @@ export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, clebschgordan
 # Extra export - for SphericalVector
 export yvec_symm_basis
 
+import ACE: Sphericalvector
 
 """
 `ClebschGordan: ` storing precomputed Clebsch-Gordan coefficients; see
