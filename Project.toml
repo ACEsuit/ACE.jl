@@ -18,8 +18,8 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-julia = "1.5,1.6"
 ACEbase = "0.1.1"
+julia = "1.5,1.6"
 
 [extras]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"

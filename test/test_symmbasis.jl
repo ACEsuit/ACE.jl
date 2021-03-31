@@ -49,10 +49,8 @@ end
 
 L = 1
 φ = ACE.SphericalVector(L)
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ
-      )
-basis = SymmetricBasis(pibasis, φ
-      )
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
+basis = SymmetricBasis(pibasis, φ)
 
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
 BB = evaluate(basis, Xs, X0)

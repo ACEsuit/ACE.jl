@@ -71,6 +71,7 @@ include("utils.jl")
 
 
 include("testing/testing.jl")
+include("testing/wigner.jl")
 
 # - bond model
 # - pure basis
