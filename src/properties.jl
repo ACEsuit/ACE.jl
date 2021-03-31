@@ -85,7 +85,7 @@ end
 
 struct SphericalVector{L, LEN, T} <: AbstractProperty
    val::SVector{LEN, T}
-   _valL::Val{L}
+   _valL::Val{L} ## Why do we need Val?
 end
 
 # L = 0 -> (0,0)
@@ -94,12 +94,27 @@ end
 # 1 + 3 + 5 + ... + 2*L+1
 # = L + 2 * (1 + ... + L) = L+1 + 2 * L * (L+1) / 2 = (L+1)^2
 function SphericalVector(L::Integer; T = Float64)
-   LEN = (L+1)^2   # length of SH basis up to L
-   return SphericalVector( zero(SVector{LEN, T}), Val(L) )
+   LEN = 2L+1   # length of SH basis up to L
+   return SphericalVector( zero(SVector{LEN, T}), Val{L}() )
 end
 
 Base.zero(::SphericalVector{L, LEN, T}) where {L, LEN, T} =
       SphericalVector( zero(SVector{LEN, T}), Val{L}() )
+
+
+struct Sphericalvector{LEN, T} <: AbstractProperty
+   val::SVector{LEN, T}
+   #_valL::Val{L} ## Why do we need such value?
+   _valL::Int64
+end
+
+function Sphericalvector(L::Integer; T = Float64)
+   LEN = 2L+1   # length of SH basis up to L
+   return Sphericalvector( zero(SVector{LEN, T}), L )
+end
+
+Base.zero(::Sphericalvector{LEN, T}) where {L, LEN, T} =
+      Sphericalvector( zero(SVector{LEN, T}), L )
 
 # filter(φ::SphericalVector{L}, b::Array) where {L} = ( length(b) <= 1 ? true :
 #              isodd( sum(bi.l for bi in b)) &&

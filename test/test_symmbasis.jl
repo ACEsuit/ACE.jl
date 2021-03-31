@@ -49,6 +49,19 @@ for ntest = 1:30
       print_tf(@test isapprox(BB, BB1, rtol=1e-10))
 end
 
+#---
+function Main_test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
+	result_R = Evaluate(nn,ll,φ,R)[1];
+	α = 2pi*rand(Float64);
+	β = pi*rand(Float64);
+	γ = 2pi*rand(Float64);
+	Q = Ang2Mat_zyz(α,β,γ);
+	Q = SMatrix{3,3}(Q);
+	RR = Rot(R, Q);
+	result_RR = Evaluate(nn,ll,φ,RR)[1];
+	println("Is F(R) ≈ D(Q)F(QR)?")
+	return result_RR ≈ rot_D(φ, Q) * result_R
+end
 
 # #---
 # @info("Basis construction and evaluation checks")

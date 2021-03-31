@@ -15,6 +15,8 @@ using ACE.SphericalHarmonics: index_y
 using Combinatorics: permutations
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, clebschgordan
+# Extra export - for SphericalVector
+export yvec_symm_basis
 
 
 """
@@ -34,7 +36,14 @@ struct Rot3DCoeffs{T}
    cg::ClebschGordan{T}
 end
 
-
+#------------------------------------
+# What I added
+struct D_Index
+	l::Int64
+	μ::Int64
+	m::Int64
+end
+#------------------------------------
 
 # -----------------------------------
 # iterating over an m collection
@@ -273,7 +282,6 @@ function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
    return val
 end
 
-
 # ----------------------------------------------------------------------
 #   construction of a possible set of generalised CG coefficient;
 #   numerically via SVD
@@ -300,7 +308,7 @@ end
 
 
 # TODO: this could use some documentation
-
+# ?? What is zz here?
 rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
 			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
 
@@ -337,7 +345,151 @@ end
 
 ## Covariant construction for SphericalVector
 
+# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
+function Rotation_D_matrix(φ::Sphericalvector)
+	if φ._valL<0
+		error("Orbital type shall be represented as a positive integer!")
+	end
+    D = Array{D_Index}(undef, 2 * φ._valL + 1, 2 * φ._valL + 1)
+    for i = 1 : 2 * φ._valL + 1
+        for j = 1 : 2 * φ._valL + 1
+            D[i,j] = D_Index(φ._valL, i - 1 - φ._valL, j - 1 - φ._valL);
+        end
+    end
+	return D
+end
 
+# Equation (1.2) - vector value coupling coefficients
+function local_cou_coe(A::Rot3DCoeffs, ll::StaticVector{N}, mm::StaticVector{N},
+					   kk::StaticVector{N}, φ::Sphericalvector, t::Int64) where {N}
+	if t > 2φ._valL + 1
+		error("Rotation D matrix has no such column!")
+	end
+	Z = zeros(Complex{Float64},2φ._valL + 1);
+	D = Rotation_D_matrix(φ);
+	Dt = D[:,t];
+	μt = [Dt[i].μ for i in 1:2φ._valL+1];
+	mt = [Dt[i].m for i in 1:2φ._valL+1];
+	LL = SVector([ll;φ._valL]...);
+	for i = 1 : 2φ._valL + 1
+		MM = SVector([mm;mt[i]]...);
+		KK = SVector([kk;μt[i]]...);
+		Z[i] = A(LL, MM, KK);
+	end
+	return Z
+end
+
+# Equation (1.5) - possible set of mm w.r.t. vector k
+function collect_m(ll::StaticVector{N}, k::T) where {N,T}
+	d = length(k);
+	A = CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll)));
+	B = Array{typeof(A[1].I)}(undef, 1, prod(size(A)))
+	t = 0;
+	for i in A
+		if prod(sum(i.I) .+ k) == 0
+			t = t + 1;
+			B[t] = i.I;
+		end
+	end
+	B = [SVector(i) for i in B[1:t]]
+	return B
+end
+
+# Equation(1.7) & (1.6) respectively - gramian
+function gramian(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector, t::Int64) where{N}
+	D = Rotation_D_matrix(φ);
+	Dt = D[:,t];
+	μt = [Dt[i].μ for i in 1:2φ._valL+1];
+	mt = [Dt[i].m for i in 1:2φ._valL+1];
+	m_list = collect_m(ll,mt);
+	μ_list = collect_m(ll,μt);
+	Z = [zeros(2φ._valL + 1) for i = 1:length(μ_list), j = 1:length(m_list)];
+	for (im, mm) in enumerate(m_list), (iμ, μμ) in enumerate(μ_list)
+		Z[iμ,im] = local_cou_coe(A, ll, mm, μμ, φ, t);
+	end
+	return Z' * Z, Z;
+end
+
+# Equation (1.8) - LI set w.r.t. t & ll (not for nn for now)
+function rc_basis(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector, t::Int64) where {N}
+	G, C = gramian(A, ll, φ, t);
+	D = Rotation_D_matrix(φ);
+	Dt = D[:,t];
+	μt = [Dt[i].μ for i in 1:2φ._valL+1];
+	mt = [Dt[i].m for i in 1:2φ._valL+1];
+	S = svd(G);
+	rk = rank(G; rtol =  1e-8);
+	μ_list = collect_m(ll,μt)
+	Urcpi = [zeros(2φ._valL + 1) for i = 1:rk, j = 1:length(μ_list)];
+	U = S.U[:, 1:rk];
+	Sigma = S.S[1:rk]
+	Urcpi = C * U * Diagonal(sqrt.(Sigma))^(-1);
+	return Urcpi', μ_list
+end
+
+# Equation (1.10) - Collecting all t and sorting them in order
+function rcpi_basis_all(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector) where {N}
+	Urcpi_all, μ_list = rc_basis(A, ll, φ, 1);
+	if φ._valL ≠ 0
+		for t = 2 : 2φ._valL+1
+			Urcpi_all = [Urcpi_all; rc_basis(A, ll, φ, t)[1]];
+		end
+	end
+	return Urcpi_all, μ_list
+end
+
+# Equation (1.12) - Gramian over nn
+function Gramian(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::Sphericalvector) where {N}
+	Uri, Mri = rcpi_basis_all(A, ll, φ);
+#	m_list = collect_m(ll,mt)
+	G = zeros(Complex{Float64}, size(Uri)[1], size(Uri)[1]);
+	for σ in permutations(1:N)
+       if (nn[σ] != nn) || (ll[σ] != ll); continue; end
+       for (iU1, mm1) in enumerate(Mri), (iU2, mm2) in enumerate(Mri)
+          if mm1[σ] == mm2
+             for i1 = 1:size(Uri)[1]
+				 for i2 = 1:size(Uri)[1]
+                 	G[i1, i2] += Uri[i1, iU1] * Uri[i2, iU2]'
+				end
+             end
+          end
+       end
+    end
+    return G, Uri
+end
+
+"""
+'Rcpi_basis_final' function is aiming to take the place of 'yvec_symm_basis'
+in rotation3D.jl but still have some interface problem to be discussed
+"""
+# Equation (1.13) - LI coefficients(& corresponding μ) over nn, ll
+function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::Sphericalvector) where {N}
+	if mod(sum(ll) + φ._valL, 2) ≠ 0
+		if mod(sum(ll), 2) ≠ 0
+			@warn ("To gain reflection covariant, sum of `ll` shall be even")
+		else
+			@warn ("To gain reflection covariant, sum of `ll` shall be odd")
+		end
+	end
+	G, C = Gramian(A, nn, ll, φ);
+	D = Rotation_D_matrix(φ);
+	Dt = D[:,1];
+	μt = [Dt[i].μ for i in 1:2φ._valL+1];
+#	mt = [Dt[i].m for i in 1:2φ._valL+1];
+	S = svd(G);
+	rk = rank(G; rtol =  1e-8);
+	μ_list = collect_m(ll,μt)
+	Urcpi = [zeros(2φ._valL + 1) for i = 1:rk, j = 1:length(μ_list)];
+	U = S.U[:, 1:rk];
+	Sigma = S.S[1:rk]
+	Urcpi = C' * U * Diagonal(sqrt.(Sigma))^(-1);
+	return Urcpi', μ_list
+end
+
+## By using this function we could achieve actually the same thing
+function getIntfromVal(::Val{L}) where{L}
+	return L
+end
 
 ##
 end

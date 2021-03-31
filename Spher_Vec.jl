@@ -6,6 +6,7 @@ using ACE.Rotations3D
 using ACE: evaluate
 using Combinatorics: permutations
 
+SH = SphericalHarmonics.SHBasis(5);
 
 ## Stucture Orbitaltype is nothing but the SphericalVector
 #  I'd like to add some subset of SphericalVector so that
@@ -24,7 +25,7 @@ We are not interested in the exact value but the indices only
 """
 struct D_Index
 	l::Int64
-    μ::Int64
+	μ::Int64
 	m::Int64
 end
 
@@ -237,8 +238,7 @@ end
 # Preliminary - from 3D-rotation matrix $$Q$$ to euler angle $$α, β, γ$$
 # characterized by zyz convention (c.f. https://en.wikipedia.org/wiki/Wigner_D-matrix)
 function Mat2Ang(Q)
-	Q = Q';
-	return -atan(Q[3,2],-Q[3,1]), -acos(Q[3,3]), -atan(Q[2,3],Q[1,3]);
+	return mod(atan(Q[2,3],Q[1,3]),2pi), acos(Q[3,3]), mod(atan(Q[3,2],-Q[3,1]),2pi);
 end
 
 ## Preliminary - Generate the rotation3D matrix D(Q)
@@ -361,6 +361,19 @@ function main_test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R:
 	K = randn(3, 3);
 	K = K - K';
 	Q = SMatrix{3,3}(rand([-1,1]) * exp(K)...);
+	RR = Rot(R, Q);
+	result_RR = Evaluate(nn,ll,φ,RR)[1];
+	println("Is F(R) ≈ D(Q)F(QR)?")
+	return result_RR ≈ rot_D(φ, Q) * result_R, Q
+end
+
+function Main_test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
+	result_R = Evaluate(nn,ll,φ,R)[1];
+	α = 2pi*rand(Float64);
+	β = pi*rand(Float64);
+	γ = 2pi*rand(Float64);
+	Q = Ang2Mat_zyz(α,β,γ);
+	Q = SMatrix{3,3}(Q);
 	RR = Rot(R, Q);
 	result_RR = Evaluate(nn,ll,φ,RR)[1];
 	println("Is F(R) ≈ D(Q)F(QR)?")
