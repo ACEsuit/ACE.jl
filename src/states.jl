@@ -1,13 +1,10 @@
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
 
 
-export EuclideanVectorState, DiscreteState
+export EuclideanVectorState, DiscreteState, ACEConfig
 
 abstract type AbstractState end
+
+abstract type AbstractConfiguration end
 
 abstract type AbstractContinuousState <: AbstractState end
 
@@ -82,3 +79,19 @@ Base.getproperty(s::DiscreteState{T, SYM}, sym) where {T, SYM} =
 #       end
 #    end)
 # end
+
+
+
+struct ACEConfig{STT} <: AbstractConfiguration
+   Xs::Vector{STT}   # list of states
+end
+
+# --- iterator to go through all states in an abstract configuration assuming
+#     that the states are stored in cfg.Xs
+
+
+Base.iterate(cfg::AbstractConfiguration) =
+   length(cfg.Xs) == 0 ? nothing : (cfg.Xs[1], 1)
+
+Base.iterate(cfg::AbstractConfiguration, i::Integer) =
+   length(cfg.Xs) == i ? nothing : (cfg.Xs[i+1], i+1)

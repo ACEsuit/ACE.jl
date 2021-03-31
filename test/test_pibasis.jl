@@ -1,10 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
 
 @testset "PIBasis"  begin
 
@@ -31,10 +25,10 @@ pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 
 # generate a configuration
 nX = 10
-X0 = rand(EuclideanVectorState, B1p.bases[1])
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+cfg = ACEConfig(Xs)
 
-AA = evaluate(pibasis, Xs, X0)
+AA = evaluate(pibasis, cfg)
 
 println(@test(length(pibasis) == length(AA)))
 
@@ -56,7 +50,7 @@ for (i, b1) in enumerate(ACE.get_spec(B1p))
 end
 
 # a really naive implementation of PIBasis to check correctness
-A = evaluate(B1p, Xs, X0)
+A = evaluate(B1p, cfg)
 AA_naive =  [
       real(prod( A[ inv_spec1[ b1 ] ] for b1 in b )) for b in spec ]
 println(@test( AA_naive ≈ AA ))

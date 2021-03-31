@@ -1,8 +1,3 @@
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
 
 
 # -------------- Implementation of Product Basis
@@ -52,9 +47,9 @@ alloc_temp(basis::Product1pBasis) =
          tmp = alloc_temp.(basis.bases)
       )
 
-@generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, Xj, Xi) where {NB}
+@generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
    quote
-      Base.Cartesian.@nexprs $NB i -> evaluate!(tmp.B[i], tmp.tmp[i], basis.bases[i], Xj, Xi)
+      Base.Cartesian.@nexprs $NB i -> evaluate!(tmp.B[i], tmp.tmp[i], basis.bases[i], X)
       for (iA, ϕ) in enumerate(basis.indices)
          t = one(eltype(A))
          Base.Cartesian.@nexprs $NB i -> (t *= tmp.B[i][ϕ[i]])

@@ -1,64 +1,29 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
-
 
 module Testing
 
 using Test
 import ACE
 
-
-using BenchmarkTools: @belapsed
-using LinearAlgebra: eigvals, eigen
-
-using ACE: read_dict, write_dict, save_json, load_json,
-           transform, transform_d, inv_transform
-
 # import JuLIP.Potentials: F64fun
 # import JuLIP: Atoms, bulk, rattle!, positions, energy, forces, JVec,
 #               chemical_symbol, mat, rnn,
 #               read_dict, write_dict
 # import JuLIP.MLIPs: combine
-# import JuLIP.Testing: print_tf
 
-export print_tf, test_fio
 
 include("../extimports.jl")
 include("../aceimports.jl")
 
+import ACEbase
+import ACEbase.Testing: print_tf, test_fio
+
+export print_tf, test_fio, test_transform
+
+
+
 # include("testmodel.jl")
 # include("testlsq.jl")
-
-
-# ---------- generic useful testing codes
-
-print_tf(::Test.Pass) = printstyled("+", bold=true, color=:green)
-print_tf(::Test.Fail) = printstyled("-", bold=true, color=:red)
-print_tf(::Tuple{Test.Error,Bool}) = printstyled("x", bold=true, color=:magenta)
-
-"""
-`test_fio(obj): `  performs two tests:
-
-- encodes `obj` as a Dict using `write_dict`, then decodes it using
-`read_dict` and tests whether the two objects are equivalent using `==`
-- writes `Dict` to file then reads it and decodes it and test the result is
-again equivalent to `obj`
-
-The two results are returned as Booleans.
-"""
-function test_fio(obj)
-   D = write_dict(obj)
-   test1 = (obj == read_dict(D))
-   tmpf = tempname() * ".json"
-   save_json(tmpf, D)
-   test2 = (obj == read_dict(load_json(tmpf)))
-   return test1, test2
-end
 
 
 

@@ -1,16 +1,9 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
 
 
 import ACE
 
-import ACE: ACEBasis, ScalarACEBasis, OneParticleBasis,
-              PIBasis,
+import ACE:   PIBasis,
               get_spec,
               AbstractDegree, degree,
               gensparse,
