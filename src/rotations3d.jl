@@ -465,13 +465,13 @@ in rotation3D.jl but still have some interface problem to be discussed
 # Equation (1.13) - LI coefficients(& corresponding μ) over nn, ll
 function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::SphericalVector) where {N}
 	L = getL(φ)
-	if mod(sum(ll) + L, 2) ≠ 0
-		if mod(sum(ll), 2) ≠ 0
-			@warn ("To gain reflection covariant, sum of `ll` shall be even")
-		else
-			@warn ("To gain reflection covariant, sum of `ll` shall be odd")
-		end
-	end
+	# if isodd(sum(ll) + L)
+	# 	if isodd(sum(ll))
+	# 		@warn ("To gain reflection covariant, sum of `ll` shall be even")
+	# 	else
+	# 		@warn ("To gain reflection covariant, sum of `ll` shall be odd")
+	# 	end
+	# end
 	G, C = Gramian(A, nn, ll, φ);
 	D = Rotation_D_matrix(φ);
 	Dt = D[:,1];

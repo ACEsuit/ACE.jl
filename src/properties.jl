@@ -94,7 +94,12 @@ function SphericalVector(L::Integer; T = Float64)
    return SphericalVector( zero(SVector{LEN, T}), Val{L}() )
 end
 
-Base.zero(::SphericalVector{L, LEN, T}) where {L, LEN, T} =
+function SphericalVector{L, LEN, T}(x::AbstractArray) where {L, LEN, T}
+   @assert length(x) == LEN
+   SphericalVector{L, LEN, T}( SVector{LEN, T}(x...), Val(L) )
+end
+
+SphericalVector{L, LEN, T}()  where {L, LEN, T} =
       SphericalVector( zero(SVector{LEN, T}), Val{L}() )
 
 filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :

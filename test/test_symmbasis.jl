@@ -51,9 +51,12 @@ L = 1
 φ = ACE.SphericalVector(L)
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
+ACE.fltype(basis) == typeof(φ)
 
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
-BB = evaluate(basis, Xs, X0)
+cfg = ACEConfig(Xs)
+
+BB = evaluate(basis, cfg)
 
 function rotz(α)
 	return [cos(α) -sin(α) 0; sin(α) cos(α) 0; 0 0 1];
