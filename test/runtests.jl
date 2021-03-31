@@ -7,22 +7,23 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # ------------------------------------------
     #   basic polynomial basis building blocks
     include("polynomials/test_ylm.jl")
-    # include("polynomials/test_rylm.jl")  # not used right now
-    include("polynomials/test_transforms.jl")
-    include("polynomials/test_orthpolys.jl")
-
-    # --------------------------------------------
-    # core permutation-invariant functionality
-    include("test_1pbasis.jl")
-    include("test_pibasis.jl")
-    # include("test_pipot.jl")   # TODO...
-
-    # # ------------------------
-    # #   rotation_invariance
-    include("test_cg.jl")
-    include("test_symmbasis.jl")
-    # include("test_euclvec.jl")
-    # include("test_sphervec.jl")
+    include("testing/test_wigner.jl")
+    # # include("polynomials/test_rylm.jl")  # not used right now
+    # include("polynomials/test_transforms.jl")
+    # include("polynomials/test_orthpolys.jl")
+    #
+    # # --------------------------------------------
+    # # core permutation-invariant functionality
+    # include("test_1pbasis.jl")
+    # include("test_pibasis.jl")
+    # # include("test_pipot.jl")   # TODO...
+    #
+    # # # ------------------------
+    # # #   rotation_invariance
+    # include("test_cg.jl")
+    # include("test_symmbasis.jl")
+    # # include("test_euclvec.jl")
+    # # include("test_sphervec.jl")
 
     # # ----------------------
     # #   miscallaneous ...

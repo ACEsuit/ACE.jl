@@ -15,7 +15,7 @@ using ACE.Wigner
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
-maxdeg = 6
+maxdeg = 4
 ord = 3
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
@@ -48,6 +48,7 @@ end
 #---
 
 L = 1
+ord = 1
 φ = ACE.SphericalVector(L; T = ComplexF64)
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
@@ -55,19 +56,20 @@ ACE.fltype(basis) == typeof(φ)
 
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
-
 BB = evaluate(basis, cfg)
 
 # for ntest = 1:30
-Q, D = ACE.Wigner.rand_QD(φ)
 
-cfg1 = ACEConfig( Ref(Q) .* shuffle(Xs) )
+Q, D = ACE.Wigner.rand_QD(φ)
+cfg1 = ACEConfig( Ref(Q) .* Xs )
 BB1 = evaluate(basis, cfg1)
-DxBB1 = Ref(D) .* BB1
-norm(BB1 - DxBB1, Inf)
+DxBB1 = Ref(D') .* BB1
+norm(BB - DxBB1, Inf)
+
 
 # end
 
+##
 # #---
 # @info("Basis construction and evaluation checks")
 # @info("check single species")
