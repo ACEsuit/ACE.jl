@@ -1,5 +1,6 @@
 module Wigner
 
+using StaticArrays
 using ACE: SphericalVector
 import ACE.Rotations3D.Rotation_D_matrix
 import ACE. getL
@@ -48,9 +49,8 @@ function Mat2Ang(Q)
 end
 
 # Rotation D matrix
-function rot_D(φ::SphericalVector,Q)
-	L = getL(φ)
-	Mat_D = zeros(Complex{Float64}, 2L + 1, 2L + 1);
+function rot_D(φ::TP, Q) where {TP <: SphericalVector{L, LEN}} where {L, LEN}
+	Mat_D = zeros(ComplexF64, 2L + 1, 2L + 1);
 	D = Rotation_D_matrix(φ);
 	α, β, γ = Mat2Ang(Q);
 	for i = 1 : 2L + 1
@@ -58,6 +58,25 @@ function rot_D(φ::SphericalVector,Q)
 			Mat_D[i,j] = Wigner_D(D[i,j].μ, D[i,j].m, D[i,j].l, α, β, γ);
 		end
 	end
-	return Mat_D
+	return SMatrix{LEN, LEN, ComplexF64}(Mat_D)
 end
+
+
+
+function rand_QD(φ::TP)  where {TP <: SphericalVector}
+	rotz(α) = [cos(α) -sin(α) 0; sin(α) cos(α) 0; 0 0 1]
+	roty(α) = [cos(α) 0 sin(α); 0 1 0;-sin(α) 0 cos(α)]
+	Ang2Mat_zyz(α,β,γ) = rotz(α)*roty(β)*rotz(γ)
+
+   α = 2pi*rand();
+   β = pi*rand();
+   γ = 2pi*rand();
+
+	# construct the Q matrix
+   Q = Ang2Mat_zyz(α,β,γ)
+   Q = SMatrix{3,3}(Q)
+
+	return Q, rot_D(φ, Q)
+end
+
 end

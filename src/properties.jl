@@ -7,6 +7,8 @@ abstract type AbstractProperty end
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
 @inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
 @inline *(φ::T, λ::Number) where {T <: AbstractProperty} = T(φ.val * λ)
+@inline *(a::Union{Number, AbstractMatrix}, φ::T) where {T <: AbstractProperty} =
+      T(a * φ.val)
 @inline norm(φ::T) where {T <: AbstractProperty} = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
