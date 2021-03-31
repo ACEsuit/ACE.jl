@@ -16,9 +16,10 @@ using Combinatorics: permutations
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, clebschgordan
 # Extra export - for SphericalVector
-export yvec_symm_basis
+export yvec_symm_basis, Rotation_D_matrix
 
-import ACE: Sphericalvector
+import ACE: SphericalVector
+import ACE. getL
 
 """
 `ClebschGordan: ` storing precomputed Clebsch-Gordan coefficients; see
@@ -347,14 +348,15 @@ end
 ## Covariant construction for SphericalVector
 
 # Equation (1.1) - forms the covariant matrix D(Q)(indices only)
-function Rotation_D_matrix(φ::Sphericalvector)
-	if φ._valL<0
+function Rotation_D_matrix(φ::SphericalVector)
+	L = getL(φ)
+	if L<0
 		error("Orbital type shall be represented as a positive integer!")
 	end
-    D = Array{D_Index}(undef, 2 * φ._valL + 1, 2 * φ._valL + 1)
-    for i = 1 : 2 * φ._valL + 1
-        for j = 1 : 2 * φ._valL + 1
-            D[i,j] = D_Index(φ._valL, i - 1 - φ._valL, j - 1 - φ._valL);
+    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+    for i = 1 : 2 * L + 1
+        for j = 1 : 2 * L + 1
+            D[i,j] = D_Index(L, i - 1 - L, j - 1 - L);
         end
     end
 	return D
@@ -362,17 +364,18 @@ end
 
 # Equation (1.2) - vector value coupling coefficients
 function local_cou_coe(A::Rot3DCoeffs, ll::StaticVector{N}, mm::StaticVector{N},
-					   kk::StaticVector{N}, φ::Sphericalvector, t::Int64) where {N}
-	if t > 2φ._valL + 1
+					   kk::StaticVector{N}, φ::SphericalVector, t::Int64) where {N}
+	L = getL(φ)
+	if t > 2L + 1
 		error("Rotation D matrix has no such column!")
 	end
-	Z = zeros(Complex{Float64},2φ._valL + 1);
+	Z = zeros(Complex{Float64},2L + 1);
 	D = Rotation_D_matrix(φ);
 	Dt = D[:,t];
-	μt = [Dt[i].μ for i in 1:2φ._valL+1];
-	mt = [Dt[i].m for i in 1:2φ._valL+1];
-	LL = SVector([ll;φ._valL]...);
-	for i = 1 : 2φ._valL + 1
+	μt = [Dt[i].μ for i in 1:2L+1];
+	mt = [Dt[i].m for i in 1:2L+1];
+	LL = SVector([ll;L]...);
+	for i = 1 : 2L + 1
 		MM = SVector([mm;mt[i]]...);
 		KK = SVector([kk;μt[i]]...);
 		Z[i] = A(LL, MM, KK);
@@ -397,14 +400,15 @@ function collect_m(ll::StaticVector{N}, k::T) where {N,T}
 end
 
 # Equation(1.7) & (1.6) respectively - gramian
-function gramian(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector, t::Int64) where{N}
+function gramian(A::Rot3DCoeffs, ll::StaticVector{N}, φ::SphericalVector, t::Int64) where{N}
+	L = getL(φ)
 	D = Rotation_D_matrix(φ);
 	Dt = D[:,t];
-	μt = [Dt[i].μ for i in 1:2φ._valL+1];
-	mt = [Dt[i].m for i in 1:2φ._valL+1];
+	μt = [Dt[i].μ for i in 1:2L+1];
+	mt = [Dt[i].m for i in 1:2L+1];
 	m_list = collect_m(ll,mt);
 	μ_list = collect_m(ll,μt);
-	Z = [zeros(2φ._valL + 1) for i = 1:length(μ_list), j = 1:length(m_list)];
+	Z = [zeros(2L + 1) for i = 1:length(μ_list), j = 1:length(m_list)];
 	for (im, mm) in enumerate(m_list), (iμ, μμ) in enumerate(μ_list)
 		Z[iμ,im] = local_cou_coe(A, ll, mm, μμ, φ, t);
 	end
@@ -412,16 +416,17 @@ function gramian(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector, t::In
 end
 
 # Equation (1.8) - LI set w.r.t. t & ll (not for nn for now)
-function rc_basis(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector, t::Int64) where {N}
+function rc_basis(A::Rot3DCoeffs, ll::StaticVector{N}, φ::SphericalVector, t::Int64) where {N}
+	L = getL(φ)
 	G, C = gramian(A, ll, φ, t);
 	D = Rotation_D_matrix(φ);
 	Dt = D[:,t];
-	μt = [Dt[i].μ for i in 1:2φ._valL+1];
-	mt = [Dt[i].m for i in 1:2φ._valL+1];
+	μt = [Dt[i].μ for i in 1:2L+1];
+	mt = [Dt[i].m for i in 1:2L+1];
 	S = svd(G);
 	rk = rank(G; rtol =  1e-8);
 	μ_list = collect_m(ll,μt)
-	Urcpi = [zeros(2φ._valL + 1) for i = 1:rk, j = 1:length(μ_list)];
+	Urcpi = [zeros(2L + 1) for i = 1:rk, j = 1:length(μ_list)];
 	U = S.U[:, 1:rk];
 	Sigma = S.S[1:rk]
 	Urcpi = C * U * Diagonal(sqrt.(Sigma))^(-1);
@@ -429,10 +434,11 @@ function rc_basis(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector, t::I
 end
 
 # Equation (1.10) - Collecting all t and sorting them in order
-function rcpi_basis_all(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector) where {N}
+function rcpi_basis_all(A::Rot3DCoeffs, ll::StaticVector{N}, φ::SphericalVector) where {N}
+	L = getL(φ)
 	Urcpi_all, μ_list = rc_basis(A, ll, φ, 1);
-	if φ._valL ≠ 0
-		for t = 2 : 2φ._valL+1
+	if L ≠ 0
+		for t = 2 : 2L+1
 			Urcpi_all = [Urcpi_all; rc_basis(A, ll, φ, t)[1]];
 		end
 	end
@@ -440,7 +446,7 @@ function rcpi_basis_all(A::Rot3DCoeffs, ll::StaticVector{N}, φ::Sphericalvector
 end
 
 # Equation (1.12) - Gramian over nn
-function Gramian(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::Sphericalvector) where {N}
+function Gramian(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::SphericalVector) where {N}
 	Uri, Mri = rcpi_basis_all(A, ll, φ);
 #	m_list = collect_m(ll,mt)
 	G = zeros(Complex{Float64}, size(Uri)[1], size(Uri)[1]);
@@ -464,8 +470,9 @@ end
 in rotation3D.jl but still have some interface problem to be discussed
 """
 # Equation (1.13) - LI coefficients(& corresponding μ) over nn, ll
-function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::Sphericalvector) where {N}
-	if mod(sum(ll) + φ._valL, 2) ≠ 0
+function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::SphericalVector) where {N}
+	L = getL(φ)
+	if mod(sum(ll) + L, 2) ≠ 0
 		if mod(sum(ll), 2) ≠ 0
 			@warn ("To gain reflection covariant, sum of `ll` shall be even")
 		else
@@ -475,22 +482,16 @@ function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N
 	G, C = Gramian(A, nn, ll, φ);
 	D = Rotation_D_matrix(φ);
 	Dt = D[:,1];
-	μt = [Dt[i].μ for i in 1:2φ._valL+1];
-#	mt = [Dt[i].m for i in 1:2φ._valL+1];
+	μt = [Dt[i].μ for i in 1:2L+1];
+#	mt = [Dt[i].m for i in 1:2L+1];
 	S = svd(G);
 	rk = rank(G; rtol =  1e-8);
 	μ_list = collect_m(ll,μt)
-	Urcpi = [zeros(2φ._valL + 1) for i = 1:rk, j = 1:length(μ_list)];
+	Urcpi = [zeros(2L + 1) for i = 1:rk, j = 1:length(μ_list)];
 	U = S.U[:, 1:rk];
 	Sigma = S.S[1:rk]
 	Urcpi = C' * U * Diagonal(sqrt.(Sigma))^(-1);
 	return Urcpi', μ_list
 end
 
-## By using this function we could achieve actually the same thing
-function getIntfromVal(::Val{L}) where{L}
-	return L
-end
-
-##
 end

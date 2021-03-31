@@ -88,6 +88,8 @@ struct SphericalVector{L, LEN, T} <: AbstractProperty
    _valL::Val{L} ## Why do we need Val?
 end
 
+getL(φ::SphericalVector) = typeof(φ).parameters[1];
+
 # L = 0 -> (0,0)
 # L = 1 -> (0,0), (1,-1), (1,0), (1,1)  -> 4
 # L = 3 ->  ... + 5 -> 9
@@ -100,6 +102,10 @@ end
 
 Base.zero(::SphericalVector{L, LEN, T}) where {L, LEN, T} =
       SphericalVector( zero(SVector{LEN, T}), Val{L}() )
+
+filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :
+        ( ( iseven(sum(bi.l for bi in b)) == iseven(getL(φ)) ) &&
+         ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
 
 
 struct Sphericalvector{LEN, T} <: AbstractProperty

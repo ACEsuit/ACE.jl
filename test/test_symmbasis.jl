@@ -16,6 +16,9 @@ using Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACE.Random: rand_rot, rand_refl
 
+# Extra using Wigner for computing Wigner Matrix
+using ACE.Wigner
+
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
@@ -52,11 +55,40 @@ end
 #---
 
 L = 1
-φ = ACE.Sphericalvector(L)
+φ = ACE.SphericalVector(L)
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ
       )
 basis = SymmetricBasis(pibasis, φ
       )
+
+Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+BB = evaluate(basis, Xs, X0)
+
+function rotz(α)
+	return [cos(α) -sin(α) 0; sin(α) cos(α) 0; 0 0 1];
+end
+
+function roty(α)
+	return [cos(α) 0 sin(α); 0 1 0;-sin(α) 0 cos(α)];
+end
+
+function Ang2Mat_zyz(α,β,γ)
+	return rotz(α)*roty(β)*rotz(γ);
+end
+
+for ntest = 1:30
+      α = 2pi*rand(Float64);
+      β = pi*rand(Float64);
+      γ = 2pi*rand(Float64);
+      Q = Ang2Mat_zyz(α,β,γ);
+      Q = SMatrix{3,3}(Q);
+      Xs1 = shuffle(Xs);
+	for i=1:nX
+		Xs1[i]=Q*Xs1[i];
+	end
+      BB1 = evaluate(basis, Xs1, X0)
+      print_tf(@test isapprox(rot_D(φ, Q) * BB, BB1, rtol=1e-10))
+end
 
 # function Main_test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
 # 	result_R = Evaluate(nn,ll,φ,R)[1];

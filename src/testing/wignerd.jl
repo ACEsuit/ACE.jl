@@ -1,5 +1,9 @@
 module Wigner
 
+using ACE: SphericalVector
+import ACE.Rotations3D.Rotation_D_matrix
+import ACE. getL
+
 export rot_D
 
 function Wigner_D(μ,m,l,α,β,γ)
@@ -39,13 +43,18 @@ function wigner_d(μ, m, l, β)
     return temp
 end
 
+function Mat2Ang(Q)
+	return mod(atan(Q[2,3],Q[1,3]),2pi), acos(Q[3,3]), mod(atan(Q[3,2],-Q[3,1]),2pi);
+end
+
 # Rotation D matrix
-function rot_D(φ,Q)
-	Mat_D = zeros(Complex{Float64}, 2φ.val + 1, 2φ.val + 1);
+function rot_D(φ::SphericalVector,Q)
+	L = getL(φ)
+	Mat_D = zeros(Complex{Float64}, 2L + 1, 2L + 1);
 	D = Rotation_D_matrix(φ);
 	α, β, γ = Mat2Ang(Q);
-	for i = 1 : 2φ.val + 1
-		for j = 1 : 2φ.val + 1
+	for i = 1 : 2L + 1
+		for j = 1 : 2L + 1
 			Mat_D[i,j] = Wigner_D(D[i,j].μ, D[i,j].m, D[i,j].l, α, β, γ);
 		end
 	end
