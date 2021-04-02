@@ -49,10 +49,10 @@ $O(3)$ as
 where $\cdot$ denotes the standard matrix-vector product.
 """
 struct EuclideanVector{T} <: AbstractProperty
-   val::SVector{3, T}
+   val::SVector{3, Complex{T}}
 end
 
-EuclideanVector(T = Float64) = EuclideanVector(zero(SVector{3, T}))
+EuclideanVector(T = Float64) = EuclideanVector(zero(SVector{3, Complex{T}}))
 
 filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
              isodd( sum(bi.l for bi in b)) &&

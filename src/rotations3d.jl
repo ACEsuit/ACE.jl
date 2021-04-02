@@ -12,9 +12,10 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
 using ACE.SphericalHarmonics: index_y
+using ACE: Invariant,  EuclideanVector
 using Combinatorics: permutations
 
-export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis
+export ClebschGordan, R3DC, Rot3DCoeffs, ri_basis, rpi_basis,  Rot3DCoeffsEquiv
 
 
 """
@@ -29,7 +30,9 @@ end
 `Rot3DCoeffs: ` storing recursively precomputed coefficients for a
 rotation-invariant basis.
 """
-struct Rot3DCoeffs{T}
+abstract type R3DC{T} end
+
+struct Rot3DCoeffs{T} <: R3DC{T}
    vals::Vector{Dict}
    cg::ClebschGordan{T}
 end
@@ -187,7 +190,7 @@ dicttype(::Val{N}) where {N} =
 Rot3DCoeffs(T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T))
 
 
-function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
+function get_vals(A::R3DC, valN::Val{N}) where {N}
 	if length(A.vals) < N
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n)())
@@ -280,7 +283,7 @@ end
 # ----------------------------------------------------------------------
 
 
-function ri_basis(A::Rot3DCoeffs{T}, ll::SVector; ordered=false) where {T}
+function ri_basis(A::R3DC{T}, ll::SVector; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))
@@ -289,7 +292,7 @@ end
 
 
 # unordered
-function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
+function compute_Al(A::R3DC{T}, ll::SVector, ::Val{false}) where {T}
 	len = length(_mrange(ll))
    CC = zeros(T, len, len)
    for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
@@ -301,10 +304,10 @@ end
 
 # TODO: this could use some documentation
 
-rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
+rpi_basis(A::R3DC, zz, nn, ll) =
 			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
 
-function rpi_basis(A::Rot3DCoeffs,
+function rpi_basis(A::R3DC,
 						 nn::SVector{N, TN},
 						 ll::SVector{N, Int}) where {N, TN}
 	Uri = ri_basis(A, ll)
@@ -321,7 +324,7 @@ function _gramian(nn, ll, Uri, Mri)
    N = length(nn)
    nri = size(Uri, 1)
    @assert size(Uri, 1) == nri
-   G = zeros(nri, nri)
+   G = zeros(Complex{Float64}, nri, nri)
    for σ in permutations(1:N)
       if (nn[σ] != nn) || (ll[σ] != ll); continue; end
       for (iU1, mm1) in enumerate(Mri), (iU2, mm2) in enumerate(Mri)
@@ -334,6 +337,8 @@ function _gramian(nn, ll, Uri, Mri)
    end
    return G
 end
+
+include("rotations3d-equiv.jl")
 
 
 
