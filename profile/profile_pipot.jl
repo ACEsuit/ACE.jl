@@ -1,10 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
 @info("Basic test of PIPotential construction and evaluation")
 maxdeg = 10
 r0 = 1.0

@@ -1,10 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
 import ACE.SphericalHarmonics: SHBasis, index_y
 
 
@@ -83,7 +77,7 @@ alloc_B(basis::Ylm1pBasis) = alloc_B(basis.SH)
 
 alloc_temp(basis::Ylm1pBasis) = alloc_temp(basis.SH)
 
-evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState, X0::AbstractState) =
+evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.SH, X.rr)
 
 degree(b, basis::Ylm1pBasis) = b.l

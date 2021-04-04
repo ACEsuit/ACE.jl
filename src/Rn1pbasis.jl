@@ -1,10 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
 import ACE.OrthPolys: TransformedPolys
 
 
@@ -69,5 +63,5 @@ alloc_B(basis::Rn1pBasis) = alloc_B(basis.R)
 
 alloc_temp(basis::Rn1pBasis) = alloc_temp(basis.R)
 
-evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState, X0::AbstractState) =
+evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.R, norm(X.rr))

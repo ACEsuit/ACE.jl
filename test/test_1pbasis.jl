@@ -1,11 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
-
 @testset "1-Particle Basis"  begin
 
 ##
@@ -32,18 +25,18 @@ B1p = Product1pBasis( (Rn, Ylm) )
 ACE.init1pspec!(B1p)
 
 nX = 10
-X0 = rand(EuclideanVectorState, Rn)
 Xs = rand(EuclideanVectorState, Rn, nX)
+cfg = ACEConfig(Xs)
 
-A = evaluate(B1p, Xs, X0)
+A = evaluate(B1p, cfg)
 # evaluate_d(B1p, Xs, X0)
 
 @info("test against manual summation")
-A1 = sum( evaluate(B1p, X, X0) for X in Xs )
+A1 = sum( evaluate(B1p, X) for X in Xs )
 println(@test A1 ≈ A)
 
 @info("test permutation invariance")
-println(@test A ≈ evaluate(B1p, shuffle(Xs), X0))
+println(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
 
 # not sure what else we can suitably test here ...
 

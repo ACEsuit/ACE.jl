@@ -1,11 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
-
 export PIBasis
 
 
@@ -209,9 +202,9 @@ alloc_temp(basis::PIBasis, args...) =
       )
 
 
-function evaluate!(AA, tmp, basis::PIBasis, Xs, X0)
+function evaluate!(AA, tmp, basis::PIBasis, config::AbstractConfiguration)
+   A = evaluate!(tmp.A, tmp.tmp1p, basis.basis1p, config)
    fill!(AA, 1)
-   A = evaluate!(tmp.A, tmp.tmp1p, basis.basis1p, Xs, X0)
    for iAA = 1:length(basis)
       aa = one(eltype(A))
       for t = 1:basis.spec.orders[iAA]

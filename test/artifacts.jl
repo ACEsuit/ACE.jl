@@ -1,11 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
-
 using Pkg.Artifacts
 
 datadir = joinpath(artifact"acedata_v0.8.1", "ACEData-0.8.1")

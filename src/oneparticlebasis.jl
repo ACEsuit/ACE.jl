@@ -1,10 +1,4 @@
 
-# --------------------------------------------------------------------------
-# ACE.jl: Julia implementation of the Atomic Cluster Expansion
-# Copyright (c) 2019 Christoph Ortner <christophortner0@gmail.com>
-# All rights reserved.
-# --------------------------------------------------------------------------
-
 
 # ----------- definitions of possible symmetries a 1-p basis may possess
 
@@ -29,18 +23,17 @@ function alloc_B(basis::OneParticleBasis, args...)
 end
 
 function evaluate!(A, tmp, basis::OneParticleBasis,
-                   Xs::AbstractVector{<: AbstractState}, X0::AbstractState)
+                   cfg::AbstractConfiguration)
    fill!(A, 0)
-   for X in Xs
-      add_into_A!(A, tmp, basis, X, X0)
+   for X in cfg
+      add_into_A!(A, tmp, basis, X)
    end
    return A
 end
 
-function evaluate!(A, tmp, basis::OneParticleBasis,
-                   X::AbstractState, X0::AbstractState)
+function evaluate!(A, tmp, basis::OneParticleBasis, X::AbstractState)
    fill!(A, 0)
-   add_into_A!(A, tmp, basis, X, X0)
+   add_into_A!(A, tmp, basis, X)
    return A
 end
 
