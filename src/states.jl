@@ -39,10 +39,10 @@ Base.length(X::EuclideanVectorState) = 3
 
 Base.show(io::IO, s::EuclideanVectorState) = print(io, "$(s.label)$(s.rr)")
 
-import Base: *
+import Base: *, -
 *(A::Union{Number, AbstractMatrix}, X::EuclideanVectorState) =
       EuclideanVectorState(A * X.rr, X.label)
-
+-(X::T) where {T <: EuclideanVectorState} = T( -X.rr, X.label)
 
 
 @doc raw"""

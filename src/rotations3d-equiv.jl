@@ -6,7 +6,7 @@ rotation-invariant basis.
 
 using LinearAlgebra: dot
 
-struct Rot3DCoeffsEquiv{T,L}#<: R3DC{T}
+struct Rot3DCoeffsEquiv{T,L}<: R3DC{T}
    vals::Vector{Dict}
    cg::ClebschGordan{T}
 end
@@ -52,7 +52,7 @@ function get0(L::Int,T=Float64)
 	end
 end
 
-dicttype(A::Rot3DCoeffsEquiv,N::Integer) = dicttype(A::Rot3DCoeffsEquiv,Val(N))
+dicttype(A::Rot3DCoeffsEquiv, N::Integer) = dicttype(A::Rot3DCoeffsEquiv,Val(N))
 
 dicttype(A::Rot3DCoeffsEquiv{T,L},::Val{N}) where {T,L,N} =
    Dict{Tuple{SVector{N,Int}, SVector{N,Int}, SVector{N,Int}}, typeof(get0(L,T))}
@@ -84,8 +84,6 @@ function (A::Rot3DCoeffsEquiv{T,L})(ll::StaticVector{N},
 	  val  = vals[key]
    else
 	  val = _compute_val(A, key...)
-	  #print("vals[key]:", vals[key], "\n")
-	  #print("val:", val, "\n")
 	  vals[key] = val
    end
    return val
@@ -166,7 +164,6 @@ function vec3_symm_basis(A::Rot3DCoeffsEquiv{T,1},
 						 ll::SVector{N, Int}) where {T, N, TN}
 	Ure, Mre = re_basis(A, ll)
 	G = _gramian(nn, ll, Ure, Mre)
-	print("Gramian ", G,"\n")
    	S = svd(G)
    	rk = rank(G; rtol =  1e-7)
 	Urpe = S.U[:, 1:rk]'
