@@ -331,6 +331,7 @@ function _gramian(nn, ll, Uri, Mri)
    return G
 end
 
+# TODO : incorporate into rotations / combine / unify.
 include("rotations3d-equiv.jl")
 
 
