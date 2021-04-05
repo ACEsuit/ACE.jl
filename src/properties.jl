@@ -6,12 +6,17 @@ abstract type AbstractProperty end
 
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
 @inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
+@inline -(φ::T) where {T <: AbstractProperty} = T( -φ.val)
 @inline *(φ::T, λ::Number) where {T <: AbstractProperty} = T(φ.val * λ)
 @inline norm(φ::T) where {T <: AbstractProperty} = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
+
+@inline *(A::AbstractMatrix, φ::T) where {T <: AbstractProperty} = T(A * φ.val)
+# @inline *(A::StaticArrays.SArray{Tuple{3,3}, T,2,9}, φ::EuclideanVector{T}) where {T <: Number} = EuclideanVector{T}(A * φ.val)
+
 
 Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
       isapprox(φ1.val, φ2.val)
@@ -46,7 +51,9 @@ struct EuclideanVector{T} <: AbstractProperty
    val::SVector{3, T}
 end
 
-EuclideanVector(T = Float64) = EuclideanVector(zero(SVector{3, T}))
+EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}))
+
+EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
 filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
              isodd( sum(bi.l for bi in b)) &&
