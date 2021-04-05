@@ -44,12 +44,12 @@ $O(3)$ as
 where $\cdot$ denotes the standard matrix-vector product.
 """
 struct EuclideanVector{T} <: AbstractProperty
-   val::SVector{3, Complex{T}}
+   val::SVector{3, T}
 end
 
-EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, Complex{T}}))
+EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}))
 
-EuclideanVector(T::DataType = Float64) = EuclideanVector{T}()
+EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
 @inline *(A::StaticArrays.SArray{Tuple{3,3}, Complex{T},2,9}, φ::EuclideanVector{T}) where {T <: Number} = EuclideanVector{T}(A * φ.val)
 @inline *(A::StaticArrays.SArray{Tuple{3,3}, T,2,9}, φ::EuclideanVector{T}) where {T <: Number} = EuclideanVector{T}(A * φ.val)

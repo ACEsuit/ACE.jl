@@ -26,7 +26,7 @@ cfg = ACEConfig(Xs)
 
 @info("SymmetricBasis construction and evaluation: EuclideanVector")
 
-φ = ACE.EuclideanVector()
+φ = ACE.EuclideanVector(Complex{Float64})
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
 basis = SymmetricBasis(pibasis, φ)
 
