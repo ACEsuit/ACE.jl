@@ -8,7 +8,7 @@ import ACE. getL
 export rot_D
 
 function Wigner_D(μ,m,l,α,β,γ)
-	return exp(-im*α*μ) * wigner_d(μ,m,l,β)  * exp(-im*γ*m)
+	return (exp(-im*α*m) * wigner_d(m,μ,l,β)  * exp(-im*γ*μ))'
 end
 
 # Wigner small d, modified from

@@ -5,7 +5,7 @@
 
 
 using ACE
-using Random, Printf, Test, LinearAlgebra, ACE.Testing
+using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACE.Random: rand_rot, rand_refl
 
@@ -15,13 +15,13 @@ using ACE.Wigner
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
-maxdeg = 4
-ord = 3
+maxdeg = 3
+ord = 1
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
 # generate a configuration
-nX = 10
+nX = 1
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
@@ -54,17 +54,34 @@ pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
 ACE.fltype(basis) == typeof(φ)
 
-Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+Xs = rand(EuclideanVectorState, B1p.bases[1], 1)
 cfg = ACEConfig(Xs)
 BB = evaluate(basis, cfg)
-
 # for ntest = 1:30
 
 Q, D = ACE.Wigner.rand_QD(φ)
+
+SH = ACE.SphericalHarmonics.SHBasis(2)
+x = randn(SVector{3, Float64})
+#x = x / norm(x)
+#Y0 = evaluate(SH, x)[1]
+Y1 = evaluate(SH, x)[2:4]
+#Y2 = evaluate(SH, x)[5:9]
+#D_Y0_Q = D' * evaluate(SH, Q * x)[1]
+D_Y1_Q = D' * evaluate(SH, Q * x)[2:4]
+#D_Y2_Q = D' * evaluate(SH, Q * x)[5:9]
+if Y1 ≈ D_Y1_Q
+      println("Correct Wigner Matrix!")
+end
+
+Xs1 = Ref(Q) .* Xs
 cfg1 = ACEConfig( Ref(Q) .* Xs )
 BB1 = evaluate(basis, cfg1)
-DxBB1 = Ref(D') .* BB1
-norm(BB - DxBB1, Inf)
+DxBB = Ref(D) .* BB
+norm(BB1)
+norm(DxBB)
+#[norm(DxBB1[i]) for i in 1:9]
+norm(BB1 - DxBB)
 
 
 # end
