@@ -38,6 +38,7 @@ Invariant(T::DataType = Float64) = Invariant{T}()
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )
 
+rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 
 
 @doc raw"""
@@ -60,6 +61,8 @@ EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
              isodd( sum(bi.l for bi in b)) &&
             (abs(sum(bi.m for bi in b)) <= 1) )
+
+rot3Dcoeffs(::EuclideanVector, T::DataType=Float64) = Rot3DCoeffsEquiv(T)
 
 
 @doc raw"""
@@ -115,6 +118,7 @@ filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :
         ( ( iseven(sum(bi.l for bi in b)) == iseven(getL(φ)) ) &&
          ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
 
+rot3Dcoeffs(::SphericalVector, T::DataType=Float64) = Rot3DCoeffs(T)
 
 struct Sphericalvector{LEN, T} <: AbstractProperty
    val::SVector{LEN, T}

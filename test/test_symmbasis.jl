@@ -15,7 +15,7 @@ using ACE.Wigner
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
-maxdeg = 3
+maxdeg = 6
 ord = 1
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)

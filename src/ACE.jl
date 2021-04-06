@@ -9,6 +9,9 @@ include("baseimports.jl")
 
 include("auxiliary.jl")
 
+include("rotations3d.jl")
+using ACE.Rotations3D
+
 include("states.jl")
 include("properties.jl")
 
@@ -42,9 +45,6 @@ include("sparsegrids.jl")
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
-
-include("rotations3d.jl")
-using ACE.Rotations3D
 
 include("symmbasis.jl")
 

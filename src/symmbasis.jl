@@ -50,7 +50,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
    #       or maybe written to a file on disk? and then flushed every time
    #       we finish with a basis construction???
    #rotc = Rot3DCoeffs(rfltype(pibasis))
-   rotc = Rot3DCoeffsEquiv(φ, rfltype(pibasis))
+   rotc = rot3Dcoeffs(φ, rfltype(pibasis))
    # allocate triplet format
    Irow, Jcol, vals = Int[], Int[], TP[]
    # count the number of PI basis functions = number of rows
@@ -107,7 +107,7 @@ function _get_ordered(bb, invAspec)
 end
 
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffsEquiv, φ::Invariant)
+function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
    # bb = [ b1, b2, b3, ...)
    # bi = (μ = ..., n = ..., l = ..., m = ...)
    #    (μ, n) -> n; only the l and m are used in the angular basis
@@ -147,7 +147,7 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
    ll, nn = _b2llnn(bb)
    # A small modification here - the function yvec_symm_basis shall
    # be φ related which specifies the blocks(the type of orbitals)...
-   U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll, φ)
+   U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll, getL(φ))
    rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
    return U, rpibs
 end

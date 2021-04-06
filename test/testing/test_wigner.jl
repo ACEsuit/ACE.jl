@@ -1,9 +1,7 @@
 
 
 
-@testset "TestWigner"
-
-begin
+@testset "TestWigner" begin
 
 ##
 using ACE, StaticArrays, ACE.SphericalHarmonics;
@@ -27,8 +25,8 @@ for ntest = 1:20
    x = x / norm(x)
    Y1 = evaluate(SH, x)[2:4]
    D_Y1_Q = D' * evaluate(SH, Q * x)[2:4]
-   println(Y1 ≈ D_Y1_Q)
-#   print_tf(@test isapprox(Y1, D_Y1_Q, rtol=1e-10))
+   # println(Y1 ≈ D_Y1_Q)
+   print_tf(@test isapprox(Y1, D_Y1_Q, rtol=1e-10))
 end
 
 ##

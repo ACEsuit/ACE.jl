@@ -51,7 +51,7 @@ end
 # Rotation D matrix
 function rot_D(φ::TP, Q) where {TP <: SphericalVector{L, LEN}} where {L, LEN}
 	Mat_D = zeros(ComplexF64, 2L + 1, 2L + 1);
-	D = Rotation_D_matrix(φ);
+	D = Rotation_D_matrix(getL(φ));
 	α, β, γ = Mat2Ang(Q);
 	for i = 1 : 2L + 1
 		for j = 1 : 2L + 1
