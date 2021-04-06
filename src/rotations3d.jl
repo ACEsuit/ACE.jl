@@ -4,8 +4,6 @@ module Rotations3D
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
-using ACE.SphericalHarmonics: index_y
-using ACE: Invariant,  EuclideanVector
 using Combinatorics: permutations
 
 export ClebschGordan, R3DC, Rot3DCoeffs, ri_basis, rpi_basis,  Rot3DCoeffsEquiv

@@ -11,12 +11,6 @@ struct Rot3DCoeffsEquiv{T,L}<: R3DC{T}
    cg::ClebschGordan{T}
 end
 
-
-Rot3DCoeffsEquiv(φ::Invariant,T=Float64) = Rot3DCoeffsEquiv{T,0}(Dict[], ClebschGordan(T))
-
-Rot3DCoeffsEquiv( φ::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
-
-
 struct MRangeEq{N, T2}
    ll::SVector{N, Int}
    cartrg::T2

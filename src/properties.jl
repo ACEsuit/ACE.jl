@@ -36,6 +36,7 @@ Invariant(T::DataType = Float64) = Invariant{T}()
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )
 
+rot3Dcoeffs(::Invariant,T=Float64) = Rot3DCoeffs(T)
 
 
 @doc raw"""
@@ -58,6 +59,8 @@ EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
              isodd( sum(bi.l for bi in b)) &&
             (abs(sum(bi.m for bi in b)) <= 1) )
+
+rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
 
 @doc raw"""
