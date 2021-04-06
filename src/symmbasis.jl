@@ -49,8 +49,8 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
    # TODO: should this be stored with the basis?
    #       or maybe written to a file on disk? and then flushed every time
    #       we finish with a basis construction???
-   rotc = Rot3DCoeffs(rfltype(pibasis))
-
+   #rotc = Rot3DCoeffs(rfltype(pibasis))
+   rotc = Rot3DCoeffsEquiv(φ, rfltype(pibasis))
    # allocate triplet format
    Irow, Jcol, vals = Int[], Int[], TP[]
    # count the number of PI basis functions = number of rows
@@ -107,7 +107,7 @@ function _get_ordered(bb, invAspec)
 end
 
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
+function coupling_coeffs(bb, rotc::Rot3DCoeffsEquiv, φ::Invariant)
    # bb = [ b1, b2, b3, ...)
    # bi = (μ = ..., n = ..., l = ..., m = ...)
    #    (μ, n) -> n; only the l and m are used in the angular basis
@@ -119,7 +119,6 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
    # b1 = (μ = ..., n = ..., l = ..., m = ...) into
    #    l, and a new n = (μ, n)
    ll, nn = _b2llnn(bb)
-
    # now we can call the coupling coefficient construiction!!
    U, Ms = Rotations3D.rpi_basis(rotc, nn, ll)
 
@@ -130,7 +129,8 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
    return U, rpibs
 end
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::EuclideanVector)
+
+function coupling_coeffs(bb, rotc::Rot3DCoeffsEquiv, φ::EuclideanVector)
    if length(bb) == 0
       error("an equivariant vector basis function cannot have length 0")
    end

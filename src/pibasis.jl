@@ -133,7 +133,7 @@ Base.length(basis::PIBasis) = length(basis.spec)
 
 PIBasis(basis1p, args...; isreal = true, kwargs...) =
    PIBasis(basis1p, PIBasisSpec(basis1p, args...; kwargs...),
-           isreal ? Base.real : Bases.identity )
+           isreal ? Base.real : Base.identity )
 
 
 get_spec(pibasis::PIBasis) =

@@ -5,10 +5,13 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
 using ACE.SphericalHarmonics: index_y
+using ACE: Invariant,  EuclideanVector
 using Combinatorics: permutations
 
-export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, clebschgordan
+export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, clebschgordan,
+       R3DC, Rot3DCoeffsEquiv
 # Extra export - for SphericalVector
+# TODO: clean up exports
 export yvec_symm_basis, Rotation_D_matrix, local_cou_coe
 
 import ACE: SphericalVector
@@ -26,7 +29,9 @@ end
 `Rot3DCoeffs: ` storing recursively precomputed coefficients for a
 rotation-invariant basis.
 """
-struct Rot3DCoeffs{T}
+abstract type R3DC{T} end
+
+struct Rot3DCoeffs{T} <: R3DC{T}
    vals::Vector{Dict}
    cg::ClebschGordan{T}
 end
@@ -191,7 +196,7 @@ dicttype(::Val{N}) where {N} =
 Rot3DCoeffs(T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T))
 
 
-function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
+function get_vals(A::R3DC, valN::Val{N}) where {N}
 	if length(A.vals) < N
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n)())
@@ -283,7 +288,7 @@ end
 # ----------------------------------------------------------------------
 
 
-function ri_basis(A::Rot3DCoeffs{T}, ll::SVector; ordered=false) where {T}
+function ri_basis(A::R3DC{T}, ll::SVector; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))
@@ -292,7 +297,7 @@ end
 
 
 # unordered
-function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
+function compute_Al(A::R3DC{T}, ll::SVector, ::Val{false}) where {T}
 	len = length(_mrange(ll))
 	CC = zeros(T, len, len)
 	for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
@@ -303,13 +308,13 @@ end
 
 
 # TODO: this could use some documentation
-# ?? What is zz here?
-rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
+
+rpi_basis(A::R3DC, zz, nn, ll) =
 			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
 
-# No matter what structure do zz/nn/ll have, turn them into SVector
-
-function rpi_basis(A::Rot3DCoeffs, nn::SVector{N, TN}, ll::SVector{N, Int}) where {N, TN}
+function rpi_basis(A::R3DC,
+						 nn::SVector{N, TN},
+						 ll::SVector{N, Int}) where {N, TN}
 	Uri = ri_basis(A, ll)
 	Mri = collect( _mrange(ll) )   # rows...
 	G = _gramian(nn, ll, Uri, Mri)
@@ -324,7 +329,7 @@ function _gramian(nn, ll, Uri, Mri)
    N = length(nn)
    nri = size(Uri, 1)
    @assert size(Uri, 1) == nri
-   G = zeros(nri, nri)
+   G = zeros(Complex{Float64}, nri, nri)
    for σ in permutations(1:N)
       if (nn[σ] != nn) || (ll[σ] != ll); continue; end
       for (iU1, mm1) in enumerate(Mri), (iU2, mm2) in enumerate(Mri)
@@ -421,6 +426,8 @@ function gramian(A::Rot3DCoeffs{T}, ll::StaticVector{N}, φ::SphericalVector, t:
 	end
 	return Z' * Z, Z;
 end
+
+include("rotations3d-equiv.jl")
 
 function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, φ::SphericalVector) where {T,N}
 #function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, φ::SphericalVector) where {N}

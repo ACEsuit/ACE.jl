@@ -44,6 +44,8 @@ for ntest = 1:30
       BB1 = evaluate(basis, ACEConfig(Xs1))
       print_tf(@test isapprox(BB, BB1, rtol=1e-10))
 end
+println()
+
 
 #---
 
