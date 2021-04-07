@@ -59,36 +59,21 @@ ACE.fltype(basis) == typeof(φ)
 Xs = rand(EuclideanVectorState, B1p.bases[1], 1)
 cfg = ACEConfig(Xs)
 BB = evaluate(basis, cfg)
-# for ntest = 1:30
-
-Q, D = ACE.Wigner.rand_QD(φ)
-
-SH = ACE.SphericalHarmonics.SHBasis(2)
-x = randn(SVector{3, Float64})
-#x = x / norm(x)
-#Y0 = evaluate(SH, x)[1]
-Y1 = evaluate(SH, x)[2:4]
-#Y2 = evaluate(SH, x)[5:9]
-#D_Y0_Q = D' * evaluate(SH, Q * x)[1]
-D_Y1_Q = D' * evaluate(SH, Q * x)[2:4]
-#D_Y2_Q = D' * evaluate(SH, Q * x)[5:9]
-if Y1 ≈ D_Y1_Q
-      println("Correct Wigner Matrix!")
-end
+Q, D = ACE.Wigner.rand_QD(L)
+DxBB = Ref(D) .* BB
 
 Xs1 = Ref(Q) .* Xs
 cfg1 = ACEConfig( Ref(Q) .* Xs )
 BB1 = evaluate(basis, cfg1)
-DxBB = Ref(D) .* BB
 norm(BB1)
 norm(DxBB)
-#[norm(DxBB1[i]) for i in 1:9]
-norm(BB1 - DxBB)
+norm(BB1 - DxBB)/norm(BB1)
 
 
 # end
 
 ##
+
 # #---
 # @info("Basis construction and evaluation checks")
 # @info("check single species")

@@ -5,12 +5,16 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
 using Combinatorics: permutations
+import ACE.Wigner.Rotation_D_matrix_ast
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, clebschgordan,
        R3DC, Rot3DCoeffsEquiv
+
+
+
 # Extra export - for SphericalVector
 # TODO: clean up exports
-export yvec_symm_basis, Rotation_D_matrix, local_cou_coe
+export yvec_symm_basis
 
 """
 `ClebschGordan: ` storing precomputed Clebsch-Gordan coefficients; see
@@ -30,15 +34,6 @@ struct Rot3DCoeffs{T} <: R3DC{T}
    vals::Vector{Dict}
    cg::ClebschGordan{T}
 end
-
-#------------------------------------
-# What I added
-struct D_Index
-	l::Int64
-	μ::Int64
-	m::Int64
-end
-#------------------------------------
 
 # -----------------------------------
 # iterating over an m collection
@@ -337,38 +332,13 @@ function _gramian(nn, ll, Uri, Mri)
    return G
 end
 
+## Matthias' code
+include("rotations3d-equiv.jl")
+
 ## Covariant construction for SphericalVector
-
-# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
-function Rotation_D_matrix(L::Integer)
-	if L<0
-		error("Orbital type shall be represented as a positive integer!")
-	end
-    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
-    for i = 1 : 2 * L + 1
-        for j = 1 : 2 * L + 1
-            D[j,i] = D_Index(L, i - 1 - L, j - 1 - L);
-        end
-    end
-	return D
-end
-
-function Rotation_D_matrix_ast(L::Integer)
-	if L<0
-		error("Orbital type shall be represented as a positive integer!")
-	end
-    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
-    for i = 1 : 2 * L + 1
-        for j = 1 : 2 * L + 1
-            D[i,j] = D_Index(L, -(i - 1 - L), -(j - 1 - L));
-        end
-    end
-	return D
-end
-
 # Equation (1.2) - vector value coupling coefficients
 function local_cou_coe(A::Rot3DCoeffs{T}, ll::StaticVector{N}, mm::StaticVector{N},
-					   kk::StaticVector{N}, L::Integer, t::Int64) where {T,N}
+					   kk::StaticVector{N}, L::Integer, t::Integer) where {T,N}
 	if t > 2L + 1 || t < 0
 		error("Rotation D matrix has no such column!")
 	end
@@ -386,7 +356,7 @@ function local_cou_coe(A::Rot3DCoeffs{T}, ll::StaticVector{N}, mm::StaticVector{
 	return Z
 end
 
-# Equation (1.5) - possible set of mm w.r.t. vector k
+# Equation (1.5) - possible set of mm w.r.t. index ll & vector k
 function collect_m(ll::StaticVector{N}, k::T) where {N,T}
 	d = length(k);
 	A = CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll)));
@@ -403,21 +373,19 @@ function collect_m(ll::StaticVector{N}, k::T) where {N,T}
 end
 
 # Equation(1.7) & (1.6) respectively - gramian
-function gramian(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Int64) where{T,N}
+function gramian(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Integer) where{T,N}
 	D = Rotation_D_matrix_ast(L);
 	Dt = D[:,t];
 	μt = [Dt[i].μ for i in 1:2L+1];
 	mt = [Dt[i].m for i in 1:2L+1];
 	m_list = collect_m(ll,mt);
 	μ_list = collect_m(ll,μt);
-	Z = [zeros(2L + 1).+zeros(2L + 1).*im for i = 1:length(μ_list), j = 1:length(m_list)];
+	Z = [zeros(ComplexF64, 2L + 1) for i = 1:length(μ_list), j = 1:length(m_list)];
 	for (im, mm) in enumerate(m_list), (iμ, μμ) in enumerate(μ_list)
 		Z[iμ,im] = local_cou_coe(A, ll, mm, μμ, L, t);
 	end
 	return Z' * Z, Z;
 end
-
-include("rotations3d-equiv.jl")
 
 function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) where {T,N}
 #function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, L::SphericalVector) where {N}
@@ -428,7 +396,7 @@ function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) where {
 	mt = [Dt[i].m for i in 1:2L+1];
 	m_list = collect_m(ll,mt);
 	μ_list = collect_m(ll,μt);
-	Z = [zeros(2L + 1).+zeros(2L + 1).*im for i = 1:length(μ_list), j = 1:length(μ_list)];
+	Z = [zeros(ComplexF64, 2L + 1) for i = 1:length(μ_list), j = 1:length(μ_list)];
 	#Z = [zeros(2L + 1) for i = 1:length(μ_list), j = 1:length(μ_list)];
 	for (im, mm) in enumerate(m_list), (iμ, μμ) in enumerate(μ_list)
 		Z[iμ,im] = local_cou_coe(A, ll, mm, μμ, L, 1);
@@ -451,7 +419,7 @@ function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) where {
 end
 
 # Equation (1.8) - LI set w.r.t. t & ll (not for nn for now)
-function rc_basis(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Int64) where {T,N}
+function rc_basis(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Integer) where {T,N}
 	G, C = gramian(A, ll, L, t);
 	D = Rotation_D_matrix_ast(L);
 	Dt = D[:,t];
@@ -460,7 +428,7 @@ function rc_basis(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Int64) 
 	S = svd(G);
 	rk = rank(G; rtol =  1e-8);
 	μ_list = collect_m(ll,μt)
-	Urcpi = [zeros(2L + 1) for i = 1:rk, j = 1:length(μ_list)];
+	Urcpi = [zeros(ComplexF64, 2L + 1) for i = 1:rk, j = 1:length(μ_list)];
 	U = S.U[:, 1:rk];
 	Sigma = S.S[1:rk]
 	Urcpi = C * U * Diagonal(sqrt.(Sigma))^(-1);
@@ -483,7 +451,7 @@ function rc_basis_tempall(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) wh
 	G, C, μ_list = gramian_all(A, ll, L);
 	S = svd(G);
 	rk = rank(G; rtol =  1e-8);
-	Urcpi = [zeros(2L + 1) .+ zeros(2L + 1).*im for i = 1:rk, j = 1:length(μ_list)];
+	Urcpi = [zeros(ComplexF64, 2L + 1) for i = 1:rk, j = 1:length(μ_list)];
 	U = S.U[:, 1:rk];
 	Sigma = S.S[1:rk]
 	Urcpi = C * U * Diagonal(sqrt.(Sigma))^(-1);
@@ -492,6 +460,7 @@ end
 
 # Equation (1.12) - Gramian over nn
 function Gramian(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, L::Integer) where {N}
+	#Uri, Mri = rc_basis_tempall(A, ll, L);
 	Uri, Mri = rc_basis_all(A, ll, L);
 #	m_list = collect_m(ll,mt)
 	G = zeros(Complex{Float64}, size(Uri)[1], size(Uri)[1]);
@@ -524,11 +493,19 @@ function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N
 	S = svd(G);
 	rk = rank(G; rtol =  1e-8);
 	μ_list = collect_m(ll,μt)
-	Urcpi = [zeros(2L + 1) for i = 1:rk, j = 1:length(μ_list)];
+	Urcpi = [zeros(ComplexF64, 2L + 1) for i = 1:rk, j = 1:length(μ_list)];
 	U = S.U[:, 1:rk];
 	Sigma = S.S[1:rk]
-	Urcpi = transpose(C) * U * Diagonal(sqrt.(Sigma))^(-1);
-	return transpose(Urcpi), μ_list
+	Urcpi = transpose(transpose(C) * U * Diagonal(sqrt.(Sigma))^(-1));
+	Z = [SVector(zeros(ComplexF64, 2L + 1)...) for i = 1:rk, j = 1:length(μ_list)];
+	for i = 1:rk
+		for j = 1:length(μ_list)
+			Z[i,j] = SVector(transpose(Urcpi[i,j])...);
+		end
+	end
+	return Z, μ_list
 end
+
+#yvec_symm_basis(Rot3DCoeffs(ComplexF64), SVector(1,2), SVector(1,2), 1)[1]
 
 end

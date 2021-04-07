@@ -1,11 +1,46 @@
 module Wigner
 
 using StaticArrays
-using ACE: SphericalVector
-import ACE.Rotations3D.Rotation_D_matrix
-import ACE. getL
+#using ACE: SphericalVector
+#import ACE.Rotations3D.Rotation_D_matrix
+#import ACE. getL
 
-export rot_D
+#export rot_D
+
+# Index of entries in D matrix (sign free)
+struct D_Index
+	l::Int64
+	μ::Int64
+	m::Int64
+end
+
+# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
+function Rotation_D_matrix(L::Integer)
+	if L<0
+		error("Orbital type shall be represented as a positive integer!")
+	end
+    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+    for i = 1 : 2 * L + 1
+        for j = 1 : 2 * L + 1
+            D[j,i] = D_Index(L, i - 1 - L, j - 1 - L);
+        end
+    end
+	return D
+end
+
+function Rotation_D_matrix_ast(L::Integer)
+	if L<0
+		error("Orbital type shall be represented as a positive integer!")
+	end
+    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+    for i = 1 : 2 * L + 1
+        for j = 1 : 2 * L + 1
+            D[i,j] = D_Index(L, -(i - 1 - L), -(j - 1 - L));
+        end
+    end
+	return D
+end
+
 
 function Wigner_D(μ,m,l,α,β,γ)
 	return (exp(-im*α*m) * wigner_d(m,μ,l,β)  * exp(-im*γ*μ))'
@@ -49,34 +84,34 @@ function Mat2Ang(Q)
 end
 
 # Rotation D matrix
-function rot_D(φ::TP, Q) where {TP <: SphericalVector{L, LEN}} where {L, LEN}
+function rot_D(L::Integer, Q)
 	Mat_D = zeros(ComplexF64, 2L + 1, 2L + 1);
-	D = Rotation_D_matrix(getL(φ));
+	D = Rotation_D_matrix(L);
 	α, β, γ = Mat2Ang(Q);
 	for i = 1 : 2L + 1
 		for j = 1 : 2L + 1
 			Mat_D[i,j] = Wigner_D(D[i,j].μ, D[i,j].m, D[i,j].l, α, β, γ);
 		end
 	end
-	return SMatrix{LEN, LEN, ComplexF64}(Mat_D)
+	return SMatrix{2L+1, 2L+1, ComplexF64}(Mat_D)
 end
 
 
 
-function rand_QD(φ::TP)  where {TP <: SphericalVector}
+function rand_QD(L)
 	rotz(α) = [cos(α) -sin(α) 0; sin(α) cos(α) 0; 0 0 1]
 	roty(α) = [cos(α) 0 sin(α); 0 1 0;-sin(α) 0 cos(α)]
 	Ang2Mat_zyz(α,β,γ) = rotz(α)*roty(β)*rotz(γ)
 
-   α = 2pi*rand();
-   β = pi*rand();
-   γ = 2pi*rand();
+	α = 2pi*rand();
+	β = pi*rand();
+	γ = 2pi*rand();
 
 	# construct the Q matrix
-   Q = Ang2Mat_zyz(α,β,γ)
-   Q = SMatrix{3,3}(Q)
+	Q = Ang2Mat_zyz(α,β,γ)
+	Q = SMatrix{3,3}(Q)
 
-	return Q, rot_D(φ, Q)
+	return Q, rot_D(L, Q)
 end
 
 end

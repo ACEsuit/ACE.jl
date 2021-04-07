@@ -2,11 +2,17 @@ using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
 using ACE, StaticArrays, ACE.SphericalHarmonics;
 using ACE.SphericalHarmonics: index_y;
-using Main.Rotations3D
+using ACE.Rotations3D
 using ACE: evaluate
 using Combinatorics: permutations
 
 SH = SphericalHarmonics.SHBasis(5);
+
+nn = SVector(1,2,2);
+ll = SVector(1,2,2);
+mm = SVector(-1,2);
+kk = SVector(1,-2);
+R = randn(SVector{15, Float64});
 
 ## Stucture Orbitaltype is nothing but the SphericalVector
 #  I'd like to add some subset of SphericalVector so that
@@ -17,6 +23,7 @@ abstract type Orbitaltype end
 struct Orbt <: Orbitaltype
     val::Int64
 end
+φ  = Orbt(1);
 
 # Todo: In fact, l index can be neglected!!
 """
@@ -135,6 +142,8 @@ function local_cou_coe_ast(ll::StaticVector{N}, mm::StaticVector{N},
 	return Z
 end
 
+local_cou_coe_ast(ll,mm,kk,φ,3)
+
 # Equation (1.5) - possible set of mm w.r.t. vector k
 function collect_m(ll::StaticVector{N}, k::T) where {N,T}
 	d = length(k);
@@ -196,6 +205,8 @@ function gramian_ast_all(ll::StaticVector{N}, φ::Orbitaltype) where{N}
 	return Z' * Z, Z, μ_list
 end
 
+gramian_ast_all(ll,φ)[1]
+
 #--- The end of the testing!!
 
 function gramian_ast(ll::StaticVector{N}, φ::Orbitaltype, t::Int64) where{N}
@@ -247,6 +258,8 @@ function rc_basis_ast_tempall(ll::StaticVector{N}, φ::Orbitaltype) where {N}
 	Urcpi = C * U * Diagonal(sqrt.(Sigma))^(-1);
 	return Urcpi', μ_list
 end
+
+
 
 
 
@@ -386,6 +399,8 @@ function Rcpi_basis_ast_final(nn::StaticVector{N}, ll::StaticVector{N}, φ::Orbi
 	Urcpi = C' * U * Diagonal(sqrt.(Sigma))^(-1);
 	return Urcpi', μ_list
 end
+
+Rcpi_basis_ast_final(nn,ll,Orbt(1))[1]
 ## End of LI of nn
 
 
@@ -424,7 +439,9 @@ function PIbasis(nn::T, ll::T, mm::T, R::SVector{N, Float64}) where{T,N}
 end
 
 function Rnbasis(n::Int64, R::SVector{3, Float64})
-	return (2*norm(R)+1)^n
+	return n*1/norm(R)
+	#return (2*norm(R)+1)^n
+	#return norm(R)^n + 2norm(R)^(n-1)
 end
 
 # Preliminary - from 3D-rotation matrix $$Q$$ to euler angle $$α, β, γ$$
@@ -506,7 +523,7 @@ end
 
 ## End of this generation
 
-# Preliminary - Rotate R w.r.t. specific Q
+# Preliminary - Rotate R w.r.t. specific Q && Permutation of R
 function Rot(R::SVector{N, Float64},Q) where {N}
     RotR = []; RotTemp = []; ii = 1;
     RotR = Q*R[3*ii-2:3*ii];
@@ -520,6 +537,25 @@ function Rot(R::SVector{N, Float64},Q) where {N}
     return RotR
 end
 
+function Per(R::SVector{N, Float64}) where {N}
+	PerR = []; PerTemp = [];
+	no_atom = Int(N/3);
+	no_per = length(collect(permutations(1:no_atom)))
+	for i in collect(permutations(1:no_atom))
+		PerR = []
+		PerR = R[3*i[1]-2:3*i[1]]
+		if N/3 > 1
+			for j = Int(2):no_atom
+				PerTemp = SVector(R.data[(3*i[j]-2):3*i[j]]);
+				PerR = [PerR; PerTemp];
+			end
+		end
+		if rand(1)[1]≤1/no_per
+			return SVector(PerR...)
+		end
+	end
+	return SVector(PerR...)
+end
 ## Check the correctness of Mat2Ang
 
 # A basic test
@@ -556,8 +592,8 @@ end
 # Begin of main test
 function Evaluate(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
 	Z = zeros(Complex{Float64}, 2φ.val+1, 1);
-#	U, μ_list = rc_basis_tempall(ll, φ);
-#	U, μ_list = Rcpi_basis_final(nn, ll, φ);
+	#U, μ_list = rc_basis_tempall(ll, φ);
+	#U, μ_list = Rcpi_basis_final(nn, ll, φ);
 	G, U, μ_list = gramian(ll,φ,1);
 	U = U';
 	UU = sum(U, dims = 1)
@@ -571,7 +607,7 @@ end
 
 function Evaluate_ast(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
 	Z = zeros(Complex{Float64}, 2φ.val+1, 1);
-#	U, μ_list = rcpi_basis_all(ll, φ);
+	#U, μ_list = rcpi_basis_all(ll, φ);
 	U, μ_list = Rcpi_basis_ast_final(nn, ll, φ);
 	UU = sum(U, dims = 1)
 	Num_μ = length(UU);
@@ -606,18 +642,38 @@ function Main_test(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R:
 	return result_RR ≈ rot_D(φ, Q)' * result_R
 end
 
-function test_PI
+function rand_QD(φ)
+	α = 2pi*rand();
+    β = pi*rand();
+    γ = 2pi*rand();
 
-function Main_test_ast(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, R::SVector{N, Float64}) where{T,N}
-	result_R = Evaluate_ast(nn,ll,φ,R)[1];
-	α = 2pi*rand(Float64);
-	β = pi*rand(Float64);
-	γ = 2pi*rand(Float64);
-	Q = Ang2Mat_zyz(α,β,γ);
-	Q = SMatrix{3,3}(Q);
-	RR = Rot(R, Q);
-	result_RR = Evaluate_ast(nn,ll,φ,RR)[1];
-	println("Is F(R) ≈ D(Q)F(QR)?")
-	return result_RR ≈ rot_D(φ, Q) * result_R
+ 	# construct the Q matrix
+    Q = Ang2Mat_zyz(α,β,γ)
+    Q = SMatrix{3,3}(Q)
+
+ 	return Q, rot_D(φ, Q)
 end
+
+function Main_test_ast(nn::StaticVector{T}, ll::StaticVector{T}, φ::Orbitaltype, N::Integer) where{T}
+	R = randn(SVector{3 * N, Float64});
+	Q,D = rand_QD(φ)
+	RR = Per(Rot(R, Q));
+
+	result_R = Evaluate_ast(nn,ll,φ,R)[1];
+	result_RR = Evaluate_ast(nn,ll,φ,RR)[1];
+
+	println("Is F(Q∘σ(R)) ≈ D(Q)F(R)?")
+	println(result_RR ≈ D * result_R)
+
+	result_mR = Evaluate_ast(nn,ll,φ,-R)[1];
+
+	println("Is F(-R) ≈ (-1)^L F(R)?")
+	println(result_mR ≈ (-1)^(φ.val)*result_R)
+end
+
+
+nn = SVector(3,2);
+ll = SVector(2,2);
+
+Main_test_ast(nn,ll,Orbt(1),3)
 ## End of the test

@@ -9,6 +9,8 @@ include("baseimports.jl")
 
 include("auxiliary.jl")
 
+include("testing/wigner.jl")
+
 include("rotations3d.jl")
 using ACE.Rotations3D
 
@@ -71,7 +73,7 @@ include("utils.jl")
 
 
 include("testing/testing.jl")
-include("testing/wigner.jl")
+#include("testing/wigner.jl")
 
 # - bond model
 # - pure basis

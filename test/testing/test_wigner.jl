@@ -1,8 +1,5 @@
 
 
-
-@testset "TestWigner" begin
-
 ##
 using ACE, StaticArrays, ACE.SphericalHarmonics;
 using ACEbase
@@ -10,8 +7,11 @@ using ACE.SphericalHarmonics: index_y;
 using ACE: evaluate
 using LinearAlgebra
 using Random, Printf, Test, ACE.Testing
+using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
 
 ##
+
+@testset "TestWigner" begin
 
 @info("Check correctness of Wigner-D matrices")
 
@@ -20,7 +20,7 @@ L = 1
 SH = ACE.SphericalHarmonics.SHBasis(2)
 
 for ntest = 1:20
-   Q, D = ACE.Wigner.rand_QD(φ)
+   Q, D = ACE.Wigner.rand_QD(L)
    x = randn(SVector{3, Float64})
    x = x / norm(x)
    Y1 = evaluate(SH, x)[2:4]
@@ -29,5 +29,4 @@ for ntest = 1:20
    print_tf(@test isapprox(Y1, D_Y1_Q, rtol=1e-10))
 end
 
-##
 end
