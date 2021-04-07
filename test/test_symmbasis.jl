@@ -52,7 +52,7 @@ println()
 L = 1
 ord = 1
 φ = ACE.SphericalVector(L; T = ComplexF64)
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
 basis = SymmetricBasis(pibasis, φ)
 ACE.fltype(basis) == typeof(φ)
 

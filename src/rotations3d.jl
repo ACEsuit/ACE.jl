@@ -337,21 +337,26 @@ include("rotations3d-equiv.jl")
 
 ## Covariant construction for SphericalVector
 # Equation (1.2) - vector value coupling coefficients
-function local_cou_coe(A::Rot3DCoeffs{T}, ll::StaticVector{N}, mm::StaticVector{N},
-					   kk::StaticVector{N}, L::Integer, t::Integer) where {T,N}
+#   ∫_SO3 D^ll_μμmm D^* e^t dQ -> 2L+1 vector
+function local_cou_coe(rotc::Rot3DCoeffs{T},
+					        ll::StaticVector{N},
+	                    mm::StaticVector{N},
+					        μμ::StaticVector{N},
+							  L::Integer,
+							  t::Integer) where {T,N}
 	if t > 2L + 1 || t < 0
 		error("Rotation D matrix has no such column!")
 	end
-	Z = zeros(Complex{Float64},2L + 1);
+	Z = zeros(Complex{Float64}, 2L + 1);
 	D = Rotation_D_matrix_ast(L);
-	Dt = D[:,t];
+	Dt = D[:,t];   # D^* ⋅ e^t
 	μt = [Dt[i].μ for i in 1:2L+1];
 	mt = [Dt[i].m for i in 1:2L+1];
-	LL = SVector([ll;L]...);
-	for i = 1 : 2L + 1
-		MM = SVector([mm;mt[i]]...);
-		KK = SVector([kk;μt[i]]...);
-		Z[i] = (-1)^(mt[i] - μt[i]) * A(LL, MM, KK);
+	LL = [ll; L]
+	for i = 1:(2L + 1)
+		MM = [mm; mt[i]]
+		KK = [μμ; μt[i]]
+		Z[i] = (-1)^(mt[i] - μt[i]) * rotc(LL, MM, KK);
 	end
 	return Z
 end
@@ -387,16 +392,17 @@ function gramian(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Integer)
 	return Z' * Z, Z;
 end
 
-function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) where {T,N}
+function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer
+				        ) where {T,N}
 #function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, L::SphericalVector) where {N}
 	LenM = 0
-	D = Rotation_D_matrix_ast(L);
+	D = Rotation_D_matrix_ast(L); # indices in the D matrix?????
 	Dt = D[:,1];
 	μt = [Dt[i].μ for i in 1:2L+1];
 	mt = [Dt[i].m for i in 1:2L+1];
 	m_list = collect_m(ll,mt);
 	μ_list = collect_m(ll,μt);
-	Z = [zeros(ComplexF64, 2L + 1) for i = 1:length(μ_list), j = 1:length(μ_list)];
+	Z = fill(zeros(ComplexF64, 2L + 1), (length(μ_list), length(μ_list)))
 	#Z = [zeros(2L + 1) for i = 1:length(μ_list), j = 1:length(μ_list)];
 	for (im, mm) in enumerate(m_list), (iμ, μμ) in enumerate(μ_list)
 		Z[iμ,im] = local_cou_coe(A, ll, mm, μμ, L, 1);
@@ -419,7 +425,8 @@ function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) where {
 end
 
 # Equation (1.8) - LI set w.r.t. t & ll (not for nn for now)
-function rc_basis(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Integer) where {T,N}
+function rc_basis(A::Rot3DCoeffs{T}, ll::StaticVector{N},
+					   L::Integer, t::Integer) where {T,N}
 	G, C = gramian(A, ll, L, t);
 	D = Rotation_D_matrix_ast(L);
 	Dt = D[:,t];
@@ -436,7 +443,9 @@ function rc_basis(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer, t::Integer
 end
 
 # Equation (1.10) - Collecting all t and sorting them in order
-function rc_basis_all(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) where {N,T}
+function rc_basis_all(A::Rot3DCoeffs{T},
+				          ll::StaticVector{N},
+							 L::Integer) where {N,T}
 #function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, L::SphericalVector) where {N}
 	Urcpi_all, μ_list = rc_basis(A, ll, L, 1);
 	if L ≠ 0
@@ -459,9 +468,12 @@ function rc_basis_tempall(A::Rot3DCoeffs{T}, ll::StaticVector{N}, L::Integer) wh
 end
 
 # Equation (1.12) - Gramian over nn
-function Gramian(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, L::Integer) where {N}
-	#Uri, Mri = rc_basis_tempall(A, ll, L);
-	Uri, Mri = rc_basis_all(A, ll, L);
+function Gramian(A::Rot3DCoeffs,
+			        nn::StaticVector{N},
+					  ll::StaticVector{N},
+					  L::Integer) where {N}
+	Uri, Mri = rc_basis_tempall(A, ll, L);
+	# Uri, Mri = rc_basis_all(A, ll, L);
 #	m_list = collect_m(ll,mt)
 	G = zeros(Complex{Float64}, size(Uri)[1], size(Uri)[1]);
 	for σ in permutations(1:N)
@@ -484,7 +496,10 @@ end
 in rotation3D.jl but still have some interface problem to be discussed
 """
 ## Equation (1.13) - LI coefficients(& corresponding μ) over nn, ll
-function yvec_symm_basis(A::Rot3DCoeffs, nn::StaticVector{N}, ll::StaticVector{N}, L::Integer) where {N}
+function yvec_symm_basis(A::Rot3DCoeffs,
+				             nn::StaticVector{N},
+								 ll::StaticVector{N},
+								 L::Integer) where {N}
 	G, C = Gramian(A, nn, ll, L);
 	D = Rotation_D_matrix_ast(L);
 	Dt = D[:,1];
