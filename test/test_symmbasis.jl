@@ -49,65 +49,29 @@ println()
 #---
 @info("SymmetricBasis construction and evaluation: Spherical Vector")
 
-@info("Test 01-10: L=0 ↔ s-s block ↔ invariant")
+for L = 0 : 3
+      if L == 0 @info("Test 01-10: L=0 ↔ s-s block ↔ invariant")
+      elseif L == 1 @info("Test 11-20: L=1 ↔ s-p block ↔ covariant")
+      elseif L == 2 @info("Test 21-30: L=2 ↔ s-d block ↔ covariant")
+      elseif L == 3 @info("Test 31-40: L=3 ↔ s-f block ↔ covariant")
+      end
 
-L = 0
-φ = ACE.SphericalVector(L; T = ComplexF64)
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-basis = SymmetricBasis(pibasis, φ)
-BB = evaluate(basis, cfg)
+      φ = ACE.SphericalVector(L; T = ComplexF64)
+      pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+      basis = SymmetricBasis(pibasis, φ)
+      BB = evaluate(basis, cfg)
 
-for ntest = 1:10
-      Q, D = ACE.Wigner.rand_QD(L)
-      rand_ref = rand((-1,1))
-      Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
-      cfg1 = ACEConfig( Xs1 )
-      BB1 = evaluate(basis, cfg1)
-      DtxBB1 = (rand_ref)^L .* Ref(D') .* BB1
-      print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
+      for ntest = 1:10
+            Q, D = ACE.Wigner.rand_QD(L)
+            rand_ref = rand((-1,1))
+            Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
+            cfg1 = ACEConfig( Xs1 )
+            BB1 = evaluate(basis, cfg1)
+            DtxBB1 = (rand_ref)^L .* Ref(D') .* BB1
+            print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
+      end
+      println()
 end
-println()
-
-@info("Test 11-20: L=1 ↔ s-p block ↔ covariant")
-
-L = 1
-φ = ACE.SphericalVector(L; T = ComplexF64)
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-basis = SymmetricBasis(pibasis, φ)
-BB = evaluate(basis, cfg)
-mBB = evaluate(basis, ACEConfig(-Xs))
-
-for ntest = 1:10
-      Q, D = ACE.Wigner.rand_QD(L)
-      rand_ref = rand((-1,1))
-      Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
-      cfg1 = ACEConfig( Xs1 )
-      BB1 = evaluate(basis, cfg1)
-      DtxBB1 = (rand_ref)^L .* Ref(D') .* BB1
-      print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
-end
-println()
-
-@info("Test 21-30: L=2 ↔ s-d block ↔ covariant")
-
-L = 2
-φ = ACE.SphericalVector(L; T = ComplexF64)
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-basis = SymmetricBasis(pibasis, φ)
-BB = evaluate(basis, cfg)
-
-for ntest = 1:10
-      Q, D = ACE.Wigner.rand_QD(L)
-      rand_ref = rand((-1,1))
-      Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
-      cfg1 = ACEConfig( Ref(Q) .* Xs )
-      BB1 = evaluate(basis, cfg1)
-      DtxBB1 = (rand_ref)^L .* Ref(D') .* BB1
-      print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
-end
-println()
-
-
 
 ##
 
