@@ -1,17 +1,16 @@
 
+@testset "TestWigner" begin
 
 ##
 using ACE, StaticArrays, ACE.SphericalHarmonics;
 using ACEbase
 using ACE.SphericalHarmonics: index_y;
 using ACE: evaluate
-using LinearAlgebra
 using Random, Printf, Test, ACE.Testing
-using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
+using ACE, Test, Printf, LinearAlgebra, BenchmarkTools
 
 ##
 
-@testset "TestWigner" begin
 
 @info("Check correctness of Wigner-D matrices")
 
@@ -28,5 +27,6 @@ for ntest = 1:20
    # println(Y1 ≈ D_Y1_Q)
    print_tf(@test isapprox(Y1, D_Y1_Q, rtol=1e-10))
 end
+println()
 
 end
