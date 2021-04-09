@@ -11,7 +11,6 @@ struct Rot3DCoeffsEquiv{T,L}<: R3DC{T}
    cg::ClebschGordan{T}
 end
 
-
 struct MRangeEq{N, T2}
    ll::SVector{N, Int}
    cartrg::T2

@@ -62,7 +62,7 @@ filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
              isodd( sum(bi.l for bi in b)) &&
             (abs(sum(bi.m for bi in b)) <= 1) )
 
-rot3Dcoeffs(::EuclideanVector, T::DataType=Float64) = Rot3DCoeffsEquiv(T)
+rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
 
 @doc raw"""
