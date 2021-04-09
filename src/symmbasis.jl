@@ -145,7 +145,9 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
       error("an equivariant vector basis function cannot have length 0")
    end
    ll, nn = _b2llnn(bb)
-   U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll)
+   # A small modification here - the function yvec_symm_basis shall
+   # be φ related which specifies the blocks(the type of orbitals)...
+   U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll, getL(φ))
    rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
    return U, rpibs
 end

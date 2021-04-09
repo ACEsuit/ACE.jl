@@ -6,8 +6,7 @@ using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
 using Combinatorics: permutations
 
-export ClebschGordan, R3DC, Rot3DCoeffs, ri_basis, rpi_basis,  Rot3DCoeffsEquiv
-
+export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 
 """
 `ClebschGordan: ` storing precomputed Clebsch-Gordan coefficients; see
@@ -27,8 +26,6 @@ struct Rot3DCoeffs{T} <: R3DC{T}
    vals::Vector{Dict}
    cg::ClebschGordan{T}
 end
-
-
 
 # -----------------------------------
 # iterating over an m collection
@@ -150,7 +147,6 @@ ClebschGordan(T=Float64) =
 	ClebschGordan{T}(Dict{Tuple{Int,Int,Int,Int,Int,Int}, T}())
 
 _cg_key(j1, m1, j2, m2, J, M) = (j1, m1, j2, m2, J, M)
-	# Int.((index_y(j1,m1), index_y(j2,m2), index_y(J,M)))
 
 function (cg::ClebschGordan{T})(j1, m1, j2, m2, J, M) where {T}
 	if !cg_conditions(j1,m1, j2,m2, J,M)
@@ -267,7 +263,6 @@ function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
    return val
 end
 
-
 # ----------------------------------------------------------------------
 #   construction of a possible set of generalised CG coefficient;
 #   numerically via SVD
@@ -285,11 +280,11 @@ end
 # unordered
 function compute_Al(A::R3DC{T}, ll::SVector, ::Val{false}) where {T}
 	len = length(_mrange(ll))
-   CC = zeros(T, len, len)
-   for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
-      CC[ik, im] = A(ll, mm, kk)
-   end
-   return CC
+	CC = zeros(T, len, len)
+	for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+		CC[ik, im] = A(ll, mm, kk)
+	end
+	return CC
 end
 
 
@@ -304,8 +299,8 @@ function rpi_basis(A::R3DC,
 	Uri = ri_basis(A, ll)
 	Mri = collect( _mrange(ll) )   # rows...
 	G = _gramian(nn, ll, Uri, Mri)
-   S = svd(G)
-   rk = rank(G; rtol =  1e-7)
+    S = svd(G)
+    rk = rank(G; rtol =  1e-7)
 	Urpi = S.U[:, 1:rk]'
 	return Diagonal(sqrt.(S.S[1:rk])) * Urpi * Uri, Mri
 end
@@ -329,9 +324,10 @@ function _gramian(nn, ll, Uri, Mri)
    return G
 end
 
-# TODO : incorporate into rotations / combine / unify.
+## Matthias' code
 include("rotations3d-equiv.jl")
 
-
+## Covariant construction for SphericalVector - Liwei
+include("rotations3d-spher-vec.jl")
 
 end

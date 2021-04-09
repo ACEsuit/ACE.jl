@@ -36,6 +36,7 @@ rand_rot() = (K = (@SMatrix rand(3,3)) .- 0.5; exp(K - K'))
 
 rand_refl() = rand([-1,1])
 
+rand_O3() = rand_refl() * rand_rot()
 
 function rand_rot(Xs::AbstractVector)
    Q = rand_rot()
