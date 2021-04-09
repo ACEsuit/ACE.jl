@@ -1,10 +1,10 @@
 module Wigner
 
 using StaticArrays
-import ACE.Rotations3D.Rotation_D_matrix
+import ACE.Rotations3D.rotation_D_matrix
 
 
-function Wigner_D(μ,m,l,α,β,γ)
+function wigner_big_D(μ,m,l,α,β,γ)
 	return (exp(-im*α*m) * wigner_d(m,μ,l,β)  * exp(-im*γ*μ))'
 end
 
@@ -41,18 +41,18 @@ function wigner_d(μ, m, l, β)
     return temp
 end
 
-function Mat2Ang(Q)
+function mat2ang(Q)
 	return mod(atan(Q[2,3],Q[1,3]),2pi), acos(Q[3,3]), mod(atan(Q[3,2],-Q[3,1]),2pi);
 end
 
 # Rotation D matrix
 function rot_D(L::Integer, Q)
 	Mat_D = zeros(ComplexF64, 2L + 1, 2L + 1);
-	D = Rotation_D_matrix(L);
-	α, β, γ = Mat2Ang(Q);
+	D = rotation_D_matrix(L);
+	α, β, γ = mat2ang(Q);
 	for i = 1 : 2L + 1
 		for j = 1 : 2L + 1
-			Mat_D[i,j] = Wigner_D(D[i,j].μ, D[i,j].m, L, α, β, γ);
+			Mat_D[i,j] = wigner_big_D(D[i,j].μ, D[i,j].m, L, α, β, γ);
 		end
 	end
 	return SMatrix{2L+1, 2L+1, ComplexF64}(Mat_D)

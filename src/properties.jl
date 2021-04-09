@@ -16,9 +16,6 @@ abstract type AbstractProperty end
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
-@inline *(A::AbstractMatrix, φ::T) where {T <: AbstractProperty} = T(A * φ.val)
-# @inline *(A::StaticArrays.SArray{Tuple{3,3}, T,2,9}, φ::EuclideanVector{T}) where {T <: Number} = EuclideanVector{T}(A * φ.val)
-
 
 Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
       isapprox(φ1.val, φ2.val)
@@ -91,10 +88,10 @@ end
 
 struct SphericalVector{L, LEN, T} <: AbstractProperty
    val::SVector{LEN, T}
-   _valL::Val{L} ## Why do we need Val?
+   _valL::Val{L}
 end
 
-getL(φ::SphericalVector) = typeof(φ).parameters[1];
+getL(φ::SphericalVector{L}) where {L} = L
 
 # L = 0 -> (0,0)
 # L = 1 -> (0,0), (1,-1), (1,0), (1,1)  -> 4
@@ -119,28 +116,3 @@ filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :
          ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
 
 rot3Dcoeffs(::SphericalVector, T::DataType=Float64) = Rot3DCoeffs(T)
-
-struct Sphericalvector{LEN, T} <: AbstractProperty
-   val::SVector{LEN, T}
-   #_valL::Val{L} ## Why do we need such value?
-   _valL::Int64
-end
-
-getL(φ::Sphericalvector) = φ._valL
-
-function Sphericalvector(L::Integer; T = Float64)
-   LEN = 2L+1   # length of SH basis up to L
-   return Sphericalvector( zero(SVector{LEN, T}), L )
-end
-
-Base.zero(::Sphericalvector{LEN, T}) where {L, LEN, T} =
-      Sphericalvector( zero(SVector{LEN, T}), L )
-
-filter(φ::Sphericalvector, b::Array) = ( length(b) <= 1 ? true :
-     ( ( iseven(sum(bi.l for bi in b)) == iseven(getL(φ)) ) &&
-       ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
-
-
-# filter(φ::SphericalVector{L}, b::Array) where {L} = ( length(b) <= 1 ? true :
-#              isodd( sum(bi.l for bi in b)) &&
-#             (abs(sum(bi.m for bi in b)) <= 1) )

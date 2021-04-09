@@ -7,7 +7,7 @@ struct D_Index
 end
 
 # Equation (1.1) - forms the covariant matrix D(Q)(indices only)
-function Rotation_D_matrix(L::Integer)
+function rotation_D_matrix(L::Integer)
 	if L<0
 		error("Orbital type shall be represented as a positive integer!")
 	end
@@ -21,7 +21,7 @@ function Rotation_D_matrix(L::Integer)
 end
 
 # Equation (1.1) - forms the covariant matrix D(Q)(indices only)
-function Rotation_D_matrix_ast(L::Integer)
+function rotation_D_matrix_ast(L::Integer)
 	if L<0
 		error("Orbital type shall be represented as a positive integer!")
 	end
@@ -46,7 +46,7 @@ function vec_cou_coe(rotc::Rot3DCoeffs{T},
 		error("Rotation D matrix has no such column!")
 	end
 	Z = zeros(2L + 1)
-	D = Rotation_D_matrix_ast(L)
+	D = rotation_D_matrix_ast(L)
 	Dt = D[:,t]   # D^* ⋅ e^t
 	μt = [Dt[i].μ for i in 1:2L+1]
 	mt = [Dt[i].m for i in 1:2L+1]
@@ -75,10 +75,10 @@ function collect_m(ll::StaticVector{N}, k::T) where {N,T}
 	return B
 end
 
-function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N},
+function gramian(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 	                 L::Integer) where {T,N}
 	LenM = 0
-	D = Rotation_D_matrix_ast(L)
+	D = rotation_D_matrix_ast(L)
 	D1 = D[:,1]
 	μt = [D1[i].μ for i in 1:2L+1]
 	μ_list = collect_m(ll,μt)
@@ -97,7 +97,7 @@ end
 
 function rc_basis_all(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 	                  L::Integer) where {N,T}
-	G, C, μ_list = gramian_all(A, ll, L)
+	G, C, μ_list = gramian(A, ll, L)
 	S = svd(G)
 	rk = rank(G; rtol =  1e-8)
 	Urcpi = fill(zeros(2L + 1), (rk, length(μ_list)))
@@ -108,7 +108,7 @@ function rc_basis_all(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 end
 
 # Equation (1.12) - Gramian over nn
-function Gramian(A::Rot3DCoeffs,
+function gramian_nn(A::Rot3DCoeffs,
 			     nn::StaticVector{N},
 			     ll::StaticVector{N},
 				 L::Integer) where {N}
@@ -131,10 +131,10 @@ end
 
 ## Equation (1.13) - LI coefficients(& corresponding μ) over nn, ll
 function yvec_symm_basis(A::Rot3DCoeffs,
-				             nn::StaticVector{N},
-								 ll::StaticVector{N},
-								 L::Integer) where {N}
-	G, C, μ_list= Gramian(A, nn, ll, L)
+				         nn::StaticVector{N},
+					     ll::StaticVector{N},
+					      L::Integer) where {N}
+	G, C, μ_list= gramian_nn(A, nn, ll, L)
 	S = svd(G)
 	rk = rank(G; rtol =  1e-8)
 	Urcpi = fill(zeros(2L + 1), (rk, length(μ_list)))
