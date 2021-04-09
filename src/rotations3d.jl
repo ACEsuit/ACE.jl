@@ -5,7 +5,6 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal
 using Combinatorics: permutations
-import ACE.Wigner.Rotation_D_matrix_ast
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 

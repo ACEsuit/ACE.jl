@@ -1,45 +1,7 @@
 module Wigner
 
 using StaticArrays
-#using ACE: SphericalVector
-#import ACE.Rotations3D.Rotation_D_matrix
-#import ACE. getL
-
-#export rot_D
-
-# Index of entries in D matrix (sign free)
-struct D_Index
-	l::Int64
-	μ::Int64
-	m::Int64
-end
-
-# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
-function Rotation_D_matrix(L::Integer)
-	if L<0
-		error("Orbital type shall be represented as a positive integer!")
-	end
-    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
-    for i = 1 : 2 * L + 1
-        for j = 1 : 2 * L + 1
-            D[j,i] = D_Index(L, i - 1 - L, j - 1 - L);
-        end
-    end
-	return D
-end
-
-function Rotation_D_matrix_ast(L::Integer)
-	if L<0
-		error("Orbital type shall be represented as a positive integer!")
-	end
-    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
-    for i = 1 : 2 * L + 1
-        for j = 1 : 2 * L + 1
-            D[i,j] = D_Index(L, -(i - 1 - L), -(j - 1 - L));
-        end
-    end
-	return D
-end
+import ACE.Rotations3D.Rotation_D_matrix
 
 
 function Wigner_D(μ,m,l,α,β,γ)
@@ -90,7 +52,7 @@ function rot_D(L::Integer, Q)
 	α, β, γ = Mat2Ang(Q);
 	for i = 1 : 2L + 1
 		for j = 1 : 2L + 1
-			Mat_D[i,j] = Wigner_D(D[i,j].μ, D[i,j].m, D[i,j].l, α, β, γ);
+			Mat_D[i,j] = Wigner_D(D[i,j].μ, D[i,j].m, L, α, β, γ);
 		end
 	end
 	return SMatrix{2L+1, 2L+1, ComplexF64}(Mat_D)

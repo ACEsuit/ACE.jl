@@ -1,8 +1,43 @@
 
+# Index of entries in D matrix (sign included)
+struct D_Index
+	sign::Int64
+	μ::Int64
+	m::Int64
+end
+
+# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
+function Rotation_D_matrix(L::Integer)
+	if L<0
+		error("Orbital type shall be represented as a positive integer!")
+	end
+    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+    for i = 1 : 2 * L + 1
+        for j = 1 : 2 * L + 1
+            D[j,i] = D_Index(1, i - 1 - L, j - 1 - L);
+        end
+    end
+	return D
+end
+
+# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
+function Rotation_D_matrix_ast(L::Integer)
+	if L<0
+		error("Orbital type shall be represented as a positive integer!")
+	end
+    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+    for i = 1 : 2 * L + 1
+        for j = 1 : 2 * L + 1
+            D[i,j] = D_Index((-1)^(i+j), -(i - 1 - L), -(j - 1 - L));
+        end
+    end
+	return D
+end
+
 
 # Equation (1.2) - vector value coupling coefficients
 # ∫_{SO3} D^{ll}_{μμmm} D^*(Q) e^t dQ -> 2L+1 column vector
-function local_cou_coe(rotc::Rot3DCoeffs{T},
+function vec_cou_coe(rotc::Rot3DCoeffs{T},
 					   ll::StaticVector{N},
 	                   mm::StaticVector{N},
 					   μμ::StaticVector{N},
@@ -19,7 +54,7 @@ function local_cou_coe(rotc::Rot3DCoeffs{T},
 	for i = 1:(2L + 1)
 		MM = [mm; mt[i]]
 		KK = [μμ; μt[i]]
-		Z[i] = (-1)^(mt[i] - μt[i]) * rotc(LL, MM, KK)
+		Z[i] = Dt[i].sign * rotc(LL, MM, KK)
 	end
 	return Z
 end
@@ -53,7 +88,7 @@ function gramian_all(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 		mt = [Dt[i].m for i in 1:2L+1];
 		m_list = collect_m(ll,mt)
 		for (im, mm) in enumerate(m_list), (iμ, μμ) in enumerate(μ_list)
-			Z[iμ, im + LenM] = local_cou_coe(A, ll, mm, μμ, L, t)
+			Z[iμ, im + LenM] = vec_cou_coe(A, ll, mm, μμ, L, t)
 		end
 		LenM += length(m_list)
 	end
