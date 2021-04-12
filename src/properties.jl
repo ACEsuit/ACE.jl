@@ -147,7 +147,7 @@ end
 SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T} =
       SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 
-filter(φ::SphericalMatrix, b::Array) = ( length(b) <= 1 ? true :
+filter(φ::SphericalMatrix, b::Array) = ( length(b) < 1 ? true :
         ( ( iseven(sum(bi.l for bi in b)) == iseven(sum(getL(φ))) ) &&
          ( abs(sum(bi.m for bi in b)) <= sum(getL(φ)) )  ) )
 
