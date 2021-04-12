@@ -76,25 +76,46 @@ end
 #---
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
-L1 = 1; L2 = 1;
+for L1 = 0:2
+   for L2 = 0:2
 
-φ = ACE.SphericalMatrix(L1,L2; T = ComplexF64)
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-basis = SymmetricBasis(pibasis, φ)
-BB = evaluate(basis, cfg)
-norm(BB)
+      if L1 == 0
+         if L2 == 0 @info("Test 01-05: L1 = 0, L2 = 0 ↔ s-s block ↔ invariant")
+         elseif L2 == 1 @info("Test 06-10: L1 = 0, L2 = 1 ↔ p-s block ↔ covariant")
+         elseif L2 == 2 @info("Test 11-15: L1 = 0, L2 = 2 ↔ d-s block ↔ covariant")
+         end
+      elseif L1 == 1
+         if L2 == 0 @info("Test 16-20: L1 = 1, L2 = 0 ↔ s-p block ↔ covariant")
+         elseif L2 == 1 @info("Test 21-25: L1 = 1, L2 = 1 ↔ p-p block ↔ covariant")
+         elseif L2 == 2 @info("Test 26-30: L1 = 1, L2 = 2 ↔ d-p block ↔ covariant")
+         end
+      elseif L1 == 2
+         if L2 == 0 @info("Test 31-35: L1 = 2, L2 = 0 ↔ s-d block ↔ covariant")
+         elseif L2 == 1 @info("Test 36-40: L1 = 2, L2 = 1 ↔ p-d block ↔ covariant")
+         elseif L2 == 2 @info("Test 41-45: L1 = 2, L2 = 2 ↔ d-d block ↔ covariant")
+         end
+      #elseif L == 3 @info("Test 31-40: L=3 ↔ s-f block ↔ covariant")
+      end
 
-Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
-#rand_ref = rand((-1,1))
-rand_ref = -1
-Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
-cfg1 = ACEConfig( Xs1 )
-BB1 = evaluate(basis, cfg1)
-D1txBB1xD2 = (rand_ref)^(L1+L2) .* Ref(D1') .* BB1 .* Ref(D2)
-norm(D1txBB1xD2)
+      φ = ACE.SphericalMatrix(L1,L2; T = ComplexF64)
+      pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+      basis = SymmetricBasis(pibasis, φ)
+      BB = evaluate(basis, cfg)
 
-print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
+      for ntest = 1:5
+         Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
+         #rand_ref = rand((-1,1))
+         rand_ref = 1
+         Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
+         cfg1 = ACEConfig( Xs1 )
+         BB1 = evaluate(basis, cfg1)
+         D1txBB1xD2 = (rand_ref)^(L1+L2) .* Ref(D1') .* BB1 .* Ref(D2)
 
+         print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
+      end
+      println()
+   end
+end
 #---
 
 # #---
