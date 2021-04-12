@@ -152,6 +152,16 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
    return U, rpibs
 end
 
+function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalMatrix)
+   if length(bb) == 0
+      error("an equivariant matrix basis function cannot have length 0")
+   end
+   ll, nn = _b2llnn(bb)
+   U, Ms = Rotations3D.mat_symm_basis(rotc, nn, ll, getL(φ)[1], getL(φ)[2])
+   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+   return U, rpibs
+end
+
 
 _nnllmm2b(nn, ll, mm) = [ _nlm2b(n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
 

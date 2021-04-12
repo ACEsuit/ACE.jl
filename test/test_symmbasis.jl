@@ -73,7 +73,29 @@ for L = 0 : 3
       println()
 end
 
-##
+#---
+@info("SymmetricBasis construction and evaluation: Spherical Matrix")
+
+L1 = 1; L2 = 1;
+
+φ = ACE.SphericalMatrix(L1,L2; T = ComplexF64)
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+basis = SymmetricBasis(pibasis, φ)
+BB = evaluate(basis, cfg)
+norm(BB)
+
+Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
+#rand_ref = rand((-1,1))
+rand_ref = -1
+Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
+cfg1 = ACEConfig( Xs1 )
+BB1 = evaluate(basis, cfg1)
+D1txBB1xD2 = (rand_ref)^(L1+L2) .* Ref(D1') .* BB1 .* Ref(D2)
+norm(D1txBB1xD2)
+
+print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
+
+#---
 
 # #---
 # @info("Basis construction and evaluation checks")

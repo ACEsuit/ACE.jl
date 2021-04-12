@@ -3,7 +3,7 @@
 module Rotations3D
 
 using StaticArrays
-using LinearAlgebra: norm, rank, svd, Diagonal
+using LinearAlgebra: norm, rank, svd, Diagonal, tr
 using Combinatorics: permutations
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
@@ -327,7 +327,9 @@ end
 ## Matthias' code
 include("rotations3d-equiv.jl")
 
-## Covariant construction for SphericalVector - Liwei
+## Covariant construction for SphericalVector/Matrix - Liwei
 include("rotations3d-spher-vec.jl")
+
+include("rotations3d-spher-mat.jl")
 
 end

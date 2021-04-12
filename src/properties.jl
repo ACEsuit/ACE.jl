@@ -7,9 +7,11 @@ abstract type AbstractProperty end
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
 @inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
 @inline -(φ::T) where {T <: AbstractProperty} = T( -φ.val)
-@inline *(φ::T, λ::Number) where {T <: AbstractProperty} = T(φ.val * λ)
+#@inline *(φ::T, λ::Number) where {T <: AbstractProperty} = T(φ.val * λ)
 @inline *(a::Union{Number, AbstractMatrix}, φ::T) where {T <: AbstractProperty} =
       T(a * φ.val)
+@inline *(φ::T, a::Union{Number, AbstractMatrix}) where {T <: AbstractProperty} =
+      T(φ.val * a)
 @inline norm(φ::T) where {T <: AbstractProperty} = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
@@ -116,3 +118,37 @@ filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :
          ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
 
 rot3Dcoeffs(::SphericalVector, T::DataType=Float64) = Rot3DCoeffs(T)
+
+
+struct SphericalMatrix{L1, L2, LEN1, LEN2, T} <: AbstractProperty
+   val::SMatrix{LEN1, LEN2, T}
+   _valL1::Val{L1}
+   _valL2::Val{L2}
+end
+
+getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = [L1;L2]
+
+# L = 0 -> (0,0)
+# L = 1 -> (0,0), (1,-1), (1,0), (1,1)  -> 4
+# L = 3 ->  ... + 5 -> 9
+# 1 + 3 + 5 + ... + 2*L+1
+# = L + 2 * (1 + ... + L) = L+1 + 2 * L * (L+1) / 2 = (L+1)^2
+function SphericalMatrix(L1::Integer, L2::Integer; T = Float64)
+   LEN1 = 2L1+1   # length of SH basis up to L
+   LEN2 = 2L2+1
+   return SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
+end
+
+function SphericalMatrix{L1, L2, LEN1, LEN2, T}(x::AbstractMatrix) where {L1, L2, LEN1, LEN2, T}
+   @assert size(x) == (LEN1, LEN2)
+   SphericalMatrix{L1, L2, LEN1, LEN2, T}( SMatrix{LEN1, LEN2, T}(x...), Val(L1), Val(L2) )
+end
+
+SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T} =
+      SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
+
+filter(φ::SphericalMatrix, b::Array) = ( length(b) <= 1 ? true :
+        ( ( iseven(sum(bi.l for bi in b)) == iseven(sum(getL(φ))) ) &&
+         ( abs(sum(bi.m for bi in b)) <= sum(getL(φ)) )  ) )
+
+rot3Dcoeffs(::SphericalMatrix, T::DataType=Float64) = Rot3DCoeffs(T)
