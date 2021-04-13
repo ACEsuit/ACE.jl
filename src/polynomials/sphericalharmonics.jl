@@ -8,7 +8,7 @@ using StaticArrays, LinearAlgebra
 import ACE
 
 import ACE: alloc_B, alloc_dB, fltype,
-		      alloc_temp, alloc_temp_d, evaluate!, evaluate_d!,
+		      alloc_temp, alloc_temp_d, evaluate!, evaluate_d!, evaluate_ed!,
 			   write_dict, read_dict,
 				ACEBasis
 
@@ -547,7 +547,7 @@ _evaluate!(Y, L, S, P, ::RSHBasis) = rYlm!(Y, L, S, P)
 _evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)
 # _evaluate_d!(dY, L, S, P, dP, ::RSHBasis) = rYlm_d!(dY, L, S, P, dP)
 
-_evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_d!(Y, dY, L, S, P, dP)
+_evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_ed!(Y, dY, L, S, P, dP)
 _evaluate_ed!(Y, dY, L, S, P, dP, ::RSHBasis) = rYlm_d!(Y, dY, L, S, P, dP)
 
 function evaluate!(Y, tmp, SH::AbstractSHBasis, R::SVector{3})
@@ -568,7 +568,7 @@ function evaluate_d!(dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	_evaluate_d!(dY, L, S, tmp.P, tmp.dP, SH)
 end
 
-function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
+function ACEbase.evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)
@@ -577,7 +577,7 @@ function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	# end
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
-	_evaluate_d!(Y, dY, L, S, tmp.P, tmp.dP, SH)
+	_evaluate_ed!(Y, dY, L, S, tmp.P, tmp.dP, SH)
 	# return Y, dY
 end
 

@@ -66,20 +66,6 @@ Base.getproperty(s::DiscreteState{T, SYM}, sym) where {T, SYM} =
       sym == SYM ? getfield(s, :val) : getfield(s, sym)
 
 
-# a starting point how to construct general states
-# using a macro instead of writing them by hand
-# macro state(name, args...)
-#    @show name
-#    for x in args
-#       @assert x.args[1] === Symbol("=>")
-#    end
-#    fields = [:($(x.args[2])::$(x.args[3])) for x in args]
-#    esc(quote struct $name <: AbstractState
-#       $(fields...)
-#       end
-#    end)
-# end
-
 
 
 struct ACEConfig{STT} <: AbstractConfiguration
@@ -89,9 +75,10 @@ end
 # --- iterator to go through all states in an abstract configuration assuming
 #     that the states are stored in cfg.Xs
 
-
 Base.iterate(cfg::AbstractConfiguration) =
    length(cfg.Xs) == 0 ? nothing : (cfg.Xs[1], 1)
 
 Base.iterate(cfg::AbstractConfiguration, i::Integer) =
    length(cfg.Xs) == i ? nothing : (cfg.Xs[i+1], i+1)
+
+Base.length(cfg::AbstractConfiguration) = length(cfg.Xs)

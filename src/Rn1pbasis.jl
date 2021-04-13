@@ -61,7 +61,26 @@ rand_radial(basis::Rn1pBasis) = rand_radial(basis.R)
 
 alloc_B(basis::Rn1pBasis) = alloc_B(basis.R)
 
+alloc_dB(basis::Rn1pBasis) =
+      zeros( SVector{3, fltype(basis.R)}, length(basis) )
+
 alloc_temp(basis::Rn1pBasis) = alloc_temp(basis.R)
+
+alloc_temp_d(basis::Rn1pBasis) =
+      (
+      # alloc_temp_d(basis.R)...,
+      dRdr = zeros(fltype(basis.R), length(basis.R)),
+      )
+
 
 evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.R, norm(X.rr))
+
+function evaluate_ed!(B, dB, tmpd, basis::Rn1pBasis, X::AbstractState)
+   r = norm(X.rr)
+   r̂ = X.rr / r
+   evaluate!(B, tmpd, basis.R, norm(X.rr))
+   evaluate_d!(tmpd.dRdr, tmpd, basis.R, norm(X.rr))
+   dB[:] .= Ref(r̂) .* tmpd.dRdr
+   return nothing
+end

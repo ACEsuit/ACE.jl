@@ -38,35 +38,24 @@ function evaluate!(A, tmp, basis::OneParticleBasis, X::AbstractState)
 end
 
 
+function evaluate_ed!(A, dA, tmpd, basis::OneParticleBasis,
+                      cfg::AbstractConfiguration)
+   fill!(A, 0)
+   fill!(dA, zero(eltype(dA)))  # TODO: this should not be necessary!
+   for (j, X) in enumerate(cfg)
+      dAview = @view dA[:, j]
+      add_into_A_dA!(A, dAview, tmpd, basis, X)
+   end
+   return dA
+end
 
 
+function evaluate_ed!(A, dA, tmpd, basis::OneParticleBasis, X::AbstractState)
+   fill!(A, 0)
+   add_into_A_dA!(A, dA, tmpd, basis, X)
+   return dA
+end
 
-# function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis,
-#                      Rs, Zs::AbstractVector, z0)
-#    fill!(A, 0)
-#    fill!(dA, zero(eltype(dA)))  # TODO: this should not be necessary!
-#    iz0 = z2i(basis, z0)
-#    for (j, (R, Z)) in enumerate(zip(Rs, Zs))
-#       iz = z2i(basis, Z)
-#       Aview = @view A[basis.Aindices[iz, iz0]]
-#       dAview = @view dA[basis.Aindices[iz, iz0], j]
-#       add_into_A_dA!(Aview, dAview, tmpd, basis, R, iz, iz0)
-#    end
-#    return dA
-# end
-#
-#
-#
-# function evaluate_d!(A, dA, tmpd, basis::OneParticleBasis,
-#                      R, z::AtomicNumber, z0)
-#    fill!(A, 0)
-#    iz, iz0 = z2i(basis, z), z2i(basis, z0)
-#    Aview = @view A[basis.Aindices[iz, iz0]]
-#    dAview = @view dA[basis.Aindices[iz, iz0]]
-#    add_into_A_dA!(Aview, dAview, tmpd, basis, R, iz, iz0)
-#    return dA
-# end
-#
 
 
 
@@ -84,8 +73,6 @@ end
 #    T = fltype(basis)
 #    return zeros(JVec{T}, (maxlen, maxN))
 # end
-
-
 
 # function set_Aindices!(basis::OneParticleBasis)
 #    NZ = numz(basis)
@@ -108,7 +95,6 @@ end
 
 
 
-
 # --------------------
 
 """
@@ -119,7 +105,15 @@ end
 
 Base.length(::One1pBasis) = 1
 
-evaluate!(B, tmp, basis::One1pBasis, Xj, Xi) = (B[1] = 1; B)
+function evaluate!(B, tmp, basis::One1pBasis, args...)
+   B[1] = 1
+   return B
+end
+
+function evaluate_d!(dB, tmp, basis::One1pBasis, args...)
+   dB[1] = zero(eltype(dB))
+   return dB
+end
 
 fltype(::One1pBasis) = Bool
 

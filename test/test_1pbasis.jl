@@ -38,6 +38,22 @@ println(@test A1 ≈ A)
 @info("test permutation invariance")
 println(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
 
-# not sure what else we can suitably test here ...
+##
+
+@info("basic evaluate_ed! tests")
+
+tmp_d = ACE.alloc_temp_d(B1p)
+A1 = ACE.alloc_B(B1p)
+A2 = ACE.alloc_B(B1p)
+ACE.evaluate!(A1, tmp_d, B1p, cfg)
+dA = ACE.alloc_dB(B1p, length(cfg))
+ACE.evaluate_ed!(A2, dA, tmp_d, B1p, cfg)
+println(@test A1 ≈ A2)
+
+##
+
+
+
+##
 
 end

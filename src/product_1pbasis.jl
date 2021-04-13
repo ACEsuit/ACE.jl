@@ -47,6 +47,36 @@ alloc_temp(basis::Product1pBasis) =
          tmp = alloc_temp.(basis.bases)
       )
 
+alloc_temp_d(basis::Product1pBasis) =
+      (
+         B = alloc_B.(basis.bases),
+         tmp = alloc_temp.(basis.bases),
+         dB = alloc_dB.(basis.bases),
+         tmpd = alloc_temp_d.(basis.bases)
+      )
+
+
+function alloc_dB(basis::Product1pBasis, N::Integer = 1)
+   # get the types of the sub-bases ...
+   B = alloc_B.(basis.bases)
+   dB = alloc_dB.(basis.bases)
+   # ... do some artificial arithmetic  ...
+   x = dB[1][1] * prod( B[a][1] for a = 2:length(B) )
+   for a = 2:length(B)
+      y = dB[a][1]
+      for b = 1:length(B)
+         b == a && continue
+         y *= B[b][1]
+      end
+      x += y
+   end
+   # ... to find out the end-result of the gradient calculation
+   T = typeof(x)
+   # now we can allocate a matrix or vector for with this eltype
+   return Matrix{T}(undef, length(basis), N)
+end
+
+
 @generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
    quote
       Base.Cartesian.@nexprs $NB i -> evaluate!(tmp.B[i], tmp.tmp[i], basis.bases[i], X)
@@ -58,6 +88,38 @@ alloc_temp(basis::Product1pBasis) =
       return nothing
    end
 end
+
+
+
+@generated function add_into_A_dA!(A, dA, tmpd, basis::Product1pBasis{NB}, X
+                                   ) where {NB}
+   quote
+      Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+         evaluate_ed!(tmpd.B[i], tmpd.dB[i], tmpd.tmpd[i], basis.bases[i], X)
+      end)
+      for (iA, ϕ) in enumerate(basis.indices)
+         # evaluate A
+         t = one(eltype(A))
+         Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+            t *= tmpd.B[i][ϕ[i]]
+         end)
+         A[iA] += t
+
+         # evaluate dA
+         Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
+            dt = tmpd.dB[a][ϕ[a]]
+            Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
+               if b != a
+                  dt *= tmpd.B[b][ϕ[b]]
+               end
+            end)
+         end)
+      end
+      return nothing
+   end
+end
+
+
 
 _symbols_prod(bases) = tuple(union( symbols.(bases)... )...)
 
@@ -110,6 +172,8 @@ get_spec(basis::Product1pBasis, i::Integer) = basis.spec[i]
 degree(b, basis::Product1pBasis) = sum( degree(b, B) for B in basis.bases )
 
 
+
+# TODO: this looks like a horrible hack ...
 function rand_radial(basis::Product1pBasis)
    for B in basis.bases
       if B isa ScalarACEBasis

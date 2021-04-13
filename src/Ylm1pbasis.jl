@@ -75,26 +75,26 @@ isadmissible(b, basis::Ylm1pBasis) =
 
 alloc_B(basis::Ylm1pBasis) = alloc_B(basis.SH)
 
+alloc_dB(basis::Ylm1pBasis) = alloc_dB(basis.SH)
+
 alloc_temp(basis::Ylm1pBasis) = alloc_temp(basis.SH)
+
+alloc_temp_d(basis::Ylm1pBasis, args...) = alloc_temp_d(basis.SH, args...)
+
 
 evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.SH, X.rr)
+
+evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState) =
+      evaluate_ed!(B, dB, tmpd, basis.SH, X.rr)
+
 
 degree(b, basis::Ylm1pBasis) = b.l
 
 get_index(basis::Ylm1pBasis, b) = index_y(b.l, b.m)
 
-# alloc_temp_d(basis::RnYlm1pBasis, args...) =
-#       (
-#         BJ = alloc_B(basis.J, args...),
-#         tmpJ = alloc_temp(basis.J, args...),
-#         BY = alloc_B(basis.SH, args...),
-#         tmpY = alloc_temp(basis.SH, args...),
-#         dBJ = alloc_dB(basis.J, args...),
-#         tmpdJ = alloc_temp_d(basis.J, args...),
-#         dBY = alloc_dB(basis.SH, args...),
-#         tmpdY = alloc_temp_d(basis.SH, args...),
-#        )
+
+
 #
 # function add_into_A_dA!(A, dA, tmpd, basis::RnYlm1pBasis, R, iz::Integer, iz0::Integer)
 #    r = norm(R)
