@@ -97,7 +97,69 @@ for L1 = 0:3
 end
 
 #---
+@info("Consistency between SphericalVector & SphericalMatrix")
 
+for L = 0:3
+
+   @info "L = $L"
+
+   φ1 = ACE.SphericalVector(L; T = ComplexF64)
+   pibasis1 = PIBasis(B1p, ord, maxdeg; property = φ1, isreal = false)
+   basis1 = SymmetricBasis(pibasis1, φ1)
+   φ2 = ACE.SphericalMatrix(L, 0; T = ComplexF64)
+   pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
+   basis2 = SymmetricBasis(pibasis2, φ2)
+
+   for ntest = 1:10
+
+      Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+      cfg = ACEConfig(Xs)
+
+      BBvec = evaluate(basis1, cfg)
+      value1 = [reshape(BBvec[i].val, 2L+1, 1) for i in 1:length(BBvec)]
+
+
+      BBmat = evaluate(basis2, cfg)
+      value2 = [BBmat[i].val for i in 1:length(BBvec)]
+
+      print_tf(@test isapprox(value1, value2, rtol=1e-10))
+
+   end
+   println()
+
+end
+
+#---
+@info("Consistency between Invariant Scalar & SphericalMatrix")
+
+φ = ACE.Invariant()
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
+basis = SymmetricBasis(pibasis, φ)
+φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
+pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
+basis2 = SymmetricBasis(pibasis2, φ2)
+
+for ntest = 1:10
+
+   Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+   cfg = ACEConfig(Xs)
+
+   BB = evaluate(basis, cfg)
+   BBsca = [BB[i].val for i in 1:length(BB)]
+
+   BB2 =  evaluate(basis2, cfg)
+   BBCFlo = [ComplexF64(BB2[i].val...) for i in 1:length(BB2)]
+   
+   print_tf(@test isapprox(BBsca, BBCFlo, rtol=1e-10))
+
+end
+println()
+
+
+
+
+
+#---
 # #---
 # @info("Basis construction and evaluation checks")
 # @info("check single species")

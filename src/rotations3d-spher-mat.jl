@@ -124,7 +124,7 @@ function mat_symm_basis(A::Rot3DCoeffs,
 	Urcpi = fill(zeros(2L1 + 1, 2L2 + 1), (rk, length(μ_list)))
 	U = S.U[:, 1:rk]
 	Sigma = S.S[1:rk]
-	Urcpi = C' * U * Diagonal(sqrt.(Sigma))^(-1)
+	Urcpi = C' * U * Diagonal(sqrt.(Sigma))
 	Z = fill(zeros(2L1 + 1, 2L2 + 1), (rk, length(μ_list)))
 	for i = 1:rk
 		for j = 1:length(μ_list)

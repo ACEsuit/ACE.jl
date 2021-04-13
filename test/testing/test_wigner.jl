@@ -13,7 +13,7 @@ using ACE, Test, Printf, LinearAlgebra, BenchmarkTools
 
 SH = ACE.SphericalHarmonics.SHBasis(3)
 for L = 0:3
-   @info("Check correctness of Wigner-D matrix of order", L)
+   @info("Check correctness of Wigner-D matrix of order $L")
    println()
 
    φ = ACE.SphericalVector(L; T = ComplexF64)

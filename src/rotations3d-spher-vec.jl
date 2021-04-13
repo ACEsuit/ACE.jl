@@ -139,6 +139,6 @@ function yvec_symm_basis(A::Rot3DCoeffs,
 	Urcpi = fill(zeros(2L + 1), (rk, length(μ_list)))
 	U = S.U[:, 1:rk]
 	Sigma = S.S[1:rk]
-	Urcpi = C' * U * Diagonal(sqrt.(Sigma))^(-1)
+	Urcpi = C' * U * Diagonal(sqrt.(Sigma))
 	return Urcpi', μ_list
 end
