@@ -42,7 +42,7 @@ function vec_cou_coe(rotc::Rot3DCoeffs{T},
 	                   mm::StaticVector{N},
 					   μμ::StaticVector{N},
 					   L::Integer, t::Integer) where {T,N}
-	if t > 2L + 1 || t < 0
+	if t > 2L + 1 || t <= 0
 		error("Rotation D matrix has no such column!")
 	end
 	Z = zeros(2L + 1)
@@ -61,7 +61,6 @@ end
 
 # Equation (1.5) - possible set of mm w.r.t. index ll & vector k
 function collect_m(ll::StaticVector{N}, k::T) where {N,T}
-	d = length(k)
 	A = CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll)));
 	B = Array{typeof(A[1].I)}(undef, 1, prod(size(A)))
 	t = 0
@@ -85,7 +84,7 @@ function gramian(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 	Z = fill(zeros(2L + 1), (length(μ_list), length(μ_list)))
 	for t = 1:2L+1
 		Dt = D[:,t]
-		mt = [Dt[i].m for i in 1:2L+1];
+		mt = [Dt[i].m for i in 1:2L+1]
 		m_list = collect_m(ll,mt)
 		for (im, mm) in enumerate(m_list), (iμ, μμ) in enumerate(μ_list)
 			Z[iμ, im + LenM] = vec_cou_coe(A, ll, mm, μμ, L, t)
@@ -140,6 +139,6 @@ function yvec_symm_basis(A::Rot3DCoeffs,
 	Urcpi = fill(zeros(2L + 1), (rk, length(μ_list)))
 	U = S.U[:, 1:rk]
 	Sigma = S.S[1:rk]
-	Urcpi = C' * U * Diagonal(sqrt.(Sigma))^(-1)
+	Urcpi = C' * U * Diagonal(sqrt.(Sigma))
 	return Urcpi', μ_list
 end

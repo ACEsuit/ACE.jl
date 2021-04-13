@@ -3,7 +3,7 @@ module Wigner
 using StaticArrays
 import ACE.Rotations3D.rotation_D_matrix
 
-
+# D_{μm}^l(Ang2Mat_zyz(α,β,γ))
 function wigner_big_D(μ,m,l,α,β,γ)
 	return (exp(-im*α*m) * wigner_d(m,μ,l,β)  * exp(-im*γ*μ))'
 end
@@ -73,7 +73,27 @@ function rand_QD(L)
 	Q = Ang2Mat_zyz(α,β,γ)
 	Q = SMatrix{3,3}(Q)
 
-	return Q, rot_D(L, Q)
+	rand_ref = rand((-1,1))
+
+	return rand_ref * Q, rand_ref^L * rot_D(L, Q)
+end
+
+function rand_QD(L1, L2)
+	rotz(α) = [cos(α) -sin(α) 0; sin(α) cos(α) 0; 0 0 1]
+	roty(α) = [cos(α) 0 sin(α); 0 1 0;-sin(α) 0 cos(α)]
+	Ang2Mat_zyz(α,β,γ) = rotz(α)*roty(β)*rotz(γ)
+
+	α = 2pi*rand();
+	β = pi*rand();
+	γ = 2pi*rand();
+
+	# construct the Q matrix
+	Q = Ang2Mat_zyz(α,β,γ)
+	Q = SMatrix{3,3}(Q)
+
+	rand_ref = rand((-1,1))
+
+	return rand_ref * Q, rand_ref^(L1) * rot_D(L1, Q), rand_ref^(L2) * rot_D(L2, Q)
 end
 
 end
