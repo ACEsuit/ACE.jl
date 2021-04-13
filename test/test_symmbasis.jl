@@ -49,12 +49,13 @@ println()
 #---
 @info("SymmetricBasis construction and evaluation: Spherical Vector")
 
+__L2syms = [:s, :p, :d, :f, :g, :h, :i, :k]
+__syms2L = Dict( [sym => L-1 for (L, sym) in enumerate(__L2syms)]... )
+get_orbsym(L::Integer)  = __L2syms[L+1]
+
 for L = 0 : 3
-      if L == 0 @info("Test 01-10: L=0 ↔ s-s block")
-      elseif L == 1 @info("Test 11-20: L=1 ↔ s-p block")
-      elseif L == 2 @info("Test 21-30: L=2 ↔ s-d block")
-      elseif L == 3 @info("Test 31-40: L=3 ↔ s-f block")
-      end
+
+      @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
 
       φ = ACE.SphericalVector(L; T = ComplexF64)
       pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
@@ -63,11 +64,9 @@ for L = 0 : 3
 
       for ntest = 1:10
             Q, D = ACE.Wigner.rand_QD(L)
-            rand_ref = rand((-1,1))
-            Xs1 = shuffle(Ref(rand_ref * Q) .* Xs)
-            cfg1 = ACEConfig( Xs1 )
+            cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
             BB1 = evaluate(basis, cfg1)
-            DtxBB1 = (rand_ref)^L .* Ref(D') .* BB1
+            DtxBB1 = Ref(D') .* BB1
             print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
       end
       println()
@@ -79,45 +78,18 @@ end
 for L1 = 0:3
    for L2 = 0:3
 
-      if L1 == 0
-         if L2 == 0 @info("Test 01-05: L1 = 0, L2 = 0 ↔ s-s block")
-         elseif L2 == 1 @info("Test 06-10: L1 = 0, L2 = 1 ↔ p-s block")
-         elseif L2 == 2 @info("Test 11-15: L1 = 0, L2 = 2 ↔ d-s block")
-         elseif L2 == 3 @info("Test 16-20: L1 = 0, L2 = 3 ↔ f-s block")
-         end
-      elseif L1 == 1
-         if L2 == 0 @info("Test 21-25: L1 = 1, L2 = 0 ↔ s-p block")
-         elseif L2 == 1 @info("Test 26-30: L1 = 1, L2 = 1 ↔ p-p block")
-         elseif L2 == 2 @info("Test 31-35: L1 = 1, L2 = 2 ↔ d-p block")
-         elseif L2 == 3 @info("Test 36-40: L1 = 1, L2 = 3 ↔ f-p block")
-         end
-      elseif L1 == 2
-         if L2 == 0 @info("Test 41-45: L1 = 2, L2 = 0 ↔ s-d block")
-         elseif L2 == 1 @info("Test 46-50: L1 = 2, L2 = 1 ↔ p-d block")
-         elseif L2 == 2 @info("Test 51-55: L1 = 2, L2 = 2 ↔ d-d block")
-         elseif L2 == 3 @info("Test 56-60: L1 = 2, L2 = 3 ↔ f-d block")
-         end
-      elseif L1 == 3
-         if L2 == 0 @info("Test 61-65: L1 = 3, L2 = 0 ↔ s-f block")
-         elseif L2 == 1 @info("Test 66-70: L1 = 3, L2 = 1 ↔ p-f block")
-         elseif L2 == 2 @info("Test 71-75: L1 = 3, L2 = 2 ↔ d-f block")
-         elseif L2 == 3 @info("Test 76-80: L1 = 3, L2 = 3 ↔ f-f block")
-         end
-      end
+      @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
 
       φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
       pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
       basis = SymmetricBasis(pibasis, φ)
       BB = evaluate(basis, cfg)
 
-      for ntest = 1:5
+      for ntest = 1:10
          Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
-         rand_ref = rand((-1,1))
-         Xs1 = rand_ref * shuffle(Ref(Q) .* Xs)
-         cfg1 = ACEConfig( Xs1 )
+         cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
          BB1 = evaluate(basis, cfg1)
-         D1txBB1xD2 = (rand_ref)^(L1+L2) .* Ref(D1') .* BB1 .* Ref(D2)
-
+         D1txBB1xD2 = Ref(D1') .* BB1 .* Ref(D2)
          print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
       end
       println()

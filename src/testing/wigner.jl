@@ -73,7 +73,9 @@ function rand_QD(L)
 	Q = Ang2Mat_zyz(α,β,γ)
 	Q = SMatrix{3,3}(Q)
 
-	return Q, rot_D(L, Q)
+	rand_ref = rand((-1,1))
+
+	return rand_ref * Q, rand_ref^L * rot_D(L, Q)
 end
 
 function rand_QD(L1, L2)
@@ -89,7 +91,9 @@ function rand_QD(L1, L2)
 	Q = Ang2Mat_zyz(α,β,γ)
 	Q = SMatrix{3,3}(Q)
 
-	return Q, rot_D(L1, Q), rot_D(L2, Q)
+	rand_ref = rand((-1,1))
+
+	return rand_ref * Q, rand_ref^(L1) * rot_D(L1, Q), rand_ref^(L2) * rot_D(L2, Q)
 end
 
 end

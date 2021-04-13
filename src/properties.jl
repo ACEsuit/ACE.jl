@@ -126,7 +126,7 @@ struct SphericalMatrix{L1, L2, LEN1, LEN2, T} <: AbstractProperty
    _valL2::Val{L2}
 end
 
-getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = [L1;L2]
+getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = L1, L2
 
 # L = 0 -> (0,0)
 # L = 1 -> (0,0), (1,-1), (1,0), (1,1)  -> 4

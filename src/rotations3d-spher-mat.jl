@@ -15,7 +15,7 @@ function mat_cou_coe(rotc::Rot3DCoeffs{T},
 	Z = zeros(2 * L1 + 1, 2 * L2 + 1)
 	Dp = rotation_D_matrix_ast(L1)
 	Dq = rotation_D_matrix(L2)
-	Dpa = Dp[:,a]   # D^* ⋅ e^t
+	Dpa = Dp[:,a]
 	Dqb = Dq[b,:]
 	μa = [Dpa[i].μ for i in 1:2L1+1]
 	ma = [Dpa[i].m for i in 1:2L1+1]
@@ -41,6 +41,9 @@ function gramian(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 	Dq = rotation_D_matrix(L2)
 	Tempμ = SVector([i for i in -(L1+L2):(L1+L2)]...)
 	μ_list = collect_m(ll,Tempμ)
+
+	## TODO: the upper bound of #m_list(`(2L1 + 1)*length(μ_list)`) seems to be
+	## too large and can be further reduced; just keep it for now...
 	Z = fill(zeros(2L1 + 1, 2L2 + 1), (length(μ_list), (2L1 + 1)*length(μ_list)))
 
 	for a = 1:2 * L1+1
