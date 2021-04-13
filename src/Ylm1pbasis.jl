@@ -85,6 +85,9 @@ alloc_temp_d(basis::Ylm1pBasis, args...) = alloc_temp_d(basis.SH, args...)
 evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.SH, X.rr)
 
+evaluate_d!(dB, tmpd, basis::Ylm1pBasis, X::AbstractState) =
+      evaluate_d!(dB, tmpd, basis.SH, X.rr)
+
 evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState) =
       evaluate_ed!(B, dB, tmpd, basis.SH, X.rr)
 

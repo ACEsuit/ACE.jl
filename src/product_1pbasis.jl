@@ -106,6 +106,7 @@ end
          A[iA] += t
 
          # evaluate dA
+         dA[iA] = zero(eltype(dA))
          Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
             dt = tmpd.dB[a][ϕ[a]]
             Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
@@ -113,6 +114,7 @@ end
                   dt *= tmpd.B[b][ϕ[b]]
                end
             end)
+            dA[iA] += dt
          end)
       end
       return nothing

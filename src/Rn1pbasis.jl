@@ -76,11 +76,19 @@ alloc_temp_d(basis::Rn1pBasis) =
 evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.R, norm(X.rr))
 
+function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::AbstractState)
+   r = norm(X.rr)
+   r̂ = X.rr / r
+   evaluate_d!(tmpd.dRdr, tmpd, basis.R, r)
+   dB[:] .= Ref(r̂) .* tmpd.dRdr
+   return dB
+end
+
 function evaluate_ed!(B, dB, tmpd, basis::Rn1pBasis, X::AbstractState)
    r = norm(X.rr)
    r̂ = X.rr / r
    evaluate!(B, tmpd, basis.R, norm(X.rr))
-   evaluate_d!(tmpd.dRdr, tmpd, basis.R, norm(X.rr))
+   evaluate_d!(tmpd.dRdr, tmpd, basis.R, r)
    dB[:] .= Ref(r̂) .* tmpd.dRdr
    return nothing
 end
