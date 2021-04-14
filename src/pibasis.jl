@@ -250,16 +250,20 @@ function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
    iAA2iA = basis.spec.iAA2iA
 
    for iAA = 1:length(basis)
+      ord = orders[iAA]
       # ----- compute the local adjoints dAA / dA
-      # TODO: maybe this code could be shared
+      # dAAdA[a] ← ∏_{t ≂̸ a} A_{v_t}
+      # TODO - optimize?
+      # TODO: maybe this code could be shared with the evaluator
+      # Forward pass:
       dAAdA[1] = 1
       AAfwd = A[iAA2iA[iAA, 1]]
-      ord = orders[iAA]
       for a = 2:ord
          dAAdA[a] = AAfwd
          AAfwd *= A[iAA2iA[iAA, a]]
       end
       AA[iAA] = basis.real(AAfwd)
+      # backward pass
       AAbwd = A[iAA2iA[iAA, ord]]
       for a = ord-1:-1:1
          dAAdA[a] *= AAbwd
@@ -269,7 +273,7 @@ function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
       # ----- now convert them into dAA / dX
       for j = 1:size(dA, 2)
          dAA[iAA, j] = sum(dAAdA[a] * dA[iAA2iA[iAA, a], j]
-                           for a = 1:ord)
+                           for a = 1:ord) |> basis.real
       end
    end
 

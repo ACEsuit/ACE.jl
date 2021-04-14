@@ -36,11 +36,14 @@ Base.length(X::EuclideanVectorState) = 3
 
 Base.show(io::IO, s::EuclideanVectorState) = print(io, "$(s.label)$(s.rr)")
 
-import Base: *, -
+import Base: *, -, +
 *(A::Union{Number, AbstractMatrix}, X::EuclideanVectorState) =
       EuclideanVectorState(A * X.rr, X.label)
 -(X::T) where {T <: EuclideanVectorState} = T( -X.rr, X.label)
-
++(X1::T, X2::T) where {T <: EuclideanVectorState} =
+      T(X1.rr + X2.rr, X1.label)
++(X1::T, u::SVector{3}) where {T <: EuclideanVectorState} =
+      T(X1.rr + u, X1.label)
 
 @doc raw"""
 `struct DiscreteState` : a state ``\mu`` specified by a discrete number of

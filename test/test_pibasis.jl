@@ -6,9 +6,11 @@
 
 
 using ACE, Random
-using Printf, Test, LinearAlgebra, ACE.Testing
+using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
 using ACE: evaluate, evaluate_d, NaiveTotalDegree
-
+using ACEbase.Testing: dirfdtest, fdtest, print_tf
+using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
+      EuclideanVectorState, Product1pBasis
 
 #---
 
@@ -57,14 +59,20 @@ println(@test( AA_naive ≈ AA ))
 
 ## Testing derivatives
 
+@info("Derivatives of PIbasis")
 tmpd = ACE.alloc_temp_d(pibasis, length(cfg))
-AA = ACE.alloc_B(pibasis)
-dAA= ACE.alloc_dB(pibasis, length(cfg))
-ACE.evaluate_ed!(AA, dAA, tmpd, pibasis, cfg
-  )
-AA, dAA = ACE.evaluate_ed(pibasis, cfg)
+AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
+println(@test AA1 ≈ AA)
 
-ACE.alloc_temp_d(pibasis.basis1p)
+for ntest = 1:30
+  Us = randn(SVector{3, Float64}, length(Xs))
+  c = randn(length(pibasis))
+  F = t -> sum(c .* ACE.evaluate(pibasis, ACEConfig(Xs + t[1] * Us)))
+  dF = t -> [ Us' * sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:] ]
+  print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+end
+
+##
 
 # dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
 # println(@test dAA ≈ dAAdag)
