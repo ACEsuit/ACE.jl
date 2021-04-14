@@ -2,9 +2,8 @@
 
 module Orth
 
-include("extimports.jl")
-
-include("aceimports.jl")
+ACE.@extimports
+ACE.@aceimports
 
 
 # ------------ Products of Spherical Harmonics

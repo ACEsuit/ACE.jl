@@ -568,7 +568,7 @@ function evaluate_d!(dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	_evaluate_d!(dY, L, S, tmp.P, tmp.dP, SH)
 end
 
-function ACEbase.evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
+function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	L=SH.maxL
 	@assert 0 <= L <= SH.maxL
 	@assert length(Y) >= sizeY(L)

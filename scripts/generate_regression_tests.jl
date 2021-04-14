@@ -16,8 +16,7 @@ import JuLIP: Atoms, bulk, rattle!, positions, energy, forces, JVec,
 import JuLIP.MLIPs: combine
 import JuLIP.Testing: print_tf
 
-# include("../src/extimports.jl")
-include("../src/aceimports.jl")
+ACE.@aceimports
 
 #---
 

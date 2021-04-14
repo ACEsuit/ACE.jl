@@ -56,7 +56,7 @@ alloc_temp_d(basis::Product1pBasis) =
       )
 
 
-function alloc_dB(basis::Product1pBasis, N::Integer = 1)
+function gradtype(basis::Product1pBasis)
    # get the types of the sub-bases ...
    B = alloc_B.(basis.bases)
    dB = alloc_dB.(basis.bases)
@@ -71,11 +71,8 @@ function alloc_dB(basis::Product1pBasis, N::Integer = 1)
       x += y
    end
    # ... to find out the end-result of the gradient calculation
-   T = typeof(x)
-   # now we can allocate a matrix or vector for with this eltype
-   return Matrix{T}(undef, length(basis), N)
+   return typeof(x)
 end
-
 
 @generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
    quote

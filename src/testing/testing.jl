@@ -5,15 +5,8 @@ module Testing
 using Test
 import ACE
 
-# import JuLIP.Potentials: F64fun
-# import JuLIP: Atoms, bulk, rattle!, positions, energy, forces, JVec,
-#               chemical_symbol, mat, rnn,
-#               read_dict, write_dict
-# import JuLIP.MLIPs: combine
-
-
-include("../extimports.jl")
-include("../aceimports.jl")
+ACE.@extimports
+ACE.@aceimports
 
 import ACEbase
 import ACEbase.Testing: print_tf, test_fio

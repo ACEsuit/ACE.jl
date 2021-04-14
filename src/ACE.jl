@@ -4,8 +4,10 @@ module ACE
 using Reexport
 
 # external imports that are useful for all submodules
-include("extimports.jl")
-include("baseimports.jl")
+include("imports.jl")
+
+@extimports
+@baseimports
 
 include("auxiliary.jl")
 

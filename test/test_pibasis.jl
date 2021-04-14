@@ -55,11 +55,17 @@ AA_naive =  [
       real(prod( A[ inv_spec1[ b1 ] ] for b1 in b )) for b in spec ]
 println(@test( AA_naive ≈ AA ))
 
+## Testing derivatives
 
-# TODO: test derivatives!!!
+tmpd = ACE.alloc_temp_d(pibasis, length(cfg))
+AA = ACE.alloc_B(pibasis)
+dAA= ACE.alloc_dB(pibasis, length(cfg))
+ACE.evaluate_ed!(AA, dAA, tmpd, pibasis, cfg
+  )
+AA, dAA = ACE.evaluate_ed(pibasis, cfg)
 
-# dAA = evaluate_d(basis, Rs, Zs, z0
-#    )
+ACE.alloc_temp_d(pibasis.basis1p)
+
 # dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
 # println(@test dAA ≈ dAAdag)
 
