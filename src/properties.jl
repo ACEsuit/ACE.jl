@@ -7,7 +7,6 @@ abstract type AbstractProperty end
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
 @inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
 @inline -(φ::T) where {T <: AbstractProperty} = T( -φ.val)
-#@inline *(φ::T, λ::Number) where {T <: AbstractProperty} = T(φ.val * λ)
 @inline *(a::Union{Number, AbstractMatrix}, φ::T) where {T <: AbstractProperty} =
       T(a * φ.val)
 @inline *(φ::T, a::Union{Number, AbstractMatrix}) where {T <: AbstractProperty} =
@@ -116,8 +115,11 @@ struct SphericalMatrix{L1, L2, LEN1, LEN2, T} <: AbstractProperty
 end
 
 # differentiation - cf #27
-*(φ::SphericalMatrix, dAA::SVector) =
-      reshape( kron(dAA', φ.val), (size(φ.val)..., length(dAA)) )
+# actually this here appears to be the generic form how to do the
+# differentiation for arbtirary order tensors.
+*(φ::SphericalMatrix{L1, L2, LEN1, LEN2}, dAA::SVector{N}
+      ) where {L1, L2, LEN1, LEN2, N} =
+      reshape(φ.val[:] * dAA', Size(LEN1, LEN2, N))
 
 getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = L1, L2
 

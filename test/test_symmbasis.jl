@@ -84,31 +84,61 @@ for L = 0 : 3
             print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
       end
       println()
+
+      @info(" .... derivatives")
+      for ntest = 1:30
+         Us = randn(SVector{3, Float64}, length(Xs))
+         C = randn(typeof(φ.val), length(basis))
+         F = t -> sum( sum(c .* b.val)
+                       for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
+         dF = t -> [ sum( sum(c .* db)
+                          for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
+         print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+      end
 end
+
 
 #---
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
-for L1 = 0:3
-   for L2 = 0:3
+# some type piracy ...
+# TODO: hack like this make #27 important!!!
+import Base: *
+*(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
+      reshape( reshape(a, L1*L2, L3) * b, L1, L2)
 
-      @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
 
-      φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
-      pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-      basis = SymmetricBasis(pibasis, φ)
-      BB = evaluate(basis, cfg)
+for L1 = 0:3, L2 = 0:3
 
-      for ntest = 1:10
-         Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
-         cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
-         BB1 = evaluate(basis, cfg1)
-         D1txBB1xD2 = Ref(D1') .* BB1 .* Ref(D2)
-         print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
-      end
-      println()
+   @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
+
+   φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
+   pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+   basis = SymmetricBasis(pibasis, φ)
+   BB = evaluate(basis, cfg)
+
+   for ntest = 1:10
+      Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
+      cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
+      BB1 = evaluate(basis, cfg1)
+      D1txBB1xD2 = Ref(D1') .* BB1 .* Ref(D2)
+      print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
    end
+   println()
+
+   @info(" .... derivatives")
+   for ntest = 1:30
+      Us = randn(SVector{3, Float64}, length(Xs))
+      C = randn(typeof(φ.val), length(basis))
+      F = t -> sum( sum(c .* b.val)
+                    for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
+      dF = t -> [ sum( sum(c .* db)
+                       for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
+      print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+   end
+   println()
 end
+
 
 #---
 @info("Consistency between SphericalVector & SphericalMatrix")
