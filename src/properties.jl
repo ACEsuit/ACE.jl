@@ -39,6 +39,11 @@ filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
 
 rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 
+# TODO: this is a naive implementation of differentiation.
+#       cf https://github.com/ACEsuit/ACE.jl/issues/27
+#       for further discussion
+*(φ::Invariant, dAA::SVector) = φ.val * dAA
+
 
 @doc raw"""
 `struct EuclideanVector{D, T}` : specifies that the output $\varphi$ of an
@@ -63,28 +68,8 @@ filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
 
 rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
-
-@doc raw"""
-`struct EuclideanTensor{D, T}` : specifies that the output $\varphi$ of an
-ACE is an equivariant $\varphi \in \mathbb{R}^{3^D}$, where $D$ denotes the
-order of the tensor. It transforms under $O(3)$ as
-```math
-   \varphi \circ Q =
-```
- (todo - how do we write this?)
-
-For example if $D = 1$ then this is an equivariant vector which transforms as
-```math
-   \varphi \circ Q = Q \varphi
-```
-and if $D = 2$ then $\varphi \in \mathbb{R}^{3 \times 3}$ and transforms as
-```math
-   \varphi \circ Q = Q \varphi Q^T
-```
-"""
-struct EuclideanTensor{D, T, SIZE, LEN} <: AbstractProperty
-   val::SArray{SIZE, T, D, LEN}
-end
+# differentiation - cf #27
+*(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
 
 
 
@@ -92,6 +77,10 @@ struct SphericalVector{L, LEN, T} <: AbstractProperty
    val::SVector{LEN, T}
    _valL::Val{L}
 end
+
+# differentiation - cf #27
+*(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
+
 
 getL(φ::SphericalVector{L}) where {L} = L
 
@@ -125,6 +114,10 @@ struct SphericalMatrix{L1, L2, LEN1, LEN2, T} <: AbstractProperty
    _valL1::Val{L1}
    _valL2::Val{L2}
 end
+
+# differentiation - cf #27
+*(φ::SphericalMatrix, dAA::SVector) =
+      reshape( kron(dAA', φ.val), (size(φ.val)..., length(dAA)) )
 
 getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = L1, L2
 

@@ -222,3 +222,33 @@ function evaluate!(B, tmp, basis::SymmetricBasis,
                    AA::AbstractVector{<: Number})
    mul!(B, basis.A2Bmap, AA)
 end
+
+# ---- gradients
+
+function gradtype(basis::SymmetricBasis)
+   φ = zero(eltype(basis.A2Bmap))
+   dAA = zero(gradtype(basis.pibasis))
+   return typeof(φ * dAA)
+end
+
+alloc_temp_d(basis::SymmetricBasis, nmax::Integer) =
+      (  AA = alloc_B(basis.pibasis),
+         dAA = alloc_dB(basis.pibasis, nmax),
+         tmppi = alloc_temp(basis.pibasis),
+         tmpdpi = alloc_temp_d(basis.pibasis, nmax) )
+
+alloc_dB(basis::SymmetricBasis, nmax::Integer) =
+      zeros(gradtype(basis), length(basis), nmax)
+
+function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
+                     cfg::AbstractConfiguration)
+   # compute AA
+   evaluate_ed!(tmpd.AA, tmpd.dAA, tmpd.tmpdpi, basis.pibasis, cfg)
+   evaluate_d!(dB, tmpd, basis, tmpd.AA, tmpd.dAA)
+   return dB
+end
+
+function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
+                     AA::AbstractVector{<: Number}, dAA)
+   mul!(dB, basis.A2Bmap, dAA)
+end

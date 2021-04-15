@@ -45,6 +45,20 @@ for ntest = 1:30
 end
 println()
 
+## Testing derivatives
+
+@info("  ... Derivatives")
+tmpd = ACE.alloc_temp_d(basis, length(cfg))
+dB = ACE.evaluate_d(basis, cfg)
+
+for ntest = 1:30
+   Us = randn(SVector{3, Float64}, length(Xs))
+   c = randn(length(basis))
+   F = t -> sum(c .* ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))).val
+   dF = t -> [ Us' * sum(c .* ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)), dims=1)[:] ]
+   print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+end
+
 
 #---
 @info("SymmetricBasis construction and evaluation: Spherical Vector")
@@ -149,7 +163,7 @@ for ntest = 1:10
 
    BB2 =  evaluate(basis2, cfg)
    BBCFlo = [ComplexF64(BB2[i].val...) for i in 1:length(BB2)]
-   
+
    print_tf(@test isapprox(BBsca, BBCFlo, rtol=1e-10))
 
 end

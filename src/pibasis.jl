@@ -219,8 +219,10 @@ end
 # -------------------------------------------------
 # gradients
 
+gradtype(basis::PIBasis) = gradtype(basis.basis1p)
+
 alloc_dB(basis::PIBasis, nmax::Integer) =
-      zeros(gradtype(basis.basis1p), (length(basis), nmax))
+      zeros(gradtype(basis), (length(basis), nmax))
 
 alloc_temp_d(basis::PIBasis, nmax::Integer) =
       (
