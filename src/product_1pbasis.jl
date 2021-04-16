@@ -41,13 +41,13 @@ Base.length(basis::Product1pBasis) = length(basis.spec)
 
 fltype(basis::Product1pBasis) = promote_type(fltype.(basis.bases)...)
 
-alloc_temp(basis::Product1pBasis) =
+alloc_temp(basis::Product1pBasis, args...) =
       (
          B = alloc_B.(basis.bases),
          tmp = alloc_temp.(basis.bases)
       )
 
-alloc_temp_d(basis::Product1pBasis) =
+alloc_temp_d(basis::Product1pBasis, args...) =
       (
          B = alloc_B.(basis.bases),
          tmp = alloc_temp.(basis.bases),

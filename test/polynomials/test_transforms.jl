@@ -45,6 +45,7 @@ for p = 2:4
    trans = PolyTransform(p, r0)
    ACE.Testing.test_transform(trans, [r0/2, 3*r0])
 end
+println()
 
 #---
 @info("Testing Morse Transform")
@@ -53,6 +54,7 @@ for lam = 1.0:3.0
    trans = ACE.Transforms.MorseTransform(lam, r0)
    ACE.Testing.test_transform(trans, [r0/2, 3*r0])
 end
+println()
 
 #---
 
@@ -62,6 +64,7 @@ for p = 2:4
    trans = ACE.Transforms.AgnesiTransform(r0, p)
    ACE.Testing.test_transform(trans, [r0/2, 3*r0])
 end
+println()
 
 # #---
 

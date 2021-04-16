@@ -30,7 +30,6 @@ Xs = rand(EuclideanVectorState, Rn, nX)
 cfg = ACEConfig(Xs)
 
 A = evaluate(B1p, cfg)
-# evaluate_d(B1p, Xs, X0)
 
 @info("test against manual summation")
 A1 = sum( evaluate(B1p, X) for X in Xs )
@@ -71,7 +70,7 @@ println()
 
 ##
 
-@info("Product basic evaluate_ed! tests")
+@info("Product basis evaluate_ed! tests")
 
 tmp_d = ACE.alloc_temp_d(B1p)
 A1 = ACE.alloc_B(B1p)
@@ -82,7 +81,7 @@ ACE.evaluate_ed!(A2, dA, tmp_d, B1p, cfg)
 println(@test A1 ≈ A2)
 
 ##
-@info("Product basic gradient test")
+@info("Product basis gradient test")
 
 for ntest = 1:30
    x0 = randn(3)
@@ -93,7 +92,7 @@ for ntest = 1:30
    dF(x0)
    print_tf(@test fdtest(F, dF, x0; verbose=false))
 end
-
+println()
 ##
 
 end

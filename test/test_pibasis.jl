@@ -60,7 +60,7 @@ println(@test( AA_naive ≈ AA ))
 ## Testing derivatives
 
 @info("Derivatives of PIbasis")
-tmpd = ACE.alloc_temp_d(pibasis, length(cfg))
+tmpd = ACE.alloc_temp_d(pibasis, cfg)
 AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
 println(@test AA1 ≈ AA)
 
@@ -71,7 +71,7 @@ for ntest = 1:30
   dF = t -> [ Us' * sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:] ]
   print_tf(@test fdtest(F, dF, [0.0], verbose=false))
 end
-
+println()
 ##
 
 

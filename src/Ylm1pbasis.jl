@@ -75,11 +75,11 @@ isadmissible(b, basis::Ylm1pBasis) =
 # ---------------------------  Evaluation code
 #
 
-alloc_B(basis::Ylm1pBasis) = alloc_B(basis.SH)
+alloc_B(basis::Ylm1pBasis, args...) = alloc_B(basis.SH)
 
-alloc_dB(basis::Ylm1pBasis) = alloc_dB(basis.SH)
+alloc_dB(basis::Ylm1pBasis, args...) = alloc_dB(basis.SH)
 
-alloc_temp(basis::Ylm1pBasis) = alloc_temp(basis.SH)
+alloc_temp(basis::Ylm1pBasis, args...) = alloc_temp(basis.SH)
 
 alloc_temp_d(basis::Ylm1pBasis, args...) = alloc_temp_d(basis.SH, args...)
 

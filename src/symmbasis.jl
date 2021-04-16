@@ -199,11 +199,11 @@ end
 
 # ---------------- Evaluation code
 
-alloc_temp(basis::SymmetricBasis) =
+alloc_temp(basis::SymmetricBasis, args...) =
       (  AA = alloc_B(basis.pibasis),
          tmppi = alloc_temp(basis.pibasis) )
 
-alloc_B(basis::SymmetricBasis) =
+alloc_B(basis::SymmetricBasis, args...) =
       zeros(fltype(basis), length(basis))
 
 function evaluate!(B, tmp, basis::SymmetricBasis,

@@ -519,16 +519,19 @@ Base.length(S::AbstractSHBasis) = sizeY(S.maxL)
 fltype(::SHBasis{T}) where {T} = Complex{T}
 fltype(::RSHBasis{T}) where {T} = T
 
+gradtype(::SHBasis{T}) where {T} = SVector{3, Complex{T}}
+gradtype(::RSHBasis{T}) where {T} = SVector{3, T}
+
 alloc_B( S::SHBasis{T}, args...) where {T} =
 		Vector{Complex{T}}(undef, length(S))
 
 alloc_B( S::RSHBasis{T}, args...) where {T} =
 		Vector{T}(undef, length(S))
 
-alloc_dB(S::SHBasis{T}) where {T} =
+alloc_dB(S::SHBasis{T}, args...) where {T} =
 		Vector{SVector{3, Complex{T}}}(undef, length(S))
 
-alloc_dB(S::RSHBasis{T}) where {T} =
+alloc_dB(S::RSHBasis{T}, args...) where {T} =
 		Vector{SVector{3, T}}(undef, length(S))
 
 alloc_dB(S::AbstractSHBasis, N::Integer) = alloc_dB(S)

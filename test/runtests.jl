@@ -18,14 +18,11 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     include("test_pibasis.jl")
     # include("test_pipot.jl")   # TODO...
 
-    # # ------------------------
-    # #   rotation_invariance
+    # ------------------------
+    #   rotation_invariance
     include("test_cg.jl")
     include("test_symmbasis.jl")
     include("test_euclvec.jl")
-
-    # include("test_euclvec.jl")
-    # include("test_sphervec.jl")
 
     # # ----------------------
     # #   miscallaneous ...

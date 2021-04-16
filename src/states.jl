@@ -2,17 +2,6 @@
 
 export EuclideanVectorState, DiscreteState, ACEConfig
 
-abstract type AbstractState end
-
-abstract type AbstractConfiguration end
-
-abstract type AbstractContinuousState <: AbstractState end
-
-abstract type AbstractDiscreteState <: AbstractState end
-
-isdiscrete(::AbstractContinuousState) = false
-isdiscrete(::AbstractDiscreteState) = true
-
 
 
 @doc raw"""

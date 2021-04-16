@@ -61,14 +61,14 @@ rand_radial(basis::Rn1pBasis) = rand_radial(basis.R)
 # ---------------------------  Evaluation code
 #
 
-alloc_B(basis::Rn1pBasis) = alloc_B(basis.R)
+alloc_B(basis::Rn1pBasis, args...) = alloc_B(basis.R)
 
-alloc_dB(basis::Rn1pBasis) =
+alloc_dB(basis::Rn1pBasis, args...) =
       zeros( SVector{3, fltype(basis.R)}, length(basis) )
 
-alloc_temp(basis::Rn1pBasis) = alloc_temp(basis.R)
+alloc_temp(basis::Rn1pBasis, args...) = alloc_temp(basis.R)
 
-alloc_temp_d(basis::Rn1pBasis) =
+alloc_temp_d(basis::Rn1pBasis, args...) =
       (
       # alloc_temp_d(basis.R)...,
       dRdr = zeros(fltype(basis.R), length(basis.R)),
