@@ -16,15 +16,11 @@ struct ClebschGordan{T}
 	vals::Dict{Tuple{Int, Int, Int, Int, Int, Int}, T}
 end
 
-"""
-`Rot3DCoeffs: ` storing recursively precomputed coefficients for a
-rotation-invariant basis.
-"""
-abstract type R3DC{T} end
-
-struct Rot3DCoeffs{T} <: R3DC{T}
-   vals::Vector{Dict}
+# -> CouplingCoeffRecursion ????
+struct Rot3DCoeffs{T, TP}
+   vals::Vector{Dict}  # val[N] = coeffs for correlation order N
    cg::ClebschGordan{T}
+	phi::TP
 end
 
 # -----------------------------------
@@ -214,27 +210,11 @@ end
 # TODO: actually this seems false; it is only one recursion step, and a bit
 #       or reshuffling should allow us to get rid of the {N = 2} case.
 
-function (A::Rot3DCoeffs{T})(ll::StaticVector{1},
-                            mm::StaticVector{1},
-                            kk::StaticVector{1}) where {T}
-   if ll[1] == mm[1] == kk[1] == 0
-      return T(1)
-   else
-      return T(0)
-   end
-end
+(A::Rot3DCoeffs)(ll::StaticVector{1},
+                 mm::StaticVector{1},
+                 kk::StaticVector{1})
+			  = coco_init(A.φ, ll[1], mm[1], kk[1], A)
 
-function (A::Rot3DCoeffs{T})(ll::StaticVector{2},
-                            mm::StaticVector{2},
-                            kk::StaticVector{2}) where {T}
-   if ll[1] != ll[2] || sum(mm) != 0 || sum(kk) != 0
-      return T(0)
-   else
-      return T( 8 * pi^2 / (2*ll[1]+1) * (-1)^(mm[1]-kk[1]) )
-   end
-end
-
-# next comes the recursion step for N ≧ 3
 
 function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
                                         mm::StaticVector{N},
