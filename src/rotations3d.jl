@@ -219,7 +219,7 @@ end
 function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
                                         mm::StaticVector{N},
                                         kk::StaticVector{N}) where {T, N}
-	val = T(0)
+	val = coco_zero(A.phi, A)
    llp = ll[1:N-2]
    mmp = mm[1:N-2]
    kkp = kk[1:N-2]
