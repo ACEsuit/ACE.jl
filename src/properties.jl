@@ -4,11 +4,6 @@ import LinearAlgebra: norm
 
 abstract type AbstractProperty end
 
-function coco_init end
-function coco_zero end
-function coco_filter end
-function coco_dot end
-
 
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
 @inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
@@ -49,14 +44,14 @@ rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 #       for further discussion
 *(φ::Invariant, dAA::SVector) = φ.val * dAA
 
-coco_init(φ::Invariant, l, m, μ, A::Rot3DCoeff{T}) where {T} =
-            l == m == μ == 0 ? zero(T) : T(1)
+coco_init(::Invariant, l, m, μ, T, A) = (l == m == μ == 0 ? T(1) : T(0))
 
-coco_zero(::Invariant, A::Rot3DCoeff{T}) where {T} =
-            zero(T)
+coco_zero(::Invariant, T, A) = zero(T)
 
 coco_filter(::Invariant, ll, mm, kk) =
             iseven(sum(ll)) && (sum(mm) == sum(kk) == 0)
+
+coco_dot(u1::Invariant, u2::Invariant) = u1.val * u2.val
 
 
 @doc raw"""

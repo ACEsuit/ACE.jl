@@ -11,6 +11,12 @@ include("imports.jl")
 
 include("auxiliary.jl")
 
+function coco_init end
+function coco_zero end
+function coco_filter end
+function coco_dot end
+
+
 include("rotations3d.jl")
 using ACE.Rotations3D
 

@@ -6,6 +6,8 @@ using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal, tr
 using Combinatorics: permutations
 
+using ACE: coco_zero, coco_init, coco_dot
+
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 
 """
@@ -170,10 +172,10 @@ dicttype(N::Integer) = dicttype(Val(N))
 dicttype(::Val{N}) where {N} =
    Dict{Tuple{SVector{N,Int}, SVector{N,Int}, SVector{N,Int}}, Float64}
 
-Rot3DCoeffs(T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T))
+Rot3DCoeffs(φ, T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T), φ)
 
 
-function get_vals(A::R3DC, valN::Val{N}) where {N}
+function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
 	if length(A.vals) < N
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n)())
@@ -210,16 +212,16 @@ end
 # TODO: actually this seems false; it is only one recursion step, and a bit
 #       or reshuffling should allow us to get rid of the {N = 2} case.
 
-(A::Rot3DCoeffs)(ll::StaticVector{1},
+(A::Rot3DCoeffs{T})(ll::StaticVector{1},
                  mm::StaticVector{1},
-                 kk::StaticVector{1})
-			  = coco_init(A.φ, ll[1], mm[1], kk[1], A)
+                 kk::StaticVector{1}) where {T} =
+		coco_init(A.phi, ll[1], mm[1], kk[1], T, A)
 
 
 function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
                                         mm::StaticVector{N},
                                         kk::StaticVector{N}) where {T, N}
-	val = coco_zero(A.phi, A)
+	val = coco_zero(A.phi, T, A)
    llp = ll[1:N-2]
    mmp = mm[1:N-2]
    kkp = kk[1:N-2]
@@ -249,7 +251,7 @@ end
 # ----------------------------------------------------------------------
 
 
-function ri_basis(A::R3DC{T}, ll::SVector; ordered=false) where {T}
+function ri_basis(A::Rot3DCoeffs{T}, ll::SVector; ordered=false) where {T}
 	CC = compute_Al(A, ll, Val(ordered))
 	svdC = svd(CC)
 	rk = rank(Diagonal(svdC.S))
@@ -258,7 +260,7 @@ end
 
 
 # unordered
-function compute_Al(A::R3DC{T}, ll::SVector, ::Val{false}) where {T}
+function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
 	len = length(_mrange(ll))
 	CC = zeros(T, len, len)
 	for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
@@ -270,10 +272,10 @@ end
 
 # TODO: this could use some documentation
 
-rpi_basis(A::R3DC, zz, nn, ll) =
+rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
 			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
 
-function rpi_basis(A::R3DC,
+function rpi_basis(A::Rot3DCoeffs,
 						 nn::SVector{N, TN},
 						 ll::SVector{N, Int}) where {N, TN}
 	Uri = ri_basis(A, ll)

@@ -1,5 +1,7 @@
 # some type piracy ...
 # TODO: hack like this make #27 important!!!
+
+using StaticArrays
 import Base: *
 *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
       reshape( reshape(a, L1*L2, L3) * b, L1, L2)
@@ -187,6 +189,5 @@ println()
 
 
 #---
-
 
 end
