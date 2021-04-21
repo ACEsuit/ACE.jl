@@ -1,7 +1,8 @@
 
 using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: mul!
-
+using Combinatorics: permutations
+using LinearAlgebra: rank, svd, Diagonal
 
 
 """
@@ -70,7 +71,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
       # here, we could help out a bit and make it easier to find the
       # the relevant basis functions?
       # AAcols will be in spec format i.e. named tuples
-      U, AAcols = coupling_coeffs(AA, rotc, φ)
+      U, AAcols = coupling_coeffs(AA, rotc)
 
       # loop over the rows of U -> each specifies a basis function
       for irow = 1:size(U, 1)
@@ -90,7 +91,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
             idxAA = invAAspec[bcol_ordered]
             push!(Irow, idxB)
             push!(Jcol, idxAA)
-            push!(vals, TP(U[irow, icol]))
+            push!(vals, U[irow, icol])
          end
       end
    end
@@ -107,12 +108,13 @@ function _get_ordered(bb, invAspec)
 end
 
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
+function coupling_coeffs(bb, rotc::Rot3DCoeffs)
    # bb = [ b1, b2, b3, ...)
    # bi = (μ = ..., n = ..., l = ..., m = ...)
    #    (μ, n) -> n; only the l and m are used in the angular basis
    if length(bb) == 0
-      return [1.0,], [bb,]
+      # return [1.0,], [bb,]
+		error("correlation order 0 is currently not allowed")
    end
    # convert to a format that the Rotations3D implementation can understand
    # this utility function splits the bb = (b1, b2 ...) with each
@@ -120,13 +122,43 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
    #    l, and a new n = (μ, n)
    ll, nn = _b2llnn(bb)
    # now we can call the coupling coefficient construiction!!
-   U, Ms = Rotations3D.rpi_basis(rotc, nn, ll)
+   U, Ms = rpe_basis(rotc, nn, ll)
 
    # but now we need to convert the m spec back to complete basis function
    # specifications
-   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+   rpebs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
 
-   return U, rpibs
+   return U, rpebs
+end
+
+
+function rpe_basis(A::Rot3DCoeffs,
+						 nn::SVector{N, TN},
+						 ll::SVector{N, Int}) where {N, TN}
+	Ure, Mre = Rotations3D.re_basis(A, ll)
+	G = _gramian(nn, ll, Ure, Mre)
+   S = svd(G)
+   rk = rank(Diagonal(S.S); rtol =  1e-7)
+	Urpe = S.U[:, 1:rk]'
+	return Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure, Mre
+end
+
+
+function _gramian(nn, ll, Ure, Mre)
+   N = length(nn)
+   nre = size(Ure, 1)
+   G = zeros(Complex{Float64}, nre, nre)
+   for σ in permutations(1:N)
+      if (nn[σ] != nn) || (ll[σ] != ll); continue; end
+      for (iU1, mm1) in enumerate(Mre), (iU2, mm2) in enumerate(Mre)
+         if mm1[σ] == mm2
+            for i1 = 1:nre, i2 = 1:nre
+               G[i1, i2] += coco_dot(Ure[i1, iU1], Ure[i2, iU2])
+            end
+         end
+      end
+   end
+   return G
 end
 
 

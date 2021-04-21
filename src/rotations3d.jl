@@ -4,9 +4,8 @@ module Rotations3D
 
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal, tr
-using Combinatorics: permutations
 
-using ACE: coco_zero, coco_init, coco_dot
+using ACE: coco_zero, coco_init, coco_dot, coco_filter
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 
@@ -29,46 +28,42 @@ end
 # iterating over an m collection
 # -----------------------------------
 
-_mvec(::CartesianIndex{0}) = SVector(Int(0))
+_mvec(::CartesianIndex{0}) = SVector{0, Int}()
 
-_mvec(mpre::CartesianIndex) = SVector(Tuple(mpre)..., - sum(Tuple(mpre)))
+_mvec(mpre::CartesianIndex) = SVector(Tuple(mpre)...)
 
-struct MRange{N, T2}
+struct MRange{N, T2, TP}
    ll::SVector{N, Int}
    cartrg::T2
+	phi::TP
 end
 
-Base.length(mr::MRange) = sum(_->1, _mrange(mr.ll))
+Base.length(mr::MRange) =
+		sum(mt -> coco_filter(mr.phi, mr.ll, _mvec(mt)), mr.cartrg)
 
 """
 Given an l-vector `ll` iterate over all combinations of `mm` vectors  of
 the same length such that `sum(mm) == 0`
 """
-_mrange(ll) = MRange(ll, Iterators.Stateful(
-                     CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll)-1))))
+_mrange(phi, ll) =
+	MRange(ll, CartesianIndices(ntuple(i -> -ll[i]:ll[i], length(ll))), phi)
 
-function Base.iterate(mr::MRange{1}, args...)
-   if isempty(mr.cartrg)
-      return nothing
-   end
-   while !isempty(mr.cartrg)
-      popfirst!(mr.cartrg)
-   end
-   return SVector{1, Int}(0), nothing
+# TODO: should we impose here that (ll, mm) are lexicographically ordered?
+
+function Base.iterate(mr::MRange, idx::Integer=0)
+	while true
+		idx += 1
+		if idx > length(mr.cartrg)
+			return nothing
+		end
+		mm = _mvec(mr.cartrg[idx])
+		if coco_filter(mr.phi, mr.ll, mm)
+			return mm, idx
+		end
+	end
+	error("we should never be here")
 end
 
-function Base.iterate(mr::MRange, args...)
-   while true
-      if isempty(mr.cartrg)
-         return nothing
-      end
-      mpre = popfirst!(mr.cartrg)
-      if abs(sum(mpre.I)) <= mr.ll[end]
-         return _mvec(mpre), nothing
-      end
-   end
-   error("we should never be here")
-end
 
 
 
@@ -167,21 +162,22 @@ end
 #        related to the k index in the 1-p basis (or radial basis)
 # ----------------------------------------------------------------------
 
-dicttype(N::Integer) = dicttype(Val(N))
+dicttype(N::Integer, TP) = dicttype(Val(N), TP)
 
-dicttype(::Val{N}) where {N} =
-   Dict{Tuple{SVector{N,Int}, SVector{N,Int}, SVector{N,Int}}, Float64}
+dicttype(::Val{N}, TP) where {N} =
+   Dict{Tuple{SVector{N,Int}, SVector{N,Int}, SVector{N,Int}}, TP}
 
 Rot3DCoeffs(φ, T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T), φ)
 
 
 function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
+	TP = typeof(A.phi)
 	if length(A.vals) < N
 		for n = length(A.vals)+1:N
-			push!(A.vals, dicttype(n)())
+			push!(A.vals, dicttype(n, TP)())
 		end
 	end
-   return A.vals[N]::dicttype(valN)
+   return A.vals[N]::dicttype(valN, TP)
 end
 
 _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
@@ -247,71 +243,42 @@ end
 
 # ----------------------------------------------------------------------
 #   construction of a possible set of generalised CG coefficient;
-#   numerically via SVD
+#   numerically via SVD; this could be done analytically which might
+#   be more efficient.
 # ----------------------------------------------------------------------
 
 
-function ri_basis(A::Rot3DCoeffs{T}, ll::SVector; ordered=false) where {T}
-	CC = compute_Al(A, ll, Val(ordered))
-	svdC = svd(CC)
-	rk = rank(Diagonal(svdC.S))
-	return svdC.U[:, 1:rk]'
+function re_basis(A::Rot3DCoeffs{T}, ll::SVector) where {T}
+	CC, Mll = compute_Al(A, ll)
+	G = [ sum( coco_dot(CC[a, i], CC[b, i]) for i = 1:length(Mll) )
+			for a = 1:size(CC, 1), b = 1:size(CC, 1) ]
+	svdC = svd(G)
+	rk = rank(Diagonal(svdC.S), rtol = 1e-7)
+	CCred = Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]' * CC
+	return CCred, Mll
 end
 
 
 # unordered
-function compute_Al(A::Rot3DCoeffs{T}, ll::SVector, ::Val{false}) where {T}
-	len = length(_mrange(ll))
-	CC = zeros(T, len, len)
-	for (im, mm) in enumerate(_mrange(ll)), (ik, kk) in enumerate(_mrange(ll))
+function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
+	Mll = collect(_mrange(A.phi, ll))
+	len = length(Mll)
+	CC = fill(coco_zero(A.phi, T, A), (len, len))
+	for (im, mm) in enumerate(Mll), (ik, kk) in enumerate(Mll)
 		CC[ik, im] = A(ll, mm, kk)
 	end
-	return CC
+	return CC, Mll
 end
 
 
-# TODO: this could use some documentation
 
-rpi_basis(A::Rot3DCoeffs, zz, nn, ll) =
-			rpi_basis(A, SVector(zz...), SVector(nn...), SVector(ll...))
-
-function rpi_basis(A::Rot3DCoeffs,
-						 nn::SVector{N, TN},
-						 ll::SVector{N, Int}) where {N, TN}
-	Uri = ri_basis(A, ll)
-	Mri = collect( _mrange(ll) )   # rows...
-	G = _gramian(nn, ll, Uri, Mri)
-    S = svd(G)
-    rk = rank(G; rtol =  1e-7)
-	Urpi = S.U[:, 1:rk]'
-	return Diagonal(sqrt.(S.S[1:rk])) * Urpi * Uri, Mri
-end
-
-
-function _gramian(nn, ll, Uri, Mri)
-   N = length(nn)
-   nri = size(Uri, 1)
-   @assert size(Uri, 1) == nri
-   G = zeros(Complex{Float64}, nri, nri)
-   for σ in permutations(1:N)
-      if (nn[σ] != nn) || (ll[σ] != ll); continue; end
-      for (iU1, mm1) in enumerate(Mri), (iU2, mm2) in enumerate(Mri)
-         if mm1[σ] == mm2
-            for i1 = 1:nri, i2 = 1:nri
-               G[i1, i2] += conj(Uri[i1, iU1]) * Uri[i2, iU2]
-            end
-         end
-      end
-   end
-   return G
-end
-
-## Matthias' code
-include("rotations3d-equiv.jl")
-
-## Covariant construction for SphericalVector/Matrix - Liwei
-include("rotations3d-spher-vec.jl")
-
-include("rotations3d-spher-mat.jl")
+# GOAL IS TO REMOVE ALL OF THIS!!!
+# ## Matthias' code
+# include("rotations3d-equiv.jl")
+#
+# ## Covariant construction for SphericalVector/Matrix - Liwei
+# include("rotations3d-spher-vec.jl")
+#
+# include("rotations3d-spher-mat.jl")
 
 end

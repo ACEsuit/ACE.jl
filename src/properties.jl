@@ -44,9 +44,13 @@ rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 #       for further discussion
 *(φ::Invariant, dAA::SVector) = φ.val * dAA
 
-coco_init(::Invariant, l, m, μ, T, A) = (l == m == μ == 0 ? T(1) : T(0))
+coco_init(::Invariant, l, m, μ, T, A) = (
+      l == m == μ == 0 ? Invariant(T(1)) : Invariant(T(0))  )
 
-coco_zero(::Invariant, T, A) = zero(T)
+coco_zero(::Invariant, T, A) = Invariant(zero(T))
+
+coco_filter(::Invariant, ll, mm) =
+            iseven(sum(ll)) && sum(mm) == 0
 
 coco_filter(::Invariant, ll, mm, kk) =
             iseven(sum(ll)) && (sum(mm) == sum(kk) == 0)
