@@ -186,12 +186,6 @@ _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
 function (A::Rot3DCoeffs{T})(ll::StaticVector{N},
                              mm::StaticVector{N},
                              kk::StaticVector{N}) where {T, N}
-   if       sum(mm) != 0 ||
-            sum(kk) != 0 ||
-            !all(abs.(mm) .<= ll) ||
-            !all(abs.(kk) .<= ll)
-      return T(0)
-   end
    vals = get_vals(A, Val(N))  # this should infer the type!
    key = _key(ll, mm, kk)
    if haskey(vals, key)
@@ -298,8 +292,12 @@ function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 		# allocate the right number of vectors to store basis function coeffs
 		cc = [ Vector{TP}(undef, lenMll) for _=1:numcc ]
 		for (im, mm) in enumerate(Mll) # loop over possible indices
-			# get all possible coupling coefficients
-			cc0 = A(ll, mm, kk)
+			if !coco_filter(A.phi, ll, mm, kk)
+				cc0 = [ coco_zero(A.phi) for _ = 1:length(cc) ]
+			else
+				# get all possible coupling coefficients
+				cc0 = A(ll, mm, kk)
+			end
 			# write them into the cc vectors
 			__into_cc!(cc, cc0, im)
 		end

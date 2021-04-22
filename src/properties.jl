@@ -49,13 +49,14 @@ coco_init(::Invariant, l, m, μ, T, A) = (
 coco_zero(::Invariant, T, A) = Invariant(zero(T))
 
 coco_filter(::Invariant, ll, mm) =
-            iseven(sum(ll)) && sum(mm) == 0
+            iseven(sum(ll)) && (sum(mm) == 0)
 
 coco_filter(::Invariant, ll, mm, kk) =
             iseven(sum(ll)) && (sum(mm) == sum(kk) == 0)
 
 coco_dot(u1::Invariant, u2::Invariant) = u1.val * u2.val
 
+# --------------------- EuclideanVector
 
 @doc raw"""
 `struct EuclideanVector{D, T}` : specifies that the output $\varphi$ of an
@@ -84,6 +85,7 @@ rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], Clebsch
 *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
 
 
+# --------------------- SphericalVector
 
 struct SphericalVector{L, LEN, T} <: AbstractProperty
    val::SVector{LEN, T}
