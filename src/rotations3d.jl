@@ -5,7 +5,7 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal, tr
 
-using ACE: coco_zero, coco_init, coco_dot, coco_filter
+using ACE: coco_zero, coco_init, coco_dot, coco_filter, AbstractProperty
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 
@@ -249,12 +249,19 @@ end
 
 
 function re_basis(A::Rot3DCoeffs{T}, ll::SVector) where {T}
-	CC, Mll = compute_Al(A, ll)
-	G = [ sum( coco_dot(CC[a, i], CC[b, i]) for i = 1:length(Mll) )
-			for a = 1:size(CC, 1), b = 1:size(CC, 1) ]
+	TP = typeof(A.phi)
+	CC, Mll = compute_Al(A, ll)  # CC::Vector{Vector{...}}
+	G = [ sum( coco_dot(CC[a][i], CC[b][i]) for i = 1:length(Mll) )
+			for a = 1:length(CC), b = 1:length(CC) ]
 	svdC = svd(G)
 	rk = rank(Diagonal(svdC.S), rtol = 1e-7)
-	CCred = Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]' * CC
+	# Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]' * CC
+	# construct the new basis
+	Ured = Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]'
+	CCred = Matrix{TP}(undef, rk, length(Mll))
+	for i = 1:rk
+		CCred[i, :] = sum(Ured[i, j] * CC[j]  for j = 1:length(CC))
+	end
 	return CCred, Mll
 end
 
@@ -262,11 +269,44 @@ end
 # unordered
 function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	Mll = collect(_mrange(A.phi, ll))
-	len = length(Mll)
-	CC = fill(coco_zero(A.phi, T, A), (len, len))
-	for (im, mm) in enumerate(Mll), (ik, kk) in enumerate(Mll)
-		CC[ik, im] = A(ll, mm, kk)
+	lenMll = length(Mll)
+	# each element of CC will be one row of the coupling coefficients
+	TP = typeof(A.phi)
+	CC = Vector{TP}[]
+	if lenMll == 0
+		return CC, Mll
 	end
+	# figure out how many basis functions we get for each call through the
+	# recursion in A
+	cc0 = A(ll, Mll[1], Mll[1])
+	numcc = length(cc0)
+
+	# some utility funcions to allow coco_init to return either a property
+	# or a vector of properties
+	function __into_cc!(cc, cc0::AbstractProperty, im)
+		@assert length(cc) == 1
+		cc[1][im] = cc0
+	end
+	function __into_cc!(cc, cc0::AbstractVector, im)
+		@assert length(cc) == length(cc0)
+		for p = 1:length(cc)
+			cc[p][im] = cc0[p]
+		end
+	end
+
+	for (ik, kk) in enumerate(Mll)  # loop over possible basis functions
+		# allocate the right number of vectors to store basis function coeffs
+		cc = [ Vector{TP}(undef, lenMll) for _=1:numcc ]
+		for (im, mm) in enumerate(Mll) # loop over possible indices
+			# get all possible coupling coefficients
+			cc0 = A(ll, mm, kk)
+			# write them into the cc vectors
+			__into_cc!(cc, cc0, im)
+		end
+		# and now push them onto the big stack.
+		append!(CC, cc)
+	end
+
 	return CC, Mll
 end
 

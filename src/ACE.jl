@@ -11,6 +11,8 @@ include("imports.jl")
 
 include("auxiliary.jl")
 
+abstract type AbstractProperty end
+
 function coco_init end
 function coco_zero end
 function coco_filter end

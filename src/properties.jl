@@ -2,7 +2,6 @@
 import Base: -, +, *, filter
 import LinearAlgebra: norm
 
-abstract type AbstractProperty end
 
 
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
