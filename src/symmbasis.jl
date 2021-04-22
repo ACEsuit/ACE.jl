@@ -71,8 +71,8 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
       # here, we could help out a bit and make it easier to find the
       # the relevant basis functions?
       # AAcols will be in spec format i.e. named tuples
-      U, AAcols = coupling_coeffs(AA, rotc)
-
+      U, AAcols = coupling_coeffs(φ, AA, rotc)
+	  # U, AAcols = coupling_coeffs(AA, rotc)
       # loop over the rows of U -> each specifies a basis function
       for irow = 1:size(U, 1)
          idxB += 1
@@ -162,16 +162,16 @@ function _gramian(nn, ll, Ure, Mre)
 end
 
 
-# function coupling_coeffs(bb, rotc::Rot3DCoeffsEquiv, φ::EuclideanVector)
-#    if length(bb) == 0
-#       error("an equivariant vector basis function cannot have length 0")
-#    end
-#    ll, nn = _b2llnn(bb)
-#    U, Ms = Rotations3D.vec3_symm_basis(rotc, nn, ll)
-#    rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
-#    return U, rpibs
-# end
-#
+function coupling_coeffs(bb, rotc::Rot3DCoeffsEquiv, φ::EuclideanVector)
+   if length(bb) == 0
+      error("an equivariant vector basis function cannot have length 0")
+   end
+   ll, nn = _b2llnn(bb)
+   U, Ms = Rotations3D.vec3_symm_basis(rotc, nn, ll)
+   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+   return U, rpibs
+end
+
 # function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
 #    if length(bb) == 0
 #       error("an equivariant vector basis function cannot have length 0")
