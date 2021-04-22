@@ -5,7 +5,7 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal, tr
 
-using ACE: coco_zero, coco_init, coco_dot, coco_filter, AbstractProperty
+using ACE: coco_zero, coco_zeros, coco_init, coco_dot, coco_filter, AbstractProperty
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 
@@ -170,8 +170,8 @@ dicttype(::Val{N}, TP) where {N} =
 Rot3DCoeffs(φ, T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T), φ)
 
 
-function get_vals(A::Rot3DCoeffs, valN::Val{N}) where {N}
-	TP = typeof(A.phi)
+function get_vals(A::Rot3DCoeffs{T}, valN::Val{N}) where {T,N}
+	TP = typeof(coco_zeros(A.phi,T,A))
 	if length(A.vals) < N
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n, TP)())
@@ -211,7 +211,7 @@ end
 function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
                                         mm::StaticVector{N},
                                         kk::StaticVector{N}) where {T, N}
-	val = coco_zero(A.phi, T, A)
+	val = coco_zeros(A.phi, T, A)
    llp = ll[1:N-2]
    mmp = mm[1:N-2]
    kkp = kk[1:N-2]
@@ -252,11 +252,11 @@ function re_basis(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	# Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]' * CC
 	# construct the new basis
 	Ured = Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]'
-	CCred = Matrix{TP}(undef, rk, length(Mll))
+	Ure = Matrix{TP}(undef, rk, length(Mll))
 	for i = 1:rk
-		CCred[i, :] = sum(Ured[i, j] * CC[j]  for j = 1:length(CC))
+		Ure[i, :] = sum(Ured[i, j] * CC[j]  for j = 1:length(CC))
 	end
-	return CCred, Mll
+	return Ure, Mll
 end
 
 
@@ -273,7 +273,8 @@ function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	# figure out how many basis functions we get for each call through the
 	# recursion in A
 	cc0 = A(ll, Mll[1], Mll[1])
-	numcc = length(cc0)
+	#numcc = length(cc0)
+	numcc = (cc0 isa AbstractProperty ? 1 : length(cc0))
 
 	# some utility funcions to allow coco_init to return either a property
 	# or a vector of properties

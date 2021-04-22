@@ -85,6 +85,44 @@ rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], Clebsch
 *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
 
 
+coco_init(phi::EuclideanVector, l, m, μ, T, A) = (
+      coco_filter(phi,l, m, μ) ? EuclideanVector{Complex{T}}(rmatrices[m,μ][:,1])
+                              : EuclideanVector{Complex{T}}()  )
+
+coco_zero(::EuclideanVector, T, A) = EuclideanVector{Complex{T}}()
+
+coco_zeros(::EuclideanVector, T, A) = EuclideanVector{Complex{T}}()
+
+# coco_init(phi::EuclideanVector, l, m, μ, T, A) = (
+#       coco_filter(phi,l, m, μ) ? [EuclideanVector{Complex{T}}(rmatrices[m,μ][:,k]) for k=1:3]
+#                               : [EuclideanVector{Complex{T}}() for k=1:3]  )
+#
+# coco_zero(::EuclideanVector, T, A) = EuclideanVector{Complex{T}}()
+#
+# coco_zeros(::EuclideanVector, T, A) = [EuclideanVector{Complex{T}}() for k=1:3]
+coco_filter(::EuclideanVector, ll, mm) =
+            isodd(sum(ll)) && (abs(sum(mm)) <= 1)
+
+coco_filter(::EuclideanVector, ll, mm, kk) =
+      abs(sum(mm)) <= 1 &&
+      abs(sum(kk)) <= 1 &&
+      isodd(sum(ll))
+
+coco_dot(u1::EuclideanVector, u2::EuclideanVector) = dot(u1.val,u2.val)
+
+rmatrices = Dict(
+  (-1,-1) => SMatrix{3, 3, ComplexF64, 9}(1/6, 1im/6, 0, -1im/6, 1/6, 0, 0, 0, 0),
+  (-1,0) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 0, 0, 0, 0, 1/(3*sqrt(2)), 1im/(3*sqrt(2)), 0),
+  (-1,1) => SMatrix{3, 3, ComplexF64, 9}(-1/6, -1im/6, 0, -1im/6, 1/6, 0, 0, 0, 0),
+  (0,-1) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 1/(3*sqrt(2)), 0, 0, -1im/(3*sqrt(2)), 0, 0, 0),
+  (0,0) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 0, 0, 0, 0, 0, 0, 1/3),
+  (0,1) => SMatrix{3, 3, ComplexF64, 9}(0, 0, -1/(3*sqrt(2)), 0, 0, -1im/(3*sqrt(2)), 0, 0, 0),
+  (1,-1) => SMatrix{3, 3, ComplexF64, 9}(-1/6, 1im/6, 0, 1im/6, 1/6, 0, 0, 0, 0),
+  (1,0) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 0, 0, 0, 0, -1/(3*sqrt(2)), 1im/(3*sqrt(2)), 0),
+  (1,1) => SMatrix{3, 3, ComplexF64, 9}(1/6, -1im/6, 0, 1im/6, 1/6, 0, 0, 0, 0)
+  )
+
+
 # --------------------- SphericalVector
 
 struct SphericalVector{L, LEN, T} <: AbstractProperty
