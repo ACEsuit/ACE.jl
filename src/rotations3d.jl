@@ -312,9 +312,7 @@ end
 
 
 # GOAL IS TO REMOVE ALL OF THIS!!!
-# ## Matthias' code
-# include("rotations3d-equiv.jl")
-#
+
 # ## Covariant construction for SphericalVector/Matrix - Liwei
 # include("rotations3d-spher-vec.jl")
 #

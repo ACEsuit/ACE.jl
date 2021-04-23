@@ -84,22 +84,16 @@ rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], Clebsch
 # differentiation - cf #27
 *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
 
-
 coco_init(phi::EuclideanVector, l, m, μ, T, A) = (
-      coco_filter(phi,l, m, μ) ? EuclideanVector{Complex{T}}(rmatrices[m,μ][:,1])
-                              : EuclideanVector{Complex{T}}()  )
+      (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
+         ? [EuclideanVector{Complex{T}}(rmatrices[m,μ][:,k]) for k=1:3]
+         : [EuclideanVector{Complex{T}}() for k=1:3]  )
 
 coco_zero(::EuclideanVector, T, A) = EuclideanVector{Complex{T}}()
 
-coco_zeros(::EuclideanVector, T, A) = EuclideanVector{Complex{T}}()
+# TODO: this is a hack - fix it please!!!
+coco_zeros(::EuclideanVector, T, A) = [EuclideanVector{Complex{T}}() for k=1:3]
 
-# coco_init(phi::EuclideanVector, l, m, μ, T, A) = (
-#       coco_filter(phi,l, m, μ) ? [EuclideanVector{Complex{T}}(rmatrices[m,μ][:,k]) for k=1:3]
-#                               : [EuclideanVector{Complex{T}}() for k=1:3]  )
-#
-# coco_zero(::EuclideanVector, T, A) = EuclideanVector{Complex{T}}()
-#
-# coco_zeros(::EuclideanVector, T, A) = [EuclideanVector{Complex{T}}() for k=1:3]
 coco_filter(::EuclideanVector, ll, mm) =
             isodd(sum(ll)) && (abs(sum(mm)) <= 1)
 
