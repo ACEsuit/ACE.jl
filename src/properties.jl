@@ -152,6 +152,54 @@ filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :
 rot3Dcoeffs(::SphericalVector, T::DataType=Float64) = Rot3DCoeffs(T)
 
 
+const __rotcoeff_inv = Rotations3D.Rot3DCoeffs(Invariant())
+
+using ACE.Wigner: rotation_D_matrix_ast
+
+# Equation (1.2) - vector value coupling coefficients
+# ∫_{SO3} D^{ll}_{μμmm} D^*(Q) e^t dQ -> 2L+1 column vector
+function vec_cou_coe(rotc::Rot3DCoeffs{T},
+					   ll::StaticVector{N},
+	                   mm::StaticVector{N},
+					   μμ::StaticVector{N},
+					   L::Integer, t::Integer) where {T,N}
+	if t > 2L + 1 || t <= 0
+		error("Rotation D matrix has no such column!")
+	end
+	Z = zeros(2L + 1)
+	D = rotation_D_matrix_ast(L)
+	Dt = D[:,t]   # D^* ⋅ e^t
+	μt = [Dt[i].μ for i in 1:2L+1]
+	mt = [Dt[i].m for i in 1:2L+1]
+	LL = [ll; L]
+	for i = 1:(2L + 1)
+		MM = [mm; mt[i]]
+		KK = [μμ; μt[i]]
+		Z[i] = Dt[i].sign * rotc(LL, MM, KK).val
+	end
+	return SphericalVector{L, 2L+1, Complex{T}}(Z)
+end
+
+coco_zeros(φ::TP, ll, mm, kk, T, A)  where {TP <: SphericalVector} =
+		zeros(TP, 2 * getL(φ) + 1)
+
+coco_dot(u1::SphericalVector, u2::SphericalVector) =
+		dot(u1.val, u2.val)
+
+coco_filter(φ::SphericalVector{L}, ll, mm) where {L} =
+		iseven(sum(ll) + L) && (abs(sum(mm)) <=  L)
+
+coco_filter(φ::SphericalVector{L}, ll, mm, kk) where {L} =
+      iseven(sum(ll) + L) && (abs(sum(mm)) <=  L) && (abs(sum(kk)) <= L)
+
+coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L} =
+			[ vec_cou_coe(__rotcoeff_inv,
+		 					  SVector(l), SVector(m), SVector(μ), L, t)
+				for t = 1:2*L+1 ]
+
+
+# --------------- SphericalMatrix
+
 struct SphericalMatrix{L1, L2, LEN1, LEN2, T} <: AbstractProperty
    val::SMatrix{LEN1, LEN2, T}
    _valL1::Val{L1}

@@ -79,32 +79,32 @@ __syms2L = Dict( [sym => L-1 for (L, sym) in enumerate(__L2syms)]... )
 get_orbsym(L::Integer)  = __L2syms[L+1]
 
 for L = 0:3
-      @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
-      φ = ACE.SphericalVector(L; T = ComplexF64)
-      pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-      basis = SymmetricBasis(pibasis, φ)
-      BB = evaluate(basis, cfg)
+   @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
+   φ = ACE.SphericalVector(L; T = ComplexF64)
+   pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+   basis = SymmetricBasis(pibasis, φ)
+   BB = evaluate(basis, cfg)
 
-      for ntest = 1:10
-         Q, D = ACE.Wigner.rand_QD(L)
-         cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
-         BB1 = evaluate(basis, cfg1)
-         DtxBB1 = Ref(D') .* BB1
-         print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
-      end
-      println()
+   for ntest = 1:10
+      Q, D = ACE.Wigner.rand_QD(L)
+      cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
+      BB1 = evaluate(basis, cfg1)
+      DtxBB1 = Ref(D') .* BB1
+      print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
+   end
+   println()
 
-      @info(" .... derivatives")
-      for ntest = 1:30
-         Us = randn(SVector{3, Float64}, length(Xs))
-         C = randn(typeof(φ.val), length(basis))
-         F = t -> sum( sum(c .* b.val)
-                       for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
-         dF = t -> [ sum( sum(c .* db)
-                          for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
-         print_tf(@test fdtest(F, dF, [0.0], verbose=false))
-      end
-      println()
+   @info(" .... derivatives")
+   for ntest = 1:30
+      Us = randn(SVector{3, Float64}, length(Xs))
+      C = randn(typeof(φ.val), length(basis))
+      F = t -> sum( sum(c .* b.val)
+                    for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
+      dF = t -> [ sum( sum(c .* db)
+                       for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
+      print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+   end
+   println()
 end
 
 

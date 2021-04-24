@@ -21,6 +21,8 @@ function coco_dot end
 
 include("rotations3d.jl")
 using ACE.Rotations3D
+include("testing/wigner.jl")
+
 
 include("states.jl")
 include("properties.jl")
@@ -81,7 +83,6 @@ include("utils.jl")
 
 
 include("testing/testing.jl")
-include("testing/wigner.jl")
 
 # - bond model
 # - pure basis

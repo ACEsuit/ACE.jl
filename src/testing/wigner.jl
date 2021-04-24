@@ -1,7 +1,43 @@
 module Wigner
 
 using StaticArrays
-import ACE.Rotations3D.rotation_D_matrix
+
+
+# Index of entries in D matrix (sign included)
+struct D_Index
+	sign::Int64
+	μ::Int64
+	m::Int64
+end
+
+# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
+function rotation_D_matrix(L::Integer)
+	if L<0
+		error("Orbital type shall be represented as a positive integer!")
+	end
+    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+    for i = 1 : 2 * L + 1
+        for j = 1 : 2 * L + 1
+            D[j,i] = D_Index(1, i - 1 - L, j - 1 - L);
+        end
+    end
+	return D
+end
+
+# Equation (1.1) - forms the covariant matrix D(Q)(indices only)
+function rotation_D_matrix_ast(L::Integer)
+	if L<0
+		error("Orbital type shall be represented as a positive integer!")
+	end
+    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+    for i = 1 : 2 * L + 1
+        for j = 1 : 2 * L + 1
+            D[i,j] = D_Index((-1)^(i+j), -(i - 1 - L), -(j - 1 - L));
+        end
+    end
+	return D
+end
+
 
 # D_{μm}^l(Ang2Mat_zyz(α,β,γ))
 function wigner_big_D(μ,m,l,α,β,γ)
