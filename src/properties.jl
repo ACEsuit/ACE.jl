@@ -46,7 +46,7 @@ rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 coco_init(::Invariant, l, m, μ, T, A) = (
       l == m == μ == 0 ? Invariant(T(1)) : Invariant(T(0))  )
 
-coco_zero(::Invariant, T, A) = Invariant(zero(T))
+coco_zeros(::Invariant, ll, mm, kk, T, A) = Invariant(zero(T))
 
 coco_filter(::Invariant, ll, mm) =
             iseven(sum(ll)) && (sum(mm) == 0)
@@ -89,10 +89,7 @@ coco_init(phi::EuclideanVector, l, m, μ, T, A) = (
          ? [EuclideanVector{Complex{T}}(rmatrices[m,μ][:,k]) for k=1:3]
          : [EuclideanVector{Complex{T}}() for k=1:3]  )
 
-coco_zero(::EuclideanVector, T, A) = EuclideanVector{Complex{T}}()
-
-# TODO: this is a hack - fix it please!!!
-coco_zeros(::EuclideanVector, T, A) = [EuclideanVector{Complex{T}}() for k=1:3]
+coco_zeros(::EuclideanVector, ll, mm, kk, T, A) = [EuclideanVector{Complex{T}}() for k=1:3]
 
 coco_filter(::EuclideanVector, ll, mm) =
             isodd(sum(ll)) && (abs(sum(mm)) <= 1)

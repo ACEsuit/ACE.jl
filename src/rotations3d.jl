@@ -5,7 +5,7 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal, tr
 
-using ACE: coco_zero, coco_zeros, coco_init, coco_dot, coco_filter, AbstractProperty
+using ACE: coco_zeros, coco_init, coco_dot, coco_filter, AbstractProperty
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 
@@ -171,13 +171,17 @@ Rot3DCoeffs(φ, T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T), φ)
 
 
 function get_vals(A::Rot3DCoeffs{T}, valN::Val{N}) where {T,N}
-	TP = typeof(coco_zeros(A.phi,T,A))
 	if length(A.vals) < N
+		# make up an ll, kk, mm and compute a dummy coupling coeff
+		ll, mm, kk = SVector(0), SVector(0), SVector(0)
+		cc0 = coco_zeros(A.phi, ll, mm, kk, T, A)
+		TP = typeof(cc0)
+		# create more dictionaries of the correct type
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n, TP)())
 		end
 	end
-   return A.vals[N]::dicttype(valN, TP)
+   return A.vals[N]
 end
 
 _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
@@ -209,27 +213,27 @@ end
 
 
 function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
-                                        mm::StaticVector{N},
-                                        kk::StaticVector{N}) where {T, N}
-	val = coco_zeros(A.phi, T, A)
+                                         mm::StaticVector{N},
+                                         kk::StaticVector{N}) where {T, N}
+	val = coco_zeros(A.phi, ll, mm, kk, T, A)
+	TV = typeof(val)
+
    llp = ll[1:N-2]
    mmp = mm[1:N-2]
    kkp = kk[1:N-2]
-   for j = abs(ll[N-1]-ll[N]):(ll[N-1]+ll[N])
-      if abs(kk[N-1]+kk[N]) > j || abs(mm[N-1]+mm[N]) > j
-         continue
-      end
-		cgk = try
-			A.cg(ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
-		catch
-			@show (ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
-			T(0)
-		end
+
+	jmin = maximum( ( abs(ll[N-1]-ll[N]),
+				         abs(kk[N-1]+kk[N]),
+						   abs(mm[N-1]+mm[N]) ) )
+   jmax = ll[N-1]+ll[N]
+   for j = jmin:jmax
+		cgk = A.cg(ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
 		cgm = A.cg(ll[N-1], mm[N-1], ll[N], mm[N], j, mm[N-1]+mm[N])
 		if cgk * cgm  != 0
-			val += cgk * cgm * A( SVector(llp..., j),
-								       SVector(mmp..., mm[N-1]+mm[N]),
-								       SVector(kkp..., kk[N-1]+kk[N]) )
+			a = A( SVector(llp..., j),
+			       SVector(mmp..., mm[N-1]+mm[N]),
+			       SVector(kkp..., kk[N-1]+kk[N]) )::TV
+			val += cgk * cgm * a
 		end
    end
    return val
@@ -270,11 +274,6 @@ function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	if lenMll == 0
 		return CC, Mll
 	end
-	# figure out how many basis functions we get for each call through the
-	# recursion in A
-	cc0 = A(ll, Mll[1], Mll[1])
-	#numcc = length(cc0)
-	numcc = (cc0 isa AbstractProperty ? 1 : length(cc0))
 
 	# some utility funcions to allow coco_init to return either a property
 	# or a vector of properties
@@ -290,11 +289,14 @@ function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	end
 
 	for (ik, kk) in enumerate(Mll)  # loop over possible basis functions
+		# do a dummy calculation to determine how many coefficients we will get
+		cc0 = A(ll, Mll[1], kk)
+		numcc = (cc0 isa AbstractProperty ? 1 : length(cc0))
 		# allocate the right number of vectors to store basis function coeffs
 		cc = [ Vector{TP}(undef, lenMll) for _=1:numcc ]
 		for (im, mm) in enumerate(Mll) # loop over possible indices
 			if !coco_filter(A.phi, ll, mm, kk)
-				cc0 = [ coco_zero(A.phi) for _ = 1:length(cc) ]
+				cc0 = zeros(TP, length(cc))
 			else
 				# get all possible coupling coefficients
 				cc0 = A(ll, mm, kk)
