@@ -112,7 +112,7 @@ end
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
 
-for L1 = 0:3, L2 = 0:3
+for L1 = 0:1, L2 = 0:1
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
@@ -145,7 +145,7 @@ end
 #---
 @info("Consistency between SphericalVector & SphericalMatrix")
 
-for L = 0:3
+for L = 0:0
    @info "L = $L"
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
    pibasis1 = PIBasis(B1p, ord, maxdeg; property = φ1, isreal = false)

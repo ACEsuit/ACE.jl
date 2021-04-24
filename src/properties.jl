@@ -154,7 +154,7 @@ rot3Dcoeffs(::SphericalVector, T::DataType=Float64) = Rot3DCoeffs(T)
 
 const __rotcoeff_inv = Rotations3D.Rot3DCoeffs(Invariant())
 
-using ACE.Wigner: rotation_D_matrix_ast
+using ACE.Wigner: rotation_D_matrix_ast, rotation_D_matrix
 
 # Equation (1.2) - vector value coupling coefficients
 # ∫_{SO3} D^{ll}_{μμmm} D^*(Q) e^t dQ -> 2L+1 column vector
@@ -244,3 +244,101 @@ filter(φ::SphericalMatrix, b::Array) = ( length(b) < 1 ? true :
          ( abs(sum(bi.m for bi in b)) <= sum(getL(φ)) )  ) )
 
 rot3Dcoeffs(::SphericalMatrix, T::DataType=Float64) = Rot3DCoeffs(T)
+
+function mat_cou_coe(rotc::Rot3DCoeffs{T},
+					   ll::StaticVector{N},
+	               mm::StaticVector{N},
+					   μμ::StaticVector{N},
+					   L1::Integer, L2::Integer,
+					   a::Integer, b::Integer) where {T,N}
+	#@show ll,mm,μμ
+	if a > 2L1 + 1 || a <= 0 || b > 2L2 +1 || b <= 0
+		error("Rotation D matrices has no such element!")
+	end
+	Z = zeros(2 * L1 + 1, 2 * L2 + 1)
+	Dp = rotation_D_matrix_ast(L1)
+	Dq = rotation_D_matrix(L2)
+	Dpa = Dp[:,a]
+	Dqb = Dq[b,:]
+	μa = [Dpa[i].μ for i in 1:2L1+1]
+	ma = [Dpa[i].m for i in 1:2L1+1]
+	μb = [Dqb[i].μ for i in 1:2L2+1]
+	mb = [Dqb[i].m for i in 1:2L2+1]
+	LL = [ll; L1; L2]
+	for i = 1:(2 * L1 + 1)
+		for j = 1:(2 * L2 + 1)
+			MM = [μμ; ma[i]; mb[j]]
+			KK = [mm; μa[i]; μb[j]]
+			Z[i,j] = Dpa[i].sign * Dqb[j].sign * rotc(LL, MM, KK).val
+			#@show Z
+		end
+	end
+	return SphericalMatrix(SMatrix{2L1+1,2L2+1,ComplexF64}(Z), Val{L1}(), Val{L2}())
+end
+
+mat_cou_coe(rotc::Rot3DCoeffs{T},
+				ll, mm, μμ, L1::Integer, L2::Integer,
+				a::Integer, b::Integer) where {T,N} =
+				mat_cou_coe(rotc, SVector(ll...), SVector(mm...), SVector(μμ...), L1::Integer, L2::Integer,
+								a::Integer, b::Integer)
+
+
+function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
+   if iseven(l[1] + L1 + L2) && abs(m[1]) <= L1+L2 && abs(μ[1]) <= L1+L2
+		# for a = 1:2L1+1, b = 1:2L2+1
+		# 	global Temp = mat_cou_coe(A, l, m, μ, L1, L2, a, b)
+		# 	if !(norm(Temp) ≈ 0)
+		# 		global a_temp = a
+		# 		global b_temp = b
+		# 		break
+		# 	end
+		# end
+		# if a_temp == 2L1+1 && b_temp < 2L2+1
+		# 	for b = b_temp+1:2L2+1
+		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)) ≈ 0)
+		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)]
+		# 		end
+		# 	end
+		# elseif a_temp < 2L1+1 && b_temp == 2L2+1
+		# 	for a = a_temp+1:2L1+1, b = 1:2L2+1
+		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a, b)) ≈ 0)
+		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a, b)]
+		# 		end
+		# 	end
+		# elseif a_temp < 2L1+1 && b_temp < 2L2+1
+		# 	for b = b_temp+1:2L2+1
+		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)) ≈ 0)
+		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)]
+		# 		end
+		# 	end
+		# 	for a = a_temp+1:2L1+1, b = 1:2L2+1
+		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a, b)) ≈ 0)
+		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a, b)]
+		# 		end
+		# 	end
+		# end
+		# return Temp
+		Temp = [mat_cou_coe(__rotcoeff_inv, l, m, μ, L1, L2, a, b) for a=1:2L1+1, b=1:2L2+1]
+      return vec([i for i in Temp])
+	else
+		Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}() for a=1:2L1+1, b=1:2L2+1]
+      return vec([i for i in Temp])
+		#return SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}()
+   end
+end
+
+function coco_zeros(φ::SphericalMatrix{L1,L2}, ll, mm, kk, T, A) where{L1,L2}
+   #return SphericalMatrix( zero(SMatrix{2L1+1, 2L2+1, T}), Val{L1}(), Val{L2}() )
+	Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}() for a=1:2L1+1, b=1:2L2+1]
+	return vec([i for i in Temp])
+end
+
+coco_filter(φ::SphericalMatrix{L1,L2}, ll, mm) where {L1,L2} =
+            iseven(sum(ll)) == iseven(L1+L2) && (abs(sum(mm)) <=  L1+L2)
+
+coco_filter(φ::SphericalMatrix{L1,L2}, ll, mm, kk) where {L1,L2} =
+            iseven(sum(ll)) == iseven(L1+L2) &&
+            (abs(sum(mm)) <=  L1+L2) &&
+            (abs(sum(kk)) <=  L1+L2)
+
+coco_dot(u1::SphericalMatrix, u2::SphericalMatrix) = tr(u1.val * u2.val')
