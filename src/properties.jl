@@ -173,15 +173,15 @@ function vec_cou_coe(rotc::Rot3DCoeffs{T},
 	mt = [Dt[i].m for i in 1:2L+1]
 	LL = [ll; L]
 	for i = 1:(2L + 1)
-		MM = [mm; mt[i]]
-		KK = [μμ; μt[i]]
+		MM = [μμ; mt[i]]
+		KK = [mm; μt[i]]
 		Z[i] = Dt[i].sign * rotc(LL, MM, KK).val
 	end
 	return SphericalVector{L, 2L+1, Complex{T}}(Z)
 end
 
 coco_zeros(φ::TP, ll, mm, kk, T, A)  where {TP <: SphericalVector} =
-		zeros(TP, 2 * getL(φ) + 1)
+		zeros(TP, 1)
 
 coco_dot(u1::SphericalVector, u2::SphericalVector) =
 		dot(u1.val, u2.val)
@@ -192,10 +192,15 @@ coco_filter(φ::SphericalVector{L}, ll, mm) where {L} =
 coco_filter(φ::SphericalVector{L}, ll, mm, kk) where {L} =
       iseven(sum(ll) + L) && (abs(sum(mm)) <=  L) && (abs(sum(kk)) <= L)
 
-coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L} =
-			[ vec_cou_coe(__rotcoeff_inv,
-		 					  SVector(l), SVector(m), SVector(μ), L, t)
-				for t = 1:2*L+1 ]
+function coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L}
+	for t = 1:2*L+1
+		Temp = vec_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L, t)
+		if !(norm(Temp)≈0)
+			return [Temp]
+		end
+	end
+	return coco_zeros(φ, l, m, μ, T, A)
+end
 
 
 # --------------- SphericalMatrix
