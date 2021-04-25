@@ -30,19 +30,26 @@ cfg = ACEConfig(Xs)
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
 basis = SymmetricBasis(pibasis, φ)
 
+@time SymmetricBasis(pibasis, φ);
+
 BB = evaluate(basis, cfg)
 
 # a stupid but necessary test
 BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
 println(@test isapprox(BB, BB1, rtol=1e-10))
 
+Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
+if !isempty(Iz)
+   @warn("The A2B map for EuclideanVector has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
+end
+
 
 @info("Test equivariance properties")
 
-tol = 1E-10
+tol = 1e-10
 
 @info("check for rotation, permutation and inversion equivariance")
-for ntest = 1:20
+for ntest = 1:30
    Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
    BB = evaluate(basis, ACEConfig(Xs))
    Q = rand([-1,1]) * ACE.Random.rand_rot()

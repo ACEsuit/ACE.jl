@@ -11,12 +11,11 @@ import LinearAlgebra: norm
       T(a * φ.val)
 @inline *(φ::T, a::Union{Number, AbstractMatrix}) where {T <: AbstractProperty} =
       T(φ.val * a)
-@inline norm(φ::T) where {T <: AbstractProperty} = norm(φ.val)
+@inline norm(φ::AbstractProperty) = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
-
 
 Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
       isapprox(φ1.val, φ2.val)
@@ -341,4 +340,5 @@ coco_filter(φ::SphericalMatrix{L1,L2}, ll, mm, kk) where {L1,L2} =
             (abs(sum(mm)) <=  L1+L2) &&
             (abs(sum(kk)) <=  L1+L2)
 
-coco_dot(u1::SphericalMatrix, u2::SphericalMatrix) = tr(u1.val * u2.val')
+coco_dot(u1::SphericalMatrix, u2::SphericalMatrix) =
+		dot(u1.val, u2.val)

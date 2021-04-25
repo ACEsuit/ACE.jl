@@ -41,6 +41,7 @@ cfg = ACEConfig(Xs)
 φ = ACE.Invariant()
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
+# @time SymmetricBasis(pibasis, φ);
 
 BB = evaluate(basis, cfg)
 
@@ -48,6 +49,12 @@ BB = evaluate(basis, cfg)
 AA = evaluate(basis.pibasis, cfg)
 BB1 = basis.A2Bmap * AA
 println(@test isapprox(BB, BB1, rtol=1e-10))
+
+# check there are no superfluous columns
+Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
+if !isempty(Iz)
+   @warn("The A2B map for Invariants has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
+end
 
 for ntest = 1:30
       Xs1 = shuffle(rand_refl(rand_rot(Xs)))
@@ -85,7 +92,12 @@ for L = 0:3
    basis = SymmetricBasis(pibasis, φ)
    BB = evaluate(basis, cfg)
 
-   for ntest = 1:10
+   Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
+   if !isempty(Iz)
+      @warn("The A2B map for SphericalVector has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
+   end
+
+   for ntest = 1:30
       Q, D = ACE.Wigner.rand_QD(L)
       cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
       BB1 = evaluate(basis, cfg1)
@@ -119,7 +131,7 @@ for L1 = 0:1, L2 = 0:1
    basis = SymmetricBasis(pibasis, φ)
    BB = evaluate(basis, cfg)
 
-   for ntest = 1:10
+   for ntest = 1:30
       Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
       cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
       BB1 = evaluate(basis, cfg1)
@@ -145,7 +157,7 @@ end
 #---
 @info("Consistency between SphericalVector & SphericalMatrix")
 
-for L = 0:0
+for L = 0:3
    @info "L = $L"
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
    pibasis1 = PIBasis(B1p, ord, maxdeg; property = φ1, isreal = false)
@@ -154,7 +166,7 @@ for L = 0:0
    pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
    basis2 = SymmetricBasis(pibasis2, φ2)
 
-   for ntest = 1:10
+   for ntest = 1:30
       Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
       cfg = ACEConfig(Xs)
       BBvec = evaluate(basis1, cfg)
@@ -176,7 +188,7 @@ basis = SymmetricBasis(pibasis, φ)
 pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
 basis2 = SymmetricBasis(pibasis2, φ2)
 
-for ntest = 1:10
+for ntest = 1:30
    Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
    cfg = ACEConfig(Xs)
    BB = evaluate(basis, cfg)
