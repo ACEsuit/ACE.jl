@@ -179,8 +179,31 @@ function vec_cou_coe(rotc::Rot3DCoeffs{T},
 	return SphericalVector{L, 2L+1, Complex{T}}(Z)
 end
 
+function _select_t(φ::SphericalVector{L}, ll, mm, kk) where {L}
+	M = sum(mm)
+	K = sum(kk)
+	D = rotation_D_matrix_ast(L)
+	num_t = 0
+	list_t = []
+	for t = 1:2L+1
+		Dt = D[:,t]
+		μt = [Dt[i].μ for i in 1:2L+1]
+		mt = [Dt[i].m for i in 1:2L+1]
+		if prod(μt.+M)==0 && prod(mt.+K)==0
+			list_t = [list_t;t]
+			num_t = num_t+1
+		end
+	end
+	if list_t == []
+		return false, 0
+	else
+		return list_t, num_t
+	end
+end
+
+
 coco_zeros(φ::TP, ll, mm, kk, T, A)  where {TP <: SphericalVector} =
-		zeros(TP, 1)
+		zeros(TP, _select_t(φ,ll,mm,kk)[2])
 
 coco_dot(u1::SphericalVector, u2::SphericalVector) =
 		dot(u1.val, u2.val)
@@ -191,15 +214,32 @@ coco_filter(φ::SphericalVector{L}, ll, mm) where {L} =
 coco_filter(φ::SphericalVector{L}, ll, mm, kk) where {L} =
       iseven(sum(ll) + L) && (abs(sum(mm)) <=  L) && (abs(sum(kk)) <= L)
 
+
+# coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L} =
+# 			[ vec_cou_coe(__rotcoeff_inv,
+# 				 					SVector(l), SVector(m), SVector(μ), L, t)
+# 				for t = 1:2*L+1 ]
+
 function coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L}
-	for t = 1:2*L+1
-		Temp = vec_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L, t)
-		if !(norm(Temp)≈0)
-			return [Temp]
-		end
+	list, num = _select_t(φ,SVector(l),SVector(m),SVector(μ))
+	if num == 1
+		t = list[1]
+		return [vec_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L, t)]
+	else
+		@warn("IS IT POSSIBLE???")
+		return coco_zeros(φ, l, m, μ, T, A)
 	end
-	return coco_zeros(φ, l, m, μ, T, A)
 end
+
+# function coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L}
+# 	for t = 1:2*L+1
+# 		Temp = vec_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L, t)
+# 		if !(norm(Temp)≈0)
+# 			return [Temp]
+# 		end
+# 	end
+# 	return coco_zeros(φ, l, m, μ, T, A)
+# end
 
 
 # --------------- SphericalMatrix
@@ -275,62 +315,63 @@ function mat_cou_coe(rotc::Rot3DCoeffs{T},
 	return SphericalMatrix(SMatrix{2L1+1,2L2+1,ComplexF64}(Z), Val{L1}(), Val{L2}())
 end
 
-mat_cou_coe(rotc::Rot3DCoeffs{T},
-				ll, mm, μμ, L1::Integer, L2::Integer,
-				a::Integer, b::Integer) where {T,N} =
-				mat_cou_coe(rotc, SVector(ll...), SVector(mm...), SVector(μμ...), L1::Integer, L2::Integer,
-								a::Integer, b::Integer)
+ mat_cou_coe(rotc::Rot3DCoeffs{T},
+ 				ll, mm, μμ, L1::Integer, L2::Integer,
+ 				a::Integer, b::Integer) where {T,N} =
+ 				mat_cou_coe(rotc, SVector(ll...), SVector(mm...), SVector(μμ...), L1::Integer, L2::Integer,
+ 								a::Integer, b::Integer)
 
-
-function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
-   if iseven(l[1] + L1 + L2) && abs(m[1]) <= L1+L2 && abs(μ[1]) <= L1+L2
-		# for a = 1:2L1+1, b = 1:2L2+1
-		# 	global Temp = mat_cou_coe(A, l, m, μ, L1, L2, a, b)
-		# 	if !(norm(Temp) ≈ 0)
-		# 		global a_temp = a
-		# 		global b_temp = b
-		# 		break
-		# 	end
-		# end
-		# if a_temp == 2L1+1 && b_temp < 2L2+1
-		# 	for b = b_temp+1:2L2+1
-		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)) ≈ 0)
-		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)]
-		# 		end
-		# 	end
-		# elseif a_temp < 2L1+1 && b_temp == 2L2+1
-		# 	for a = a_temp+1:2L1+1, b = 1:2L2+1
-		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a, b)) ≈ 0)
-		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a, b)]
-		# 		end
-		# 	end
-		# elseif a_temp < 2L1+1 && b_temp < 2L2+1
-		# 	for b = b_temp+1:2L2+1
-		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)) ≈ 0)
-		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a_temp, b)]
-		# 		end
-		# 	end
-		# 	for a = a_temp+1:2L1+1, b = 1:2L2+1
-		# 		if !(norm(mat_cou_coe(A, l, m, μ, L1, L2, a, b)) ≈ 0)
-		# 			global Temp = [Temp; mat_cou_coe(A, l, m, μ, L1, L2, a, b)]
-		# 		end
-		# 	end
-		# end
-		# return Temp
-		Temp = [mat_cou_coe(__rotcoeff_inv, l, m, μ, L1, L2, a, b) for a=1:2L1+1, b=1:2L2+1]
-      return vec([i for i in Temp])
-	else
-		Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}() for a=1:2L1+1, b=1:2L2+1]
-      return vec([i for i in Temp])
-		#return SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}()
+function _select_ab(φ::SphericalMatrix{L1,L2}, ll, mm, kk) where {L1,L2}
+	M = sum(mm)
+   K = sum(kk)
+   Dp = rotation_D_matrix_ast(L1)
+   Dq = rotation_D_matrix(L2)
+	num_ab = 0
+   list_ab = []
+   for a = 1:2L1+1
+      for b = 1:2L2+1
+         Dpa = Dp[:,a]
+         Dqb = Dq[b,:]
+         ma = [Dpa[k].m for k in 1:2L1+1]
+         mb = [Dqb[k].m for k in 1:2L2+1]
+         μa = [Dpa[k].μ for k in 1:2L1+1]
+         μb = [Dqb[k].μ for k in 1:2L2+1]
+         msum = vec([ma[i]+mb[j] for i = 1:2L1+1, j = 1:2L2+1])
+         μsum = vec([μa[i]+μb[j] for i = 1:2L1+1, j = 1:2L2+1])
+         if prod(μsum.+M)==0 && prod(msum.+K)==0
+            list_ab = [list_ab;(a,b)]
+            num_ab = num_ab+1
+         end
+      end
+   end
+   if list_ab == []
+      return false, 0
+   else
+      return list_ab, num_ab
    end
 end
 
-function coco_zeros(φ::SphericalMatrix{L1,L2}, ll, mm, kk, T, A) where{L1,L2}
-   #return SphericalMatrix( zero(SMatrix{2L1+1, 2L2+1, T}), Val{L1}(), Val{L2}() )
-	Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}() for a=1:2L1+1, b=1:2L2+1]
-	return vec([i for i in Temp])
+function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
+   list, num = _select_ab(φ,SVector(l),SVector(m),SVector(μ))
+   if num == 0
+      @warn("IS IT POSSIBLE???")
+      return SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}()
+   else
+      if iseven(l[1] + L1 + L2) && abs(m[1]) <= L1+L2 && abs(μ[1]) <= L1+L2
+         Temp = []
+         for (a,b) in list
+		      Temp = [Temp; mat_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L1, L2, a, b)]
+         end
+         return vec([i for i in Temp])
+	   else
+		   Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}() for a=1:num]
+         return vec([i for i in Temp])
+		end
+   end
 end
+
+coco_zeros(φ::TP, ll, mm, kk, T, A) where{TP <: SphericalMatrix} =
+            zeros(TP, _select_ab(φ,ll,mm,kk)[2])
 
 coco_filter(φ::SphericalMatrix{L1,L2}, ll, mm) where {L1,L2} =
             iseven(sum(ll)) == iseven(L1+L2) && (abs(sum(mm)) <=  L1+L2)
