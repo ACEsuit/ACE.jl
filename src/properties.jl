@@ -239,13 +239,18 @@ function SphericalMatrix(L1::Integer, L2::Integer; T = Float64)
    return SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 end
 
+# this is a mess - need to fix it, we should need just one constructor???
+
 function SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}(x::AbstractMatrix) where {L1, L2, LEN1, LEN2, T, LL}
    @assert size(x) == (LEN1, LEN2)
-   SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}( SMatrix{LEN1, LEN2, T}(x...), Val(L1), Val(L2) )
+   SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}( SMatrix{LEN1, LEN2, T}(x), Val(L1), Val(L2) )
 end
 
 SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}()  where {L1, L2, LEN1, LEN2, T, LL} =
       SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
+
+SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T, LL} =
+		SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 
 filter(φ::SphericalMatrix, b::Array) = ( length(b) < 1 ? true :
         ( ( iseven(sum(bi.l for bi in b)) == iseven(sum(getL(φ))) ) &&
@@ -333,7 +338,7 @@ function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
          end
          return vec([i for i in Temp])
 	   else
-		   Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}() for a=1:num]
+		   Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64,L1*L2}() for a=1:num]
          return vec([i for i in Temp])
 		end
    end
