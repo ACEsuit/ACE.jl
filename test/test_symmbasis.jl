@@ -1,6 +1,7 @@
 # some type piracy ...
 # TODO: hack like this make #27 important!!!
 
+using Profile, ProfileView
 using StaticArrays
 import Base: *
 *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
@@ -85,7 +86,7 @@ __L2syms = [:s, :p, :d, :f, :g, :h, :i, :k]
 __syms2L = Dict( [sym => L-1 for (L, sym) in enumerate(__L2syms)]... )
 get_orbsym(L::Integer)  = __L2syms[L+1]
 
-for L = 0:3
+@time for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
    φ = ACE.SphericalVector(L; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
@@ -123,7 +124,7 @@ end
 
 #---
 
-using Profile, ProfileView
+#using Profile, ProfileView
 
 #---
 
@@ -144,11 +145,11 @@ ProfileView.view()
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
 
-for L1 = 0:1, L2 = 0:1
+@time for L1 = 0:3, L2 = 0:3
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-   basis = SymmetricBasis(pibasis, φ)
+   @time basis = SymmetricBasis(pibasis, φ)
    BB = evaluate(basis, cfg)
 
    for ntest = 1:30
