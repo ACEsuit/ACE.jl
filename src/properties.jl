@@ -244,8 +244,8 @@ end
 
 # --------------- SphericalMatrix
 
-struct SphericalMatrix{L1, L2, LEN1, LEN2, T} <: AbstractProperty
-   val::SMatrix{LEN1, LEN2, T}
+struct SphericalMatrix{L1, L2, LEN1, LEN2, T, LL} <: AbstractProperty
+   val::SMatrix{LEN1, LEN2, T, LL}
    _valL1::Val{L1}
    _valL2::Val{L2}
 end
@@ -270,12 +270,12 @@ function SphericalMatrix(L1::Integer, L2::Integer; T = Float64)
    return SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 end
 
-function SphericalMatrix{L1, L2, LEN1, LEN2, T}(x::AbstractMatrix) where {L1, L2, LEN1, LEN2, T}
+function SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}(x::AbstractMatrix) where {L1, L2, LEN1, LEN2, T, LL}
    @assert size(x) == (LEN1, LEN2)
-   SphericalMatrix{L1, L2, LEN1, LEN2, T}( SMatrix{LEN1, LEN2, T}(x...), Val(L1), Val(L2) )
+   SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}( SMatrix{LEN1, LEN2, T}(x...), Val(L1), Val(L2) )
 end
 
-SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T} =
+SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}()  where {L1, L2, LEN1, LEN2, T, LL} =
       SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 
 filter(φ::SphericalMatrix, b::Array) = ( length(b) < 1 ? true :

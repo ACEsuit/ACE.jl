@@ -90,6 +90,7 @@ for L = 0:3
    φ = ACE.SphericalVector(L; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
    basis = SymmetricBasis(pibasis, φ)
+   @time SymmetricBasis(pibasis, φ);
    BB = evaluate(basis, cfg)
 
    Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
@@ -121,6 +122,25 @@ end
 
 
 #---
+
+using Profile, ProfileView
+
+#---
+
+L1 = 1; L2 = 1
+φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+basis = SymmetricBasis(pibasis, φ)
+@time SymmetricBasis(pibasis, φ);
+
+@profile SymmetricBasis(pibasis, φ);
+
+##
+
+ProfileView.view()
+
+#---
+
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
 
