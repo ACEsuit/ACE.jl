@@ -171,17 +171,17 @@ Rot3DCoeffs(φ, T=Float64) = Rot3DCoeffs(Dict[], ClebschGordan(T), φ)
 
 
 function get_vals(A::Rot3DCoeffs{T}, valN::Val{N}) where {T,N}
+	# make up an ll, kk, mm and compute a dummy coupling coeff
+	ll, mm, kk = SVector(0), SVector(0), SVector(0)
+	cc0 = coco_zeros(A.phi, ll, mm, kk, T, A)
+	TP = typeof(cc0)
 	if length(A.vals) < N
-		# make up an ll, kk, mm and compute a dummy coupling coeff
-		ll, mm, kk = SVector(0), SVector(0), SVector(0)
-		cc0 = coco_zeros(A.phi, ll, mm, kk, T, A)
-		TP = typeof(cc0)
 		# create more dictionaries of the correct type
 		for n = length(A.vals)+1:N
 			push!(A.vals, dicttype(n, TP)())
 		end
 	end
-   return A.vals[N]
+   return (A.vals[N])::(dicttype(valN, TP))
 end
 
 _key(ll::StaticVector{N}, mm::StaticVector{N}, kk::StaticVector{N}) where {N} =
@@ -218,9 +218,15 @@ function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 	val = coco_zeros(A.phi, ll, mm, kk, T, A)
 	TV = typeof(val)
 
-   llp = ll[1:N-2]
-   mmp = mm[1:N-2]
-   kkp = kk[1:N-2]
+	tmp = zero(MVector{N-1, Int})
+
+	function _get_pp(aa, ap)
+		for i = 1:N-2
+			@inbounds tmp[i] = aa[i]
+		end
+		tmp[N-1] = ap
+		return SVector(tmp)
+	end
 
 	jmin = maximum( ( abs(ll[N-1]-ll[N]),
 				         abs(kk[N-1]+kk[N]),
@@ -230,9 +236,10 @@ function _compute_val(A::Rot3DCoeffs{T}, ll::StaticVector{N},
 		cgk = A.cg(ll[N-1], kk[N-1], ll[N], kk[N], j, kk[N-1]+kk[N])
 		cgm = A.cg(ll[N-1], mm[N-1], ll[N], mm[N], j, mm[N-1]+mm[N])
 		if cgk * cgm  != 0
-			a = A( SVector(llp..., j),
-			       SVector(mmp..., mm[N-1]+mm[N]),
-			       SVector(kkp..., kk[N-1]+kk[N]) )::TV
+			llpp = _get_pp(ll, j) # SVector(llp..., j)
+			mmpp = _get_pp(mm, mm[N-1]+mm[N]) # SVector(mmp..., mm[N-1]+mm[N])
+			kkpp = _get_pp(kk, kk[N-1]+kk[N]) # SVector(kkp..., kk[N-1]+kk[N])
+			a = A(llpp, mmpp, kkpp)::TV
 			val += cgk * cgm * a
 		end
    end
@@ -264,12 +271,17 @@ function re_basis(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 end
 
 
-# unordered
-function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
+# function barrier
+function compute_Al(A::Rot3DCoeffs{T}, ll::SVector)
 	Mll = collect(_mrange(A.phi, ll))
+	TP = typeof(A.phi)
+	TA = typeof(A(ll, Mll[1], Mll[1])
+	return compute_Al(A, ll, Mll, TP, TA)
+end
+
+function __compute_Al(A::Rot3DCoeffs{T}, ll, Mll, TP, TA) where {T}
 	lenMll = length(Mll)
 	# each element of CC will be one row of the coupling coefficients
-	TP = typeof(A.phi)
 	CC = Vector{TP}[]
 	if lenMll == 0
 		return CC, Mll
@@ -290,19 +302,19 @@ function compute_Al(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 
 	for (ik, kk) in enumerate(Mll)  # loop over possible basis functions
 		# do a dummy calculation to determine how many coefficients we will get
-		cc0 = A(ll, Mll[1], kk)
+		cc0 = A(ll, Mll[1], kk)::TA
 		numcc = (cc0 isa AbstractProperty ? 1 : length(cc0))
 		# allocate the right number of vectors to store basis function coeffs
 		cc = [ Vector{TP}(undef, lenMll) for _=1:numcc ]
 		for (im, mm) in enumerate(Mll) # loop over possible indices
 			if !coco_filter(A.phi, ll, mm, kk)
-				cc0 = zeros(TP, length(cc))
+				cc00 = zeros(TP, length(cc))
+				__into_cc!(cc, cc00, im)
 			else
 				# get all possible coupling coefficients
-				cc0 = A(ll, mm, kk)
+				cc0 = A(ll, mm, kk)::TA
+				__into_cc!(cc, cc00, im)
 			end
-			# write them into the cc vectors
-			__into_cc!(cc, cc0, im)
 		end
 		# and now push them onto the big stack.
 		append!(CC, cc)

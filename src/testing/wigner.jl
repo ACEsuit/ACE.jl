@@ -25,18 +25,21 @@ function rotation_D_matrix(L::Integer)
 end
 
 # Equation (1.1) - forms the covariant matrix D(Q)(indices only)
-function rotation_D_matrix_ast(L::Integer)
-	if L<0
-		error("Orbital type shall be represented as a positive integer!")
-	end
-    D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
-    for i = 1 : 2 * L + 1
-        for j = 1 : 2 * L + 1
-            D[i,j] = D_Index((-1)^(i+j), -(i - 1 - L), -(j - 1 - L));
-        end
-    end
-	return D
-end
+rotation_D_matrix_ast(L) =
+	[ D_Index((-1)^(i+j), -(i - 1 - L), -(j - 1 - L))
+	   for i = 1:2*L+1, j = 1:2*L+1 ]
+# function rotation_D_matrix_ast(L::Integer)
+# 	if L<0
+# 		error("Orbital type shall be represented as a positive integer!")
+# 	end
+#     D = Array{D_Index}(undef, 2 * L + 1, 2 * L + 1)
+#     for i = 1 : 2 * L + 1
+#         for j = 1 : 2 * L + 1
+#             D[i,j] = D_Index((-1)^(i+j), -(i - 1 - L), -(j - 1 - L));
+#         end
+#     end
+# 	return D
+# end
 
 
 # D_{μm}^l(Ang2Mat_zyz(α,β,γ))

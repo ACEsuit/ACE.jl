@@ -17,6 +17,8 @@ using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest
 
+# using Profile, ProfileView
+
 # Extra using Wigner for computing Wigner Matrix
 using ACE.Wigner
 
@@ -41,7 +43,7 @@ cfg = ACEConfig(Xs)
 φ = ACE.Invariant()
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
-# @time SymmetricBasis(pibasis, φ);
+@time SymmetricBasis(pibasis, φ);
 
 BB = evaluate(basis, cfg)
 
@@ -62,6 +64,19 @@ for ntest = 1:30
       print_tf(@test isapprox(BB, BB1, rtol=1e-10))
 end
 println()
+
+##
+
+# ## Keep for futher profiling
+# φ = ACE.Invariant()
+# pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
+# basis = SymmetricBasis(pibasis, φ)
+# @time SymmetricBasis(pibasis, φ);
+#
+# Profile.clear()
+# @profile SymmetricBasis(pibasis, φ);
+# ProfileView.view()
+
 
 ## Testing derivatives
 
@@ -120,24 +135,28 @@ for L = 0:3
    println()
 end
 
+# ## Keep for futher profiling
+# L = 1
+# φ = ACE.SphericalVector(L; T = ComplexF64)
+# pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+# basis = SymmetricBasis(pibasis, φ)
+# @time SymmetricBasis(pibasis, φ);
+#
+# Profile.clear(); Profile.init(; delay = 0.0001)
+# @profile SymmetricBasis(pibasis, φ);
+# ProfileView.view()
 
-#---
 
-using Profile, ProfileView
-
-#---
-
-L1 = 1; L2 = 1
-φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-basis = SymmetricBasis(pibasis, φ)
-@time SymmetricBasis(pibasis, φ);
-
-@profile SymmetricBasis(pibasis, φ);
-
-##
-
-ProfileView.view()
+# ## Keep for futher profiling
+#
+# L1 = 1; L2 = 1
+# φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
+# pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+# basis = SymmetricBasis(pibasis, φ)
+# @time SymmetricBasis(pibasis, φ);
+#
+# @profile SymmetricBasis(pibasis, φ);
+# ProfileView.view()
 
 #---
 
