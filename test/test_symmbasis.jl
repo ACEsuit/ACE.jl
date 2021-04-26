@@ -144,23 +144,12 @@ end
 # @profile SymmetricBasis(pibasis, φ);
 # ProfileView.view()
 
-# ## Keep for futher profiling
-#
-# L1 = 1; L2 = 1
-# φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
-# pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-# basis = SymmetricBasis(pibasis, φ)
-# @time SymmetricBasis(pibasis, φ);
-#
-# @profile SymmetricBasis(pibasis, φ);
-# ProfileView.view()
-
 #---
 
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
 
-for L1 = 0:1, L2 = 0:1
+for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
@@ -235,6 +224,18 @@ for ntest = 1:30
    print_tf(@test isapprox(BBsca, BBCFlo, rtol=1e-10))
 end
 println()
+
+# ## Keep for futher profiling
+#
+# L1 = 1; L2 = 1
+# φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
+# pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+# basis = SymmetricBasis(pibasis, φ)
+# @time SymmetricBasis(pibasis, φ);
+#
+# Profile.clear()
+# @profile SymmetricBasis(pibasis, φ);
+# ProfileView.view()
 
 
 #---

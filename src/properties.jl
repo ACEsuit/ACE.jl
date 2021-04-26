@@ -83,13 +83,12 @@ rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], Clebsch
 # differentiation - cf #27
 *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
 
-coco_init(phi::EuclideanVector, l, m, μ, T, A) = (
+coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
-         ? [EuclideanVector{Complex{T}}(rmatrices[m,μ][:,k]) for k=1:3]
-         : [EuclideanVector{Complex{T}}() for k=1:3]  )
+         ? [EuclideanVector{CT}(rmatrices[m,μ][:,k]) for k=1:3]
+         : coco_zeros(phi, l, m, μ, T, A)  )
 
-coco_zeros(::EuclideanVector, ll, mm, kk, T, A) =
-		[EuclideanVector{Complex{T}}() for k=1:3]
+coco_zeros(φ::EuclideanVector, ll, mm, kk, T, A) = zeros(typeof(φ), 3)
 
 coco_filter(::EuclideanVector, ll, mm) =
             isodd(sum(ll)) && (abs(sum(mm)) <= 1)
@@ -159,17 +158,13 @@ using ACE.Wigner: rotation_D_matrix_ast, rotation_D_matrix
 # Equation (1.2) - vector value coupling coefficients
 # ∫_{SO3} D^{ll}_{μμmm} D^*(Q) e^t dQ -> 2L+1 column vector
 function vec_cou_coe(rotc::Rot3DCoeffs{T},
-					      ll::StaticVector{N},
-                     mm::StaticVector{N},
-					      μμ::StaticVector{N},
+					      l::Integer, m::Integer, μ::Integer,
 					      L::Integer, t::Integer) where {T,N}
-	if t > 2L + 1 || t <= 0
-		error("Rotation D matrix has no such column!")
-	end
+	@assert 0 < t <= 2L+1
 	D = rotation_D_matrix_ast(L)   # Dt = D[:,t]  -->  # D^* ⋅ e^t
-	LL = [ll; L]
+	LL = SA[l, L]
 	Z = ntuple(i -> begin
-			cc = (rotc(LL, [μμ; D[i, t].m], [mm; D[i, t].μ]).val)::T
+			cc = (rotc(LL, SA[μ, D[i, t].m], SA[m, D[i, t].μ]).val)::T
 			D[i, t].sign * cc
 		end, 2*L+1)
 	return SphericalVector{L, 2L+1, Complex{T}}(SVector(Z))
@@ -204,8 +199,7 @@ coco_filter(φ::SphericalVector{L}, ll, mm, kk) where {L} =
 
 
 coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L} =
-	vec_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L,
-	            _select_t(φ, l, m, μ))
+			vec_cou_coe(__rotcoeff_inv, l, m, μ, L, _select_t(φ, l, m, μ))
 
 # --------------- SphericalMatrix
 
@@ -255,99 +249,68 @@ filter(φ::SphericalMatrix, b::Array) = ( length(b) < 1 ? true :
 rot3Dcoeffs(::SphericalMatrix, T::DataType=Float64) = Rot3DCoeffs(T)
 
 function mat_cou_coe(rotc::Rot3DCoeffs{T},
-					   ll::StaticVector{N},
-	               mm::StaticVector{N},
-					   μμ::StaticVector{N},
-					   L1::Integer, L2::Integer,
-					   a::Integer, b::Integer) where {T,N}
-	#@show ll,mm,μμ
-	if a > 2L1 + 1 || a <= 0 || b > 2L2 +1 || b <= 0
-		error("Rotation D matrices has no such element!")
-	end
-	Z = zeros(2 * L1 + 1, 2 * L2 + 1)
+				   		l::Integer, m::Integer, μ::Integer,
+					   	a::Integer, b::Integer,
+							::Val{L1}, ::Val{L2}) where {T, L1, L2}
+	@assert (0 < a <= 2L1 + 1) && (0 < b <= 2L2 + 1)
+	Z = zero(MMatrix{2L1+1, 2L2+1, Complex{T}})  # zeros(2 * L1 + 1, 2 * L2 + 1)
 	Dp = rotation_D_matrix_ast(L1)
 	Dq = rotation_D_matrix(L2)
-	Dpa = Dp[:,a]
-	Dqb = Dq[b,:]
-	μa = [Dpa[i].μ for i in 1:2L1+1]
-	ma = [Dpa[i].m for i in 1:2L1+1]
-	μb = [Dqb[i].μ for i in 1:2L2+1]
-	mb = [Dqb[i].m for i in 1:2L2+1]
-	LL = [ll; L1; L2]
+	LL = SA[l, L1, L2]
 	for i = 1:(2 * L1 + 1)
 		for j = 1:(2 * L2 + 1)
-			MM = [μμ; ma[i]; mb[j]]
-			KK = [mm; μa[i]; μb[j]]
-			Z[i,j] = Dpa[i].sign * Dqb[j].sign * rotc(LL, MM, KK).val
-			#@show Z
+			MM = SA[μ, Dp[i,a].m, Dq[b,j].m]
+			KK = SA[m, Dp[i,a].μ, Dq[b,j].μ]
+			cc = (rotc(LL, MM, KK).val)::T
+			Z[i,j] = Dp[i,a].sign * Dq[b,j].sign * cc
 		end
 	end
-	return SphericalMatrix(SMatrix{2L1+1,2L2+1,ComplexF64}(Z), Val{L1}(), Val{L2}())
+	return SphericalMatrix(SMatrix(Z), Val{L1}(), Val{L2}())
+	# return SphericalMatrix(SMatrix{2L1+1,2L2+1,Complex{T}}(Z), Val{L1}(), Val{L2}())
 end
 
- mat_cou_coe(rotc::Rot3DCoeffs{T},
- 				ll, mm, μμ, L1::Integer, L2::Integer,
- 				a::Integer, b::Integer) where {T,N} =
- 				mat_cou_coe(rotc, SVector(ll...), SVector(mm...), SVector(μμ...), L1::Integer, L2::Integer,
- 								a::Integer, b::Integer)
 
-function _select_ab(φ::SphericalMatrix{L1,L2}, ll, mm, kk) where {L1,L2}
-	M = sum(mm)
-   K = sum(kk)
+function _select_ab(φ::SphericalMatrix{L1,L2}, M, K) where {L1,L2}
    Dp = rotation_D_matrix_ast(L1)
    Dq = rotation_D_matrix(L2)
-	num_ab = 0
-   list_ab = []
+   list_ab = Tuple{Int, Int}[]
    for a = 1:2L1+1
       for b = 1:2L2+1
-         Dpa = Dp[:,a]
-         Dqb = Dq[b,:]
-         ma = [Dpa[k].m for k in 1:2L1+1]
-         mb = [Dqb[k].m for k in 1:2L2+1]
-         μa = [Dpa[k].μ for k in 1:2L1+1]
-         μb = [Dqb[k].μ for k in 1:2L2+1]
-         msum = vec([ma[i]+mb[j] for i = 1:2L1+1, j = 1:2L2+1])
-         μsum = vec([μa[i]+μb[j] for i = 1:2L1+1, j = 1:2L2+1])
-         if prod(μsum.+M)==0 && prod(msum.+K)==0
-            list_ab = [list_ab;(a,b)]
-            num_ab = num_ab+1
+			# pm = prod( ma[i] + mb[j] + K for i = 1:2L1+1, j = 1:2L2+1)
+			pm = prod( Dp[i,a].m + Dq[b,j].m + K for i = 1:2L1+1, j = 1:2L2+1)
+			# pμ = prod(μa[i] + μb[j] + M for i = 1:2L1+1, j = 1:2L2+1)
+			pμ = prod( Dp[i,a].μ + Dq[b,j].μ + M for i = 1:2L1+1, j = 1:2L2+1)
+         if pμ == pm ==0
+				push!(list_ab, (a,b))
          end
       end
    end
-   if list_ab == []
-      return false, 0
-   else
-      return list_ab, num_ab
-   end
+	return list_ab
 end
+
 
 function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
-   list, num = _select_ab(φ,SVector(l),SVector(m),SVector(μ))
-   if num == 0
-      @warn("IS IT POSSIBLE???")
-      return SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64}()
-   else
-      if iseven(l[1] + L1 + L2) && abs(m[1]) <= L1+L2 && abs(μ[1]) <= L1+L2
-         Temp = []
-         for (a,b) in list
-		      Temp = [Temp; mat_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L1, L2, a, b)]
-         end
-         return vec([i for i in Temp])
-	   else
-		   Temp = [SphericalMatrix{L1,L2,2L1+1,2L2+1,ComplexF64,L1*L2}() for a=1:num]
-         return vec([i for i in Temp])
-		end
-   end
+   list = _select_ab(φ, m, μ)
+	@assert length(list) > 0
+	# MAIN CASE
+   if iseven(l + L1 + L2) && abs(m) <= L1+L2 && abs(μ) <= L1+L2
+		return [ mat_cou_coe(__rotcoeff_inv, l, m, μ, a, b, Val(L1), Val(L2))
+				   for (a,b) in list ]
+	end
+
+	# @warn("SHOULDN'T BE HERE!!")
+   return fill( zero(typeof(φ)), length(list) )
 end
 
+
 coco_zeros(φ::TP, ll, mm, kk, T, A) where{TP <: SphericalMatrix} =
-            zeros(TP, _select_ab(φ,ll,mm,kk)[2])
+            zeros(TP, length(_select_ab(φ, sum(mm), sum(kk))))
 
 coco_filter(φ::SphericalMatrix{L1,L2}, ll, mm) where {L1,L2} =
             iseven(sum(ll)) == iseven(L1+L2) && (abs(sum(mm)) <=  L1+L2)
 
 coco_filter(φ::SphericalMatrix{L1,L2}, ll, mm, kk) where {L1,L2} =
-            iseven(sum(ll)) == iseven(L1+L2) &&
+            iseven(sum(ll) + L1 + L2) &&
             (abs(sum(mm)) <=  L1+L2) &&
             (abs(sum(kk)) <=  L1+L2)
 

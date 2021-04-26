@@ -29,7 +29,6 @@ cfg = ACEConfig(Xs)
 φ = ACE.EuclideanVector(Complex{Float64})
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
 basis = SymmetricBasis(pibasis, φ)
-
 @time SymmetricBasis(pibasis, φ);
 
 BB = evaluate(basis, cfg)
@@ -60,14 +59,14 @@ for ntest = 1:30
 end
 println()
 
-# ## keep for profiling
+# ## keep for further profiling
 #
 # φ = ACE.EuclideanVector(Complex{Float64})
 # pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
 # basis = SymmetricBasis(pibasis, φ)
 # @time SymmetricBasis(pibasis, φ);
 #
-# Profile.clear(); Profile.init(; delay = 0.0001)
+# Profile.clear(); # Profile.init(; delay = 0.0001)
 # @profile SymmetricBasis(pibasis, φ);
 # ProfileView.view()
 
