@@ -60,16 +60,16 @@ for ntest = 1:30
 end
 println()
 
-##
-
-φ = ACE.EuclideanVector(Complex{Float64})
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-basis = SymmetricBasis(pibasis, φ)
-@time SymmetricBasis(pibasis, φ);
-
-Profile.clear(); Profile.init(; delay = 0.0001)
-@profile SymmetricBasis(pibasis, φ);
-ProfileView.view()
+# ## keep for profiling
+#
+# φ = ACE.EuclideanVector(Complex{Float64})
+# pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+# basis = SymmetricBasis(pibasis, φ)
+# @time SymmetricBasis(pibasis, φ);
+#
+# Profile.clear(); Profile.init(; delay = 0.0001)
+# @profile SymmetricBasis(pibasis, φ);
+# ProfileView.view()
 
 ##
 

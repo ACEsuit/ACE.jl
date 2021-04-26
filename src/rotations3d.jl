@@ -272,21 +272,21 @@ end
 
 
 # function barrier
-function compute_Al(A::Rot3DCoeffs{T}, ll::SVector)
+function compute_Al(A::Rot3DCoeffs, ll::SVector)
 	Mll = collect(_mrange(A.phi, ll))
 	TP = typeof(A.phi)
-	TA = typeof(A(ll, Mll[1], Mll[1])
-	return compute_Al(A, ll, Mll, TP, TA)
+	if length(Mll) == 0
+		return Vector{TP}[], Mll
+	end
+
+	TA = typeof(A(ll, Mll[1], Mll[1]))
+	return __compute_Al(A, ll, Mll, TP, TA)
 end
 
 function __compute_Al(A::Rot3DCoeffs{T}, ll, Mll, TP, TA) where {T}
 	lenMll = length(Mll)
 	# each element of CC will be one row of the coupling coefficients
 	CC = Vector{TP}[]
-	if lenMll == 0
-		return CC, Mll
-	end
-
 	# some utility funcions to allow coco_init to return either a property
 	# or a vector of properties
 	function __into_cc!(cc, cc0::AbstractProperty, im)
@@ -308,12 +308,12 @@ function __compute_Al(A::Rot3DCoeffs{T}, ll, Mll, TP, TA) where {T}
 		cc = [ Vector{TP}(undef, lenMll) for _=1:numcc ]
 		for (im, mm) in enumerate(Mll) # loop over possible indices
 			if !coco_filter(A.phi, ll, mm, kk)
-				cc00 = zeros(TP, length(cc))
+				cc00 = zeros(TP, length(cc))::TA
 				__into_cc!(cc, cc00, im)
 			else
 				# get all possible coupling coefficients
 				cc0 = A(ll, mm, kk)::TA
-				__into_cc!(cc, cc00, im)
+				__into_cc!(cc, cc0, im)
 			end
 		end
 		# and now push them onto the big stack.

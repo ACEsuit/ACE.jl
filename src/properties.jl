@@ -177,20 +177,21 @@ end
 
 function _select_t(φ::SphericalVector{L}, l, M, K) where {L}
 	D = rotation_D_matrix_ast(L)
-	list_t = Int[]
+	tret = -1; numt = 0
 	for t = 1:2L+1
 		prodμt = prod( (D[i, t].μ + M) for i in 1:2L+1)  # avoid more allocations
 		prodmt = prod( (D[i, t].m + K) for i in 1:2L+1)
 		if prodμt == prodmt == 0
-			push!(list_t, t)
+			tret = t; numt += 1
 		end
 	end
-	return list_t, length(list_t)
+	# We assumed that there is only one coefficient; this will warn us if it fails
+	@assert numt == 1
+	return tret
 end
 
 
-coco_zeros(φ::TP, ll, mm, kk, T, A)  where {TP <: SphericalVector} =
-		zeros(TP, _select_t(φ,ll, sum(mm),sum(kk))[2])
+coco_zeros(φ::TP, ll, mm, kk, T, A)  where {TP <: SphericalVector} = zero(TP)
 
 coco_dot(u1::SphericalVector, u2::SphericalVector) =
 		dot(u1.val, u2.val)
@@ -202,14 +203,9 @@ coco_filter(φ::SphericalVector{L}, ll, mm, kk) where {L} =
       iseven(sum(ll) + L) && (abs(sum(mm)) <=  L) && (abs(sum(kk)) <= L)
 
 
-function coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L}
-	list, num = _select_t(φ, l, m, μ)
-	# We assumed that there is only one coefficient; this will warn us if it fails
-	@assert num == 1
-	t = list[1]
-	return [ vec_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L, t) ]
-end
-
+coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L} =
+	vec_cou_coe(__rotcoeff_inv, SVector(l), SVector(m), SVector(μ), L,
+	            _select_t(φ, l, m, μ))
 
 # --------------- SphericalMatrix
 

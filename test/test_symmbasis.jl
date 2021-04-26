@@ -1,7 +1,6 @@
 # some type piracy ...
 # TODO: hack like this make #27 important!!!
 
-using Profile, ProfileView
 using StaticArrays
 import Base: *
 *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
@@ -66,8 +65,6 @@ for ntest = 1:30
 end
 println()
 
-##
-
 # ## Keep for futher profiling
 # φ = ACE.Invariant()
 # pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
@@ -77,7 +74,7 @@ println()
 # Profile.clear()
 # @profile SymmetricBasis(pibasis, φ);
 # ProfileView.view()
-
+#
 
 ## Testing derivatives
 
@@ -139,14 +136,13 @@ end
 # ## Keep for futher profiling
 # L = 1
 # φ = ACE.SphericalVector(L; T = ComplexF64)
-# pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
+# pibasis = PIBasis(B1p, 4, 8; property = φ, isreal = false)
 # basis = SymmetricBasis(pibasis, φ)
 # @time SymmetricBasis(pibasis, φ);
 #
-# Profile.clear(); Profile.init(; delay = 0.0001)
+# Profile.clear(); # Profile.init(; delay = 0.0001)
 # @profile SymmetricBasis(pibasis, φ);
 # ProfileView.view()
-
 
 # ## Keep for futher profiling
 #
@@ -164,7 +160,7 @@ end
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
 
-for L1 = 0:3, L2 = 0:3
+for L1 = 0:1, L2 = 0:1
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
