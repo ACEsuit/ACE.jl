@@ -11,8 +11,18 @@ include("imports.jl")
 
 include("auxiliary.jl")
 
+abstract type AbstractProperty end
+
+function coco_init end
+function coco_zeros end
+function coco_filter end
+function coco_dot end
+
+
 include("rotations3d.jl")
 using ACE.Rotations3D
+include("testing/wigner.jl")
+
 
 include("states.jl")
 include("properties.jl")
@@ -73,7 +83,6 @@ include("utils.jl")
 
 
 include("testing/testing.jl")
-include("testing/wigner.jl")
 
 # - bond model
 # - pure basis

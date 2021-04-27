@@ -1,7 +1,8 @@
 
 using SparseArrays: SparseMatrixCSC, sparse
 using LinearAlgebra: mul!
-
+using Combinatorics: permutations
+using LinearAlgebra: rank, svd, Diagonal
 
 
 """
@@ -50,7 +51,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
    #       or maybe written to a file on disk? and then flushed every time
    #       we finish with a basis construction???
    #rotc = Rot3DCoeffs(rfltype(pibasis))
-   rotc = rot3Dcoeffs(φ, rfltype(pibasis))
+   rotc = Rot3DCoeffs(φ, rfltype(pibasis))
    # allocate triplet format
    Irow, Jcol, vals = Int[], Int[], TP[]
    # count the number of PI basis functions = number of rows
@@ -70,8 +71,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
       # here, we could help out a bit and make it easier to find the
       # the relevant basis functions?
       # AAcols will be in spec format i.e. named tuples
-      U, AAcols = coupling_coeffs(AA, rotc, φ)
-
+      U, AAcols = coupling_coeffs(AA, rotc)
       # loop over the rows of U -> each specifies a basis function
       for irow = 1:size(U, 1)
          idxB += 1
@@ -90,7 +90,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
             idxAA = invAAspec[bcol_ordered]
             push!(Irow, idxB)
             push!(Jcol, idxAA)
-            push!(vals, TP(U[irow, icol]))
+            push!(vals, U[irow, icol])
          end
       end
    end
@@ -107,12 +107,13 @@ function _get_ordered(bb, invAspec)
 end
 
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
+function coupling_coeffs(bb, rotc::Rot3DCoeffs)
    # bb = [ b1, b2, b3, ...)
    # bi = (μ = ..., n = ..., l = ..., m = ...)
    #    (μ, n) -> n; only the l and m are used in the angular basis
    if length(bb) == 0
-      return [1.0,], [bb,]
+      # return [1.0,], [bb,]
+		error("correlation order 0 is currently not allowed")
    end
    # convert to a format that the Rotations3D implementation can understand
    # this utility function splits the bb = (b1, b2 ...) with each
@@ -120,47 +121,67 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::Invariant)
    #    l, and a new n = (μ, n)
    ll, nn = _b2llnn(bb)
    # now we can call the coupling coefficient construiction!!
-   U, Ms = Rotations3D.rpi_basis(rotc, nn, ll)
+   U, Ms = rpe_basis(rotc, nn, ll)
 
    # but now we need to convert the m spec back to complete basis function
    # specifications
-   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+   rpebs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
 
-   return U, rpibs
+   return U, rpebs
 end
 
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffsEquiv, φ::EuclideanVector)
-   if length(bb) == 0
-      error("an equivariant vector basis function cannot have length 0")
+function rpe_basis(A::Rot3DCoeffs,
+						 nn::SVector{N, TN},
+						 ll::SVector{N, Int}) where {N, TN}
+	Ure, Mre = Rotations3D.re_basis(A, ll)
+	G = _gramian(nn, ll, Ure, Mre)
+   S = svd(G)
+   rk = rank(Diagonal(S.S); rtol =  1e-7)
+	Urpe = S.U[:, 1:rk]'
+	return Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure, Mre
+end
+
+
+function _gramian(nn, ll, Ure, Mre)
+   N = length(nn)
+   nre = size(Ure, 1)
+   G = zeros(Complex{Float64}, nre, nre)
+   for σ in permutations(1:N)
+      if (nn[σ] != nn) || (ll[σ] != ll); continue; end
+      for (iU1, mm1) in enumerate(Mre), (iU2, mm2) in enumerate(Mre)
+         if mm1[σ] == mm2
+            for i1 = 1:nre, i2 = 1:nre
+               G[i1, i2] += coco_dot(Ure[i1, iU1], Ure[i2, iU2])
+            end
+         end
+      end
    end
-   ll, nn = _b2llnn(bb)
-   U, Ms = Rotations3D.vec3_symm_basis(rotc, nn, ll)
-   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
-   return U, rpibs
+   return G
 end
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
-   if length(bb) == 0
-      error("an equivariant vector basis function cannot have length 0")
-   end
-   ll, nn = _b2llnn(bb)
-   # A small modification here - the function yvec_symm_basis shall
-   # be φ related which specifies the blocks(the type of orbitals)...
-   U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll, getL(φ))
-   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
-   return U, rpibs
-end
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalMatrix)
-   if length(bb) == 0
-      error("an equivariant matrix basis function cannot have length 0")
-   end
-   ll, nn = _b2llnn(bb)
-   U, Ms = Rotations3D.mat_symm_basis(rotc, nn, ll, getL(φ)[1], getL(φ)[2])
-   rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
-   return U, rpibs
-end
+# function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
+#    if length(bb) == 0
+#       error("an equivariant vector basis function cannot have length 0")
+#    end
+#    ll, nn = _b2llnn(bb)
+#    # A small modification here - the function yvec_symm_basis shall
+#    # be φ related which specifies the blocks(the type of orbitals)...
+#    U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll, getL(φ))
+#    rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+#    return U, rpibs
+# end
+#
+# function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalMatrix)
+#    if length(bb) == 0
+#       error("an equivariant matrix basis function cannot have length 0")
+#    end
+#    ll, nn = _b2llnn(bb)
+#    U, Ms = Rotations3D.mat_symm_basis(rotc, nn, ll, getL(φ)[1], getL(φ)[2])
+#    rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+#    return U, rpibs
+# end
 
 
 _nnllmm2b(nn, ll, mm) = [ _nlm2b(n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
@@ -196,6 +217,29 @@ to l and m keys
    end
 end
 
+# ---------------- A modified sparse matmul
+
+using SparseArrays: AbstractSparseMatrixCSC, DenseInputVecOrMat,
+				        nonzeros, rowvals, nzrange
+
+function genmul!(C::StridedVecOrMat, A::AbstractSparseMatrixCSC, B::DenseInputVecOrMat, mulop)
+    size(A, 2) == size(B, 1) || throw(DimensionMismatch())
+    size(A, 1) == size(C, 1) || throw(DimensionMismatch())
+    size(B, 2) == size(C, 2) || throw(DimensionMismatch())
+    nzv = nonzeros(A)
+    rv = rowvals(A)
+    fill!(C, zero(eltype(C)))
+    for k in 1:size(C, 2)
+        @inbounds for col in 1:size(A, 2)
+            αxj = B[col,k]
+            for j in nzrange(A, col)
+                C[rv[j], k] += mulop(nzv[j], αxj)
+            end
+        end
+    end
+    return C
+end
+
 
 # ---------------- Evaluation code
 
@@ -220,7 +264,7 @@ end
 #        and clean and will do for now...
 function evaluate!(B, tmp, basis::SymmetricBasis,
                    AA::AbstractVector{<: Number})
-   mul!(B, basis.A2Bmap, AA)
+   genmul!(B, basis.A2Bmap, AA, *)
 end
 
 # ---- gradients
@@ -228,7 +272,7 @@ end
 function gradtype(basis::SymmetricBasis)
    φ = zero(eltype(basis.A2Bmap))
    dAA = zero(gradtype(basis.pibasis))
-   return typeof(φ * dAA)
+   return typeof(coco_o_daa(φ, dAA))
 end
 
 alloc_temp_d(basis::SymmetricBasis, nmax::Integer) =
@@ -248,7 +292,8 @@ function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
    return dB
 end
 
+
 function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
-   mul!(dB, basis.A2Bmap, dAA)
+   genmul!(dB, basis.A2Bmap, dAA, ACE.coco_o_daa)
 end
