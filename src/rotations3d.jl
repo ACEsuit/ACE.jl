@@ -324,12 +324,4 @@ function __compute_Al(A::Rot3DCoeffs{T}, ll, Mll, TP, TA) where {T}
 end
 
 
-
-# GOAL IS TO REMOVE ALL OF THIS!!!
-
-# ## Covariant construction for SphericalVector/Matrix - Liwei
-# include("rotations3d-spher-vec.jl")
-#
-# include("rotations3d-spher-mat.jl")
-
 end

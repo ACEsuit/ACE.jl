@@ -40,7 +40,6 @@ include("polynomials/orthpolys.jl"); @reexport using ACE.OrthPolys
 include("oneparticlebasis.jl")
 
 # three specific 1p-bases that are useful
-# TODO: species basis should be moved into the atomistic modelling toolkit
 include("Ylm1pbasis.jl")
 include("Rn1pbasis.jl")
 
