@@ -17,6 +17,19 @@ import LinearAlgebra: norm
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
+# some type piracy ...
+# TODO: hack like this make #27 important!!!
+# *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
+#       reshape( reshape(a, L1*L2, L3) * b, L1, L2)
+
+coco_o_daa(φ::AbstractProperty, b::SVector) = coco_o_daa(φ.val, b)
+coco_o_daa(cc::Number, b::SVector) = cc * b
+coco_o_daa(cc::SVector, b::SVector) = cc * transpose(b)
+coco_o_daa(cc::SMatrix{N1,N2}, b::SVector{N3}) where {N1,N2,N3} =
+		reshape(cc[:] * transpose(b), Size(N1, N2, N3))
+coco_o_daa(cc::SArray{Tuple{N1,N2,N3}}, b::SVector{N4}) where {N1,N2,N3,N4} =
+		reshape(cc[:] * transpose(b), Size(N1, N2, N3, N4))
+
 Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
       isapprox(φ1.val, φ2.val)
 
@@ -81,7 +94,7 @@ filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
 rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
 # differentiation - cf #27
-*(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
+# *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
 
 coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
@@ -120,8 +133,8 @@ struct SphericalVector{L, LEN, T} <: AbstractProperty
    _valL::Val{L}
 end
 
-# differentiation - cf #27
-*(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
+# # differentiation - cf #27
+# *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
 
 
 getL(φ::SphericalVector{L}) where {L} = L
@@ -212,9 +225,9 @@ end
 # differentiation - cf #27
 # actually this here appears to be the generic form how to do the
 # differentiation for arbtirary order tensors.
-*(φ::SphericalMatrix{L1, L2, LEN1, LEN2}, dAA::SVector{N}
-      ) where {L1, L2, LEN1, LEN2, N} =
-      reshape(φ.val[:] * dAA', Size(LEN1, LEN2, N))
+# *(φ::SphericalMatrix{L1, L2, LEN1, LEN2}, dAA::SVector{N}
+#       ) where {L1, L2, LEN1, LEN2, N} =
+#       reshape(φ.val[:] * dAA', Size(LEN1, LEN2, N))
 
 getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = L1, L2
 

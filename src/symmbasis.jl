@@ -217,6 +217,29 @@ to l and m keys
    end
 end
 
+# ---------------- A modified sparse matmul
+
+using SparseArrays: AbstractSparseMatrixCSC, DenseInputVecOrMat,
+				        nonzeros, rowvals, nzrange
+
+function genmul!(C::StridedVecOrMat, A::AbstractSparseMatrixCSC, B::DenseInputVecOrMat, mulop)
+    size(A, 2) == size(B, 1) || throw(DimensionMismatch())
+    size(A, 1) == size(C, 1) || throw(DimensionMismatch())
+    size(B, 2) == size(C, 2) || throw(DimensionMismatch())
+    nzv = nonzeros(A)
+    rv = rowvals(A)
+    fill!(C, zero(eltype(C)))
+    for k in 1:size(C, 2)
+        @inbounds for col in 1:size(A, 2)
+            αxj = B[col,k]
+            for j in nzrange(A, col)
+                C[rv[j], k] += mulop(nzv[j], αxj)
+            end
+        end
+    end
+    return C
+end
+
 
 # ---------------- Evaluation code
 
@@ -241,7 +264,7 @@ end
 #        and clean and will do for now...
 function evaluate!(B, tmp, basis::SymmetricBasis,
                    AA::AbstractVector{<: Number})
-   mul!(B, basis.A2Bmap, AA)
+   genmul!(B, basis.A2Bmap, AA, *)
 end
 
 # ---- gradients
@@ -249,7 +272,7 @@ end
 function gradtype(basis::SymmetricBasis)
    φ = zero(eltype(basis.A2Bmap))
    dAA = zero(gradtype(basis.pibasis))
-   return typeof(φ * dAA)
+   return typeof(coco_o_daa(φ, dAA))
 end
 
 alloc_temp_d(basis::SymmetricBasis, nmax::Integer) =
@@ -269,7 +292,8 @@ function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
    return dB
 end
 
+
 function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
-   mul!(dB, basis.A2Bmap, dAA)
+   genmul!(dB, basis.A2Bmap, dAA, ACE.coco_o_daa)
 end

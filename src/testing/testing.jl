@@ -89,5 +89,19 @@ function test_transform(T, rrange, ntests = 100)
 end
 
 
+# --------- Code for derivative tests
+
+
+import Base.*
+
+struct __TestSVec{T}
+   val::T
+end
+
+*(a::Number, u::__TestSVec) = a * u.val
+*(a::SMatrix, u::__TestSVec) = a * u.val
+*(a::SArray{Tuple{N1,N2,N3}}, u::__TestSVec) where {N1, N2,N3} =
+      reshape(reshape(a, Size(N1*N2, N3)) * u.val, Size(N1, N2))
+
 
 end

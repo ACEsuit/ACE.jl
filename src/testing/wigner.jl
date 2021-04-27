@@ -3,6 +3,11 @@ module Wigner
 using StaticArrays
 
 
+__L2syms = [:s, :p, :d, :f, :g, :h, :i, :k]
+__syms2L = Dict( [sym => L-1 for (L, sym) in enumerate(__L2syms)]... )
+get_orbsym(L::Integer)  = __L2syms[L+1]
+
+
 # Index of entries in D matrix (sign included)
 struct D_Index
 	sign::Int64

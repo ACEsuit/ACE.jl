@@ -1,11 +1,3 @@
-# some type piracy ...
-# TODO: hack like this make #27 important!!!
-
-using StaticArrays
-import Base: *
-*(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
-      reshape( reshape(a, L1*L2, L3) * b, L1, L2)
-
 
 @testset "SymmetricBasis"  begin
 
@@ -16,12 +8,13 @@ using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest
+using ACE.Testing: __TestSVec
 
 # using Profile, ProfileView
 
 # Extra using Wigner for computing Wigner Matrix
 using ACE.Wigner
-
+using ACE.Wigner: get_orbsym
 
 
 # construct the 1p-basis
@@ -78,10 +71,6 @@ println()
 
 ## Testing derivatives
 
-@info("  ... Derivatives")
-tmpd = ACE.alloc_temp_d(basis, length(cfg))
-dB = ACE.evaluate_d(basis, cfg)
-
 for ntest = 1:30
    Us = randn(SVector{3, Float64}, length(Xs))
    c = randn(length(basis))
@@ -93,10 +82,6 @@ println()
 
 #---
 @info("SymmetricBasis construction and evaluation: Spherical Vector")
-
-__L2syms = [:s, :p, :d, :f, :g, :h, :i, :k]
-__syms2L = Dict( [sym => L-1 for (L, sym) in enumerate(__L2syms)]... )
-get_orbsym(L::Integer)  = __L2syms[L+1]
 
 for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
@@ -122,12 +107,12 @@ for L = 0:3
 
    @info(" .... derivatives")
    for ntest = 1:30
-      Us = randn(SVector{3, Float64}, length(Xs))
+      Us = __TestSVec.(randn(SVector{3, Float64}, length(Xs)))
       C = randn(typeof(φ.val), length(basis))
       F = t -> sum( sum(c .* b.val)
                     for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
       dF = t -> [ sum( sum(c .* db)
-                       for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
+                  for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
       print_tf(@test fdtest(F, dF, [0.0], verbose=false))
    end
    println()
@@ -168,7 +153,7 @@ for L1 = 0:2, L2 = 0:2
 
    @info(" .... derivatives")
    for ntest = 1:30
-      Us = randn(SVector{3, Float64}, length(Xs))
+      Us = __TestSVec.(randn(SVector{3, Float64}, length(Xs)))
       C = randn(typeof(φ.val), length(basis))
       F = t -> sum( sum(c .* b.val)
                     for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
