@@ -10,6 +10,15 @@ This package implements approximation schemes for permutation and isometry invar
 Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. There are also implementations of pure permutation invariant bases and of bases with only cylindrical symmetries for bond energies.
 Documentation is a work in progress; if you wish to use the code please contact the author.
 
+## Quickstart
+
+This package can be installed by first adding the ACE registry from the Julia package manager and pulling the ACE and JuLIP packages
+
+`] registry add https://github.com/JuliaMolSim/MolSim.git`
+`] add JuLIP, ACE`
+
+Next `/examples/tut1.jl` provides an overview of how to set up the ACE basis and how to do perform a simple fit.
+
 ## Usage
 
 The ACE basis can be set up using the following function `rpi_basis()` containing the species, correlation order `N`, polynomial degree `maxdeg`, nearest neighbour distance `r0` and inner/outer cutoff radii `rin` and `rcut`. Other parameters for defining the size of the basis (provided by `length(B)`) are `wL` and `csp`. 
