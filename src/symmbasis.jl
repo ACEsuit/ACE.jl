@@ -7,6 +7,23 @@ using LinearAlgebra: rank, svd, Diagonal
 
 """
 `struct SymmetricBasis`
+
+### Constructors
+
+Option 1: pass a `PIBasis`
+```julia
+SymmetricBasis(pibasis, φ)
+```
+All possible permutation-invariant basis functions will be symmetrised and 
+then reduced to a basis (rather than spanning set)
+
+Option 2: pass a `OneParticleBasis`
+```julia
+SymmetricBasis(φ, basis1p, maxν, maxdeg; 
+               Deg = NaiveTotalDegree())
+```
+will first construct a `PIBasis` from these inputs and then call the first 
+constructor.
 """
 struct SymmetricBasis{BOP, PROP} <: ACEBasis
    pibasis::PIBasis{BOP}
@@ -22,8 +39,7 @@ fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  PROP
 
 
 SymmetricBasis(φ::AbstractProperty, args...; kwargs...) =
-      SymmetricBasis(PIBasis(args...; kwargs...), φ)
-
+      SymmetricBasis(PIBasis(args...; kwargs..., property = φ), φ)
 
 function SymmetricBasis(pibasis, φ::TP) where {TP}
 

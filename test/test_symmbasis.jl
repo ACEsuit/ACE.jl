@@ -58,6 +58,17 @@ for ntest = 1:30
 end
 println()
 
+## 
+@info("Test linear independence of the basis")
+# generate some random configurations; ord^2 + 1 sounds good :)
+cfgs = [ ACEConfig(rand(EuclideanVectorState, B1p.bases[1], nX)) 
+         for _ = 1:(3*length(basis)) ]
+A = zeros(length(cfgs), length(basis))
+for (i, cfg) in enumerate(cfgs)
+   A[i, :] = evaluate(basis, cfg)
+end
+println(@test rank(A) == length(basis))
+
 # ## Keep for futher profiling
 # φ = ACE.Invariant()
 # pibasis = PIBasis(B1p, ord, maxdeg; property = φ)

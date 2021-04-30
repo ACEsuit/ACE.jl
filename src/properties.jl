@@ -17,6 +17,9 @@ import LinearAlgebra: norm
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
+Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
+Base.convert(T::Type, φ::AbstractProperty) = convert(T, φ.val)
+
 # some type piracy ...
 # TODO: hack like this make #27 important!!!
 # *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
@@ -40,6 +43,8 @@ an invariant scalar.
 struct Invariant{T} <: AbstractProperty
    val::T
 end
+
+
 
 Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))
 
