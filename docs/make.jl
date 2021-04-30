@@ -16,6 +16,6 @@ makedocs(sitename="ACE.jl Documentation",
         ]
         ])
 
-# deploydocs(
-#     repo = "github.com/JuliaMolSim/ACE.jl.git",
-# )
+deploydocs(
+    repo = "github.com/ACEsuit/ACE.jl.git",
+)
