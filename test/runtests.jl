@@ -13,6 +13,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
 
     # --------------------------------------------
     # core permutation-invariant functionality
+    include("test_scal1pbasis.jl")
     include("test_1pbasis.jl")
     include("test_pibasis.jl")
     # include("test_pipot.jl")   # TODO...

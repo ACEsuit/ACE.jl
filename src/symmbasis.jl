@@ -141,7 +141,7 @@ function coupling_coeffs(bb, rotc::Rot3DCoeffs)
 
    # but now we need to convert the m spec back to complete basis function
    # specifications
-   rpebs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
+   rpebs = [ _nnllmm2b(bb[1], nn, ll, mm) for mm in Ms ]
 
    return U, rpebs
 end
@@ -177,33 +177,14 @@ function _gramian(nn, ll, Ure, Mre)
 end
 
 
-# function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalVector)
-#    if length(bb) == 0
-#       error("an equivariant vector basis function cannot have length 0")
-#    end
-#    ll, nn = _b2llnn(bb)
-#    # A small modification here - the function yvec_symm_basis shall
-#    # be φ related which specifies the blocks(the type of orbitals)...
-#    U, Ms = Rotations3D.yvec_symm_basis(rotc, nn, ll, getL(φ))
-#    rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
-#    return U, rpibs
-# end
-#
-# function coupling_coeffs(bb, rotc::Rot3DCoeffs, φ::SphericalMatrix)
-#    if length(bb) == 0
-#       error("an equivariant matrix basis function cannot have length 0")
-#    end
-#    ll, nn = _b2llnn(bb)
-#    U, Ms = Rotations3D.mat_symm_basis(rotc, nn, ll, getL(φ)[1], getL(φ)[2])
-#    rpibs = [ _nnllmm2b(nn, ll, mm) for mm in Ms ]
-#    return U, rpibs
-# end
 
+_nnllmm2b(b, nn, ll, mm) = [ _nlm2b(b, n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
 
-_nnllmm2b(nn, ll, mm) = [ _nlm2b(n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
-
-@generated function _nlm2b(n::NamedTuple{KEYS}, l, m) where {KEYS}
-   code = "b = (" * prod("$(k) = n.$(k), " for k in KEYS) * "l = l, m = m )"
+@generated function _nlm2b(b::NamedTuple{ALLKEYS}, n::NamedTuple{NKEYS}, l, m) where {ALLKEYS, NKEYS}
+   code = 
+      ( "( _b = (" * prod("$(k) = n.$(k), " for k in NKEYS) * "l = l, m = m ); "
+         * 
+        " b = (" * prod("$(k) = _b.$(k), " for k in ALLKEYS) * ") )" )
    :( $(Meta.parse(code)) )
 end
 

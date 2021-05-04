@@ -14,7 +14,19 @@ import ACE: PolyTransform, transformed_jacobi, Rn1pBasis,
 # - construct a descriptor
 # - simple wrappers to generate RPI basis functions (ACE + relatives)
 
-
+@doc raw"""
+`Rn_basis` construct a ``R_n`` basis; all arguments are keyword arguments with 
+defaults: 
+* `r0 = 1.0`
+* `trans = PolyTransform(2, r0)`
+* `D = NaiveTotalDegree()`
+* `maxdeg = 6`
+* `rcut = 2.5`
+* `rin = 0.5 * r0`
+* `pcut = 2`
+* `pin = 0`
+* `constants = false`
+"""
 function Rn_basis(;
       # transform parameters
       r0 = 1.0,
@@ -33,8 +45,12 @@ function Rn_basis(;
    return Rn1pBasis(J)
 end
 
+@doc raw"""
+Construct a ``R_n * Y_l^m`` 1-particle basis. 
+All arguments are keyword arguments; see documentation of `ACE.Utils.Rn_basis`.
+"""
 function RnYlm_1pbasis(; maxdeg=6, kwargs...)
-   Rn = Rn_basis(; maxdeg = maxdeg)
+   Rn = Rn_basis(; maxdeg = maxdeg, kwargs...)
    Ylm = Ylm1pBasis(maxdeg)
    B1p = ACE.Product1pBasis((Rn, Ylm))
    init1pspec!(B1p)

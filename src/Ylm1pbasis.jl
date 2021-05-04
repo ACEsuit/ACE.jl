@@ -65,7 +65,7 @@ function indexrange(basis::Ylm1pBasis)
    maxl = basis.SH.maxL
    # note we create a stupid tensor product domain and then make up for it
    # by using an index filter during the basis generation process
-   return Dict( :l => 0:maxl, :m => -maxl:maxl )
+   return ( l = 0:maxl, m = -maxl:maxl )
 end
 
 isadmissible(b, basis::Ylm1pBasis) =

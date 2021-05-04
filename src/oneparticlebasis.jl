@@ -120,7 +120,7 @@ fltype(::One1pBasis) = Bool
 
 symbols(::One1pBasis) = Symbol[]
 
-indexrange(::One1pBasis) = Dict()
+indexrange(::One1pBasis) = NamedTuple()
 
 isadmissible(b, ::One1pBasis) = true
 

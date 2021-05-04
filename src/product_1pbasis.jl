@@ -126,11 +126,8 @@ symbols(basis::Product1pBasis{NB, TB, NSYM, SYMS}
             ) where {NB, TB, NSYM, SYMS} = SYMS
 
 function indexrange(basis::Product1pBasis)
-   rg = Dict{Symbol, Vector{Int}}()
-   allsyms = symbols(basis)
-   for sym in allsyms
-      rg[sym] = Int[]
-   end
+   allsyms = tuple(symbols(basis)...)
+   rg = Dict{Symbol, Vector{Int}}([ sym => Int[] for sym in allsyms]...)
    for b in basis.bases
       rgb = indexrange(b)
       for sym in allsyms
@@ -139,7 +136,6 @@ function indexrange(basis::Product1pBasis)
          end
       end
    end
-
    # HACK: fix the m range based on the maximal l-range
    #       this needs to be suitably generalised if we have multiple
    #       (l, m) pairs, e.g. (l1, m1), (l2, m2)
@@ -148,7 +144,8 @@ function indexrange(basis::Product1pBasis)
       rg[:m] = collect(-maxl:maxl)
    end
 
-   return rg
+   # convert the range into a named tuple so that we remember the order!!
+   return NamedTuple{allsyms}(ntuple(i -> rg[allsyms[i]], length(allsyms)))
 end
 
 isadmissible(b, basis::Product1pBasis) = all(isadmissible.(Ref(b), basis.bases))

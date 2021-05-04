@@ -48,7 +48,7 @@ gradtype(::Rn1pBasis{T}) where {T} = SVector{3, T}
 
 symbols(::Rn1pBasis) = [:n]
 
-indexrange(basis::Rn1pBasis) = Dict( :n => 1:length(basis) )
+indexrange(basis::Rn1pBasis) = ( n = 1:length(basis), )
 
 isadmissible(b, basis::Rn1pBasis) = (1 <= b.n <= length(basis))
 
