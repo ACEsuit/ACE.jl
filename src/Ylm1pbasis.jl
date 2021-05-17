@@ -16,31 +16,37 @@ Fundamental building block of ACE basis sets of the form
 This type basically just translates the `SHBasis` into a valid one-particle
 basis.
 """
-mutable struct Ylm1pBasis{T} <: OneParticleBasis{Complex{T}}
+mutable struct Ylm1pBasis{T, VSYM, LSYM, MSYM} <: OneParticleBasis{Complex{T}}
    SH::SHBasis{T}  # SH = Ylm
 end
-
-# TODO: allow for the possibility that the symbol where the
-#       position is stored is not `rr` but something else!
-#
-# TODO: Should we drop this type altogether and just replace it with SHBasis?
-
 
 # ---------------------- Implementation of Ylm1pBasis
 
 
-Ylm1pBasis(maxL::Integer, T = Float64) = Ylm1pBasis(SHBasis(maxL, T))
+Ylm1pBasis(maxL::Integer, T = Float64; kwargs...) = 
+      Ylm1pBasis((SHBasis(maxL, T)); kwargs...)
+
+Ylm1pBasis(SH::SHBasis{T}; varsym = :rr, lsym = :l, msym = :m)  where {T} = 
+   Ylm1pBasis{T, varsym, lsym, msym}(SH)
 
 Base.length(basis::Ylm1pBasis) = length(basis.SH)
+
+_varsym(::Ylm1pBasis{T, VSYM, LSYM, MSYM}) where {T, VSYM, LSYM, MSYM} = VSYM
+_lsym(::Ylm1pBasis{T, VSYM, LSYM, MSYM}) where {T, VSYM, LSYM, MSYM} = LSYM
+_msym(::Ylm1pBasis{T, VSYM, LSYM, MSYM}) where {T, VSYM, LSYM, MSYM} = MSYM
+_l(b, basis::Ylm1pBasis) = getproperty(b, _lsym(basis))
+_m(b, basis::Ylm1pBasis) = getproperty(b, _msym(basis))
+_lm(b, basis::Ylm1pBasis) = _l(b, basis), _m(b, basis)
 
 # -> TODO : figure out how to do this well!!!
 # Base.rand(basis::Ylm1pBasis) =
 #       AtomState(rand(basis.zlist.list), ACE.Random.rand_vec(basis.J))
 
-function get_spec(basis::Ylm1pBasis)
-   spec = NamedTuple{(:n, :l), (Int, Int)}[]
+function get_spec(basis::Ylm1pBasis{T, VS, L, M}) where {T, VS, L, M}
+   @assert length(basis) == (basis.SH.maxL + 1)^2
+   spec = Vector{NamedTuple{(L, M), Tuple{Int, Int}}}(undef, length(basis))
    for l = 0:basis.SH.maxL, m = -l:l
-      spec[index_y(l, m)] = Ylm1pBasisFcn(l, m)
+      spec[index_y(l, m)] = NamedTuple{(L, M), Tuple{Int, Int}}( (l, m) )
    end
    return spec
 end
@@ -49,28 +55,38 @@ end
 
 write_dict(basis::Ylm1pBasis{T}) where {T} = Dict(
       "__id__" => "ACE_Ylm1pBasis",
-          "SH" => write_dict(basis.SH) )
-
-read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) = Ylm1pBasis(read_dict(D["SH"]))
+          "SH" => write_dict(basis.SH), 
+          "varsym" => _varsym(basis),
+          "lsym" => _lsym(basis),
+          "msym" => _msym(basis) )
+   
+read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) = 
+      Ylm1pBasis(read_dict(D["SH"]), 
+                 varsym = D["varsym"], 
+                 lsym = D["lsym"], 
+                 msym = D["msym"] )
 
 fltype(basis::Ylm1pBasis{T}) where T = Complex{T}
 rfltype(basis::Ylm1pBasis{T}) where T = T
 
 gradtype(::Ylm1pBasis{T}) where {T} = SVector{3, Complex{T}}
 
-symbols(::Ylm1pBasis) = [:l, :m]
+symbols(basis::Ylm1pBasis) = [_lsym(basis), _msym(basis)]
 
 
 function indexrange(basis::Ylm1pBasis)
    maxl = basis.SH.maxL
    # note we create a stupid tensor product domain and then make up for it
    # by using an index filter during the basis generation process
-   return ( l = 0:maxl, m = -maxl:maxl )
+   return NamedTuple{(_lsym(basis), _msym(basis))}( (0:maxl, -maxl:maxl) )
 end
 
-isadmissible(b, basis::Ylm1pBasis) =
-      (  (0 <= b.l <= basis.SH.maxL) &&
-         (-b.l <= b.m <= b.l) )
+
+function isadmissible(b, basis::Ylm1pBasis) 
+   l, m = _lm(b, basis)
+   return (0 <= l <= basis.SH.maxL) && (-l <= m <= l) 
+end
+
 
 # ---------------------------  Evaluation code
 #
@@ -84,19 +100,21 @@ alloc_temp(basis::Ylm1pBasis, args...) = alloc_temp(basis.SH)
 alloc_temp_d(basis::Ylm1pBasis, args...) = alloc_temp_d(basis.SH, args...)
 
 
+_rr(X, basis::Ylm1pBasis) = getproperty(X, _varsym(basis))
+
 evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState) =
-      evaluate!(B, tmp, basis.SH, X.rr)
+      evaluate!(B, tmp, basis.SH, _rr(X, basis))
 
 evaluate_d!(dB, tmpd, basis::Ylm1pBasis, X::AbstractState) =
-      evaluate_d!(dB, tmpd, basis.SH, X.rr)
+      evaluate_d!(dB, tmpd, basis.SH, _rr(X, basis))
 
 evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState) =
-      evaluate_ed!(B, dB, tmpd, basis.SH, X.rr)
+      evaluate_ed!(B, dB, tmpd, basis.SH, _rr(X, basis))
 
 
-degree(b, basis::Ylm1pBasis) = b.l
+degree(b, Ylm::Ylm1pBasis) = _l(b, Ylm)
 
-get_index(basis::Ylm1pBasis, b) = index_y(b.l, b.m)
+get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
 
 

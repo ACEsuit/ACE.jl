@@ -117,6 +117,9 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
 end
 
 
+"""
+produce the ordered tuple defining the AA basis function uniquely.
+"""
 function _get_ordered(bb, invAspec)
    iAs = [invAspec[b] for b in bb]
    return bb[ sortperm(iAs, rev = true) ]
