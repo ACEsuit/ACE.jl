@@ -11,6 +11,8 @@ include("imports.jl")
 
 include("auxiliary.jl")
 
+abstract type AbstractACEModel end 
+
 abstract type AbstractProperty end
 
 function coco_init end
@@ -61,6 +63,8 @@ include("pibasis.jl")
 include("symmbasis.jl")
 
 # include("pipot.jl")
+
+include("linearmodel.jl")
 
 
 # # orthogonal basis
