@@ -50,11 +50,6 @@ include("product_1pbasis.jl")
 
 include("sparsegrids.jl")
 
-# TODO -> move elsewhere!!!
-# include("rpi/rpi_degrees.jl")
-
-# leave this for much later ...
-# include("grapheval.jl")
 
 # the permutation-invariant basis: this is a key building block
 # for other bases but can also be a useful export itself
@@ -62,7 +57,10 @@ include("pibasis.jl")
 
 include("symmbasis.jl")
 
-# include("pipot.jl")
+# models and model evaluators 
+
+include("evaluator.jl")
+# include("grapheval.jl")
 
 include("linearmodel.jl")
 
@@ -94,6 +92,9 @@ include("testing/testing.jl")
 # - regularisers
 # - descriptors
 # - random potentials
+# TODO -> move elsewhere!!!
+# include("rpi/rpi_degrees.jl")
+
 
 
 end # module

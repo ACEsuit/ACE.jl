@@ -15,61 +15,106 @@
 # Another advantage is that model, and full model construction are all stored 
 # together for future inspection.
 
-struct LinearACEModel{TB, TP <: Number, RF} <: ACEModel 
+struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel 
    basis::TB
    c::Vector{TP}
-   # TODO: add an evaluator to make the evaluation w.r.t. 
-   #       configuration much faster; especially gradients
+   evaluator::TEV   
 end 
+
+struct NaiveEvaluator end 
+
+function LinearACEModel(basis::SymmetricBasis, c = zeros(length(basis)); 
+               evaluator = :standard) 
+   if evaluator == :naive 
+      ev = NaiveEvaluator()
+   elseif evaluator == :standard 
+      ev = PIEvaluator(basis, c) 
+   elseif evaluator == :recursive 
+      error("Recursive evaluator not yet implemented")
+   else 
+      error("unknown evaluator")
+   end
+   return LinearACEModel(basis, c, ev)
+end
 
 params(m::LinearACEModel) = copy(m.c)
 
 function set_params!(m::LinearACEModel, c) 
    m.c[:] .= c
+   set_params!(m.ev, m.basis, c)
    return m 
 end
 
-# Todo: -> generalise, maybe introduce `alloc_grad, alloc_params, ...`
-grad_params(m::LinearACEModel, X::AbstractConfiguration) = 
-      grad_params!(alloc_B(m.basis), m, X)
+set_params!(::NaiveEvaluator, args...) = nothing 
 
+# ------------------- dispatching on the evaluators 
 
-function grad_params!(g, m::LinearACEModel, X::AbstractConfiguration) 
-   evaluate!(g, tmp, m.basis, X) 
-   return g 
-end
+alloc_temp(m::LinearACEModel) = alloc_temp(m, m.evaluator)
 
-alloc_temp(m::LinearACEModel) = 
-   ( tmpbasis = alloc_temp(m.basis), 
-     B = alloc_B(m.basis)
-   )
-
-# TODO: -> generalise 
 evaluate(m::LinearACEModel, X::AbstractConfiguration) = 
       evaluate!(alloc_temp(m), m, X)
 
-function evaluate!(tmp, m::LinearACEModel, X::AbstractConfiguration)  
-   evaluate!(tmp.B, m.basis, X)
-   return sum(x * y for (x,y) in zip(m.c, tmp.B))
-end 
+evaluate!(tmp, m::LinearACEModel, X::AbstractConfiguration) = 
+      evaluate!(tmp, m::LinearACEModel, m.evaluator, X::AbstractConfiguration)
 
-
-alloc_temp_d(m::LinearModel, X::AbstractConfiguration) = 
+alloc_temp_d(m::LinearACEModel, X::AbstractConfiguration) = 
       alloc_temp_d(m::LinearModel, length(X))
 
 alloc_temp_d(m::LinearACEModel, N::Integer) = 
-      ( tmpdbasis = alloc_temp_d(m.basis), 
-        B = alloc_B(m.basis), 
-        dB = alloc_dB(m.basis, N)
-      )
+      alloc_temp_d(m::LinearModel, m.evaluator, N)
 
+# this one seems generic and doesn't need to be dispatched?
 alloc_grad_config(m::LinearACEModel, X::AbstractConfiguration) = 
       Vector{gradtype(m.basis)}(undef, length(X))
 
 grad_config(m::LinearACEModel, X::AbstractConfiguration) = 
       grad_config!(alloc_grad_config(m, X), alloc_temp_d(m, X), m, X)
 
-function grad_config!(g, tmpd, m::LinearACEModel, X::AbstractConfiguration)
+grad_config!(g, tmpd, m::LinearACEModel, X::AbstractConfiguration) = 
+      grad_config!(g, tmpd, m, m.evaluator, X) 
+
+# seems generic and doesn't need generalisation?
+alloc_grad_params(m::LinearACEModel) = alloc_B(m.basis)
+
+grad_params(m::LinearACEModel, X::AbstractConfiguration) = 
+      grad_params!(alloc_grad_params(m.basis), alloc_temp(m.basis), m, X)
+
+function grad_params!(g, tmp, m::LinearACEModel, X::AbstractConfiguration) 
+   evaluate!(g, tmp, m.basis, X) 
+   return g 
+end
+
+# grad_params_config(m::LinearACEModel, X::AbstractConfiguration) = 
+#       grad_params_config!( alloc_temp_dalloc_temp_d(m, X), m, X)
+#    return dB
+# end
+
+# function grad_params_config!(dB, tmpd, m::LinearACEModel, X::AbstractConfiguration) 
+#    evaluate_d!(tmpd.B, dB, m, X) 
+#    return dB
+# end
+
+# ------------------- implementation of naive evaluator 
+
+alloc_temp(m::LinearACEModel, ::NaiveEvaluator)
+   ( tmpbasis = alloc_temp(m.basis), 
+     B = alloc_B(m.basis)
+   )
+
+function evaluate!(tmp, m::LinearACEModel, ::NaiveEvaluator, 
+                    X::AbstractConfiguration)  
+   evaluate!(tmp.B, tmp.tmpbasis, m.basis, X)
+   return sum(prod, zip(m.c, tmp.B))
+end 
+
+alloc_temp_d(m::LinearACEModel, ::NaiveEvaluator, N::Integer) = 
+      ( tmpdbasis = alloc_temp_d(m.basis), 
+        B = alloc_B(m.basis), 
+        dB = alloc_dB(m.basis, N)
+      )
+
+function grad_config!(g, tmpd, m::LinearACEModel, ::NaiveEvaluator, 
+                     X::AbstractConfiguration)
    evaluate_d!(tmpd.B, tmpd.dB, m, X) 
    fill!(g, zero(eltype(g)))
    for ix = 1:length(X), ib = 1:length(m.basis)

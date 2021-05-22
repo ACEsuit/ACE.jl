@@ -19,6 +19,7 @@ import LinearAlgebra: norm
 
 Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
 Base.convert(T::Type, φ::AbstractProperty) = convert(T, φ.val)
+Base.convert(T::Type{Any}, φ::AbstractProperty) = φ
 
 # some type piracy ...
 # TODO: hack like this make #27 important!!!

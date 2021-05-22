@@ -344,5 +344,154 @@ end
 
 
 
+# ------- Evaluation code
 
+function _getdagfrombasis(inner, c)
+   nodes = inner.dag.nodes
+   vals = inner.dag.vals
+   dag = DAG.CorrEvalGraph(nodes, zeros(eltype(c), length(nodes)),
+                           inner.dag.num1, inner.dag.numstore)
+   for (i, idx) in enumerate(vals)
+      if idx != 0  # idx = 0 means this is an auxiliary basis with 0 coefficient!
+         dag.vals[i] = c[idx]
+      end
+   end
+   return dag
+end
+
+
+_maxstore(V::PIEvaluator) = maximum( dag.numstore for dag in V.dags )
+
+
+alloc_temp(::DAGEvaluator, V::PIEvaluator{T}, maxN::Integer) where {T} =
+   (
+   R = zeros(JVec{real(T)}, maxN),
+   Z = zeros(AtomicNumber, maxN),
+   tmp_basis1p = alloc_temp(V.pibasis.basis1p),
+   AA = zeros(fltype(V.pibasis.basis1p), _maxstore(V)),
+   A = alloc_B(V.pibasis.basis1p)
+   )
+
+
+function evaluate!(tmp, V::PIEvaluator, ::DAGEvaluator, Rs, Zs, z0)
+   AAdag = tmp.AA
+   A = tmp.A
+   iz0 = z2i(V, z0)
+   dag = V.dags[iz0]
+   nodes = dag.nodes
+   vals = dag.vals
+   @assert length(A) >= dag.num1
+   @assert length(AAdag) >= dag.numstore
+
+   evaluate!(A, tmp.tmp_basis1p, V.pibasis.basis1p, Rs, Zs, z0)
+
+   Es = zero(fltype(V))
+   @inbounds for i = 1:dag.num1
+      AAdag[i] = a = A[i]
+      Es = muladd(vals[i], real(a), Es)
+   end
+
+   @inbounds for i = (dag.num1+1):dag.numstore
+      n1, n2 = nodes[i]
+      AAdag[i] = a = AAdag[n1] * AAdag[n2]
+      Es = muladd(vals[i], real(a), Es)
+   end
+
+   @inbounds for i = (dag.numstore+1):length(dag)
+      n1, n2 = nodes[i]
+      a = AAdag[n1] * AAdag[n2]
+      Es = muladd(vals[i], real(a), Es)
+   end
+
+   return Es
+end
+
+
+
+alloc_temp_d(::DAGEvaluator, V::PIEvaluator{T}, maxN::Integer) where {T} =
+   (
+   R = zeros(JVec{real(T)}, maxN),
+   Z = zeros(AtomicNumber, maxN),
+    dV = zeros(JVec{real(T)}, maxN),
+   tmpd_basis1p = alloc_temp_d(V.pibasis.basis1p),
+   AA = zeros(fltype(V.pibasis.basis1p), _maxstore(V)),
+   B = zeros(fltype(V.pibasis.basis1p), _maxstore(V)),
+   A = alloc_B(V.pibasis.basis1p),
+   dA = alloc_dB(V.pibasis.basis1p)
+    )
+
+
+function evaluate_d!(dEs, tmpd, V::PIEvaluator{T}, ::DAGEvaluator, Rs, Zs, z0) where {T}
+   iz0 = z2i(V, z0)
+   AA = tmpd.AA
+   B = tmpd.B
+   tmpd_basis1p = tmpd.tmpd_basis1p
+   basis1p = V.pibasis.basis1p
+   dag = V.dags[iz0]
+   nodes = dag.nodes
+   coeffs = dag.vals
+
+   # we start from the representation
+   #     V = sum B[i] AA[i]
+   # i.e. this vector represents the constributions c[i] ∂AA[i]
+   copy!(B, coeffs)
+
+   # FORWARD PASS
+   # ------------
+   # evaluate the 1-particle basis
+   # this puts the first `dag.num1` 1-b (trivial) correlations into the
+   # storage array, and from these we can build the rest
+   evaluate!(AA, tmpd_basis1p, basis1p, Rs, Zs, z0)
+
+   # Stage 2 of evaluate!
+   # go through the dag and store the intermediate results we need
+   @inbounds @fastmath for i = (dag.num1+1):dag.numstore
+      n1, n2 = nodes[i]
+      AA[i] = muladd(AA[n1], AA[n2], AA[i])
+   end
+
+   # BACKWARD PASS
+   # --------------
+   # fill the B array -> coefficients of the derivatives
+   #  AA_i = AA_{n1} * AA_{n2}
+   #  ∂AA_i = AA_{n1} * ∂AA_{n2} + AA_{n1} * AA_{n2}
+   #  c_{n1} * ∂AA_{n1} <- (c_{n1} + c_i AA_{n2}) ∂AA_{n1}
+   @inbounds @fastmath for i = length(dag):-1:(dag.numstore+1)
+      c = coeffs[i]
+      n1, n2 = nodes[i]
+      B[n1] = muladd(c, AA[n2], B[n1])
+      B[n2] = muladd(c, AA[n1], B[n2])
+   end
+   # in stage 2 c = C[i] is replaced with b = B[i]
+   @inbounds @fastmath for i = dag.numstore:-1:(dag.num1+1)
+      n1, n2 = nodes[i]
+      b = B[i]
+      B[n1] = muladd(b, AA[n2], B[n1])
+      B[n2] = muladd(b, AA[n1], B[n2])
+   end
+
+   # stage 3: get the gradients
+   fill!(dEs, zero(JVec{T}))
+   A = tmpd.A
+   dA = tmpd.dA
+   for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
+      evaluate_d!(A, dA, tmpd_basis1p, basis1p, R, Z, z0)
+      iz = z2i(basis1p, Z)
+      inds = basis1p.Aindices[iz, iz0]
+      for iA = 1:length(basis1p, iz, iz0)
+         dEs[iR] += real(B[inds[iA]] * dA[inds[iA]])
+      end
+   end
+
+   return dEs
+end
+
+end
+
+
+
+# assemble from basis with coeff vectors separated into individual species
+function PIEvaluator(basis::PIBasis, coeffs_t::Tuple)
+   dags = ntuple(iz0 -> _getdagfrombasis(basis.inner[iz0], coeffs_t[iz0]), numz(basis))
+   return PIEvaluator(basis, coeffs_t, dags, DAGEvaluator())
 end
