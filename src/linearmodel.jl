@@ -58,10 +58,10 @@ evaluate!(tmp, m::LinearACEModel, X::AbstractConfiguration) =
       evaluate!(tmp, m::LinearACEModel, m.evaluator, X::AbstractConfiguration)
 
 alloc_temp_d(m::LinearACEModel, X::AbstractConfiguration) = 
-      alloc_temp_d(m::LinearModel, length(X))
+      alloc_temp_d(m, length(X))
 
 alloc_temp_d(m::LinearACEModel, N::Integer) = 
-      alloc_temp_d(m::LinearModel, m.evaluator, N)
+      alloc_temp_d(m.evaluator, N, m)
 
 # this one seems generic and doesn't need to be dispatched?
 alloc_grad_config(m::LinearACEModel, X::AbstractConfiguration) = 
@@ -107,18 +107,18 @@ function evaluate!(tmp, m::LinearACEModel, ::NaiveEvaluator,
    return sum(prod, zip(m.c, tmp.B))
 end 
 
-alloc_temp_d(m::LinearACEModel, ::NaiveEvaluator, N::Integer) = 
-      ( tmpdbasis = alloc_temp_d(m.basis), 
+alloc_temp_d(::NaiveEvaluator, N::Integer, m::LinearACEModel) = 
+      ( tmpdbasis = alloc_temp_d(m.basis, N), 
         B = alloc_B(m.basis), 
         dB = alloc_dB(m.basis, N)
       )
 
 function grad_config!(g, tmpd, m::LinearACEModel, ::NaiveEvaluator, 
                      X::AbstractConfiguration)
-   evaluate_d!(tmpd.B, tmpd.dB, m, X) 
+   evaluate_d!(tmpd.dB, tmpd.tmpdbasis, m.basis, X) 
    fill!(g, zero(eltype(g)))
    for ix = 1:length(X), ib = 1:length(m.basis)
-      g[ix] += m.c[ib] * dB[ib, ix]
+      g[ix] += m.c[ib] * tmpd.dB[ib, ix]
    end
    return g 
 end

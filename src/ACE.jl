@@ -59,10 +59,11 @@ include("symmbasis.jl")
 
 # models and model evaluators 
 
-include("evaluator.jl")
-# include("grapheval.jl")
 
 include("linearmodel.jl")
+
+include("evaluator.jl")
+# include("grapheval.jl")
 
 
 # # orthogonal basis

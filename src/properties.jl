@@ -1,5 +1,5 @@
 
-import Base: -, +, *, filter
+import Base: -, +, *, filter, real, complex 
 import LinearAlgebra: norm
 
 
@@ -16,6 +16,8 @@ import LinearAlgebra: norm
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
+
+
 
 Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
 Base.convert(T::Type, φ::AbstractProperty) = convert(T, φ.val)
@@ -51,6 +53,10 @@ Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))
 
 Invariant(T::DataType = Float64) = Invariant{T}()
 
+real(φ::Invariant) = Invariant(real(φ.val))
+complex(φ::Invariant) = Invariant(complex(φ.val))
+complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
+ 
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )
 

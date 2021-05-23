@@ -93,62 +93,55 @@ function evaluate!(tmp, V::PIEvaluator, cfg::AbstractConfiguration)
 end
 
 
-# # TODO: generalise the R, Z, allocation
-# alloc_temp_d(::StandardEvaluator, V::PIEvaluator{T}, N::Integer) where {T} =
-#       (
-#       dAco = zeros(fltype(V.pibasis),
-#                    maximum(length(V.pibasis.basis1p, iz) for iz=1:numz(V))),
-#        tmpd_pibasis = alloc_temp_d(V.pibasis, N),
-#        dV = zeros(JVec{real(T)}, N),
-#         R = zeros(JVec{real(T)}, N),
-#         Z = zeros(AtomicNumber, N)
-#       )
 
-# # compute one site energy
-# function evaluate_d!(dEs, tmpd, V::PIEvaluator, ::StandardEvaluator,
-#                      Rs::AbstractVector{<: JVec{T}},
-#                      Zs::AbstractVector{AtomicNumber},
-#                      z0::AtomicNumber
-#                      ) where {T}
-#    iz0 = z2i(V, z0)
-#    basis1p = V.pibasis.basis1p
-#    tmpd_1p = tmpd.tmpd_pibasis.tmpd_basis1p
-#    Araw = tmpd.tmpd_pibasis.A
+alloc_temp_d(V::PIEvaluator{T}, N::Integer, args...) where {T} =
+      (
+       dAco = zeros( complex(eltype(V.coeffs)),
+                    length(V.pibasis.basis1p) ),
+       tmpd_pibasis = alloc_temp_d(V.pibasis, N),
+      )
 
-#    # stage 1: precompute all the A values
-#    A = evaluate!(Araw, tmpd_1p, basis1p, Rs, Zs, z0)
+grad_config!(g, tmpd, ::LinearACEModel, V::PIEvaluator, cfg::AbstractConfiguration) = 
+      evaluate_d!(g, tmpd, V::PIEvaluator, cfg)
 
-#    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
-#    dAco = tmpd.dAco
-#    c = V.coeffs[iz0]
-#    inner = V.pibasis.inner[iz0]
-#    fill!(dAco, 0)
-#    for iAA = 1:length(inner)
-#       for α = 1:inner.orders[iAA]
-#          CxA_α = c[iAA]
-#          for β = 1:inner.orders[iAA]
-#             if β != α
-#                CxA_α *= A[inner.iAA2iA[iAA, β]]
-#             end
-#          end
-#          iAα = inner.iAA2iA[iAA, α]
-#          dAco[iAα] += CxA_α
-#       end
-#    end
+# compute one site energy
+function evaluate_d!(g, tmpd, V::PIEvaluator, cfg::AbstractConfiguration)
+   basis1p = V.pibasis.basis1p
+   tmpd_1p = tmpd.tmpd_pibasis.tmpd_basis1p
+   A = tmpd.tmpd_pibasis.A
+   dA = tmpd.tmpd_pibasis.dA
+   _real = V.pibasis.real
 
-#    # stage 3: get the gradients
-#    fill!(dEs, zero(JVec{T}))
-#    dAraw = tmpd.tmpd_pibasis.dA
-#    for (iR, (R, Z)) in enumerate(zip(Rs, Zs))
-#       evaluate_d!(Araw, dAraw, tmpd_1p, basis1p, R, Z, z0)
-#       iz = z2i(basis1p, Z)
-#       zinds = basis1p.Aindices[iz, iz0]
-#       for iA = 1:length(basis1p, iz, iz0)
-#          dEs[iR] += real(dAco[zinds[iA]] * dAraw[zinds[iA]])
-#       end
-#    end
+   # stage 1: precompute all the A values
+   evaluate_ed!(A, dA, tmpd_1p, basis1p, cfg)
 
-#    return dEs
-# end
+   # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+   dAco = tmpd.dAco
+   c = V.coeffs
+   spec = V.pibasis.spec
+   fill!(dAco, zero(eltype(dAco)))
+   for iAA = 1:length(spec)
+      for α = 1:spec.orders[iAA]
+         A_α = one(eltype(A))
+         for β = 1:spec.orders[iAA]
+            if β != α
+               A_α *= A[spec.iAA2iA[iAA, β]]
+            end
+         end
+         iAα = spec.iAA2iA[iAA, α]
+         dAco[iAα] += A_α * complex(c[iAA])
+      end
+   end
+
+   # stage 3: get the gradients
+   fill!(g, zero(eltype(g)))
+   for iX = 1:length(cfg)
+      for iA = 1:length(basis1p)
+         g[iX] += _real.(dAco[iA] * dA[iA, iX])
+      end
+   end
+
+   return g
+end
 
 

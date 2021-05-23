@@ -219,7 +219,7 @@ end
 # -------------------------------------------------
 # gradients
 
-gradtype(basis::PIBasis) = gradtype(basis.basis1p)
+gradtype(basis::PIBasis) = basis.real(gradtype(basis.basis1p))
 
 alloc_dB(basis::PIBasis, nmax::Integer) =
       zeros(gradtype(basis), (length(basis), nmax))
