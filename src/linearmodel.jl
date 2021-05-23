@@ -41,7 +41,7 @@ params(m::LinearACEModel) = copy(m.c)
 
 function set_params!(m::LinearACEModel, c) 
    m.c[:] .= c
-   set_params!(m.ev, m.basis, c)
+   set_params!(m.evaluator, m.basis, c)
    return m 
 end
 
@@ -49,7 +49,7 @@ set_params!(::NaiveEvaluator, args...) = nothing
 
 # ------------------- dispatching on the evaluators 
 
-alloc_temp(m::LinearACEModel) = alloc_temp(m, m.evaluator)
+alloc_temp(m::LinearACEModel) = alloc_temp(m.evaluator, m)
 
 evaluate(m::LinearACEModel, X::AbstractConfiguration) = 
       evaluate!(alloc_temp(m), m, X)
@@ -96,7 +96,7 @@ end
 
 # ------------------- implementation of naive evaluator 
 
-alloc_temp(m::LinearACEModel, ::NaiveEvaluator)
+alloc_temp(::NaiveEvaluator, m::LinearACEModel) = 
    ( tmpbasis = alloc_temp(m.basis), 
      B = alloc_B(m.basis)
    )

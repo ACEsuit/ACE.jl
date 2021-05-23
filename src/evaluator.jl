@@ -5,7 +5,7 @@
 `struct PIEvaluator` : specifies a PIEvaluator, which is basically defined
 through a PIBasis and its coefficients
 """
-mutable struct PIEvaluator{T, TPI} 
+mutable struct PIEvaluator{T, TPI <: PIBasis} 
    pibasis::TPI
    coeffs::Vector{T}
 end
@@ -28,14 +28,19 @@ function set_params!(ev::PIEvaluator, basis::PIBasis, coeffs::AbstractVector)
    set_params!(ev, coeffs)
 end 
 
-_get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
-      (transpose(c) * basis.A2B)[:]
+_get_eff_coeffs!(ceff, basis::SymmetricBasis, c::AbstractVector) = 
+      genmul!(ceff, transpose(basis.A2Bmap), c, *)
+
+function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector{<: Number}) 
+   ceff = zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
+   return _get_eff_coeffs!(ceff, basis, c)
+end
 
 set_params!(ev::PIEvaluator, basis::SymmetricBasis, coeffs::AbstractVector) = 
       set_params!(ev, basis.pibasis, _get_eff_coeffs(basis, coeffs))
 
 
-PIEvaluator(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
+PIEvaluator(basis::SymmetricBasis, c::AbstractVector) = 
       PIEvaluator(basis.pibasis, _get_eff_coeffs(basis, c))
 
 
@@ -60,16 +65,18 @@ read_dict(::Val{:ACE_PIEvaluator}, D::Dict) =
 
 
 # TODO: generalise the R, Z, allocation
-alloc_temp(V::PIEvaluator{T}, maxN::Integer) where {T} =
+alloc_temp(V::PIEvaluator{T}, args...) where {T} =
    (
-      tmp_pibasis = alloc_temp(V.pibasis, maxN),
+      tmp_pibasis = alloc_temp(V.pibasis),
    )
 
 
+evaluate!(tmp, ::LinearACEModel, V::PIEvaluator, cfg::AbstractConfiguration) = 
+      evaluate!(tmp, V::PIEvaluator, cfg)
 
 # compute one site energy
-function evaluate!(tmp, V::PIEvaluator, cfg)
-   A = evaluate!(tmp.tmp_pibasis.A, tmp.tmp_pibasis.tmp_basis1p,
+function evaluate!(tmp, V::PIEvaluator, cfg::AbstractConfiguration)
+   A = evaluate!(tmp.tmp_pibasis.A, tmp.tmp_pibasis.tmp1p,
                  V.pibasis.basis1p, cfg)
    spec = V.pibasis.spec
    _real = V.pibasis.real
@@ -82,7 +89,7 @@ function evaluate!(tmp, V::PIEvaluator, cfg)
       end
       val += _real(aa) * V.coeffs[iAA]
    end
-   return Es
+   return val
 end
 
 

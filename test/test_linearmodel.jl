@@ -32,18 +32,25 @@ cfg = ACEConfig(Xs)
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 basis = SymmetricBasis(pibasis, φ)
 
+BB = evaluate(basis, cfg)
 c = rand(length(BB)) .- 0.5
-ev = ACE.PIEvaluator(basis.pibasis, c)
-model = ACE.LinearACEModel(basis, c, ev)
+naive = ACE.LinearACEModel(basis, c, evaluator = :naive)
+standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
 # evaluate(model, cfg)
+
+# evaluate(standard, cfg)
 
 ##
 
 for ntest = 1:30
    cgf = rand(EuclideanVectorState, B1p.bases[1], nX) |> ACEConfig
    c = rand(length(basis)) .- 0.5 
-   ACE.set_params!(model, c)
-   print_tf(@test( sum(evaluate(basis, cfg) .* c) ≈ evaluate(model, cfg) ))   
+   ACE.set_params!(naive, c)
+   ACE.set_params!(standard, c)
+   val = sum(evaluate(basis, cfg) .* c)
+   val_naive = evaluate(naive, cfg)
+   val_standard = evaluate(standard, cfg)
+   print_tf(@test( val ≈ val_naive ≈ val_standard ))
 end
 
 ##

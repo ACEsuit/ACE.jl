@@ -240,6 +240,31 @@ function genmul!(C::StridedVecOrMat, A::AbstractSparseMatrixCSC, B::DenseInputVe
     return C
 end
 
+# for (T, t) in ((Adjoint, adjoint), (Transpose, transpose))
+#    @eval function mul!(C::StridedVecOrMat, xA::$T{<:Any,<:AbstractSparseMatrixCSC}, B::DenseInputVecOrMat, α::Number, β::Number)
+
+using LinearAlgebra: Transpose
+
+function genmul!(C::StridedVecOrMat, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B::DenseInputVecOrMat, mulop)
+   A = xA.parent
+   size(A, 2) == size(C, 1) || throw(DimensionMismatch())
+   size(A, 1) == size(B, 1) || throw(DimensionMismatch())
+   size(B, 2) == size(C, 2) || throw(DimensionMismatch())
+   nzv = nonzeros(A)
+   rv = rowvals(A)
+   for k in 1:size(C, 2)
+       @inbounds for col in 1:size(A, 2)
+           tmp = zero(eltype(C))
+           for j in nzrange(A, col)
+               tmp += mulop(nzv[j], B[rv[j],k])
+           end
+           C[col,k] += tmp
+       end
+   end
+   return C
+end
+
+
 
 # ---------------- Evaluation code
 
