@@ -10,7 +10,6 @@ using ACE, ACEbase
 using Printf, Test, LinearAlgebra, ACE.Testing, Random
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACEbase.Testing: fdtest
-using ACE.Testing: __TestSVec
 
 ##
 
@@ -18,8 +17,8 @@ using ACE.Testing: __TestSVec
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
-maxdeg = 14
-ord = 4
+maxdeg = 6
+ord = 3
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
@@ -67,19 +66,17 @@ for (fun, funref, str) in [
    println()
 end
 
-## 
+# ## 
 
-using BenchmarkTools
-cgf = rand(EuclideanVectorState, B1p.bases[1], nX) |> ACEConfig
-c = rand(length(basis)) .- 0.5 
-ACE.set_params!(naive, c)
-ACE.set_params!(standard, c)
-@btime ACE.grad_config($naive, $cfg)
-@btime ACE.grad_config($standard, $cfg)
+# using BenchmarkTools
+# cgf = rand(EuclideanVectorState, B1p.bases[1], nX) |> ACEConfig
+# c = rand(length(basis)) .- 0.5 
+# ACE.set_params!(naive, c)
+# ACE.set_params!(standard, c)
+# @btime ACE.grad_config($naive, $cfg)
+# @btime ACE.grad_config($standard, $cfg)
 
 ##
-
-
    
 end
    

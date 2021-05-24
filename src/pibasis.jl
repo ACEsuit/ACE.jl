@@ -245,18 +245,19 @@ function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
 end
 
 function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   @assert length(dAAdA) >= ord
    # TODO - optimize?
    # Forward pass:
-   dAAdA[1] = 1
-   AAfwd = A[iAA2iA[iAA, 1]]
-   for a = 2:ord
+   @inbounds dAAdA[1] = 1
+   @inbounds AAfwd = A[iAA2iA[iAA, 1]]
+   @inbounds for a = 2:ord
       dAAdA[a] = AAfwd
       AAfwd *= A[iAA2iA[iAA, a]]
    end
    aa = _real(AAfwd)
    # backward pass
-   AAbwd = A[iAA2iA[iAA, ord]]
-   for a = ord-1:-1:1
+   @inbounds AAbwd = A[iAA2iA[iAA, ord]]
+   @inbounds for a = ord-1:-1:1
       dAAdA[a] *= AAbwd
       AAbwd *= A[iAA2iA[iAA, a]]
    end
