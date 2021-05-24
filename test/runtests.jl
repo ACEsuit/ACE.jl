@@ -16,7 +16,6 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     include("test_scal1pbasis.jl")
     include("test_1pbasis.jl")
     include("test_pibasis.jl")
-    # include("test_pipot.jl")   # TODO...
 
     # ------------------------
     #   rotation_invariance
@@ -24,18 +23,17 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     include("test_symmbasis.jl")
     include("test_euclvec.jl")
 
-    # # ----------------------
-    # #   miscallaneous ...
-    # include("compat/test_compat_v05.jl")
-    # include("compat/test_compat.jl")
-    # include("test_any.jl")
+    # Model tests 
+    include("test_linearmodel.jl")
 
-    # ----------------------------------
-    #    old tests to be re-introduced
+end
+
+
+
+    # -----------------------------------------
+    #    old tests to be re-introduced - maybe
     # include("test_real.jl")
     # include("test_orth.jl")
-    # include("test_descriptor.jl")
     # include("bonds/test_cylindrical.jl")
     # include("bonds/test_fourier.jl")
     # include("bonds/test_envpairbasis.jl")
-end

@@ -99,6 +99,8 @@ alloc_temp_d(V::PIEvaluator{T}, N::Integer, args...) where {T} =
        dAco = zeros( complex(eltype(V.coeffs)),
                     length(V.pibasis.basis1p) ),
        tmpd_pibasis = alloc_temp_d(V.pibasis, N),
+       dAAdA = zeros( fltype(V.pibasis.basis1p),
+                      maximum(V.pibasis.spec.orders))
       )
 
 grad_config!(g, tmpd, ::LinearACEModel, V::PIEvaluator, cfg::AbstractConfiguration) = 
@@ -111,6 +113,7 @@ function evaluate_d!(g, tmpd, V::PIEvaluator, cfg::AbstractConfiguration)
    A = tmpd.tmpd_pibasis.A
    dA = tmpd.tmpd_pibasis.dA
    _real = V.pibasis.real
+   dAAdA = tmpd.dAAdA
 
    # stage 1: precompute all the A values
    evaluate_ed!(A, dA, tmpd_1p, basis1p, cfg)
@@ -121,15 +124,19 @@ function evaluate_d!(g, tmpd, V::PIEvaluator, cfg::AbstractConfiguration)
    spec = V.pibasis.spec
    fill!(dAco, zero(eltype(dAco)))
    for iAA = 1:length(spec)
-      for α = 1:spec.orders[iAA]
-         A_α = one(eltype(A))
-         for β = 1:spec.orders[iAA]
-            if β != α
-               A_α *= A[spec.iAA2iA[iAA, β]]
-            end
-         end
-         iAα = spec.iAA2iA[iAA, α]
-         dAco[iAα] += A_α * complex(c[iAA])
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      # for α = 1:spec.orders[iAA]
+      #    A_α = one(eltype(A))
+      #    for β = 1:spec.orders[iAA]
+      #       if β != α
+      #          A_α *= A[spec.iAA2iA[iAA, β]]
+      #       end
+      #    end
+      #    iAα = spec.iAA2iA[iAA, α]
+      #    dAco[iAα] += A_α * complex(c[iAA])
+      # end
+      for t = 1:spec.orders[iAA]
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c[iAA])
       end
    end
 

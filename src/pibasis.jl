@@ -244,6 +244,25 @@ function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
    evaluate_ed!(AA, dAA, tmpd, basis, tmpd.A, tmpd.dA)
 end
 
+function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   # TODO - optimize?
+   # Forward pass:
+   dAAdA[1] = 1
+   AAfwd = A[iAA2iA[iAA, 1]]
+   for a = 2:ord
+      dAAdA[a] = AAfwd
+      AAfwd *= A[iAA2iA[iAA, a]]
+   end
+   aa = _real(AAfwd)
+   # backward pass
+   AAbwd = A[iAA2iA[iAA, ord]]
+   for a = ord-1:-1:1
+      dAAdA[a] *= AAbwd
+      AAbwd *= A[iAA2iA[iAA, a]]
+   end
+
+   return aa 
+end
 
 function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
                       A::AbstractVector, dA::AbstractMatrix)
@@ -255,22 +274,7 @@ function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
       ord = orders[iAA]
       # ----- compute the local adjoints dAA / dA
       # dAAdA[a] ← ∏_{t ≂̸ a} A_{v_t}
-      # TODO - optimize?
-      # TODO: maybe this code could be shared with the evaluator
-      # Forward pass:
-      dAAdA[1] = 1
-      AAfwd = A[iAA2iA[iAA, 1]]
-      for a = 2:ord
-         dAAdA[a] = AAfwd
-         AAfwd *= A[iAA2iA[iAA, a]]
-      end
-      AA[iAA] = basis.real(AAfwd)
-      # backward pass
-      AAbwd = A[iAA2iA[iAA, ord]]
-      for a = ord-1:-1:1
-         dAAdA[a] *= AAbwd
-         AAbwd *= A[iAA2iA[iAA, a]]
-      end
+      AA[iAA] = _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, orders[iAA], basis.real)
 
       # ----- now convert them into dAA / dX
       for j = 1:size(dA, 2)
