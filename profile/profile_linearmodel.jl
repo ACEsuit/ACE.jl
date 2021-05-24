@@ -30,6 +30,26 @@ standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
 
 ##
 
+@info("Time evaluate incl allocation")
+@btime evaluate($standard, $cfg)
+
+@info("Time grad_config incl allocation")
+@btime ACE.grad_config($standard, $cfg)
+
+##
+
+@info("Time evaluate excl allocation")
+tmp = ACE.alloc_temp(standard)
+@btime ACE.evaluate!($tmp, $standard, $cfg)
+
+@info("Time grad_config excl allocation")
+g = ACE.alloc_grad_config(standard, cfg)
+tmp = ACE.alloc_temp_d(standard, length(cfg))
+@btime ACE.grad_config!($g, $tmp, $standard, $cfg)
+
+
+##
+
 function runn(N, f, args...)
    t = f(args...)
    for n = 2:N
@@ -37,14 +57,6 @@ function runn(N, f, args...)
    end 
    t
 end
-
-##
-
-@info("Time evaluate")
-@btime evaluate($standard, $cfg)
-
-@info("Time grad_config")
-@btime ACE.grad_config($standard, $cfg)
 
 ##
 
