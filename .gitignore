@@ -3,9 +3,11 @@
 *.jl.mem
 .DS_Store
 /Manifest.toml
+/profile/Manifest.toml
 /docs/Manifest.toml
 /dev/
 temp
 temp.jl
 /docs/build
 .vscode
+scratch
