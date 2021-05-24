@@ -1,6 +1,6 @@
 
 import Base: -, +, *, filter, real, complex 
-import LinearAlgebra: norm
+import LinearAlgebra: norm, promote_leaf_eltypes
 
 
 
@@ -17,7 +17,8 @@ import LinearAlgebra: norm
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
-
+promote_leaf_eltypes(φ::T) where {T <: AbstractProperty} = 
+      promote_leaf_eltypes(φ.val)
 
 Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
 Base.convert(T::Type, φ::AbstractProperty) = convert(T, φ.val)

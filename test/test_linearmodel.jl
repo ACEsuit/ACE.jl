@@ -1,6 +1,4 @@
 
-
-
 @testset "LinearACEModel"  begin
 
 ##
@@ -47,10 +45,16 @@ evaluate_ref(basis, cfg, c) = sum(evaluate(basis, cfg) .* c)
 
 grad_config_ref(basis, cfg, c) = permutedims(evaluate_d(basis, cfg)) * c
 
+grad_params_ref(basis, cfg, c) = evaluate(basis, cfg)
+
+grad_params_config_ref(basis, cfg, c) = evaluate_d(basis, cfg)
+
 
 for (fun, funref, str) in [ 
          (evaluate, evaluate_ref, "evaluate"), 
          (ACE.grad_config, grad_config_ref, "grad_config"), 
+         (ACE.grad_params, grad_params_ref, "grad_params"), 
+         (ACE.grad_params_config, grad_params_config_ref, "grad_params_config"), 
       ]
    @info("Testing `$str` for different model evaluators")
    for ntest = 1:30
@@ -65,16 +69,6 @@ for (fun, funref, str) in [
    end
    println()
 end
-
-# ## 
-
-# using BenchmarkTools
-# cgf = rand(EuclideanVectorState, B1p.bases[1], nX) |> ACEConfig
-# c = rand(length(basis)) .- 0.5 
-# ACE.set_params!(naive, c)
-# ACE.set_params!(standard, c)
-# @btime ACE.grad_config($naive, $cfg)
-# @btime ACE.grad_config($standard, $cfg)
 
 ##
    

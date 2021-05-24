@@ -73,26 +73,23 @@ grad_config(m::LinearACEModel, X::AbstractConfiguration) =
 grad_config!(g, tmpd, m::LinearACEModel, X::AbstractConfiguration) = 
       grad_config!(g, tmpd, m, m.evaluator, X) 
 
-# seems generic and doesn't need generalisation?
-alloc_grad_params(m::LinearACEModel) = alloc_B(m.basis)
-
 grad_params(m::LinearACEModel, X::AbstractConfiguration) = 
-      grad_params!(alloc_grad_params(m.basis), alloc_temp(m.basis), m, X)
+      grad_params!(alloc_B(m.basis), alloc_temp(m.basis), m, X)
 
 function grad_params!(g, tmp, m::LinearACEModel, X::AbstractConfiguration) 
    evaluate!(g, tmp, m.basis, X) 
    return g 
 end
 
-# grad_params_config(m::LinearACEModel, X::AbstractConfiguration) = 
-#       grad_params_config!( alloc_temp_dalloc_temp_d(m, X), m, X)
-#    return dB
-# end
+function grad_params_config(m::LinearACEModel, X::AbstractConfiguration) 
+   tmpd = alloc_temp_d(m.basis, length(X))
+   dB = alloc_dB(m.basis, length(X))
+   return grad_params_config!(dB, tmpd, m, X)
+end
 
-# function grad_params_config!(dB, tmpd, m::LinearACEModel, X::AbstractConfiguration) 
-#    evaluate_d!(tmpd.B, dB, m, X) 
-#    return dB
-# end
+
+grad_params_config!(dB, tmpd, m::LinearACEModel, X::AbstractConfiguration)  = 
+      evaluate_d!(dB, tmpd, m.basis, X) 
 
 # ------------------- implementation of naive evaluator 
 
