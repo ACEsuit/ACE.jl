@@ -50,13 +50,18 @@ tmp = ACE.alloc_temp_d(standard, length(cfg))
 
 ##
 
-function runn(N, f, args...)
-   t = f(args...)
-   for n = 2:N
-     t = f(args...)
-   end 
-   t
-end
+# ACE.grad_config!(g, tmp, standard, cfg)
+
+
+##
+
+# function runn(N, f, args...)
+#    t = f(args...)
+#    for n = 2:N
+#      t = f(args...)
+#    end 
+#    t
+# end
 
 ##
 

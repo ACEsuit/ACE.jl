@@ -108,18 +108,28 @@ grad_config!(g, tmpd, ::LinearACEModel, V::PIEvaluator, cfg::AbstractConfigurati
 
 # compute one site energy
 function evaluate_d!(g, tmpd, V::PIEvaluator, cfg::AbstractConfiguration)
+   recycle!(_pool)
    basis1p = V.pibasis.basis1p
    tmpd_1p = tmpd.tmpd_pibasis.tmpd_basis1p
-   A = tmpd.tmpd_pibasis.A
-   dA = tmpd.tmpd_pibasis.dA
+   # A = tmpd.tmpd_pibasis.A
+   # dA = tmpd.tmpd_pibasis.dA
    _real = V.pibasis.real
    dAAdA = tmpd.dAAdA
+
+   A = new!(_pool, Vector{eltype(tmpd.tmpd_pibasis.A)}, 
+            length(V.pibasis.basis1p) )
+   dA = new!(_pool, Matrix{eltype(tmpd.tmpd_pibasis.dA)}, 
+             length(V.pibasis.basis1p), length(cfg) )
+
 
    # stage 1: precompute all the A values
    evaluate_ed!(A, dA, tmpd_1p, basis1p, cfg)
 
    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
-   dAco = tmpd.dAco
+   # dAco = tmpd.dAco
+   dAco = new!( _pool, Vector{ complex(eltype(V.coeffs)) }, 
+                length(V.pibasis.basis1p) )
+   
    c = V.coeffs
    spec = V.pibasis.spec
    fill!(dAco, zero(eltype(dAco)))

@@ -1,6 +1,11 @@
 
 module ACE
 
+include("objectpools.jl")
+using ACE.ObjectPools: new!, recycle!
+const _pool = ObjectPools.ArrayPool()
+
+
 using Reexport
 
 # external imports that are useful for all submodules
