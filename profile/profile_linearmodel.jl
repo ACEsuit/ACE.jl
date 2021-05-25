@@ -52,6 +52,16 @@ tmp = ACE.alloc_temp_d(standard, length(cfg))
 
 # ACE.grad_config!(g, tmp, standard, cfg)
 
+# Reference numbers 
+# length(basis) = 7435
+# [ Info: Time evaluate incl allocation
+#   750.755 μs (16 allocations: 54.67 KiB)
+# [ Info: Time grad_config incl allocation
+#   4.967 ms (74 allocations: 1.59 MiB)
+# [ Info: Time evaluate excl allocation
+#   726.757 μs (0 allocations: 0 bytes)
+# [ Info: Time grad_config excl allocation
+#   4.350 ms (0 allocations: 0 bytes)
 
 ##
 

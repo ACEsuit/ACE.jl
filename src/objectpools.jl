@@ -1,5 +1,7 @@
-
-
+# This is copy-pasted from https://github.com/tpapp/ObjectPools.jl
+# with the idea of starting to modify it and adapt it to ACE.jl use-case.
+# if this doesn't get developed further, then should delete this branch to
+# forcibly remove this again from the repository.
 module ObjectPools
 
 export new!, recycle!, ArrayPool
