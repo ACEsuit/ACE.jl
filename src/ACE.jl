@@ -96,6 +96,6 @@ include("testing/testing.jl")
 # TODO -> move elsewhere!!!
 # include("rpi/rpi_degrees.jl")
 
-
+include("ad.jl")
 
 end # module
