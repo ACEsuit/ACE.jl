@@ -15,8 +15,8 @@ import ChainRulesCore: rrule
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
-maxdeg = 6
-ord = 3
+maxdeg = 8
+ord = 4
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
@@ -32,6 +32,7 @@ basis = SymmetricBasis(pibasis, φ)
 BB = evaluate(basis, cfg)
 c = rand(length(BB)) .- 0.5
 model = ACE.LinearACEModel(basis, c, evaluator = :standard)
+@show length(basis)
 
 ##
 
@@ -66,5 +67,20 @@ ACEbase.Testing.fdtest(loss, c -> Zygote.gradient(loss, c)[1], c)
 
 ##
 
+naive = ACE.LinearACEModel(basis, c, evaluator = :naive)
+loss_naive = params -> sum( ( EVAL(naive, cfg)(params) 
+                           + sum(norm2, EVAL_D(naive, cfg)(params)) )
+                           for cfg in cfgs ) / length(cfgs) / nX
+loss_naive(c)
+Zygote.gradient(loss_naive, c)[1]
+
+##
+
+@time loss(c)
+@time loss_naive(c)
+@time Zygote.gradient(loss, c)[1]
+@time Zygote.gradient(loss_naive, c)[1]
+
+##
 
 end   

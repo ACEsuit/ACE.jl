@@ -57,6 +57,8 @@ Invariant(T::DataType = Float64) = Invariant{T}()
 real(φ::Invariant) = Invariant(real(φ.val))
 complex(φ::Invariant) = Invariant(complex(φ.val))
 complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
+# +(φ::Invariant{T}, x::T) where {T} = Invariant{T}(φ.val + x)
+# +(x::T, φ::Invariant{T}) where {T} = Invariant{T}(φ.val + x)
  
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )

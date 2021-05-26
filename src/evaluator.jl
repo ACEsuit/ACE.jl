@@ -97,7 +97,7 @@ end
 alloc_temp_d(V::PIEvaluator{T}, N::Integer, args...) where {T} =
       (
        dAco = zeros( complex(eltype(V.coeffs)),
-                    length(V.pibasis.basis1p) ),
+                     length(V.pibasis.basis1p) ),
        tmpd_pibasis = alloc_temp_d(V.pibasis, N),
        dAAdA = (@MVector zeros( fltype(V.pibasis.basis1p),
                                maximum(V.pibasis.spec.orders) )),
@@ -141,3 +141,38 @@ function evaluate_d!(g, tmpd, V::PIEvaluator, cfg::AbstractConfiguration)
    return g
 end
 
+
+function adjoint_EVAL_D(m::LinearACEModel, V::PIEvaluator, cfg, w) 
+   basis1p = V.pibasis.basis1p
+   tmpd_1p = alloc_temp_d(basis1p)
+   dAAdA = zero(MVector{10, ComplexF64})
+   A = zeros(ComplexF64, length(basis1p))
+   dA = zeros(SVector{3, ComplexF64}, length(A), length(cfg))
+   _real = V.pibasis.real
+   dAAw = alloc_B(V.pibasis)
+   dAw = similar(A)
+   dB = similar(m.c)
+
+   # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
+   evaluate_ed!(A, dA, tmpd_1p, basis1p, cfg)
+   fill!(dAw, 0)
+   for k = 1:length(basis1p), j = 1:length(w)
+      dAw[k] += sum(dA[k, j] .* w[j])
+   end
+
+   # [2] dAA_k 
+   spec = V.pibasis.spec
+   fill!(dAAw, 0)
+   @inbounds for iAA = 1:length(spec)
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      @fastmath for t = 1:spec.orders[iAA]
+         vt = spec.iAA2iA[iAA, t]
+         dAAw[iAA] += _real(dAw[vt] * dAAdA[t])
+      end
+   end
+
+   genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+
+   # [3] dB_k
+   return dB
+end

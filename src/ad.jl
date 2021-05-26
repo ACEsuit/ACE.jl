@@ -37,16 +37,7 @@ end
 function rrule(y::EVAL_D, params)
    set_params!(y.m, params)
    val = grad_config(y.m, y.X)
-   adj = dp -> ( NO_FIELDS, 
-         begin 
-            dB = grad_params_config(y.m, y.X)
-            g = zeros(size(dB, 1))
-            for i = 1:length(g), j = 1:size(dB, 2)
-               g[i] += dot(dB[i, j], dp[j])
-            end
-            g
-         end
-      )
+   adj = dp -> ( NO_FIELDS, adjoint_EVAL_D(y.m, y.X, dp) )
    return val, adj
 end
 

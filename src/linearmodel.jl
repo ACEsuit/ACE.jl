@@ -87,6 +87,8 @@ function grad_params_config(m::LinearACEModel, X::AbstractConfiguration)
    return grad_params_config!(dB, tmpd, m, X)
 end
 
+adjoint_EVAL_D(m::LinearACEModel, X::AbstractConfiguration, w) = 
+      adjoint_EVAL_D(m, m.evaluator, X, w)
 
 grad_params_config!(dB, tmpd, m::LinearACEModel, X::AbstractConfiguration)  = 
       evaluate_d!(dB, tmpd, m.basis, X) 
@@ -120,3 +122,12 @@ function grad_config!(g, tmpd, m::LinearACEModel, ::NaiveEvaluator,
    return g 
 end
 
+function adjoint_EVAL_D(m::LinearACEModel, ::NaiveEvaluator, 
+                        X::AbstractConfiguration, w) 
+   dB = grad_params_config(m, X)
+   g = zeros(size(dB, 1))
+   for i = 1:length(g), j = 1:size(dB, 2)
+      g[i] += dot(dB[i, j], w[j])
+   end
+   return g
+end
