@@ -100,7 +100,11 @@ end
    quote
       Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
          if !(basis.bases[i] isa Discrete1pBasis)
+            # only evaluate basis gradients for a continuous basis
             evaluate_ed!(tmpd.B[i], tmpd.dB[i], tmpd.tmpd[i], basis.bases[i], X)
+         else
+            # we still need the basis values for the discrete basis though
+            evaluate!(tmpd.B[i], tmpd.tmpd[i], basis.bases[i], X)
          end
       end)
       for (iA, ϕ) in enumerate(basis.indices)
