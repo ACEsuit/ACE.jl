@@ -29,9 +29,6 @@ Base.rand(::Type{EuclideanVectorState}, basis::ACEBasis) =
 Base.rand(T::Type{EuclideanVectorState}, basis::ACEBasis, N::Integer) =
          [ rand(T, basis) for _=1:N ]
 
-
-rand_sym(Rs, Zs) = rand_refl(rand_rot(rand_perm(Rs, Zs)...)...)
-
 rand_rot() = (K = (@SMatrix rand(3,3)) .- 0.5; exp(K - K'))
 
 rand_refl() = rand([-1,1])

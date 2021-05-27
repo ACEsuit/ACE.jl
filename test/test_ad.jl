@@ -1,4 +1,4 @@
-@testset "Experimental AD"  begin
+# @testset "Experimental AD"  begin
 
 ##
 
@@ -15,7 +15,7 @@ import ChainRulesCore: rrule
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
-maxdeg = 8
+maxdeg = 12
 ord = 4
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
@@ -36,22 +36,27 @@ model = ACE.LinearACEModel(basis, c, evaluator = :standard)
 
 ##
 
+# set_params!(model, parms); evaluate(model, cfg)
+# EVAL(model, cfg)(parms)
+# AD w.r.t. parms
+#  vs. evaluate(model, cfg, parms)  ????
 e = EVAL(model, cfg)
 e(c)
 Zygote.gradient(e, c)[1]
-ACEbase.Testing.fdtest(e, c -> Zygote.gradient(e, c)[1], c)
+# ACEbase.Testing.fdtest(e, c -> Zygote.gradient(e, c)[1], c)
 
 ##
 
 norm2(x::AbstractVector) = sum(abs2, x)
 
+#  vs. evaluate_d(model, cfg, parms)  ????
 de = EVAL_D(model, cfg)
 de(c)
 fd = c -> sum(norm2, de(c))
 # fd = c -> norm2(de(c)[1])
 fd(c)
 Zygote.gradient(fd, c)[1]
-ACEbase.Testing.fdtest(fd, c -> Zygote.gradient(fd, c)[1], c)
+# ACEbase.Testing.fdtest(fd, c -> Zygote.gradient(fd, c)[1], c)
 
 ##
 
@@ -63,7 +68,7 @@ loss = params -> sum( ( EVAL(model, cfg)(params)
                       for cfg in cfgs ) / length(cfgs) / nX
 loss(c)
 Zygote.gradient(loss, c)[1]
-ACEbase.Testing.fdtest(loss, c -> Zygote.gradient(loss, c)[1], c)
+# ACEbase.Testing.fdtest(loss, c -> Zygote.gradient(loss, c)[1], c)
 
 ##
 
@@ -83,4 +88,4 @@ Zygote.gradient(loss_naive, c)[1]
 
 ##
 
-end   
+# end   

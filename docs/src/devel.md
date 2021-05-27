@@ -77,7 +77,7 @@ The most common situation is that `basis1p` is a product of basis functions acti
 ```
 can be constructed as
 ```julia
-Bμ = Species1PBasisNeig(species)
+Bμ = Species1PBasisCtr(species)
 Rn = Rn1pBasis(ACE.Utils.radial_basis())
 Ylm = Ylm1pBasis(10)
 basis1p = Product1pBasis( (Bμ, Rn, Ylm) )

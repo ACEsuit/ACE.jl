@@ -58,8 +58,12 @@ every scalar basis must implement this
 """
 function rand_radial end
 
+"""
+`struct NaiveTotalDegree  end`
 
-struct NaiveTotalDegree end
+This should only be used for testing.
+"""
+struct NaiveTotalDegree  end
 
 # for a one-particle basis function
 degree(b::NamedTuple, Deg::NaiveTotalDegree, basis::OneParticleBasis) =
@@ -69,3 +73,13 @@ degree(b::NamedTuple, Deg::NaiveTotalDegree, basis::OneParticleBasis) =
 # in this case `bb` should be a Vector of NamedTuples
 degree(bb, Deg::NaiveTotalDegree, basis::OneParticleBasis) =
       length(bb) == 0 ? 0 : sum( degree(b, basis) for b in bb )
+
+
+# """
+# `struct TotalDegree`
+
+
+# """
+# struct TotalDegree 
+   
+# end

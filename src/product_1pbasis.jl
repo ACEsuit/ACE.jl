@@ -47,7 +47,14 @@ alloc_temp(basis::Product1pBasis, args...) =
          tmp = alloc_temp.(basis.bases)
       )
 
-alloc_temp_d(basis::Product1pBasis, args...) =
+
+alloc_temp_d(basis::Product1pBasis, ::AbstractConfiguration) = 
+      alloc_temp_d(basis)
+
+alloc_temp_d(basis::Product1pBasis, ::Integer) = 
+      alloc_temp_d(basis)      
+
+alloc_temp_d(basis::Product1pBasis) =
       (
          B = alloc_B.(basis.bases),
          tmp = alloc_temp.(basis.bases),
@@ -92,7 +99,9 @@ end
                                    ) where {NB}
    quote
       Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
-         evaluate_ed!(tmpd.B[i], tmpd.dB[i], tmpd.tmpd[i], basis.bases[i], X)
+         if !(basis.bases[i] isa Discrete1pBasis)
+            evaluate_ed!(tmpd.B[i], tmpd.dB[i], tmpd.tmpd[i], basis.bases[i], X)
+         end
       end)
       for (iA, ϕ) in enumerate(basis.indices)
          # evaluate A
@@ -103,15 +112,18 @@ end
          A[iA] += t
 
          # evaluate dA
+         # TODO: redo this with adjoints!!!!
          dA[iA] = zero(eltype(dA))
          Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
-            dt = tmpd.dB[a][ϕ[a]]
-            Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
-               if b != a
-                  dt *= tmpd.B[b][ϕ[b]]
-               end
-            end)
-            dA[iA] += dt
+            if !(basis.bases[a] isa Discrete1pBasis)
+               dt = tmpd.dB[a][ϕ[a]]
+               Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
+                  if b != a
+                     dt *= tmpd.B[b][ϕ[b]]
+                  end
+               end)
+               dA[iA] += dt
+            end
          end)
       end
       return nothing

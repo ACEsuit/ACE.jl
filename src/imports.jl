@@ -16,7 +16,7 @@ end
 @def baseimports begin
    import ACEbase
 
-   import ACEbase: ACEBasis, ScalarACEBasis, OneParticleBasis,
+   import ACEbase: ACEBasis, ScalarACEBasis, OneParticleBasis, Discrete1pBasis, 
                    alloc_temp, alloc_temp_d, alloc_temp_dd,
                    fltype, rfltype, gradtype,
                    evaluate, evaluate_d, evaluate_dd, evaluate_ed,
