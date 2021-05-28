@@ -219,10 +219,12 @@ end
 
 # ---------------- A modified sparse matmul
 
-using SparseArrays: AbstractSparseMatrixCSC, DenseInputVecOrMat,
+using SparseArrays: AbstractSparseMatrixCSC,
 				        nonzeros, rowvals, nzrange
 
-function genmul!(C::StridedVecOrMat, A::AbstractSparseMatrixCSC, B::DenseInputVecOrMat, mulop)
+using LinearAlgebra: Transpose
+
+function genmul!(C, A::AbstractSparseMatrixCSC, B, mulop)
     size(A, 2) == size(B, 1) || throw(DimensionMismatch())
     size(A, 1) == size(C, 1) || throw(DimensionMismatch())
     size(B, 2) == size(C, 2) || throw(DimensionMismatch())
@@ -243,9 +245,8 @@ end
 # for (T, t) in ((Adjoint, adjoint), (Transpose, transpose))
 #    @eval function mul!(C::StridedVecOrMat, xA::$T{<:Any,<:AbstractSparseMatrixCSC}, B::DenseInputVecOrMat, α::Number, β::Number)
 
-using LinearAlgebra: Transpose
 
-function genmul!(C::StridedVecOrMat, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B::DenseInputVecOrMat, mulop)
+function genmul!(C, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B, mulop)
    A = xA.parent
    size(A, 2) == size(C, 1) || throw(DimensionMismatch())
    size(A, 1) == size(B, 1) || throw(DimensionMismatch())

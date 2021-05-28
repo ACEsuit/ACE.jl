@@ -88,7 +88,7 @@ for ntest = 1:30
    x0 = randn(3)
    c = rand(length(B1p))
    F = x -> sum(ACE.evaluate(B1p, EuclideanVectorState(SVector{3}(x))) .* c)
-   dF = x -> Vector(sum(ACE.evaluate_ed(B1p, EuclideanVectorState(SVector{3}(x)))[2] .* c))
+   dF = x -> Vector(sum(ACE.evaluate_ed(B1p, ACEConfig([EuclideanVectorState(SVector{3}(x))]))[2] .* c))
    F(x0)
    dF(x0)
    print_tf(@test fdtest(F, dF, x0; verbose=false))
