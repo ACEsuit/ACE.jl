@@ -49,11 +49,13 @@ end
 Construct a ``R_n * Y_l^m`` 1-particle basis.
 All arguments are keyword arguments; see documentation of `ACE.Utils.Rn_basis`.
 """
-function RnYlm_1pbasis(; maxdeg=6, kwargs...)
+function RnYlm_1pbasis(; init = true, Deg = NaiveTotalDegree(), maxdeg=6, kwargs...)
    Rn = Rn_basis(; maxdeg = maxdeg, kwargs...)
    Ylm = Ylm1pBasis(maxdeg)
    B1p = ACE.Product1pBasis((Rn, Ylm))
-   init1pspec!(B1p)
+   if init 
+      init1pspec!(B1p, Deg = Deg, maxdeg = maxdeg)
+   end
    return B1p
 end
 

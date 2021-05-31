@@ -16,13 +16,13 @@ function init1pspec!(B1p::OneParticleBasis; maxdeg = Inf, Deg = B1p)
       b = NamedTuple{syms}(J)
       # check whether valid
       if isadmissible(b, B1p)
-         deg = degree(b, Deg)
+         deg = degree(b, Deg, B1p)
          if deg <= maxdeg
             push!(spec, b)
          end
       end
    end
-   sort!(spec, by = b -> degree(b, Deg))
+   sort!(spec, by = b -> degree(b, Deg, B1p))
    return set_spec!(B1p, spec)
 end
 

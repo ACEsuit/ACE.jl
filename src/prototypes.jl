@@ -63,7 +63,8 @@ function rand_radial end
 
 This should only be used for testing.
 """
-struct NaiveTotalDegree  end
+struct NaiveTotalDegree  
+end
 
 # for a one-particle basis function
 degree(b::NamedTuple, Deg::NaiveTotalDegree, basis::OneParticleBasis) =
@@ -75,11 +76,30 @@ degree(bb, Deg::NaiveTotalDegree, basis::OneParticleBasis) =
       length(bb) == 0 ? 0 : sum( degree(b, basis) for b in bb )
 
 
-# """
-# `struct TotalDegree`
+
+struct TotalDegree
+   weight::Dict{Symbol, Float64}
+   degree::Dict{Any, Float64}
+end
+
+# for a one-particle basis function
+degree(b::NamedTuple, Deg::TotalDegree, basis::OneParticleBasis) =
+      degree(b, basis, Deg.weight)
+
+# for an ν-correlation basis function
+# in this case `bb` should be a Vector of NamedTuples
+function degree(bb, Deg::TotalDegree, basis::OneParticleBasis) 
+   if length(bb) == 0; return 0; end 
+   len = length(bb)
+   if haskey(Deg.degree, len)
+      degfact = Deg.degree[len]
+   elseif haskey(Deg.degree, "default")
+      degfact = Deg.degree["default"]
+   else 
+      degfact = 1.0
+   end
+   return sum( degree(b, Deg, basis)  for b in bb ) * degfact
+end
 
 
-# """
-# struct TotalDegree 
-   
-# end
+

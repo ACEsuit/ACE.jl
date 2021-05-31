@@ -183,7 +183,8 @@ get_spec(basis::Product1pBasis, i::Integer) = basis.spec[i]
 
 degree(b, basis::Product1pBasis) = sum( degree(b, B) for B in basis.bases )
 
-
+degree(b::NamedTuple, basis::Product1pBasis, weight::Dict) = 
+      sum( degree(b, B, weight) for B in basis.bases )
 
 # TODO: this looks like a horrible hack ...
 function rand_radial(basis::Product1pBasis)

@@ -65,7 +65,9 @@ indexrange(Rn::Rn1pBasis) = NamedTuple{(_nsym(Rn),)}((1:length(Rn),))
 
 isadmissible(b, basis::Rn1pBasis) = (1 <= _n(b, basis) <= length(basis))
 
-degree(b, basis::Rn1pBasis) = _n(b, basis) - 1
+degree(b, Rn::Rn1pBasis) = _n(b, Rn) - 1
+
+degree(b, Rn::Rn1pBasis, weight::Dict) = weight[_nsym(Rn)] * degree(b, Rn)
 
 get_index(basis::Rn1pBasis, b) = _n(b, basis)
 
