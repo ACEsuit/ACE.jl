@@ -104,6 +104,7 @@ end
 
          # evaluate dA
          # TODO: redo this with adjoints!!!!
+         #     also reverse order of operations to make fewer multiplications!
          dA[iA] = zero(eltype(dA))
          Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
             if !(basis.bases[a] isa Discrete1pBasis)

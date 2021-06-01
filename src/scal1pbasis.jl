@@ -43,7 +43,8 @@ read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =
 
 fltype(basis::Scal1pBasis{T}) where T = T
 
-gradtype(::Scal1pBasis{T}) where {T} = SVector{3, T}
+gradtype(basis::Scal1pBasis, X::AbstractState) = 
+      promote_type(fltype(basis), typeof(X))
 
 symbols(basis::Scal1pBasis) = [basis.idxsym]
 
@@ -64,11 +65,16 @@ rand_radial(basis::Scal1pBasis) = rand_radial(basis.P)
 
 alloc_B(basis::Scal1pBasis, args...) = alloc_B(basis.P)
 
-alloc_dB(basis::Scal1pBasis, args...) = zeros(fltype(basis.P), length(basis))
+alloc_dB(basis::Scal1pBasis, X::AbstractState) = 
+      zeros(gradtype(basis, X), length(basis))
 
 alloc_temp(basis::Scal1pBasis, args...) = alloc_temp(basis.P)
 
-alloc_temp_d(basis::Scal1pBasis, args...) = alloc_temp_d(basis.P)
+alloc_temp_d(basis::Scal1pBasis, args...) = 
+      ( 
+         tmpdP = alloc_temp_d(basis.P), 
+         dBP = alloc_dB(basis.P)
+      )
 
 
 _getval(X::AbstractState, basis::Scal1pBasis) = getproperty(X, basis.varsym)
@@ -80,14 +86,20 @@ evaluate!(B, tmp, basis::Scal1pBasis, X::AbstractState) =
 evaluate!(B, tmp, basis::Scal1pBasis, x::Number) =
       evaluate!(B, tmp, basis.P, x)
 
-function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::Union{AbstractState, Number})
-   evaluate_d!(dB, tmpd, basis.P, _getval(X, basis))
+function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::TX) where {TX <: AbstractState}
+   evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, _getval(X, basis))
+   for n = 1:length(basis)
+      dB[n] = TX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
+   end
    return dB
 end
 
-function evaluate_ed!(B, dB, tmpd, basis::Scal1pBasis, X::Union{AbstractState, Number})
+function evaluate_ed!(B, dB, tmpd, basis::Scal1pBasis, X::TX) where {TX <: AbstractState}
    x = _getval(X, basis)
-   evaluate!(B, tmpd, basis.P, x)
-   evaluate_d!(dB, tmpd, basis.P, x)
-   return nothing
+   evaluate!(B, tmpd.tmpdP, basis.P, x)
+   evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, x)
+   for n = 1:length(basis)
+      dB[n] = TX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
+   end
+   return B, dB
 end
