@@ -59,7 +59,6 @@ function RnYlm_1pbasis(; init = true, Deg = NaiveTotalDegree(), maxdeg=6, kwargs
    return B1p
 end
 
-
 invariant_basis(; kwargs...) =
       symm_basis(ACE.Invariant(); kwargs...)
 

@@ -6,7 +6,7 @@
 `function init1pspec!` : initialize the specification of the 1-particle basis,
 generates all possible 1-p basis functions, sorted by degree.
 """
-function init1pspec!(B1p::OneParticleBasis; maxdeg = Inf, Deg = B1p)
+function init1pspec!(B1p::OneParticleBasis; maxdeg = Inf, Deg = nothing)
    syms = tuple(symbols(B1p)...)
    rgs = indexrange(B1p)
    lens = [ length(rgs[sym]) for sym in syms ]

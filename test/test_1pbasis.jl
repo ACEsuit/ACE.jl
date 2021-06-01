@@ -24,7 +24,7 @@ J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)   #  J_n(x) * (x - xcut)^p
 Rn = Rn1pBasis(J)
 Ylm = Ylm1pBasis(maxdeg)
 B1p = Product1pBasis( (Rn, Ylm) )
-ACE.init1pspec!(B1p)
+ACE.init1pspec!(B1p, Deg = ACE.NaiveTotalDegree())
 
 nX = 10
 Xs = rand(EuclideanVectorState, Rn, nX)
