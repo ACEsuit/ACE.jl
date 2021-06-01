@@ -1,7 +1,7 @@
 
 @testset "EuclideanVector"  begin
 
-#---
+##
 
 
 using ACE
@@ -19,10 +19,10 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
 # generate a configuration
 nX = 10
-Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+Xs = rand(PositionState, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
-#---
+##
 
 @info("SymmetricBasis construction and evaluation: EuclideanVector")
 
@@ -49,7 +49,7 @@ tol = 1e-10
 
 @info("check for rotation, permutation and inversion equivariance")
 for ntest = 1:30
-   Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+   Xs = rand(PositionState, B1p.bases[1], nX)
    BB = evaluate(basis, ACEConfig(Xs))
    Q = rand([-1,1]) * ACE.Random.rand_rot()
    Xs_rot = Ref(Q) .* shuffle(Xs)

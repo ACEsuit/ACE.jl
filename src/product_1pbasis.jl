@@ -41,6 +41,12 @@ Base.length(basis::Product1pBasis) = length(basis.spec)
 
 fltype(basis::Product1pBasis) = promote_type(fltype.(basis.bases)...)
 
+gradtype(basis::Product1pBasis, cfg::Union{AbstractConfiguration, AbstractVector}) = 
+      promote_type(fltype(basis), eltype(cfg))
+
+gradtype(basis::Product1pBasis, X::AbstractState) = 
+      promote_type(fltype(basis), typeof(X))
+
 alloc_temp(basis::Product1pBasis, args...) =
       (
          B = alloc_B.(basis.bases),
@@ -48,38 +54,19 @@ alloc_temp(basis::Product1pBasis, args...) =
       )
 
 
-alloc_temp_d(basis::Product1pBasis, ::AbstractConfiguration) = 
-      alloc_temp_d(basis)
+alloc_dB(basis::Product1pBasis, cfg::AbstractConfiguration) = 
+      zeros(gradtype(basis, cfg), (length(basis), length(cfg)) )
 
-alloc_temp_d(basis::Product1pBasis, ::Integer) = 
-      alloc_temp_d(basis)      
-
-alloc_temp_d(basis::Product1pBasis) =
+alloc_temp_d(basis::Product1pBasis, cfg::AbstractConfiguration) = begin 
+      X = zero(eltype(cfg)); 
       (
          B = alloc_B.(basis.bases),
          tmp = alloc_temp.(basis.bases),
-         dB = alloc_dB.(basis.bases),
-         tmpd = alloc_temp_d.(basis.bases)
+         dB = alloc_dB.(basis.bases, Ref(X)),
+         tmpd = alloc_temp_d.(basis.bases, Ref(X))
       )
-
-
-function gradtype(basis::Product1pBasis)
-   # get the types of the sub-bases ...
-   B = alloc_B.(basis.bases)
-   dB = alloc_dB.(basis.bases)
-   # ... do some artificial arithmetic  ...
-   x = dB[1][1] * prod( B[a][1] for a = 2:length(B) )
-   for a = 2:length(B)
-      y = dB[a][1]
-      for b = 1:length(B)
-         b == a && continue
-         y *= B[b][1]
-      end
-      x += y
    end
-   # ... to find out the end-result of the gradient calculation
-   return typeof(x)
-end
+
 
 @generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
    quote

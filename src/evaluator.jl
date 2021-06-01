@@ -94,11 +94,11 @@ end
 
 
 
-alloc_temp_d(V::PIEvaluator{T}, N::Integer, args...) where {T} =
+alloc_temp_d(m::LinearACEModel, V::PIEvaluator{T}, X::AbstractConfiguration, N::Integer = length(X)) where {T} =
       (
        dAco = zeros( complex(eltype(V.coeffs)),
                      length(V.pibasis.basis1p) ),
-       tmpd_pibasis = alloc_temp_d(V.pibasis, N),
+       tmpd_pibasis = alloc_temp_d(V.pibasis, X),
        dAAdA = (@MVector zeros( fltype(V.pibasis.basis1p),
                                maximum(V.pibasis.spec.orders) )),
       )

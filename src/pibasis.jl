@@ -219,17 +219,17 @@ end
 # -------------------------------------------------
 # gradients
 
-gradtype(basis::PIBasis) = basis.real(gradtype(basis.basis1p))
+gradtype(basis::PIBasis, cfgorX) = basis.real( gradtype(basis.basis1p, cfgorX) )
 
-alloc_dB(basis::PIBasis, nmax::Integer) =
-      zeros(gradtype(basis), (length(basis), nmax))
+alloc_dB(basis::PIBasis, cfg::AbstractConfiguration, nmax = length(cfg)) =
+      zeros(gradtype(basis, cfg), (length(basis), nmax))
 
-alloc_temp_d(basis::PIBasis, nmax::Integer) =
+alloc_temp_d(basis::PIBasis, cfg::AbstractConfiguration, nmax = length(cfg)) =
       (
         A = alloc_B(basis.basis1p),
-        dA = alloc_dB(basis.basis1p, nmax),
+        dA = alloc_dB(basis.basis1p, cfg),
         tmp_basis1p = alloc_temp(basis.basis1p),
-        tmpd_basis1p = alloc_temp_d(basis.basis1p),
+        tmpd_basis1p = alloc_temp_d(basis.basis1p, cfg),
         # ---- adjoint stuff
         dAAdA = zeros(fltype(basis.basis1p),
                       maximum(basis.spec.orders))
@@ -279,6 +279,7 @@ function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
 
       # ----- now convert them into dAA / dX
       for j = 1:size(dA, 2)
+         val = sum(dAAdA[a] * dA[iAA2iA[iAA, a], j] for a = 1:ord)
          dAA[iAA, j] = sum(dAAdA[a] * dA[iAA2iA[iAA, a], j]
                            for a = 1:ord) |> basis.real
       end

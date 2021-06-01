@@ -22,11 +22,10 @@ function rand_sphere(T = Float64)
    return R / norm(R)
 end
 
-Base.rand(::Type{EuclideanVectorState}, basis::ACEBasis) =
-         EuclideanVectorState(rand_radial(basis) * rand_sphere()
-      )
+Base.rand(::Type{TX}, basis::ACEBasis) where {TX <: EuclideanVectorState} =
+         TX(rand_radial(basis) * rand_sphere())
 
-Base.rand(T::Type{EuclideanVectorState}, basis::ACEBasis, N::Integer) =
+Base.rand(T::Type{TX}, basis::ACEBasis, N::Integer) where {TX <: EuclideanVectorState} =
          [ rand(T, basis) for _=1:N ]
 
 rand_rot() = (K = (@SMatrix rand(3,3)) .- 0.5; exp(K - K'))

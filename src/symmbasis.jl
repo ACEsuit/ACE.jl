@@ -295,20 +295,23 @@ end
 
 # ---- gradients
 
-function gradtype(basis::SymmetricBasis)
+
+gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
+
+function gradtype(basis::SymmetricBasis, cfgorX)
    φ = zero(eltype(basis.A2Bmap))
-   dAA = zero(gradtype(basis.pibasis))
+   dAA = zero(gradtype(basis.pibasis, cfgorX))
    return typeof(coco_o_daa(φ, dAA))
 end
 
-alloc_temp_d(basis::SymmetricBasis, nmax::Integer) =
+alloc_temp_d(basis::SymmetricBasis, cfg::AbstractConfiguration, nmax::Integer = length(cfg)) =
       (  AA = alloc_B(basis.pibasis),
-         dAA = alloc_dB(basis.pibasis, nmax),
+         dAA = alloc_dB(basis.pibasis, cfg),
          tmppi = alloc_temp(basis.pibasis),
-         tmpdpi = alloc_temp_d(basis.pibasis, nmax) )
+         tmpdpi = alloc_temp_d(basis.pibasis, cfg) )
 
-alloc_dB(basis::SymmetricBasis, nmax::Integer) =
-      zeros(gradtype(basis), length(basis), nmax)
+alloc_dB(basis::SymmetricBasis, cfg::AbstractConfiguration, nmax::Integer = length(cfg)) =
+      zeros(gradtype(basis, cfg), (length(basis), nmax))
 
 function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
                      cfg::AbstractConfiguration)

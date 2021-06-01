@@ -71,11 +71,14 @@ alloc_temp(basis::Scal1pBasis, args...) = alloc_temp(basis.P)
 alloc_temp_d(basis::Scal1pBasis, args...) = alloc_temp_d(basis.P)
 
 
-_getval(X::AbstractState, basis::Scal1pBasis) = getproperty(X, basis.valsym)
+_getval(X::AbstractState, basis::Scal1pBasis) = getproperty(X, basis.varsym)
 _getval(x::Number, basis::Scal1pBasis) = x
 
-evaluate!(B, tmp, basis::Scal1pBasis, X::Union{AbstractState, Number}) =
-      evaluate!(B, tmp, basis.P, _getval(X, basis))
+evaluate!(B, tmp, basis::Scal1pBasis, X::AbstractState) =
+      evaluate!(B, tmp, basis, _getval(X, basis))
+
+evaluate!(B, tmp, basis::Scal1pBasis, x::Number) =
+      evaluate!(B, tmp, basis.P, x)
 
 function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::Union{AbstractState, Number})
    evaluate_d!(dB, tmpd, basis.P, _getval(X, basis))

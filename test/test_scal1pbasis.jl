@@ -17,6 +17,7 @@ rcut = 3.0
 trans = trans = PolyTransform(1, r0)
 bscal = ACE.scal1pbasis(:x, :k, maxdeg, trans, rcut)
 
+ACE.evaluate(bscal, 1.2)
 ACE.evaluate_d(bscal, 1.0)
 
 ##

@@ -69,7 +69,8 @@ read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) =
 fltype(basis::Ylm1pBasis{T}) where T = Complex{T}
 rfltype(basis::Ylm1pBasis{T}) where T = T
 
-gradtype(::Ylm1pBasis{T}) where {T} = SVector{3, Complex{T}}
+gradtype(basis::Ylm1pBasis{T}, X::TX) where {T, TX <: AbstractState} = 
+      promote_type(fltype(basis), TX)
 
 symbols(basis::Ylm1pBasis) = [_lsym(basis), _msym(basis)]
 
@@ -93,11 +94,16 @@ end
 
 alloc_B(basis::Ylm1pBasis, args...) = alloc_B(basis.SH)
 
-alloc_dB(basis::Ylm1pBasis, args...) = alloc_dB(basis.SH)
+alloc_dB(basis::Ylm1pBasis, X::AbstractState) = 
+      zeros(gradtype(basis, X), length(basis)) 
 
 alloc_temp(basis::Ylm1pBasis, args...) = alloc_temp(basis.SH)
 
-alloc_temp_d(basis::Ylm1pBasis, args...) = alloc_temp_d(basis.SH, args...)
+alloc_temp_d(basis::Ylm1pBasis, args...) = 
+   ( alloc_temp_d(basis.SH, args...)..., 
+     Bsh = alloc_B(basis.SH), 
+     dBsh = alloc_dB(basis.SH)
+   )
 
 
 _rr(X, basis::Ylm1pBasis) = getproperty(X, _varsym(basis))
@@ -105,12 +111,19 @@ _rr(X, basis::Ylm1pBasis) = getproperty(X, _varsym(basis))
 evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.SH, _rr(X, basis))
 
-evaluate_d!(dB, tmpd, basis::Ylm1pBasis, X::AbstractState) =
-      evaluate_d!(dB, tmpd, basis.SH, _rr(X, basis))
+evaluate_d!(dB, tmpd, basis::Ylm1pBasis, X::AbstractState) = 
+      (evaluate_ed!(tmpd.Bsh, dB, tmpd, basis, X); dB)
 
-evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState) =
-      evaluate_ed!(B, dB, tmpd, basis.SH, _rr(X, basis))
-
+function evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState)
+   TDX = eltype(dB)
+   RSYM = _varsym(basis)
+   evaluate_ed!(B, tmpd.dBsh, tmpd, basis.SH, _rr(X, basis))
+   for n = 1:length(basis)
+      dB[n] = TDX( NamedTuple{(RSYM,)}((tmpd.dBsh[n],)) )
+   end
+   return nothing 
+end
+   
 
 degree(b, Ylm::Ylm1pBasis) = _l(b, Ylm)
 

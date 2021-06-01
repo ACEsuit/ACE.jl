@@ -2,7 +2,7 @@
 
 @testset "PIBasis"  begin
 
-#---
+##
 
 
 using ACE, Random
@@ -12,7 +12,7 @@ using ACEbase.Testing: dirfdtest, fdtest, print_tf
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       EuclideanVectorState, Product1pBasis
 
-#---
+##
 
 @info("Basic test of PIBasis construction and evaluation")
 
@@ -27,7 +27,7 @@ pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 
 # generate a configuration
 nX = 10
-Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+Xs = rand(PositionState, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 AA = evaluate(pibasis, cfg)
@@ -51,7 +51,7 @@ for (i, b1) in enumerate(ACE.get_spec(B1p))
   inv_spec1[b1] = i
 end
 
-# a really naive implementation of PIBasis to check correctness
+## a really naive implementation of PIBasis to check correctness
 A = evaluate(B1p, cfg)
 AA_naive =  [
       real(prod( A[ inv_spec1[ b1 ] ] for b1 in b )) for b in spec ]
@@ -61,20 +61,21 @@ println(@test( AA_naive ≈ AA ))
 
 @info("Derivatives of PIbasis")
 tmpd = ACE.alloc_temp_d(pibasis, cfg)
+dAA = ACE.alloc_dB(pibasis, cfg)
 AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
 println(@test AA1 ≈ AA)
+
+##
 
 for ntest = 1:30
   Us = randn(SVector{3, Float64}, length(Xs))
   c = randn(length(pibasis))
   F = t -> sum(c .* ACE.evaluate(pibasis, ACEConfig(Xs + t[1] * Us)))
-  dF = t -> [ Us' * sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:] ]
+  dF = t -> [ Us' * ACE._val.(sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:]) ]
   print_tf(@test fdtest(F, dF, [0.0], verbose=false))
 end
 println()
 ##
-
-
 
 
 end

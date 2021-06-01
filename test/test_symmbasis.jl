@@ -1,7 +1,7 @@
 
 @testset "SymmetricBasis"  begin
 
-#---
+##
 
 using ACE
 using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
@@ -26,10 +26,10 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
 # generate a configuration
 nX = 10
-Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+Xs = rand(PositionState, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
-#---
+##
 
 @info("SymmetricBasis construction and evaluation: Invariant Scalar")
 
@@ -58,14 +58,15 @@ for ntest = 1:30
 end
 println()
 
+
 ## 
 @info("Test linear independence of the basis")
 # generate some random configurations; ord^2 + 1 sounds good :)
-cfgs = [ ACEConfig(rand(EuclideanVectorState, B1p.bases[1], nX)) 
+cfgs = [ ACEConfig(rand(PositionState, B1p.bases[1], nX)) 
          for _ = 1:(3*length(basis)) ]
 A = zeros(length(cfgs), length(basis))
 for (i, cfg) in enumerate(cfgs)
-   A[i, :] = evaluate(basis, cfg)
+   A[i, :] = getproperty.(evaluate(basis, cfg), :val)
 end
 println(@test rank(A) == length(basis))
 
@@ -82,6 +83,7 @@ println(@test rank(A) == length(basis))
 
 ## Testing derivatives
 
+
 for ntest = 1:30
    Us = randn(SVector{3, Float64}, length(Xs))
    c = randn(length(basis))
@@ -91,7 +93,7 @@ for ntest = 1:30
 end
 println()
 
-#---
+##
 @info("SymmetricBasis construction and evaluation: Spherical Vector")
 
 for L = 0:3
@@ -140,7 +142,7 @@ end
 # @profile SymmetricBasis(pibasis, φ);
 # ProfileView.view()
 
-#---
+##
 
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
@@ -176,7 +178,7 @@ for L1 = 0:2, L2 = 0:2
 end
 
 
-#---
+##
 @info("Consistency between SphericalVector & SphericalMatrix")
 
 for L = 0:3
@@ -189,7 +191,7 @@ for L = 0:3
    basis2 = SymmetricBasis(pibasis2, φ2)
 
    for ntest = 1:30
-      Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+      Xs = rand(PositionState, B1p.bases[1], nX)
       cfg = ACEConfig(Xs)
       BBvec = evaluate(basis1, cfg)
       value1 = [reshape(BBvec[i].val, 2L+1, 1) for i in 1:length(BBvec)]
@@ -200,7 +202,7 @@ for L = 0:3
    println()
 end
 
-#---
+##
 @info("Consistency between Invariant Scalar & SphericalMatrix")
 
 φ = ACE.Invariant()
@@ -211,7 +213,7 @@ pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
 basis2 = SymmetricBasis(pibasis2, φ2)
 
 for ntest = 1:30
-   Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+   Xs = rand(PositionState, B1p.bases[1], nX)
    cfg = ACEConfig(Xs)
    BB = evaluate(basis, cfg)
    BBsca = [BB[i].val for i in 1:length(BB)]
@@ -234,6 +236,6 @@ println()
 # ProfileView.view()
 
 
-#---
+##
 
 end

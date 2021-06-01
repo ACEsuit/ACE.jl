@@ -57,7 +57,8 @@ read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) =
 
 fltype(basis::Rn1pBasis{T}) where T = T
 
-gradtype(::Rn1pBasis{T}) where {T} = SVector{3, T}
+gradtype(B::Rn1pBasis{T}, X::TX) where {T, TX <: AbstractState} = 
+      promote_type(fltype(B), TX)
 
 symbols(Rn::Rn1pBasis) = [ _nsym(Rn) ]
 
@@ -78,8 +79,8 @@ rand_radial(basis::Rn1pBasis) = rand_radial(basis.R)
 
 alloc_B(basis::Rn1pBasis, args...) = alloc_B(basis.R)
 
-alloc_dB(basis::Rn1pBasis, args...) =
-      zeros( SVector{3, fltype(basis.R)}, length(basis) )
+alloc_dB(basis::Rn1pBasis, X::AbstractState) =
+      zeros( gradtype(basis, X), length(basis) )
 
 alloc_temp(basis::Rn1pBasis, args...) = alloc_temp(basis.R)
 
@@ -93,21 +94,20 @@ alloc_temp_d(basis::Rn1pBasis, args...) =
 evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.R, norm(_rr(X, basis)))
 
-function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::AbstractState)
+function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::TX) where {TX <: AbstractState}
+   RR = _varsym(basis)
    rr = _rr(X, basis)
    r = norm(rr)
    r̂ = rr / r
    evaluate_d!(tmpd.dRdr, tmpd, basis.R, r)
-   dB[:] .= Ref(r̂) .* tmpd.dRdr
+   for n = 1:length(basis)
+      dB[n] = TX( NamedTuple{(RR,)}( (tmpd.dRdr[n] * r̂,) ) )
+   end
    return dB
 end
 
 function evaluate_ed!(B, dB, tmpd, basis::Rn1pBasis, X::AbstractState)
-   rr = _rr(X, basis)
-   r = norm(rr)
-   r̂ = rr / r
-   evaluate!(B, tmpd, basis.R, norm(rr))
-   evaluate_d!(tmpd.dRdr, tmpd, basis.R, r)
-   dB[:] .= Ref(r̂) .* tmpd.dRdr
+   evaluate!(B, tmpd, basis, X)
+   evaluate_d!(dB, tmpd, basis, X)
    return nothing
 end

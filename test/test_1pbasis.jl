@@ -6,7 +6,7 @@
 using ACE
 using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      EuclideanVectorState, Product1pBasis
+      PositionState, Product1pBasis
 using Random: shuffle
 using ACEbase.Testing: dirfdtest, fdtest, print_tf
 
@@ -27,7 +27,7 @@ B1p = Product1pBasis( (Rn, Ylm) )
 ACE.init1pspec!(B1p, Deg = ACE.NaiveTotalDegree())
 
 nX = 10
-Xs = rand(EuclideanVectorState, Rn, nX)
+Xs = rand(PositionState, Rn, nX)
 cfg = ACEConfig(Xs)
 
 A = evaluate(B1p, cfg)
@@ -43,19 +43,19 @@ println(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
 
 @info("Ylm1pBasis gradients")
 Y = ACE.alloc_B(Ylm)
-dY = ACE.alloc_dB(Ylm)
+dY = ACE.alloc_dB(Ylm, Xs[1])
 tmpd = ACE.alloc_temp_d(Ylm)
 ACE.evaluate_ed!(Y, dY, tmpd, Ylm, Xs[1])
+println(@test (evaluate_d(Ylm, Xs[1]) ≈ dY))
 
 for ntest = 1:30
    x0 = randn(3)
    c = rand(length(Y))
-   F = x -> sum(ACE.evaluate(Ylm, EuclideanVectorState(SVector{3}(x))) .* c)
-   dF = x -> Vector(sum(ACE.evaluate_d(Ylm, EuclideanVectorState(SVector{3}(x))) .* c))
+   F = x -> sum(ACE.evaluate(Ylm, PositionState(rr = SVector{3}(x))) .* c)
+   dF = x -> Vector(ACE._val(sum(ACE.evaluate_d(Ylm, PositionState(rr = SVector{3}(x))) .* c)))
    print_tf(@test fdtest(F, dF, x0; verbose=false))
 end
 println()
-
 ##
 
 @info("Rn1pBasis gradients")
@@ -63,8 +63,8 @@ println()
 for ntest = 1:30
    x0 = randn(3)
    c = rand(length(Rn))
-   F = x -> sum(ACE.evaluate(Rn, EuclideanVectorState(SVector{3}(x))) .* c)
-   dF = x -> Vector(sum(ACE.evaluate_d(Rn, EuclideanVectorState(SVector{3}(x))) .* c))
+   F = x -> sum(ACE.evaluate(Rn, PositionState(rr = SVector{3}(x))) .* c)
+   dF = x -> Vector(ACE._val(sum(ACE.evaluate_d(Rn, PositionState(rr = SVector{3}(x))) .* c)))
    print_tf(@test fdtest(F, dF, x0; verbose=false))
 end
 println()
@@ -73,13 +73,15 @@ println()
 
 @info("Product basis evaluate_ed! tests")
 
-tmp_d = ACE.alloc_temp_d(B1p)
+tmp_d = ACE.alloc_temp_d(B1p, cfg)
 A1 = ACE.alloc_B(B1p)
 A2 = ACE.alloc_B(B1p)
 ACE.evaluate!(A1, tmp_d, B1p, cfg)
-dA = ACE.alloc_dB(B1p, length(cfg))
+dA = ACE.alloc_dB(B1p, cfg)
 ACE.evaluate_ed!(A2, dA, tmp_d, B1p, cfg)
 println(@test A1 ≈ A2)
+
+println(@test( evaluate_d(B1p, cfg) ≈ dA ))
 
 ##
 @info("Product basis gradient test")
@@ -87,10 +89,8 @@ println(@test A1 ≈ A2)
 for ntest = 1:30
    x0 = randn(3)
    c = rand(length(B1p))
-   F = x -> sum(ACE.evaluate(B1p, EuclideanVectorState(SVector{3}(x))) .* c)
-   dF = x -> Vector(sum(ACE.evaluate_ed(B1p, ACEConfig([EuclideanVectorState(SVector{3}(x))]))[2] .* c))
-   F(x0)
-   dF(x0)
+   F = x -> sum(ACE.evaluate(B1p, PositionState(rr = SVector{3}(x))) .* c)
+   dF = x -> Vector(ACE._val( sum(ACE.evaluate_d(B1p, ACEConfig([PositionState(rr = SVector{3}(x))])) .* c)))
    print_tf(@test fdtest(F, dF, x0; verbose=false))
 end
 println()
