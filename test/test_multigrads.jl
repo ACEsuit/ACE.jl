@@ -1,10 +1,10 @@
 
 module XStates
 
-   using Base: NamedTuple
-using ACE, StaticArrays
+   using ACE, StaticArrays
 
-   import Base: *, +, -, zero, rand, randn, show, promote_rule, rtoldefault, isapprox
+   import Base: *, +, -, zero, rand, randn, show, promote_rule, rtoldefault, 
+          isapprox, getproperty
    import LinearAlgebra: norm, promote_leaf_eltypes
 
    abstract type XState{SYMS, TT} <: ACE.AbstractState end 
@@ -27,6 +27,9 @@ using ACE, StaticArrays
    PosScalState{T} = State{(:rr, :x), Tuple{SVector{3, T}, T}}
    DPosScalState{T} = DState{(:rr, :x), Tuple{SVector{3, T}, T}}
 
+   _x(X::XState) = getfield(X, :x)
+   getproperty(X::XState, sym::Symbol) = getproperty(_x(X), sym)
+
    for f in (:zero, :rand, :randn) 
       eval( quote 
          function $f(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
@@ -47,39 +50,39 @@ using ACE, StaticArrays
    _showsym(X::DState) = "'"
 
    show(io::IO, X::XState{SYMS}) where {SYMS} = 
-         print(io, "{" * prod( "$(sym)$(_2str(getproperty(X.x, sym))), " 
+         print(io, "{" * prod( "$(sym)$(_2str(getproperty(_x(X), sym))), " 
                                for sym in SYMS) * "}" * _showsym(X))
 
    for f in (:+, :-)
       eval( quote 
          function $f(X1::TX1, X2::TX2) where {TX1 <: XState{SYMS}, TX2 <: XState{SYMS}} where {SYMS}
-            vals = ntuple( i -> $f( getproperty(X1.x, SYMS[i]), 
-                                    getproperty(X2.x, SYMS[i]) ), length(SYMS) )
+            vals = ntuple( i -> $f( getproperty(_x(X1), SYMS[i]), 
+                                    getproperty(_x(X2), SYMS[i]) ), length(SYMS) )
             return TX1( NamedTuple{SYMS}(vals) )
          end
       end )
    end
 
    function *(X1::TX, a::Number) where {TX <: XState{SYMS}} where {SYMS}
-      vals = ntuple( i -> *( getproperty(X1.x, SYMS[i]), a ), length(SYMS) )
+      vals = ntuple( i -> *( getproperty(_x(X1), SYMS[i]), a ), length(SYMS) )
       return TX( NamedTuple{SYMS}(vals) )
    end
 
    function *(a::Number, X1::TX) where {TX <: XState{SYMS}} where {SYMS}
-      vals = ntuple( i -> *( getproperty(X1.x, SYMS[i]), a ), length(SYMS) )
+      vals = ntuple( i -> *( getproperty(_x(X1), SYMS[i]), a ), length(SYMS) )
       return TX( NamedTuple{SYMS}(vals) )
    end
 
 
    promote_leaf_eltypes(X::XState{SYMS}) where {SYMS} = 
-      promote_type( ntuple(i -> promote_leaf_eltypes(getproperty(X.x, SYMS[i])), length(SYMS))... )
+      promote_type( ntuple(i -> promote_leaf_eltypes(getproperty(_x(X), SYMS[i])), length(SYMS))... )
 
    norm(X::XState{SYMS}) where {SYMS} = 
-         sum( norm( getproperty(X.x, sym) for sym in SYMS )^2 )
+         sum( norm( getproperty(_x(X), sym) for sym in SYMS )^2 )
 
    isapprox(X1::TX, X2::TX, args...; kwargs...
             ) where {TX <: XState{SYMS}} where {SYMS} = 
-      all( isapprox( getproperty(X1.x, sym), getproperty(X2.x, sym), 
+      all( isapprox( getproperty(_x(X1), sym), getproperty(_x(X2), sym), 
                      args...; kwargs...) for sym in SYMS )
 end 
 ##
@@ -89,6 +92,7 @@ rand(Main.XStates.PosScalState{Float64})
 randn(Main.XStates.PosScalState{ComplexF64})
 
 @btime zero($(Main.XStates.PosScalState{Float64}))
+
 
 X1 = rand(Main.XStates.PosScalState{Float64})
 X2 = rand(Main.XStates.PosScalState{Float64})
@@ -101,6 +105,8 @@ Y1 + Y2 ≈ 2 * X1
 
 (1.2+2.3*im) * X1
 X1 + X3
+
+X1.rr
 
 ##
 
@@ -178,8 +184,10 @@ length(B1p)
 ##
 
 
-X = rand(Main.NLMK.NLMKState)
-cfg = ACEConfig([ rand(Main.NLMK.NLMKState) for _=1:10 ])
+# X = rand(Main.NLMK.NLMKState)
+# cfg = ACEConfig([ rand(Main.NLMK.NLMKState) for _=1:10 ])
+X = rand(Main.XStates.PosScalState{Float64})
+cfg = ACEConfig([ rand(Main.XStates.PosScalState{Float64}) for _=1:10 ])
 
 Rn = B1p.bases[1]
 Ylm = B1p.bases[2]
