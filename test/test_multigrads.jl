@@ -1,3 +1,106 @@
+
+module XStates
+
+   using ACE, StaticArrays
+
+   import Base: *, +, -, zero, rand, randn, show, promote_rule, rtoldefault, isapprox
+   import LinearAlgebra: norm
+
+   abstract type XState{SYMS, TT} <: ACE.AbstractState end 
+
+   struct State{SYMS, TT} <: XState{SYMS, TT}
+      x::NamedTuple{SYMS, TT}
+   end
+
+   struct DState{SYMS, TT} <: XState{SYMS, TT}
+      x::NamedTuple{SYMS, TT}
+   end
+
+
+   # some basic examples
+   PosState{T} = State{(:rr,), Tuple{SVector{3, T}}}
+   PosScalState{T} = State{(:rr, :x), Tuple{SVector{3, T}, T}}
+   DPosScalState{T} = DState{(:rr, :x), Tuple{SVector{3, T}, T}}
+
+   for f in (:zero, :rand, :randn) 
+      eval( quote 
+         function $f(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
+            vals = ntuple(i -> $f(TT.types[i]), length(SYMS))
+            return TX( NamedTuple{SYMS}( vals ) )
+         end
+      end )
+   end
+
+   const _showdigits = 4
+   _2str(x) = string(x)
+   _2str(x::AbstractFloat) = "[$(round(x, digits=_showdigits))]"
+   _2str(x::Complex) = "[$(round(x, digits=_showdigits))]"
+   _2str(x::SVector{N, <: AbstractFloat}) where {N} = string(round.(x, digits=_showdigits))
+   _2str(x::SVector{N, <: Complex}) where {N} = string(round.(x, digits=_showdigits))[11:end]
+
+   _showsym(X::State) = ""
+   _showsym(X::DState) = "'"
+
+   show(io::IO, X::XState{SYMS}) where {SYMS} = 
+         print(io, "{" * prod( "$(sym)$(_2str(getproperty(X.x, sym))), " 
+                               for sym in SYMS) * "}" * _showsym(X))
+
+   for f in (:+, :-)
+      eval( quote 
+         function $f(X1::TX, X2::TX) where {TX <: XState{SYMS}} where {SYMS}
+            vals = ntuple( i -> $f( getproperty(X1.x, SYMS[i]), 
+                                    getproperty(X2.x, SYMS[i]) ), length(SYMS) )
+            return TX( NamedTuple{SYMS}(vals) )
+         end
+      end )
+   end
+
+   function *(X1::TX, a::Number) where {TX <: XState{SYMS}} where {SYMS}
+      vals = ntuple( i -> *( getproperty(X1.x, SYMS[i]), a ), length(SYMS) )
+      return TX( NamedTuple{SYMS}(vals) )
+   end
+
+   function *(a::Number, X1::TX) where {TX <: XState{SYMS}} where {SYMS}
+      vals = ntuple( i -> *( getproperty(X1.x, SYMS[i]), a ), length(SYMS) )
+      return TX( NamedTuple{SYMS}(vals) )
+   end
+
+   _rtoldef(T::Type{<: Number}) = rtoldefault(real(T))
+   _rtoldef(T::Type{<: SVector{N, S}}) where {N, S} = rtoldefault(real(S))
+   rtoldefault(::Union{T1, Type{T1}}, ::Union{T2, Type{T2}}, ::Real
+              ) where {T1 <: XState, T2 <: XState} = 
+         max( rtoldefault(T1), rtoldefault(T2) )
+   rtoldefault(::Union{T1, Type{T1}}) where {T1 <: XState{SYMS}} where {SYMS} = 
+         maximum( _rtoldef(getproperty(X1.x, sym)) for sym in SYMS )
+
+   norm(X::XState{SYMS}) where {SYMS} = 
+         sum( norm( getproperty(X.x, sym) for sym in SYMS )^2 )
+
+   
+   isapprox(X1::TX, X2::TX, args...; kwargs...
+            ) where {TX <: XState{SYMS}} where {SYMS} = 
+      all( isapprox( getproperty(X1.x, sym), getproperty(X2.x, sym), 
+                     args...; kwargs...) for sym in SYMS )
+end 
+##
+
+zero(Main.XStates.PosState{Float64})
+rand(Main.XStates.PosScalState{Float64})
+randn(Main.XStates.PosScalState{ComplexF64})
+
+@btime zero($(Main.XStates.PosScalState{Float64}))
+
+X1 = rand(Main.XStates.PosScalState{Float64})
+X2 = rand(Main.XStates.PosScalState{Float64})
+
+Y1 = X1 + X2 
+Y2 = X1 - X2
+Y1 + Y2 ≈ 2 * X1
+[Y1 + Y2] ≈ [2 * X1]
+
+
+##
+
 module NLMK 
 
 using StaticArrays
