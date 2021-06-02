@@ -4,7 +4,7 @@ module XStates
    using ACE, StaticArrays
 
    import Base: *, +, -, zero, rand, randn, show, promote_rule, rtoldefault, isapprox
-   import LinearAlgebra: norm
+   import LinearAlgebra: norm, promote_leaf_eltypes
 
    abstract type XState{SYMS, TT} <: ACE.AbstractState end 
 
@@ -65,18 +65,13 @@ module XStates
       return TX( NamedTuple{SYMS}(vals) )
    end
 
-   _rtoldef(T::Type{<: Number}) = rtoldefault(real(T))
-   _rtoldef(T::Type{<: SVector{N, S}}) where {N, S} = rtoldefault(real(S))
-   rtoldefault(::Union{T1, Type{T1}}, ::Union{T2, Type{T2}}, ::Real
-              ) where {T1 <: XState, T2 <: XState} = 
-         max( rtoldefault(T1), rtoldefault(T2) )
-   rtoldefault(::Union{T1, Type{T1}}) where {T1 <: XState{SYMS}} where {SYMS} = 
-         maximum( _rtoldef(getproperty(X1.x, sym)) for sym in SYMS )
+
+   promote_leaf_eltypes(X::XState{SYMS}) where {SYMS} = 
+      promote_type( ntuple(i -> promote_leaf_eltypes(getproperty(X.x, SYMS[i])), length(SYMS))... )
 
    norm(X::XState{SYMS}) where {SYMS} = 
          sum( norm( getproperty(X.x, sym) for sym in SYMS )^2 )
 
-   
    isapprox(X1::TX, X2::TX, args...; kwargs...
             ) where {TX <: XState{SYMS}} where {SYMS} = 
       all( isapprox( getproperty(X1.x, sym), getproperty(X2.x, sym), 
