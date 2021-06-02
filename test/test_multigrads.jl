@@ -1,7 +1,8 @@
 
 module XStates
 
-   using ACE, StaticArrays
+   using Base: NamedTuple
+using ACE, StaticArrays
 
    import Base: *, +, -, zero, rand, randn, show, promote_rule, rtoldefault, isapprox
    import LinearAlgebra: norm, promote_leaf_eltypes
@@ -10,10 +11,14 @@ module XStates
 
    struct State{SYMS, TT} <: XState{SYMS, TT}
       x::NamedTuple{SYMS, TT}
+
+      State{SYMS, TT}(t::NamedTuple{SYMS, TT1}) where {SYMS, TT, TT1} = new{SYMS, TT1}(t)
    end
 
    struct DState{SYMS, TT} <: XState{SYMS, TT}
       x::NamedTuple{SYMS, TT}
+
+      DState{SYMS, TT}(t::NamedTuple{SYMS, TT1}) where {SYMS, TT, TT1} = new{SYMS, TT1}(t)
    end
 
 
@@ -47,10 +52,10 @@ module XStates
 
    for f in (:+, :-)
       eval( quote 
-         function $f(X1::TX, X2::TX) where {TX <: XState{SYMS}} where {SYMS}
+         function $f(X1::TX1, X2::TX2) where {TX1 <: XState{SYMS}, TX2 <: XState{SYMS}} where {SYMS}
             vals = ntuple( i -> $f( getproperty(X1.x, SYMS[i]), 
                                     getproperty(X2.x, SYMS[i]) ), length(SYMS) )
-            return TX( NamedTuple{SYMS}(vals) )
+            return TX1( NamedTuple{SYMS}(vals) )
          end
       end )
    end
@@ -87,12 +92,15 @@ randn(Main.XStates.PosScalState{ComplexF64})
 
 X1 = rand(Main.XStates.PosScalState{Float64})
 X2 = rand(Main.XStates.PosScalState{Float64})
+X3 = rand(Main.XStates.PosScalState{ComplexF64})
 
 Y1 = X1 + X2 
 Y2 = X1 - X2
 Y1 + Y2 ≈ 2 * X1
 [Y1 + Y2] ≈ [2 * X1]
 
+(1.2+2.3*im) * X1
+X1 + X3
 
 ##
 
