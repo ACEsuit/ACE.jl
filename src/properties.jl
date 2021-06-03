@@ -29,10 +29,14 @@ Base.convert(T::Type{Any}, φ::AbstractProperty) = φ
 # *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
 #       reshape( reshape(a, L1*L2, L3) * b, L1, L2)
 
-*(φ::AbstractProperty, b::AbstractState) = coco_o_daa(φ.val, _val(b))
+*(φ::AbstractProperty, b::AbstractState) = coco_o_daa(φ, b)
       # promote_type(φ.val, b)(φ.val * _val(b))
 
-coco_o_daa(φ::AbstractProperty, b::AbstractState) = coco_o_daa(φ.val, _val(b))
+function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState{SYMS}} where {SYMS}
+   vals = ntuple( i -> coco_o_daa(φ.val, _x(b)[SYMS[i]]), length(SYMS) )
+   return TX( NamedTuple{SYMS}(vals) )
+end
+
 coco_o_daa(cc::Number, b::SVector) = cc * b
 coco_o_daa(cc::SVector, b::SVector) = cc * transpose(b)
 coco_o_daa(cc::SMatrix{N1,N2}, b::SVector{N3}) where {N1,N2,N3} =

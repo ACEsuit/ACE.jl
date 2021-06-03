@@ -134,7 +134,7 @@ function evaluate_d!(g, tmpd, V::PIEvaluator, cfg::AbstractConfiguration)
    fill!(g, zero(eltype(g)))
    for iX = 1:length(cfg)
       @inbounds @fastmath for iA = 1:length(basis1p)
-         g[iX] += _real.(dAco[iA] * dA[iA, iX])
+         g[iX] += _real(dAco[iA] * dA[iA, iX])
       end
    end
 

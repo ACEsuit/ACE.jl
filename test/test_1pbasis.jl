@@ -27,7 +27,7 @@ B1p = Product1pBasis( (Rn, Ylm) )
 ACE.init1pspec!(B1p, Deg = ACE.NaiveTotalDegree())
 
 nX = 10
-Xs = rand(PositionState, Rn, nX)
+Xs = rand(PositionState{Float64}, Rn, nX)
 cfg = ACEConfig(Xs)
 
 A = evaluate(B1p, cfg)
@@ -48,11 +48,13 @@ tmpd = ACE.alloc_temp_d(Ylm)
 ACE.evaluate_ed!(Y, dY, tmpd, Ylm, Xs[1])
 println(@test (evaluate_d(Ylm, Xs[1]) ≈ dY))
 
+_vec2X(x) = PositionState{Float64}((rr = SVector{3}(x),))
+
 for ntest = 1:30
    x0 = randn(3)
    c = rand(length(Y))
-   F = x -> sum(ACE.evaluate(Ylm, PositionState(rr = SVector{3}(x))) .* c)
-   dF = x -> Vector(ACE._val(sum(ACE.evaluate_d(Ylm, PositionState(rr = SVector{3}(x))) .* c)))
+   F = x -> sum(ACE.evaluate(Ylm, _vec2X(x)) .* c)
+   dF = x -> sum(ACE.evaluate_d(Ylm, _vec2X(x)) .* c).rr |> Vector
    print_tf(@test fdtest(F, dF, x0; verbose=false))
 end
 println()
@@ -63,8 +65,8 @@ println()
 for ntest = 1:30
    x0 = randn(3)
    c = rand(length(Rn))
-   F = x -> sum(ACE.evaluate(Rn, PositionState(rr = SVector{3}(x))) .* c)
-   dF = x -> Vector(ACE._val(sum(ACE.evaluate_d(Rn, PositionState(rr = SVector{3}(x))) .* c)))
+   F = x -> sum(ACE.evaluate(Rn, _vec2X(x)) .* c)
+   dF = x -> sum(ACE.evaluate_d(Rn, _vec2X(x)) .* c).rr |> Vector
    print_tf(@test fdtest(F, dF, x0; verbose=false))
 end
 println()
@@ -89,8 +91,8 @@ println(@test( evaluate_d(B1p, cfg) ≈ dA ))
 for ntest = 1:30
    x0 = randn(3)
    c = rand(length(B1p))
-   F = x -> sum(ACE.evaluate(B1p, PositionState(rr = SVector{3}(x))) .* c)
-   dF = x -> Vector(ACE._val( sum(ACE.evaluate_d(B1p, ACEConfig([PositionState(rr = SVector{3}(x))])) .* c)))
+   F = x -> sum(ACE.evaluate(B1p, _vec2X(x)) .* c)
+   dF = x -> sum(ACE.evaluate_d(B1p, ACEConfig([_vec2X(x)])) .* c).rr |> Vector
    print_tf(@test fdtest(F, dF, x0; verbose=false))
 end
 println()

@@ -10,7 +10,7 @@ using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
 using ACE: evaluate, evaluate_d, NaiveTotalDegree
 using ACEbase.Testing: dirfdtest, fdtest, print_tf
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      EuclideanVectorState, Product1pBasis
+      PositionState, Product1pBasis
 
 ##
 
@@ -27,7 +27,7 @@ pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
 
 # generate a configuration
 nX = 10
-Xs = rand(PositionState, B1p.bases[1], nX)
+Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 AA = evaluate(pibasis, cfg)
@@ -67,11 +67,13 @@ println(@test AA1 ≈ AA)
 
 ##
 
+_rrval(x::PositionState) = x.rr
+
 for ntest = 1:30
   Us = randn(SVector{3, Float64}, length(Xs))
   c = randn(length(pibasis))
   F = t -> sum(c .* ACE.evaluate(pibasis, ACEConfig(Xs + t[1] * Us)))
-  dF = t -> [ Us' * ACE._val.(sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:]) ]
+  dF = t -> [ Us' * _rrval.(sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:]) ]
   print_tf(@test fdtest(F, dF, [0.0], verbose=false))
 end
 println()

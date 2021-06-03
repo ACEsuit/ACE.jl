@@ -6,7 +6,7 @@ module Random
 
 import LinearAlgebra: norm
 import ACE: rand_radial, scaling, fltype, rfltype,
-            EuclideanVectorState, ACEBasis
+            PositionState, ACEBasis
 
 using Random: shuffle
 
@@ -22,10 +22,10 @@ function rand_sphere(T = Float64)
    return R / norm(R)
 end
 
-Base.rand(::Type{TX}, basis::ACEBasis) where {TX <: EuclideanVectorState} =
-         TX(rand_radial(basis) * rand_sphere())
+Base.rand(::Type{TX}, basis::ACEBasis) where {TX <: PositionState} =
+         TX( (rr = rand_radial(basis) * rand_sphere(),) )
 
-Base.rand(T::Type{TX}, basis::ACEBasis, N::Integer) where {TX <: EuclideanVectorState} =
+Base.rand(T::Type{TX}, basis::ACEBasis, N::Integer) where {TX <: PositionState} =
          [ rand(T, basis) for _=1:N ]
 
 rand_rot() = (K = (@SMatrix rand(3,3)) .- 0.5; exp(K - K'))

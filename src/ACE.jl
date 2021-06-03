@@ -3,13 +3,6 @@ module ACE
 
 using Reexport
 
-# external imports that are useful for all submodules
-include("imports.jl")
-
-@extimports
-@baseimports
-
-include("auxiliary.jl")
 
 abstract type AbstractACEModel end 
 
@@ -19,6 +12,14 @@ function coco_init end
 function coco_zeros end
 function coco_filter end
 function coco_dot end
+
+# external imports that are useful for all submodules
+include("imports.jl")
+
+@extimports
+@baseimports
+
+include("auxiliary.jl")
 
 
 include("rotations3d.jl")
@@ -64,6 +65,8 @@ include("linearmodel.jl")
 
 include("evaluator.jl")
 # include("grapheval.jl")
+
+# include("linearmodel.jl")
 
 
 # # orthogonal basis

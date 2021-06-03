@@ -26,7 +26,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
 # generate a configuration
 nX = 10
-Xs = rand(PositionState, B1p.bases[1], nX)
+Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 ##
@@ -62,7 +62,7 @@ println()
 ## 
 @info("Test linear independence of the basis")
 # generate some random configurations; ord^2 + 1 sounds good :)
-cfgs = [ ACEConfig(rand(PositionState, B1p.bases[1], nX)) 
+cfgs = [ ACEConfig(rand(PositionState{Float64}, B1p.bases[1], nX)) 
          for _ = 1:(3*length(basis)) ]
 A = zeros(length(cfgs), length(basis))
 for (i, cfg) in enumerate(cfgs)
@@ -88,7 +88,7 @@ for ntest = 1:30
    Us = randn(SVector{3, Float64}, length(Xs))
    c = randn(length(basis))
    F = t -> sum(c .* ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))).val
-   dF = t -> [ Us' * sum(c .* ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)), dims=1)[:] ]
+   dF = t -> [ (Us' * sum(c .* ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)), dims=1)[:]).rr ]
    print_tf(@test fdtest(F, dF, [0.0], verbose=false))
 end
 println()
@@ -120,12 +120,13 @@ for L = 0:3
 
    @info(" .... derivatives")
    for ntest = 1:30
+      _rrval(x::ACE.XState) = x.rr
       Us = __TestSVec.(randn(SVector{3, Float64}, length(Xs)))
       C = randn(typeof(φ.val), length(basis))
       F = t -> sum( sum(c .* b.val)
                     for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
       dF = t -> [ sum( sum(c .* db)
-                  for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
+                  for (c, db) in zip(C, _rrval.(ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us))) * Us) ) ]
       print_tf(@test fdtest(F, dF, [0.0], verbose=false))
    end
    println()
@@ -166,12 +167,13 @@ for L1 = 0:2, L2 = 0:2
 
    @info(" .... derivatives")
    for ntest = 1:30
+      _rrval(x::ACE.XState) = x.rr
       Us = __TestSVec.(randn(SVector{3, Float64}, length(Xs)))
       C = randn(typeof(φ.val), length(basis))
       F = t -> sum( sum(c .* b.val)
                     for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
       dF = t -> [ sum( sum(c .* db)
-                       for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
+                       for (c, db) in zip(C, _rrval.(ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us))) * Us) ) ]
       print_tf(@test fdtest(F, dF, [0.0], verbose=false))
    end
    println()
@@ -191,7 +193,7 @@ for L = 0:3
    basis2 = SymmetricBasis(pibasis2, φ2)
 
    for ntest = 1:30
-      Xs = rand(PositionState, B1p.bases[1], nX)
+      Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
       cfg = ACEConfig(Xs)
       BBvec = evaluate(basis1, cfg)
       value1 = [reshape(BBvec[i].val, 2L+1, 1) for i in 1:length(BBvec)]
@@ -213,7 +215,7 @@ pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
 basis2 = SymmetricBasis(pibasis2, φ2)
 
 for ntest = 1:30
-   Xs = rand(PositionState, B1p.bases[1], nX)
+   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
    cfg = ACEConfig(Xs)
    BB = evaluate(basis, cfg)
    BBsca = [BB[i].val for i in 1:length(BB)]

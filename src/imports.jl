@@ -10,7 +10,9 @@ using ACEbase: @def
                  AbstractDegree, degree,
                  gensparse,
                  add_into_A!, add_into_A_dA!,
-                 scaling
+                 scaling, 
+                 AbstractACEModel, 
+                 AbstractProperty
 end
 
 @def baseimports begin

@@ -19,7 +19,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
 # generate a configuration
 nX = 10
-Xs = rand(PositionState, B1p.bases[1], nX)
+Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 ##
@@ -49,7 +49,7 @@ tol = 1e-10
 
 @info("check for rotation, permutation and inversion equivariance")
 for ntest = 1:30
-   Xs = rand(PositionState, B1p.bases[1], nX)
+   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
    BB = evaluate(basis, ACEConfig(Xs))
    Q = rand([-1,1]) * ACE.Random.rand_rot()
    Xs_rot = Ref(Q) .* shuffle(Xs)
@@ -73,13 +73,14 @@ println()
 ##
 
 @info(" ... derivatives")
+_rrval(x::ACE.XState) = x.rr
 for ntest = 1:30
    Us = randn(SVector{3, Float64}, length(Xs))
    C = randn(typeof(φ.val), length(basis))
    F = t -> sum( sum(c .* b.val)
                  for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
    dF = t -> [ sum( sum(c .* db)
-                    for (c, db) in zip(C, ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)) * Us) ) ]
+                    for (c, db) in zip(C, _rrval.(ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us))) * Us) ) ]
    print_tf(@test fdtest(F, dF, [0.0], verbose=false))
 end
 println()

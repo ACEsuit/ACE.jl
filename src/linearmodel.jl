@@ -79,8 +79,8 @@ function grad_params!(g, tmp, m::LinearACEModel, X::AbstractConfiguration)
 end
 
 function grad_params_config(m::LinearACEModel, X::AbstractConfiguration) 
-   tmpd = alloc_temp_d(m.basis, length(X))
-   dB = alloc_dB(m.basis, length(X))
+   tmpd = alloc_temp_d(m.basis, X)
+   dB = alloc_dB(m.basis, X)
    return grad_params_config!(dB, tmpd, m, X)
 end
 
