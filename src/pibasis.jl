@@ -219,7 +219,8 @@ end
 # -------------------------------------------------
 # gradients
 
-gradtype(basis::PIBasis, cfgorX) = basis.real( gradtype(basis.basis1p, cfgorX) )
+gradtype(basis::PIBasis, cfgorX) = 
+      basis.real( gradtype(basis.basis1p, cfgorX) )
 
 alloc_dB(basis::PIBasis, cfg::AbstractConfiguration, nmax = length(cfg)) =
       zeros(gradtype(basis, cfg), (length(basis), nmax))

@@ -10,6 +10,11 @@ import LinearAlgebra: norm, promote_leaf_eltypes
 
 abstract type XState{SYMS, TT} <: ACE.AbstractState end 
 
+"""
+`struct State` the main type for states of input variables (particles). 
+This type is intended only for storing of information but no arithmetic 
+should be performed on it. For the latter, we have the DState.
+"""
 struct State{SYMS, TT} <: XState{SYMS, TT}
    x::NamedTuple{SYMS, TT}
 
@@ -26,6 +31,70 @@ State(; kwargs...) = State(NamedTuple(kwargs))
 State{SYMS}(; kwargs...) where {SYMS} = State{SYMS}(NamedTuple(kwargs))
 State{SYMS, TT}(; kwargs...) where {SYMS, TT} = State{SYMS, TT}(NamedTuple(kwargs))
 
+
+const CTSTT = Union{AbstractFloat, Complex{<: AbstractFloat},
+               SVector{N, <: AbstractFloat}, 
+               SVector{N, <: Complex}} where {N}
+
+@generated function dstate_type(X::ACE.State{SYMS, TT}) where {SYMS, TT}
+   syms2 = Symbol[] 
+   tt2 = DataType[]
+   for i = 1:length(SYMS)
+      if TT.types[i] <: CTSTT
+         push!(syms2, SYMS[i])
+         push!(tt2, TT.types[i])
+      end
+   end
+   SYMS2 = tuple(syms2...)
+   TT2 = "Tuple{" * 
+            "$(tuple(tt2...))"[2:end-1] * "}"
+   DTX = Meta.parse( "DState{$(SYMS2), $TT2}" )
+   quote
+      $DTX 
+   end
+end
+
+_mypromrl(T::Type{<: Number}, S::Type{<: Number}) = 
+      promote_type(T, S)
+_mypromrl(T::Type{<: Number}, ::Type{<: SVector{N, P}}) where {N, P} = 
+      SVector{N, promote_type(T, P)}
+
+@generated function dstate_type(x::S, X::ACE.State{SYMS, TT}
+                                ) where {S, SYMS, TT}
+   syms2 = Symbol[] 
+   tt2 = DataType[]
+   for i = 1:length(SYMS)
+      if TT.types[i] <: CTSTT
+         push!(syms2, SYMS[i])
+         push!(tt2, _mypromrl(S, TT.types[i]))
+      end
+   end
+   SYMS2 = tuple(syms2...)
+   TT2 = "Tuple{" * 
+            "$(tuple(tt2...))"[2:end-1] * "}"
+   DTX = Meta.parse( "DState{$(SYMS2), $TT2}" )
+   quote
+      $DTX 
+   end
+end
+
+dstate_type(S::Type, X::ACE.State) = dstate_type(zero(S), X)
+
+@generated function _ctssyms(::NamedTuple{SYMS, TT}) where {SYMS, TT}
+   syms2 = Symbol[] 
+   for i = 1:length(SYMS)
+      if TT.types[i] <: CTSTT
+         push!(syms2, SYMS[i])
+      end
+   end
+   SYMS2 = tuple(syms2...)
+   quote
+      $SYMS2
+   end
+end
+
+
+
 struct DState{SYMS, TT} <: XState{SYMS, TT}
    x::NamedTuple{SYMS, TT}
 
@@ -35,12 +104,20 @@ struct DState{SYMS, TT} <: XState{SYMS, TT}
 
 end
 
+DState(X::TX) where {TX <: State} = 
+      (dstate_type(X))( select(_x(X), _ctssyms(_x(X))) )
+
 DState(t::NamedTuple{SYMS, TT}) where {SYMS, TT} = DState{SYMS, TT}(t)
 
 DState(; kwargs...) = DState(kwargs)
 
 _x(X::XState) = getfield(X, :x)
 getproperty(X::XState, sym::Symbol) = getproperty(_x(X), sym)
+
+_myrl(x::Number) = real(x)
+_myrl(x::SVector) = real.(x)
+Base.real(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} = 
+      TDX( NamedTuple{SYMS}( ntuple(i -> _myrl(getproperty(X, SYMS[i])), length(SYMS)) ) )
 
 for f in (:zero, :rand, :randn) 
    eval( quote 

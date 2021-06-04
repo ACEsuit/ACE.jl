@@ -37,6 +37,10 @@ function LinearACEModel(basis::SymmetricBasis, c = zeros(length(basis));
    return LinearACEModel(basis, c, ev)
 end
 
+# ------- parameter wrangling 
+
+nparams(m::LinearACEModel) = length(m.c)
+
 params(m::LinearACEModel) = copy(m.c)
 
 function set_params!(m::LinearACEModel, c) 

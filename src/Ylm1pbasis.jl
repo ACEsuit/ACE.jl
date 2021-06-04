@@ -69,8 +69,7 @@ read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) =
 fltype(basis::Ylm1pBasis{T}) where T = Complex{T}
 rfltype(basis::Ylm1pBasis{T}) where T = T
 
-gradtype(basis::Ylm1pBasis{T}, X::TX) where {T, TX <: AbstractState} = 
-      promote_type(fltype(basis), TX)
+gradtype(basis::Ylm1pBasis, X::AbstractState) = dstate_type(fltype(basis), X)
 
 symbols(basis::Ylm1pBasis) = [_lsym(basis), _msym(basis)]
 

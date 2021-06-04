@@ -85,10 +85,11 @@ println(@test rank(A) == length(basis))
 
 
 for ntest = 1:30
+   _rrval(x::ACE.XState) = x.rr
    Us = randn(SVector{3, Float64}, length(Xs))
    c = randn(length(basis))
    F = t -> sum(c .* ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))).val
-   dF = t -> [ (Us' * sum(c .* ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)), dims=1)[:]).rr ]
+   dF = t -> [ Us' * _rrval.(sum(c .* ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)), dims=1)[:]) ]
    print_tf(@test fdtest(F, dF, [0.0], verbose=false))
 end
 println()

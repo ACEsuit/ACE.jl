@@ -12,7 +12,8 @@ using ACEbase: @def
                  add_into_A!, add_into_A_dA!,
                  scaling, 
                  AbstractACEModel, 
-                 AbstractProperty
+                 AbstractProperty, 
+                 params, set_params!, nparams 
 end
 
 @def baseimports begin

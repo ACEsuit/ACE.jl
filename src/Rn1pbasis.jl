@@ -57,8 +57,8 @@ read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) =
 
 fltype(basis::Rn1pBasis{T}) where T = T
 
-gradtype(B::Rn1pBasis{T}, X::TX) where {T, TX <: AbstractState} = 
-      promote_type(fltype(B), TX)
+gradtype(B::Rn1pBasis, X::AbstractState) = 
+            dstate_type(fltype(B), X)
 
 symbols(Rn::Rn1pBasis) = [ _nsym(Rn) ]
 
@@ -94,14 +94,15 @@ alloc_temp_d(basis::Rn1pBasis, args...) =
 evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.R, norm(_rr(X, basis)))
 
-function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::TX) where {TX <: AbstractState}
+function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::AbstractState)
+   TDX = eltype(dB)
    RR = _varsym(basis)
    rr = _rr(X, basis)
    r = norm(rr)
    r̂ = rr / r
    evaluate_d!(tmpd.dRdr, tmpd, basis.R, r)
    for n = 1:length(basis)
-      dB[n] = TX( NamedTuple{(RR,)}( (tmpd.dRdr[n] * r̂,) ) )
+      dB[n] = TDX( NamedTuple{(RR,)}( (tmpd.dRdr[n] * r̂,) ) )
    end
    return dB
 end

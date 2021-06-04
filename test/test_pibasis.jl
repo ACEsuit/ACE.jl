@@ -67,9 +67,8 @@ println(@test AA1 ≈ AA)
 
 ##
 
-_rrval(x::PositionState) = x.rr
-
 for ntest = 1:30
+  _rrval(x::ACE.XState) = x.rr
   Us = randn(SVector{3, Float64}, length(Xs))
   c = randn(length(pibasis))
   F = t -> sum(c .* ACE.evaluate(pibasis, ACEConfig(Xs + t[1] * Us)))

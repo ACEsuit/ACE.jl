@@ -42,10 +42,10 @@ Base.length(basis::Product1pBasis) = length(basis.spec)
 fltype(basis::Product1pBasis) = promote_type(fltype.(basis.bases)...)
 
 gradtype(basis::Product1pBasis, cfg::Union{AbstractConfiguration, AbstractVector}) = 
-      promote_type(fltype(basis), eltype(cfg))
+      dstate_type(fltype(basis), zero(eltype(cfg)))
 
 gradtype(basis::Product1pBasis, X::AbstractState) = 
-      promote_type(fltype(basis), typeof(X))
+      dstate_type(fltype(basis), X)
 
 alloc_temp(basis::Product1pBasis, args...) =
       (
