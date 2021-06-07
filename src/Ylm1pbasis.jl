@@ -62,9 +62,9 @@ write_dict(basis::Ylm1pBasis{T}) where {T} = Dict(
    
 read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) = 
       Ylm1pBasis(read_dict(D["SH"]), 
-                 varsym = D["varsym"], 
-                 lsym = D["lsym"], 
-                 msym = D["msym"] )
+                 varsym = Symbol(D["varsym"]), 
+                 lsym = Symbol(D["lsym"]), 
+                 msym = Symbol(D["msym"]) )
 
 fltype(basis::Ylm1pBasis{T}) where T = Complex{T}
 rfltype(basis::Ylm1pBasis{T}) where T = T

@@ -3,6 +3,8 @@
 import ACE: OneParticleBasis, AbstractState
 import ACE.OrthPolys: TransformedPolys
 
+import NamedTupleTools
+using NamedTupleTools: namedtuple
 
 
 @doc raw"""

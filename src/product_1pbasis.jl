@@ -39,6 +39,31 @@ _numb(b::Product1pBasis{NB}) where {NB} = NB
 
 Base.length(basis::Product1pBasis) = length(basis.spec)
 
+# ------------------------- FIO CODES
+
+==(B1::Product1pBasis, B2::Product1pBasis) = 
+      ( all(B1.bases .== B2.bases) && 
+        convert.(Dict, B1.spec) == convert.(Dict, B2.spec) && 
+        B1.indices == B2.indices )
+
+write_dict(B::Product1pBasis) = 
+      Dict("__id__" => "ACE_Product1pBasis", 
+            "bases" => write_dict.(B.bases), 
+             "spec" => convert.(Ref(Dict), B.spec),
+          "indices" => B.indices )
+
+function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
+   bases = tuple( read_dict.(D["bases"])... )
+   T = promote_type(fltype.(bases)...)
+   spec = namedtuple.( D["spec"] )
+   indices = [ tuple(v...) for v in D["indices"] ]
+   return Product1pBasis(bases, spec, indices, T)
+end
+
+
+# ------------------------------------
+
+
 fltype(basis::Product1pBasis) = promote_type(fltype.(basis.bases)...)
 
 alloc_temp(basis::Product1pBasis, args...) =

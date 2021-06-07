@@ -53,7 +53,8 @@ write_dict(basis::Rn1pBasis{T}) where {T} = Dict(
 
 read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) = 
             Rn1pBasis(read_dict(D["R"]), 
-                      varsym = D["varsym"], nsym = D["nsym"])
+                      varsym = Symbol(D["varsym"]), 
+                      nsym = Symbol(D["nsym"]))
 
 fltype(basis::Rn1pBasis{T}) where T = T
 

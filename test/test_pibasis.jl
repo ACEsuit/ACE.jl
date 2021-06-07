@@ -2,17 +2,17 @@
 
 @testset "PIBasis"  begin
 
-#---
+##
 
 
 using ACE, Random
 using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
 using ACE: evaluate, evaluate_d, NaiveTotalDegree
-using ACEbase.Testing: dirfdtest, fdtest, print_tf
+using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       EuclideanVectorState, Product1pBasis
 
-#---
+##
 
 @info("Basic test of PIBasis construction and evaluation")
 
@@ -56,6 +56,12 @@ A = evaluate(B1p, cfg)
 AA_naive =  [
       real(prod( A[ inv_spec1[ b1 ] ] for b1 in b )) for b in spec ]
 println(@test( AA_naive ≈ AA ))
+
+## FIO tests 
+
+@info("FIO Test")
+println(@test( all(test_fio(pibasis)) ))
+
 
 ## Testing derivatives
 
