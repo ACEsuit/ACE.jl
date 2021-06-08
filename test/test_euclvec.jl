@@ -1,7 +1,7 @@
 
 @testset "EuclideanVector"  begin
 
-#---
+##
 
 
 using ACE
@@ -22,7 +22,7 @@ nX = 10
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
-#---
+##
 
 @info("SymmetricBasis construction and evaluation: EuclideanVector")
 
@@ -42,6 +42,15 @@ if !isempty(Iz)
    @warn("The A2B map for EuclideanVector has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
 end
 
+##
+
+@info("Test FIO")
+using ACEbase.Testing: test_fio
+
+println(@test(all(test_fio(basis; warntype = false))))
+
+
+##
 
 @info("Test equivariance properties")
 

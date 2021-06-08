@@ -14,6 +14,13 @@ end
 ==(V1::PIEvaluator, V2::PIEvaluator) =
       (V1.pibasis == V2.pibasis) && (V1.coeffs == V2.coeffs)
 
+
+# ------- FIO 
+
+write_dict(ev::PIEvaluator) = Dict( "__id__" => "ACE_PIEvaluator" )
+
+read_dict(::Val{:ACE_PIEvaluator}, D::Dict, basis, c) = PIEvaluator(basis, c)
+
 # ------------------------------------------------------------
 #   Initialisation and Parameter manipulation code
 # ------------------------------------------------------------

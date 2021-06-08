@@ -47,6 +47,32 @@ end
 
 set_params!(::NaiveEvaluator, args...) = nothing 
 
+# ------------------- FIO
+
+==(V1::LinearACEModel, V2::LinearACEModel) = 
+      _allfieldsequal(V1, V2)
+
+write_dict(V::LinearACEModel) = 
+      Dict( "__id__" => "ACE_LinearACEModel", 
+             "basis" => write_dict(V.basis), 
+                 "c" => write_dict(V.c), 
+         "evaluator" => write_dict(V.evaluator) )
+
+function read_dict(::Val{:ACE_LinearACEModel}, D::Dict) 
+   basis = read_dict(D["basis"])
+   c = read_dict(D["c"])
+   # special evaluator version of the read_dict 
+   evaluator = read_dict(Val(Symbol(D["evaluator"]["__id__"])), 
+                         D["evaluator"], basis, c)
+   return LinearACEModel(basis, c, evaluator)
+end
+
+write_dict(ev::NaiveEvaluator) = 
+      Dict("__id__" => "ACE_NaiveEvaluator" )
+
+read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) = 
+      NaiveEvaluator()
+
 # ------------------- dispatching on the evaluators 
 
 alloc_temp(m::LinearACEModel) = alloc_temp(m.evaluator, m)

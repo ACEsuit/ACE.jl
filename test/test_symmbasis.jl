@@ -1,7 +1,7 @@
 
 @testset "SymmetricBasis"  begin
 
-#---
+##
 
 using ACE
 using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
@@ -29,7 +29,7 @@ nX = 10
 Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
-#---
+##
 
 @info("SymmetricBasis construction and evaluation: Invariant Scalar")
 
@@ -57,6 +57,11 @@ for ntest = 1:30
       print_tf(@test isapprox(BB, BB1, rtol=1e-10))
 end
 println()
+
+##
+import ACEbase
+@info("Test FIO")
+println(@test(all(ACEbase.Testing.test_fio(basis; warntype=false))))
 
 ## 
 @info("Test linear independence of the basis")
@@ -91,7 +96,7 @@ for ntest = 1:30
 end
 println()
 
-#---
+##
 @info("SymmetricBasis construction and evaluation: Spherical Vector")
 
 for L = 0:3
@@ -140,7 +145,7 @@ end
 # @profile SymmetricBasis(pibasis, φ);
 # ProfileView.view()
 
-#---
+##
 
 @info("SymmetricBasis construction and evaluation: Spherical Matrix")
 
@@ -176,7 +181,7 @@ for L1 = 0:2, L2 = 0:2
 end
 
 
-#---
+##
 @info("Consistency between SphericalVector & SphericalMatrix")
 
 for L = 0:3
@@ -200,7 +205,7 @@ for L = 0:3
    println()
 end
 
-#---
+##
 @info("Consistency between Invariant Scalar & SphericalMatrix")
 
 φ = ACE.Invariant()
@@ -234,6 +239,6 @@ println()
 # ProfileView.view()
 
 
-#---
+##
 
 end
