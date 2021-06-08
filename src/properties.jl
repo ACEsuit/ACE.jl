@@ -61,14 +61,14 @@ complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
 
-write_dict(φ::Invariant{T})  where {T} = 
-   Dict("__id__" => "ACE_Invariant", 
-        "val" => φ.val, 
+write_dict(φ::Invariant{T})  where {T} =
+   Dict("__id__" => "ACE_Invariant",
+        "val" => φ.val,
         "T" => write_dict(T) )
 
-read_dict(::Val{:ACE_Invariant}, D::Dict) = 
+read_dict(::Val{:ACE_Invariant}, D::Dict) =
       Invariant{read_dict(D["T"])}(D["val"])
- 
+
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )
 
@@ -125,12 +125,12 @@ filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
 
 rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
-write_dict(φ::EuclideanVector{T}) where {T} = 
-      Dict("__id__" => "ACE_EuclideanVector", 
-              "val" => write_dict(Vector(φ.val)), 
+write_dict(φ::EuclideanVector{T}) where {T} =
+      Dict("__id__" => "ACE_EuclideanVector",
+              "val" => write_dict(Vector(φ.val)),
                 "T" => write_dict(T) )
 
-function read_dict(::Val{:ACE_EuclideanVector}, D::Dict) 
+function read_dict(::Val{:ACE_EuclideanVector}, D::Dict)
    T = read_dict(D["T"])
    return EuclideanVector{T}(SVector{3, T}(read_dict(D["val"])))
 end
@@ -178,6 +178,7 @@ end
 # # differentiation - cf #27
 # *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
 
+real(φ::SphericalVector) = SphericalVector(real(φ.val), φ._valL)
 
 getL(φ::SphericalVector{L}) where {L} = L
 

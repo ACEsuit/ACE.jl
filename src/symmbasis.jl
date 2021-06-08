@@ -44,14 +44,14 @@ fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  PROP
 
 ==(B1::SymmetricBasis, B2::SymmetricBasis) = _allfieldsequal(B1, B2)
 
-write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} = 
-      Dict( "__id__" => "ACE_SymmetricBasis", 
-            "pibasis" => write_dict(B.pibasis), 
-            "A2Bmap" => write_dict(B.A2Bmap), 
+write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
+      Dict( "__id__" => "ACE_SymmetricBasis",
+            "pibasis" => write_dict(B.pibasis),
+            "A2Bmap" => write_dict(B.A2Bmap),
             "isreal" => (B.real == Base.real) )
 
-read_dict(::Val{:ACE_SymmetricBasis}, D::Dict) = 
-      SymmetricBasis(read_dict(D["pibasis"]), 
+read_dict(::Val{:ACE_SymmetricBasis}, D::Dict) =
+      SymmetricBasis(read_dict(D["pibasis"]),
                      read_dict(D["A2Bmap"]),
                      (D["isreal"] ? Base.real : Base.identity) )
 # --------

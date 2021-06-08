@@ -63,10 +63,10 @@ import ACEbase
 @info("Test FIO")
 println(@test(all(ACEbase.Testing.test_fio(basis; warntype=false))))
 
-## 
+##
 @info("Test linear independence of the basis")
 # generate some random configurations; ord^2 + 1 sounds good :)
-cfgs = [ ACEConfig(rand(EuclideanVectorState, B1p.bases[1], nX)) 
+cfgs = [ ACEConfig(rand(EuclideanVectorState, B1p.bases[1], nX))
          for _ = 1:(3*length(basis)) ]
 A = zeros(length(cfgs), length(basis))
 for (i, cfg) in enumerate(cfgs)
@@ -103,8 +103,8 @@ for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
    φ = ACE.SphericalVector(L; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-   basis = SymmetricBasis(pibasis, φ)
-   @time SymmetricBasis(pibasis, φ);
+   basis = SymmetricBasis(pibasis, φ; isreal=false)
+   @time SymmetricBasis(pibasis, φ; isreal=false);
    BB = evaluate(basis, cfg)
 
    Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
