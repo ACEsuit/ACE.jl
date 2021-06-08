@@ -35,7 +35,16 @@ naive = ACE.LinearACEModel(basis, c, evaluator = :naive)
 standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
 
 
+## FIO 
+
+@info("Check FIO")
+using ACEbase.Testing: test_fio 
+println(@test(all(test_fio(naive; warntype = false))))
+println(@test(all(test_fio(standard; warntype = false))))
+
+
 ##
+
 
 # evaluate(naivemodel, cfg)
 # evaluate(standard, cfg)

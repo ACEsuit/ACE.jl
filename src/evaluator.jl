@@ -14,6 +14,13 @@ end
 ==(V1::PIEvaluator, V2::PIEvaluator) =
       (V1.pibasis == V2.pibasis) && (V1.coeffs == V2.coeffs)
 
+
+# ------- FIO 
+
+write_dict(ev::PIEvaluator) = Dict( "__id__" => "ACE_PIEvaluator" )
+
+read_dict(::Val{:ACE_PIEvaluator}, D::Dict, basis, c) = PIEvaluator(basis, c)
+
 # ------------------------------------------------------------
 #   Initialisation and Parameter manipulation code
 # ------------------------------------------------------------
@@ -43,20 +50,6 @@ set_params!(ev::PIEvaluator, basis::SymmetricBasis, coeffs::AbstractVector) =
 PIEvaluator(basis::SymmetricBasis, c::AbstractVector) = 
       PIEvaluator(basis.pibasis, _get_eff_coeffs(basis, c))
 
-
-
-# ------------------------------------------------------------
-#   FIO code
-# ------------------------------------------------------------
-
-write_dict(V::PIEvaluator) = Dict(
-      "__id__" => "ACE_PIEvaluator",
-     "pibasis" => write_dict(V.pibasis),
-      "coeffs" => write_dict(V.coeffs) )
-
-read_dict(::Val{:ACE_PIEvaluator}, D::Dict) =
-   PIEvaluator( read_dict(D["pibasis"]),
-                read_dict(D["coeffs"]) )
 
 
 # ------------------------------------------------------------

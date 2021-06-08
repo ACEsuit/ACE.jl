@@ -37,8 +37,8 @@ get_spec(basis::Scal1pBasis) =
 write_dict(basis::Scal1pBasis{T}) where {T} = Dict(
       "__id__" => "ACE_Scal1pBasis",
           "P" => write_dict(basis.P) , 
-          "varsym" => string(varsym), 
-          "idxsym" => string(idxsym) )
+          "varsym" => string(basis.varsym), 
+          "idxsym" => string(basis.idxsym) )
 
 read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =   
       Scal1pBasis(read_dict(D["P"]), Symbol(D["varsym"]), Symbol(D["idxsym"]))
