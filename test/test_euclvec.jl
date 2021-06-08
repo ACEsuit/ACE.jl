@@ -26,17 +26,14 @@ cfg = ACEConfig(Xs)
 
 @info("SymmetricBasis construction and evaluation: EuclideanVector")
 
-#φ = ACE.EuclideanVector(Complex{Float64})
-φ = ACE.EuclideanVector(Complex{Float64})#(Float64)
+
+φ = ACE.EuclideanVector(Complex{Float64})
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
 basis = SymmetricBasis(pibasis, φ; isreal=true)
 @time SymmetricBasis(pibasis, φ; isreal=true);
 
 BB = evaluate(basis, cfg)
 
-# a stupid but necessary test
-BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
-println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
 
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
 if !isempty(Iz)
@@ -44,9 +41,31 @@ if !isempty(Iz)
 end
 
 
-@info("Test equivariance properties")
+@info("Test equivariance properties for real version")
 
 tol = 1e-10
+
+@info("check for rotation, permutation and inversion equivariance")
+for ntest = 1:30
+   Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+   BB = evaluate(basis, ACEConfig(Xs))
+   Q = rand([-1,1]) * ACE.Random.rand_rot()
+   Xs_rot = Ref(Q) .* shuffle(Xs)
+   BB_rot = evaluate(basis, ACEConfig(Xs_rot))
+   print_tf(@test all([ norm(Q' * b1 - b2) < tol
+                        for (b1, b2) in zip(BB_rot, BB)  ]))
+end
+println()
+
+
+@info("Test equivariance properties for complex version")
+
+basis = SymmetricBasis(pibasis, φ; isreal=false)
+# a stupid but necessary test
+BB = evaluate(basis, cfg)
+BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
+println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
+
 
 @info("check for rotation, permutation and inversion equivariance")
 for ntest = 1:30
