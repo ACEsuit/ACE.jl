@@ -14,20 +14,21 @@ Option 1: pass a `PIBasis`
 ```julia
 SymmetricBasis(pibasis, φ)
 ```
-All possible permutation-invariant basis functions will be symmetrised and 
+All possible permutation-invariant basis functions will be symmetrised and
 then reduced to a basis (rather than spanning set)
 
 Option 2: pass a `OneParticleBasis`
 ```julia
-SymmetricBasis(φ, basis1p, maxν, maxdeg; 
+SymmetricBasis(φ, basis1p, maxν, maxdeg;
                Deg = NaiveTotalDegree())
 ```
-will first construct a `PIBasis` from these inputs and then call the first 
+will first construct a `PIBasis` from these inputs and then call the first
 constructor.
 """
-struct SymmetricBasis{BOP, PROP} <: ACEBasis
+struct SymmetricBasis{BOP, PROP, REAL} <: ACEBasis
    pibasis::PIBasis{BOP}
    A2Bmap::SparseMatrixCSC{PROP, Int}
+   real::REAL
 end
 
 
@@ -38,10 +39,10 @@ fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  PROP
 # rfltype(basis::SymmetricBasis) = rfltype(basis.pibasis)
 
 
-SymmetricBasis(φ::AbstractProperty, args...; kwargs...) =
-      SymmetricBasis(PIBasis(args...; kwargs..., property = φ), φ)
+SymmetricBasis(φ::AbstractProperty, args...; isreal=true, kwargs...) =
+      SymmetricBasis(PIBasis(args...; kwargs..., property = φ), φ; isreal=isreal)
 
-function SymmetricBasis(pibasis, φ::TP) where {TP}
+function SymmetricBasis(pibasis, φ::TP; isreal=true) where {TP}
 
    # AA index -> AA spec
    AAspec = get_spec(pibasis)
@@ -113,7 +114,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
    # TODO: filter and throw out everything that hasn't been used!!
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
-   return SymmetricBasis(pibasis, A2Bmap)
+   return SymmetricBasis(pibasis, A2Bmap, isreal ? Base.real : Base.identity)
 end
 
 
@@ -184,9 +185,9 @@ end
 _nnllmm2b(b, nn, ll, mm) = [ _nlm2b(b, n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
 
 @generated function _nlm2b(b::NamedTuple{ALLKEYS}, n::NamedTuple{NKEYS}, l, m) where {ALLKEYS, NKEYS}
-   code = 
+   code =
       ( "( _b = (" * prod("$(k) = n.$(k), " for k in NKEYS) * "l = l, m = m ); "
-         * 
+         *
         " b = (" * prod("$(k) = _b.$(k), " for k in ALLKEYS) * ") )" )
    :( $(Meta.parse(code)) )
 end
@@ -281,7 +282,7 @@ function evaluate!(B, tmp, basis::SymmetricBasis,
    # compute AA
    evaluate!(tmp.AA, tmp.tmppi, basis.pibasis, cfg)
    evaluate!(B, tmp, basis, tmp.AA)
-   return B
+   return basis.real.(B)
 end
 
 # this function allows us to attach multiple symmetric bases to a single

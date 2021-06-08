@@ -26,16 +26,17 @@ cfg = ACEConfig(Xs)
 
 @info("SymmetricBasis construction and evaluation: EuclideanVector")
 
-φ = ACE.EuclideanVector(Complex{Float64})
+#φ = ACE.EuclideanVector(Complex{Float64})
+φ = ACE.EuclideanVector(Complex{Float64})#(Float64)
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
-basis = SymmetricBasis(pibasis, φ)
-@time SymmetricBasis(pibasis, φ);
+basis = SymmetricBasis(pibasis, φ; isreal=true)
+@time SymmetricBasis(pibasis, φ; isreal=true);
 
 BB = evaluate(basis, cfg)
 
 # a stupid but necessary test
 BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
-println(@test isapprox(BB, BB1, rtol=1e-10))
+println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
 
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
 if !isempty(Iz)

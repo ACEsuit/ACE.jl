@@ -1,5 +1,5 @@
 
-import Base: -, +, *, filter, real, complex 
+import Base: -, +, *, filter, real, complex
 import LinearAlgebra: norm, promote_leaf_eltypes
 
 
@@ -17,7 +17,7 @@ import LinearAlgebra: norm, promote_leaf_eltypes
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
-promote_leaf_eltypes(φ::T) where {T <: AbstractProperty} = 
+promote_leaf_eltypes(φ::T) where {T <: AbstractProperty} =
       promote_leaf_eltypes(φ.val)
 
 Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
@@ -40,6 +40,7 @@ coco_o_daa(cc::SArray{Tuple{N1,N2,N3}}, b::SVector{N4}) where {N1,N2,N3,N4} =
 Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
       isapprox(φ1.val, φ2.val)
 
+
 """
 `struct Invariant{D}` : specifies that the output of an ACE is
 an invariant scalar.
@@ -59,7 +60,7 @@ complex(φ::Invariant) = Invariant(complex(φ.val))
 complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
- 
+
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )
 
@@ -97,6 +98,14 @@ where $\cdot$ denotes the standard matrix-vector product.
 struct EuclideanVector{T} <: AbstractProperty
    val::SVector{3, T}
 end
+
+
+real(φ::EuclideanVector) = EuclideanVector(real(φ.val))
+complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
+complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
+
+
+#fltype(::EuclideanVector{T}) where {T} = T
 
 EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}))
 
