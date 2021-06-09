@@ -119,7 +119,7 @@ function evaluate_d!(g, tmpd, V::PIEvaluator, cfg::AbstractConfiguration)
    evaluate_ed!(A, dA, tmpd_1p, basis1p, cfg)
 
    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
-   dAco = tmpd.dAco
+   dAco = zeros(eltype(dAAdA), length(A)) # tmpd.dAco
    c = V.coeffs
    spec = V.pibasis.spec
    fill!(dAco, zero(eltype(dAco)))

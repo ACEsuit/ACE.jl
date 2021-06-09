@@ -9,6 +9,7 @@
 
 export SparsePSHDegree
 
+using Parameters: @with_kw
 
 abstract type AbstractPSHDegree <: AbstractDegree end
 

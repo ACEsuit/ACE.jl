@@ -132,3 +132,15 @@ function adjoint_EVAL_D(m::LinearACEModel, ::NaiveEvaluator,
    end
    return g
 end
+
+
+# ------------------- dispatching the rrule 
+
+import ChainRules: rrule, @thunk, NO_FIELDS, @not_implemented
+
+function rrule(::typeof(evaluate), m::LinearACEModel, env::AbstractConfiguration)
+   val = evaluate(m, env)
+   pullback = dv -> (NO_FIELDS, @thunk(grad_params(m, env)), 
+                                @thunk(grad_config(m, env)))
+   return val, pullback
+end

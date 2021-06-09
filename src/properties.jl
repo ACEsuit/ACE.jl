@@ -37,6 +37,7 @@ function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState{SYMS}} wher
    return TX( NamedTuple{SYMS}(vals) )
 end
 
+coco_o_daa(cc::Number, b::Number) = cc * b 
 coco_o_daa(cc::Number, b::SVector) = cc * b
 coco_o_daa(cc::SVector, b::SVector) = cc * transpose(b)
 coco_o_daa(cc::SMatrix{N1,N2}, b::SVector{N3}) where {N1,N2,N3} =

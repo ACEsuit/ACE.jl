@@ -44,7 +44,7 @@ read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =
 fltype(basis::Scal1pBasis{T}) where T = T
 
 gradtype(basis::Scal1pBasis, X::AbstractState) = 
-      promote_type(fltype(basis), typeof(X))
+      dstate_type(fltype(basis), X)
 
 symbols(basis::Scal1pBasis) = [basis.idxsym]
 
@@ -94,12 +94,13 @@ function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::TX) where {TX <: AbstractS
    return dB
 end
 
-function evaluate_ed!(B, dB, tmpd, basis::Scal1pBasis, X::TX) where {TX <: AbstractState}
+function evaluate_ed!(B, dB, tmpd, basis::Scal1pBasis, X::AbstractState)
+   TDX = eltype(dB)
    x = _getval(X, basis)
    evaluate!(B, tmpd.tmpdP, basis.P, x)
    evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, x)
    for n = 1:length(basis)
-      dB[n] = TX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
+      dB[n] = TDX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
    end
    return B, dB
 end
