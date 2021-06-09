@@ -14,6 +14,9 @@ This package implements approximation schemes for permutation and isometry invar
 Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. There are also implementations of pure permutation invariant bases and of bases with only cylindrical symmetries for bond energies.
 Documentation is a work in progress; if you wish to use the code please contact the author.
 
+* Main new development towards full AD is on `dev-v0.12` branch
+* The `dev-v0.11` branch will be developed as needed for new features pre-AD, but otherwise will be just maintenance.
+* All previous branches are in maintenance mode.
 
 
 ## References
