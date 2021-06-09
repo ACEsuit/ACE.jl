@@ -316,7 +316,7 @@ end
 function gradtype(basis::SymmetricBasis)
    φ = zero(eltype(basis.A2Bmap))
    dAA = zero(gradtype(basis.pibasis))
-   return typeof(coco_o_daa(φ, dAA))
+   return typeof(_myreal1234( coco_o_daa(φ, dAA), basis.real))
 end
 
 alloc_temp_d(basis::SymmetricBasis, nmax::Integer) =
@@ -339,5 +339,10 @@ end
 
 function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
-   genmul!(dB, basis.A2Bmap, dAA, ACE.coco_o_daa)
+   genmul!(dB, basis.A2Bmap, dAA, 
+           (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
 end
+
+# weird name to avoid clashes
+_myreal1234(a, ::typeof(Base.identity)) = a
+_myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)
