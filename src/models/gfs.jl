@@ -15,6 +15,7 @@ struct GFinnisSinclairACE{TB, T, TEV, TF}
    F::TF
 end
 
+#test
 
 # * constructors: 
 #    basis, F, maybe c -> GFinnisSinclairACE
