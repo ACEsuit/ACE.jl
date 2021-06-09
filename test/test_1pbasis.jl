@@ -8,7 +8,7 @@ using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis
 using Random: shuffle
-using ACEbase.Testing: dirfdtest, fdtest, print_tf
+using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 
 ##
 
@@ -38,6 +38,13 @@ println(@test A1 ≈ A)
 
 @info("test permutation invariance")
 println(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
+
+##
+
+@info("Test FIO")
+for _B in (J, Rn, Ylm, B1p)
+   println((@test(all(test_fio(_B)))))
+end
 
 ##
 

@@ -14,34 +14,53 @@ Option 1: pass a `PIBasis`
 ```julia
 SymmetricBasis(pibasis, φ)
 ```
-All possible permutation-invariant basis functions will be symmetrised and 
+All possible permutation-invariant basis functions will be symmetrised and
 then reduced to a basis (rather than spanning set)
 
 Option 2: pass a `OneParticleBasis`
 ```julia
-SymmetricBasis(φ, basis1p, maxν, maxdeg; 
+SymmetricBasis(φ, basis1p, maxν, maxdeg;
                Deg = NaiveTotalDegree())
 ```
-will first construct a `PIBasis` from these inputs and then call the first 
+will first construct a `PIBasis` from these inputs and then call the first
 constructor.
 """
-struct SymmetricBasis{BOP, PROP} <: ACEBasis
+struct SymmetricBasis{BOP, PROP, REAL} <: ACEBasis
    pibasis::PIBasis{BOP}
    A2Bmap::SparseMatrixCSC{PROP, Int}
+   real::REAL
 end
 
 
 Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
       size(basis.A2Bmap, 1)
 
-fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  PROP
+fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  basis.real(PROP)
+
 # rfltype(basis::SymmetricBasis) = rfltype(basis.pibasis)
 
 
-SymmetricBasis(φ::AbstractProperty, args...; kwargs...) =
-      SymmetricBasis(PIBasis(args...; kwargs..., property = φ), φ)
 
-function SymmetricBasis(pibasis, φ::TP) where {TP}
+# -------- FIO
+
+==(B1::SymmetricBasis, B2::SymmetricBasis) = _allfieldsequal(B1, B2)
+
+write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
+      Dict( "__id__" => "ACE_SymmetricBasis",
+            "pibasis" => write_dict(B.pibasis),
+            "A2Bmap" => write_dict(B.A2Bmap),
+            "isreal" => (B.real == Base.real) )
+
+read_dict(::Val{:ACE_SymmetricBasis}, D::Dict) =
+      SymmetricBasis(read_dict(D["pibasis"]),
+                     read_dict(D["A2Bmap"]),
+                     (D["isreal"] ? Base.real : Base.identity) )
+# --------
+
+SymmetricBasis(φ::AbstractProperty, args...; isreal=false, kwargs...) =
+      SymmetricBasis(PIBasis(args...; kwargs..., property = φ), φ; isreal=isreal)
+
+function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
 
    # AA index -> AA spec
    AAspec = get_spec(pibasis)
@@ -113,7 +132,7 @@ function SymmetricBasis(pibasis, φ::TP) where {TP}
    # TODO: filter and throw out everything that hasn't been used!!
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
-   return SymmetricBasis(pibasis, A2Bmap)
+   return SymmetricBasis(pibasis, A2Bmap, isreal ? Base.real : Base.identity)
 end
 
 
@@ -184,9 +203,9 @@ end
 _nnllmm2b(b, nn, ll, mm) = [ _nlm2b(b, n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
 
 @generated function _nlm2b(b::NamedTuple{ALLKEYS}, n::NamedTuple{NKEYS}, l, m) where {ALLKEYS, NKEYS}
-   code = 
+   code =
       ( "( _b = (" * prod("$(k) = n.$(k), " for k in NKEYS) * "l = l, m = m ); "
-         * 
+         *
         " b = (" * prod("$(k) = _b.$(k), " for k in ALLKEYS) * ") )" )
    :( $(Meta.parse(code)) )
 end
@@ -280,8 +299,7 @@ function evaluate!(B, tmp, basis::SymmetricBasis,
                    cfg::AbstractConfiguration)
    # compute AA
    evaluate!(tmp.AA, tmp.tmppi, basis.pibasis, cfg)
-   evaluate!(B, tmp, basis, tmp.AA)
-   return B
+   return evaluate!(B, tmp, basis, tmp.AA)
 end
 
 # this function allows us to attach multiple symmetric bases to a single
@@ -290,7 +308,7 @@ end
 #        and clean and will do for now...
 function evaluate!(B, tmp, basis::SymmetricBasis,
                    AA::AbstractVector{<: Number})
-   genmul!(B, basis.A2Bmap, AA, *)
+   genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
 end
 
 # ---- gradients
@@ -301,7 +319,7 @@ gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
 function gradtype(basis::SymmetricBasis, cfgorX)
    φ = zero(eltype(basis.A2Bmap))
    dAA = zero(gradtype(basis.pibasis, cfgorX))
-   return typeof(coco_o_daa(φ, dAA))
+   return typeof(_myreal1234( coco_o_daa(φ, dAA), basis.real))
 end
 
 alloc_temp_d(basis::SymmetricBasis, cfg::AbstractConfiguration, nmax::Integer = length(cfg)) =
@@ -324,5 +342,10 @@ end
 
 function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
-   genmul!(dB, basis.A2Bmap, dAA, ACE.coco_o_daa)
+   genmul!(dB, basis.A2Bmap, dAA, 
+           (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
 end
+
+# weird name to avoid clashes
+_myreal1234(a, ::typeof(Base.identity)) = a
+_myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)

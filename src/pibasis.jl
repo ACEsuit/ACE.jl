@@ -12,9 +12,7 @@ struct PIBasisSpec
    iAA2iA::Matrix{Int}     # where in A can we find the ith basis function
 end
 
-==(B1::PIBasisSpec, B2::PIBasisSpec) = (
-         (B1.b2iA == B2.b2iA) &&
-         (B1.iAA2iA == B2.iAA2iA) )
+==(B1::PIBasisSpec, B2::PIBasisSpec) = _allfieldsequal(B1, B2)
 
 Base.length(spec::PIBasisSpec) = length(spec.orders)
 
@@ -175,12 +173,12 @@ write_dict(basis::PIBasis) =
    Dict(  "__id__" => "ACE_PIBasis",
          "basis1p" => write_dict(basis.basis1p),
             "spec" => write_dict(basis.spec),
-            "real" => basis.real )
+            "real" => basis.real == Base.real ? true : false )
 
 read_dict(::Val{:ACE_PIBasis}, D::Dict) =
    PIBasis( read_dict(D["basis1p"]),
             read_dict(D["spec"]),
-            D["real"] )
+            D["real"] ? Base.real : Base.identity )
 
 write_dict(spec::PIBasisSpec) =
    Dict( "__id__" => "ACE_PIBasisSpec",

@@ -7,7 +7,7 @@ using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       EuclideanVectorState, Product1pBasis
 using Random: shuffle
-using ACEbase.Testing: dirfdtest, fdtest, print_tf
+using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 
 ##
 
@@ -20,6 +20,12 @@ bscal = ACE.scal1pbasis(:x, :k, maxdeg, trans, rcut)
 ACE.evaluate(bscal, 1.2)
 ACE.evaluate_d(bscal, 1.0)
 
+
+
 ##
 
+@info("Test FIO")
+println(@test(all(test_fio(bscal))))
+
+##
 end

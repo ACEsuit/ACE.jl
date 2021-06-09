@@ -101,4 +101,6 @@ include("testing/testing.jl")
 
 include("ad.jl")
 
+include("models/models.jl")
+
 end # module

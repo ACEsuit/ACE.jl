@@ -58,8 +58,14 @@ for ntest = 1:30
 end
 println()
 
+##
+import ACEbase
+@info("Test FIO")
+println(@test(all(ACEbase.Testing.test_fio(basis; warntype=false))))
+
 
 ## 
+
 @info("Test linear independence of the basis")
 # generate some random configurations; ord^2 + 1 sounds good :)
 cfgs = [ ACEConfig(rand(PositionState{Float64}, B1p.bases[1], nX)) 
