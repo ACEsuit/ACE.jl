@@ -35,7 +35,8 @@ end
 Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
       size(basis.A2Bmap, 1)
 
-fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  PROP
+fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  basis.real(PROP)
+
 # rfltype(basis::SymmetricBasis) = rfltype(basis.pibasis)
 
 
@@ -56,10 +57,10 @@ read_dict(::Val{:ACE_SymmetricBasis}, D::Dict) =
                      (D["isreal"] ? Base.real : Base.identity) )
 # --------
 
-SymmetricBasis(φ::AbstractProperty, args...; isreal=true, kwargs...) =
+SymmetricBasis(φ::AbstractProperty, args...; isreal=false, kwargs...) =
       SymmetricBasis(PIBasis(args...; kwargs..., property = φ), φ; isreal=isreal)
 
-function SymmetricBasis(pibasis, φ::TP; isreal=true) where {TP}
+function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
 
    # AA index -> AA spec
    AAspec = get_spec(pibasis)
@@ -298,8 +299,7 @@ function evaluate!(B, tmp, basis::SymmetricBasis,
                    cfg::AbstractConfiguration)
    # compute AA
    evaluate!(tmp.AA, tmp.tmppi, basis.pibasis, cfg)
-   evaluate!(B, tmp, basis, tmp.AA)
-   return basis.real.(B)
+   return evaluate!(B, tmp, basis, tmp.AA)
 end
 
 # this function allows us to attach multiple symmetric bases to a single
@@ -308,7 +308,7 @@ end
 #        and clean and will do for now...
 function evaluate!(B, tmp, basis::SymmetricBasis,
                    AA::AbstractVector{<: Number})
-   genmul!(B, basis.A2Bmap, AA, *)
+   genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
 end
 
 # ---- gradients

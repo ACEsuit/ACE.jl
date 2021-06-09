@@ -4,11 +4,11 @@
 ##
 
 
-using ACE
+using ACE, StaticArrays
 using Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACE.Random: rand_rot, rand_refl
-
+using ACEbase.Testing: fdtest
 
 # construct the 1p-basis
 D = NaiveTotalDegree()
@@ -33,7 +33,6 @@ basis = SymmetricBasis(pibasis, φ; isreal=true)
 @time SymmetricBasis(pibasis, φ; isreal=true);
 
 BB = evaluate(basis, cfg)
-
 
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
 if !isempty(Iz)
