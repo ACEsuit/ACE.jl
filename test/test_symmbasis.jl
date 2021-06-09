@@ -63,10 +63,10 @@ import ACEbase
 @info("Test FIO")
 println(@test(all(ACEbase.Testing.test_fio(basis; warntype=false))))
 
-## 
+##
 @info("Test linear independence of the basis")
 # generate some random configurations; ord^2 + 1 sounds good :)
-cfgs = [ ACEConfig(rand(EuclideanVectorState, B1p.bases[1], nX)) 
+cfgs = [ ACEConfig(rand(EuclideanVectorState, B1p.bases[1], nX))
          for _ = 1:(3*length(basis)) ]
 A = zeros(length(cfgs), length(basis))
 for (i, cfg) in enumerate(cfgs)

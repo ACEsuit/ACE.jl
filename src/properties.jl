@@ -1,5 +1,5 @@
 
-import Base: -, +, *, filter, real, complex 
+import Base: -, +, *, filter, real, complex
 import LinearAlgebra: norm, promote_leaf_eltypes
 
 
@@ -17,7 +17,7 @@ import LinearAlgebra: norm, promote_leaf_eltypes
 @inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
-promote_leaf_eltypes(φ::T) where {T <: AbstractProperty} = 
+promote_leaf_eltypes(φ::T) where {T <: AbstractProperty} =
       promote_leaf_eltypes(φ.val)
 
 Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
@@ -40,6 +40,7 @@ coco_o_daa(cc::SArray{Tuple{N1,N2,N3}}, b::SVector{N4}) where {N1,N2,N3,N4} =
 Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
       isapprox(φ1.val, φ2.val)
 
+
 """
 `struct Invariant{D}` : specifies that the output of an ACE is
 an invariant scalar.
@@ -60,14 +61,14 @@ complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
 
-write_dict(φ::Invariant{T})  where {T} = 
-   Dict("__id__" => "ACE_Invariant", 
-        "val" => φ.val, 
+write_dict(φ::Invariant{T})  where {T} =
+   Dict("__id__" => "ACE_Invariant",
+        "val" => φ.val,
         "T" => write_dict(T) )
 
-read_dict(::Val{:ACE_Invariant}, D::Dict) = 
+read_dict(::Val{:ACE_Invariant}, D::Dict) =
       Invariant{read_dict(D["T"])}(D["val"])
- 
+
 filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
      iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )
 
@@ -106,6 +107,14 @@ struct EuclideanVector{T} <: AbstractProperty
    val::SVector{3, T}
 end
 
+
+real(φ::EuclideanVector) = EuclideanVector(real(φ.val))
+complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
+complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
+
+
+#fltype(::EuclideanVector{T}) where {T} = T
+
 EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}))
 
 EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
@@ -116,12 +125,12 @@ filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
 
 rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
-write_dict(φ::EuclideanVector{T}) where {T} = 
-      Dict("__id__" => "ACE_EuclideanVector", 
-              "val" => write_dict(Vector(φ.val)), 
+write_dict(φ::EuclideanVector{T}) where {T} =
+      Dict("__id__" => "ACE_EuclideanVector",
+              "val" => write_dict(Vector(φ.val)),
                 "T" => write_dict(T) )
 
-function read_dict(::Val{:ACE_EuclideanVector}, D::Dict) 
+function read_dict(::Val{:ACE_EuclideanVector}, D::Dict)
    T = read_dict(D["T"])
    return EuclideanVector{T}(SVector{3, T}(read_dict(D["val"])))
 end
@@ -169,6 +178,7 @@ end
 # # differentiation - cf #27
 # *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
 
+real(φ::SphericalVector) = SphericalVector(real(φ.val), φ._valL)
 
 getL(φ::SphericalVector{L}) where {L} = L
 

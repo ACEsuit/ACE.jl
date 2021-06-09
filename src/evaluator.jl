@@ -53,20 +53,6 @@ PIEvaluator(basis::SymmetricBasis, c::AbstractVector) =
 
 
 # ------------------------------------------------------------
-#   FIO code
-# ------------------------------------------------------------
-
-write_dict(V::PIEvaluator) = Dict(
-      "__id__" => "ACE_PIEvaluator",
-     "pibasis" => write_dict(V.pibasis),
-      "coeffs" => write_dict(V.coeffs) )
-
-read_dict(::Val{:ACE_PIEvaluator}, D::Dict) =
-   PIEvaluator( read_dict(D["pibasis"]),
-                read_dict(D["coeffs"]) )
-
-
-# ------------------------------------------------------------
 #   Standard Evaluation code
 # ------------------------------------------------------------
 
