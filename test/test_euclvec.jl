@@ -77,7 +77,7 @@ println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isrea
 
 @info("check for rotation, permutation and inversion equivariance")
 for ntest = 1:30
-   Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
    BB = evaluate(basis, ACEConfig(Xs))
    Q = rand([-1,1]) * ACE.Random.rand_rot()
    Xs_rot = Ref(Q) .* shuffle(Xs)
