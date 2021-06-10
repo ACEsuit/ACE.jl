@@ -5,6 +5,7 @@
 # prototypes for space transforms and cutoffs
 function transform end
 function transform_d end
+function transform_dd end
 function inv_transform end
 
 

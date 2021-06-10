@@ -3,6 +3,12 @@ module ACE
 
 using Reexport
 
+# external imports that are useful for all submodules
+include("imports.jl")
+
+@extimports
+@baseimports
+
 
 abstract type AbstractACEModel end 
 
@@ -13,11 +19,14 @@ function coco_zeros end
 function coco_filter end
 function coco_dot end
 
-# external imports that are useful for all submodules
-include("imports.jl")
+# TODO 
+# * decide on rand(basis) interface
+# * move these the following definitions to ACEbase
+function valtype end 
+function gradtype end 
+alloc_B(B::ACEBasis, x) = zeros(valtype(B, x), length(B))
+alloc_dB(B::ACEBasis, x) = zeros(gradtype(B, x), length(B))
 
-@extimports
-@baseimports
 
 include("auxiliary.jl")
 

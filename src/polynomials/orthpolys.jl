@@ -7,36 +7,57 @@ using LinearAlgebra: dot
 
 import ACE
 
-import ACE: evaluate!, evaluate_d!, fltype, read_dict, write_dict,
-            alloc_B, alloc_dB, transform, transform_d, inv_transform,
-            ACEBasis, ScalarACEBasis
+import ACE: evaluate!, evaluate_d!, read_dict, write_dict,
+            alloc_B, alloc_dB, 
+            transform, transform_d, transform_dd, inv_transform,
+            ACEBasis, ScalarACEBasis, 
+            valtype, gradtype
 
 using ACE.Transforms: DistanceTransform
 
+using ForwardDiff: derivative
+
 import Base: ==
+
+import ChainRules: rrule, NO_FIELDS, NoTangent
+import ACE: evaluate, evaluate_d 
 
 export transformed_jacobi
 
-# this is a hack to prevent a weird compiler error that I don't understand
-# at all yet
-___f___(D::Dict) = (@show D)
+# these inner functions have been timed to run at 
+#    6.7ns, 9.2ns, 11.7ns => no need to hand-optimise
+_fcut_inner(pl, tl, pr, tr, t) = (t - tl)^pl * (t - tr)^pr
+
+_fcut_d_inner(pl, tl, pr, tr, t) = 
+      derivative( t -> _fcut_inner(pl, tl, pr, tr, t),  t )
+
+_fcut_dd_inner(pl, tl, pr, tr, t) = 
+      derivative( t -> _fcut_d_inner(pl, tl, pr, tr, t),  t )
+
 
 function _fcut_(pl, tl, pr, tr, t)
    if (pl > 0 && t < tl) || (pr > 0 && t > tr)
       return zero(t)
    end
-   return (t - tl)^pl * (t - tr)^pr
+   return _fcut_inner(pl, tl, pr, tr, t)
 end
 
 function _fcut_d_(pl, tl, pr, tr, t)
    if (pl > 0 && t < tl) || (pr > 0 && t > tr)
       return zero(t)
    end
-   df = 0.0
-   if pl > 0; df += pl * (t - tl)^(pl-1) * (t-tr )^pr ; end
-   if pr  > 0; df += pr  * (t -  tr)^(pr -1) * (t-tl)^pl; end
-   return df
+   return _fcut_d_inner(pl, tl, pr, tr, t)
 end
+
+function _fcut_dd_(pl, tl, pr, tr, t)
+   if (pl > 0 && t < tl) || (pr > 0 && t > tr)
+      return zero(t)
+   end
+   return _fcut_dd_inner(pl, tl, pr, tr, t)
+end
+
+
+
 
 @doc raw"""
 `OrthPolyBasis:` defined a basis of orthonormal polynomials in terms of the
@@ -52,7 +73,8 @@ an "envelope". This results in the recursion
 Orthogonality is achieved with respect to a user-specified distribution, which
 can be either continuous or discrete.
 
-TODO: say more on the distribution!
+TODO: say more on the distribution! Maybe generalize to non-diagonal 
+inner products?
 """
 struct OrthPolyBasis{T} <: ScalarACEBasis
    # ----------------- the parameters for the cutoff function
@@ -70,7 +92,12 @@ struct OrthPolyBasis{T} <: ScalarACEBasis
    ww::Vector{T}
 end
 
-fltype(P::OrthPolyBasis{T}) where {T} = T
+valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
+      promote_type(T, TX)
+
+gradtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
+      promote_type(T, TX)
+
 Base.length(P::OrthPolyBasis) = length(P.A)
 
 ==(J1::OrthPolyBasis, J2::OrthPolyBasis) =
@@ -171,23 +198,6 @@ function OrthPolyBasis(N::Integer,
    return OrthPolyBasis(pl, tl, pr, tr, A, B, C, collect(tdf), collect(ww))
 end
 
-alloc_B( J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
-alloc_dB(J::OrthPolyBasis{T}) where {T} = zeros(T, length(J))
-# alloc_B( J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
-# alloc_dB(J::OrthPolyBasis{T}, ::Integer) where {T} = zeros(T, length(J))
-
-# # TODO: revisit this to allow type genericity!!!
-# alloc_B( J::OrthPolyBasis,
-#          ::Union{SVector{3, TX}, AbstractVector{SVector{3, TX}}}) where {TX} =
-#    zeros(TX, length(J))
-# alloc_dB( J::OrthPolyBasis,
-#          ::Union{SVector{3, TX}, AbstractVector{SVector{3, TX}}}) where {TX} =
-#    zeros(TX, length(J))
-
-# TODO -> should do a type promotion here???
-alloc_B( J::OrthPolyBasis, ::TX) where {TX <: Number} = zeros(TX, length(J))
-alloc_dB(J::OrthPolyBasis, ::TX) where {TX <: Number} = zeros(TX, length(J))
-
 
 
 evaluate_P1(J::OrthPolyBasis, t) =
@@ -226,25 +236,6 @@ function evaluate_d!(dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
    return dP
 end
 
-function evaluate_ed!(P, dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
-   @assert maxn <= min(length(P), length(dP))
-
-   P[1] = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
-   dP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
-   if maxn == 1; return dP; end
-
-   α = J.A[2] * t + J.B[2]
-   P[2] = α * P[1]
-   dP[2] = α * dP[1] + J.A[2] * P[1]
-   if maxn == 2; return dP; end
-
-   @inbounds for n = 3:maxn
-      α = J.A[n] * t + J.B[n]
-      P[n] = α * P[n-1] + J.C[n] * P[n-2]
-      dP[n] = α * dP[n-1] + J.C[n] * dP[n-2] + J.A[n] * P[n-1]
-   end
-   return dP
-end
 
 
 """
@@ -303,18 +294,20 @@ read_dict(::Val{:SHIPs_TransformedPolys}, D::Dict) =
 read_dict(::Val{:ACE_TransformedPolys}, D::Dict) = TransformedPolys(D)
 
 Base.length(J::TransformedPolys) = length(J.J)
-fltype(P::TransformedPolys{T}) where {T} = T
+
+valtype(P::TransformedPolys, args...) = valtype(P.J, args...)
+
+gradtype(P::TransformedPolys, args...) = gradtype(P.J, args...)
+
 
 function ACE.rand_radial(J::TransformedPolys)
    t = ACE.rand_radial(J.J)
    return inv_transform(J.trans, t)
 end
 
-cutoff(J::TransformedPolys) = J.ru
+# This is NOT the JuLIP or ACEatoms cutoff, but an internal function 
+_cutoff(J::TransformedPolys) = J.ru
 
-alloc_B( J::TransformedPolys, args...) = alloc_B(J.J, args...)
-alloc_dB(J::TransformedPolys) = alloc_dB(J.J)
-alloc_dB(J::TransformedPolys, N::Integer) = alloc_dB(J.J)
 
 function evaluate!(P, tmp, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
@@ -334,15 +327,7 @@ function evaluate_d!(dP, tmp, J::TransformedPolys, r; maxn=length(J))
    return dP
 end
 
-function evaluate_ed!(P, dP, tmp, J::TransformedPolys, r; maxn=length(J))
-   # transform coordinates
-   t = transform(J.trans, r)
-   dt = transform_d(J.trans, r)
-   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-   evaluate_d!(P, dP, nothing, J.J, t, maxn=maxn)
-   @. dP *= dt
-   return dP
-end
+
 
 """
 `transformed_jacobi(maxdeg, trans, rcut, rin = 0.0; kwargs...)` : construct
@@ -370,9 +355,111 @@ function transformed_jacobi(maxdeg::Integer,
 end
 
 
-# ------------- MORE FUNCTIONALITY -------------
+# ------------- AD
 
-# include("products.jl");
+
+function _rrule_evaluate(J::OrthPolyBasis, t::Number, 
+                         w::AbstractVector{<: Number})
+   maxn = length(w)
+   @assert maxn <= length(J)
+
+   P1 = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+   dP1 = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
+   a = dP1 * w[1] 
+   if maxn == 1 
+      return a
+   end 
+
+   α = J.A[2] * t + J.B[2]
+   P2 = α * P1
+   dP2 = α * dP1 + J.A[2] * P1
+   a += dP2 * w[2] 
+   if maxn == 2
+      return a 
+   end 
+
+   @inbounds for n = 3:maxn
+      α = J.A[n] * t + J.B[n]
+      P3 = α * P2 + J.C[n] * P1
+      dP3 = α * dP2 + J.C[n] * dP1 + J.A[n] * P2
+      a += dP3 * w[n] 
+      P2, P1 = P3, P2
+      dP2, dP1 = dP3, dP2
+   end
+
+   return a
+end
+
+function _rrule_evaluate(P::TransformedPolys, x::Number, 
+                         dx::AbstractVector{<: Number})
+   t = transform(P.trans, x)
+   dt = transform_d(P.trans, x)
+   a = _rrule_evaluate(P.J, t, dx)
+   return a * dt
+end
+
+function rrule(::typeof(evaluate), P::TransformedPolys, x::Number)
+   B = evaluate(P, x)
+   return B, dx -> (NO_FIELDS, NoTangent(), _rrule_evaluate(P, x, dx))
+end
+
+
+# This function is buggy and has temporarily been 
+# replaced with a ForwardDiff Implementation
+function _rrule_evaluate_d(J::OrthPolyBasis, t::Number, 
+                           w::AbstractVector{<: Number}, 
+                           dt = 1.0, ddt = 0.0)
+   maxn = length(w)
+   @assert maxn <= length(J)
+
+   P1 = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+   dP1 = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
+   ddP1 = J.A[1] * _fcut_dd_(J.pl, J.tl, J.pr, J.tr, t)
+   a = (ddP1 * dt^2 + dP1 * ddt) * w[1]
+   if maxn == 1 
+      return a
+   end 
+
+   α = J.A[2] * t + J.B[2]
+   P2 = α * P1
+   dP2 = α * dP1 + J.A[2] * P1
+   ddP2 = α * ddP1 + J.A[2] * dP1
+   a += (ddP2 * dt^2 + dP2 * ddt) * w[2] 
+   if maxn == 2
+      return a 
+   end 
+
+   @inbounds for n = 3:maxn
+      α = J.A[n] * t + J.B[n]
+      P3 = α * P2 + J.C[n] * P1
+      dP3 = α * dP2 + J.C[n] * dP1 + J.A[n] * P2
+      ddP3 = α * ddP2 + J.C[n] * ddP1 + J.A[n] * dP2
+      a += (ddP3 * dt^2 + dP3 * ddt) * w[n] 
+      P2, P1 = P3, P2
+      dP2, dP1 = dP3, dP2
+      ddP2, ddP1 = ddP3, ddP2
+   end
+
+   return a
+end 
+
+
+function _rrule_evaluate_d(P::TransformedPolys, x::Number, 
+                           w::AbstractVector{<: Number})
+   ddP = derivative(x -> evaluate_d(P, x), x)
+   return dot(ddP, w)
+   # t = transform(P.trans, x)
+   # dt = transform_d(P.trans, x)
+   # ddt = transform_dd(P.trans, x)
+   # return _rrule_evaluate_d(P.J, t, dx, dt, ddt)
+end
+
+
+function rrule(::typeof(evaluate_d), P::TransformedPolys, x::Number)
+   dB = evaluate_d(P, x)
+   return dB, dx -> (NO_FIELDS, NoTangent(), _rrule_evaluate_d(P, x, dx))
+end
+
 
 
 end

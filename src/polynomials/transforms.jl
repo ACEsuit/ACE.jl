@@ -3,15 +3,19 @@
 module Transforms
 
 import Base:   ==
-import ACE: read_dict, write_dict, transform, transform_d, inv_transform
+import ACE: read_dict, write_dict, 
+       transform, transform_d, transform_dd, inv_transform
 abstract type DistanceTransform end
 
 export PolyTransform, IdTransform, MorseTransform, AgnesiTransform
 
+using ForwardDiff: derivative 
 
-poly_trans(p, r0, r) = @fastmath(((1+r0)/(1+r))^p)
+poly_trans(p, r0, r) = ((1+r0)/(1+r))^p
 
-poly_trans_d(p, r0, r) = @fastmath((-p/(1+r0)) * ((1+r0)/(1+r))^(p+1))
+poly_trans_d(p, r0, r) = (-p/(1+r0)) * ((1+r0)/(1+r))^(p+1)
+
+poly_trans_dd(p, r0, r) = derivative(r -> poly_trans_d(p, r0, r), r)
 
 poly_trans_inv(p, r0, x) = ( (1+r0)/(x^(1/p)) - 1 )
 
@@ -64,6 +68,7 @@ IdTransform(D::Dict) = IdTransform()
 read_dict(::Val{:ACE_IdTransform}, D::Dict) = IdTransform(D)
 transform(t::IdTransform, z::Number) = z
 transform_d(t::IdTransform, r::Number) = one(r)
+transform_dd(t::IdTransform, r::Number) = zero(r)
 inv_transform(t::IdTransform, x::Number) = x
 
 read_dict(::Val{:SHIPs_IdTransform}, D::Dict) =
