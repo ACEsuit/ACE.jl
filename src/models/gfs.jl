@@ -104,33 +104,40 @@ function grad_config(m::GfsModel, X::AbstractConfiguration)
    return(x_bar)
 end
 
-# function grad_params_config(m::GfsModel, X::AbstractConfiguration) 
-#    #forward pass, accumulating rules
-#    ϕ = []
-#    ϕ_pullbacks_θ = Array{Function}(undef, length(m.c[1,:]))
-#    ϕ_pullbacks_X = Array{Function}(undef, length(m.c[1,:]))
-#    ϕ_pullbacks_θX = Array{Function}(undef, length(m.c[1,:]))
-#    for i in 1:length(m.c[1,:])
-#       tmp_lin = ACE.LinearACEModel(m.basis, m.c[:,i], m.evaluator(m.c[:,i]))
-#       a, a_pullback_θ = evaluate(tmp_lin, X).val,  k -> k * ACE.grad_params(tmp_lin,X)
-#       a, a_pullback_X = a,  k -> k * ACE.grad_config(tmp_lin,X)
-#       a, a_pullback_θX = a,  k -> k * ACE.grad_params_config(tmp_lin,X)
-#       append!(ϕ,a)
-#       ϕ_pullbacks_θ[i] = a_pullback_θ
-#       ϕ_pullbacks_X[i] = a_pullback_X
-#       ϕ_pullbacks_θX[i] = a_pullback_θX
-#    end
+function grad_params_config(m::GfsModel, X::AbstractConfiguration) 
+   #forward pass, accumulating rules
+   ϕ = []
+   ϕ_pullbacks_θ = Array{Function}(undef, length(m.c[1,:]))
+   ϕ_pullbacks_X = Array{Function}(undef, length(m.c[1,:]))
+   ϕ_pullbacks_θX = Array{Function}(undef, length(m.c[1,:]))
+   for i in 1:length(m.c[1,:])
+      tmp_lin = ACE.LinearACEModel(m.basis, m.c[:,i], m.evaluator(m.c[:,i]))
+      a, a_pullback_θ = evaluate(tmp_lin, X).val,  k -> k * ACE.grad_params(tmp_lin,X)
+      a, a_pullback_X = a,  k -> k * ACE.grad_config(tmp_lin,X)
+      a, a_pullback_θX = a,  k -> k * ACE.grad_params_config(tmp_lin,X)
+      append!(ϕ,a)
+      ϕ_pullbacks_θ[i] = a_pullback_θ
+      ϕ_pullbacks_X[i] = a_pullback_X
+      ϕ_pullbacks_θX[i] = a_pullback_θX
+   end
    
-#    b, b_pullback = Myrrule(m.F, ϕ)
+   b, b_pullback = MyrrulePX(m.F, ϕ)
    
-#    #backwards pass, get the gradient
-#    b_bar = 1 #derivative of F according to F
-#    a_bar = b_pullback(b_bar)
-#    x_bar = [ϕ_pullbacks[i](a_bar[i]) for i in 1:length(m.c[1,:])] 
-#    return(x_bar)
-# end
-
-
+   #backwards pass, get the gradient
+   b_bar = 1 #derivative of F according to F
+   a_bar = b_pullback(b_bar)
+  
+   #loops over the ϕ while adding all 3 possible derivatives dX, dθ, dXθ
+   x_bar = []
+   i = 1
+   j = 1
+   while(i <= length(m.c[1,:]))
+      append!(x_bar,ϕ_pullbacks_X[i](a_bar[j]) + ϕ_pullbacks_θ[i](a_bar[j+1]) + ϕ_pullbacks_θX[i](a_bar[j+2]))
+      i += 1
+      j += 3
+   end
+   return(x_bar)
+end
 
 struct FinnisSinclair{ϵ}
    ϵ::ϵ
@@ -166,7 +173,14 @@ function Myrrule(F::ToyExp, ϕ)
    return(F(ϕ),k -> k .* [ϕ1_θ,ϕ2_θ])
 end
 
-
+#this is not the way to do it in the future
+function MyrrulePX(F::FinnisSinclair{Float64}, ϕ)
+   ϕ1_Xθ = 1
+   ϕ2_θ = -(1/4)*(1/((1/10)^2 + abs(ϕ[2]))^(3/2))*(ϕ[2]/abs(ϕ[2]))
+   ϕ2_Xθ = (1/2)*(1/(sqrt((1/10)^2 + abs(ϕ[2]))))*(ϕ[2]/abs(ϕ[2]))
+   #current convention is ϕ1_X,ϕ1_θ,ϕ1_Xθ,ϕ2_X,...ϕN_Xθ
+   return(F(ϕ),k -> k .* [0,0,ϕ1_Xθ,0,ϕ2_θ,ϕ2_Xθ])
+end
 
 # * constructors: 
 #    basis, F, maybe c -> GFinnisSinclairACE
