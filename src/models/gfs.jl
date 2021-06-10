@@ -1,6 +1,6 @@
 using ACE
 
-struct NaiveEvaluator end 
+#struct NaiveEvaluator end 
 
 @doc raw"""
 ```math
@@ -24,7 +24,7 @@ end
 function GfsModel(basis, c = F.θ; 
    evaluator = :standard, F = F) 
    if evaluator == :naive 
-      ev = θ -> NaiveEvaluator()
+      ev = θ -> ACE.PIEvaluator(basis, θ) #naive not implemented
    elseif evaluator == :standard 
       ev = θ -> ACE.PIEvaluator(basis, θ) 
    elseif evaluator == :recursive 
@@ -50,7 +50,7 @@ function set_params!(m::GfsModel, c)
    return m 
 end
 
-set_params!(::NaiveEvaluator, args...) = nothing 
+#set_params!(::NaiveEvaluator, args...) = nothing 
 
 # ------------------- dispatching on the evaluators 
 
@@ -61,106 +61,109 @@ evaluate(m::GfsModel, X::AbstractConfiguration) =
 
 # ------------------- gradients
 
+#we expect this to return a gradient of length equal to the number of parameters
+#since we keep different parameters for each ϕ we get gradients for each, so a matrix
+#imagine concatinating the columns to get one big parameter array
 function grad_params(m::GfsModel, X::AbstractConfiguration) 
    #forward pass, accumulating rules
-   ρ = []
-   ρ_pullbacks = Array{Function}(undef, length(m.c[1,:]))
+   ϕ = []
+   ϕ_pullbacks = Array{Function}(undef, length(m.c[1,:]))
    for i in 1:length(m.c[1,:])
       tmp_lin = ACE.LinearACEModel(m.basis, m.c[:,i], m.evaluator(m.c[:,i]))
       a, a_pullback = evaluate(tmp_lin, X).val,  k -> k * ACE.grad_params(tmp_lin,X)
-      append!(ρ,a)
-      ρ_pullbacks[i] = a_pullback
+      append!(ϕ,a)
+      ϕ_pullbacks[i] = a_pullback
    end
    
-   b, b_pullback = Myrrule(m.F, ρ)
+   b, b_pullback = Myrrule(m.F, ϕ)
    
    #backwards pass, get the gradient
    b_bar = 1 #derivative of F according to F
    a_bar = b_pullback(b_bar)
-   x_bar = [ρ_pullbacks[i](a_bar[i]) for i in 1:length(m.c[1,:])] 
+   x_bar = [ϕ_pullbacks[i](a_bar[i]) for i in 1:length(m.c[1,:])] 
    return(x_bar)
 end
 
 function grad_config(m::GfsModel, X::AbstractConfiguration) 
    #forward pass, accumulating rules
-   ρ = []
-   ρ_pullbacks = Array{Function}(undef, length(m.c[1,:]))
+   ϕ = []
+   ϕ_pullbacks = Array{Function}(undef, length(m.c[1,:]))
    for i in 1:length(m.c[1,:])
       tmp_lin = ACE.LinearACEModel(m.basis, m.c[:,i], m.evaluator(m.c[:,i]))
       a, a_pullback = evaluate(tmp_lin, X).val,  k -> k * ACE.grad_config(tmp_lin,X)
-      append!(ρ,a)
-      ρ_pullbacks[i] = a_pullback
+      append!(ϕ,a)
+      ϕ_pullbacks[i] = a_pullback
    end
    
-   b, b_pullback = Myrrule(m.F, ρ)
+   b, b_pullback = Myrrule(m.F, ϕ)
    
    #backwards pass, get the gradient
    b_bar = 1 #derivative of F according to F
    a_bar = b_pullback(b_bar)
-   x_bar = [ρ_pullbacks[i](a_bar[i]) for i in 1:length(m.c[1,:])] 
+   x_bar = sum([ϕ_pullbacks[i](a_bar[i]) for i in 1:length(m.c[1,:])])
    return(x_bar)
 end
 
 # function grad_params_config(m::GfsModel, X::AbstractConfiguration) 
 #    #forward pass, accumulating rules
-#    ρ = []
-#    ρ_pullbacks_θ = Array{Function}(undef, length(m.c[1,:]))
-#    ρ_pullbacks_X = Array{Function}(undef, length(m.c[1,:]))
-#    ρ_pullbacks_θX = Array{Function}(undef, length(m.c[1,:]))
+#    ϕ = []
+#    ϕ_pullbacks_θ = Array{Function}(undef, length(m.c[1,:]))
+#    ϕ_pullbacks_X = Array{Function}(undef, length(m.c[1,:]))
+#    ϕ_pullbacks_θX = Array{Function}(undef, length(m.c[1,:]))
 #    for i in 1:length(m.c[1,:])
 #       tmp_lin = ACE.LinearACEModel(m.basis, m.c[:,i], m.evaluator(m.c[:,i]))
 #       a, a_pullback_θ = evaluate(tmp_lin, X).val,  k -> k * ACE.grad_params(tmp_lin,X)
 #       a, a_pullback_X = a,  k -> k * ACE.grad_config(tmp_lin,X)
 #       a, a_pullback_θX = a,  k -> k * ACE.grad_params_config(tmp_lin,X)
-#       append!(ρ,a)
-#       ρ_pullbacks_θ[i] = a_pullback_θ
-#       ρ_pullbacks_X[i] = a_pullback_X
-#       ρ_pullbacks_θX[i] = a_pullback_θX
+#       append!(ϕ,a)
+#       ϕ_pullbacks_θ[i] = a_pullback_θ
+#       ϕ_pullbacks_X[i] = a_pullback_X
+#       ϕ_pullbacks_θX[i] = a_pullback_θX
 #    end
    
-#    b, b_pullback = Myrrule(m.F, ρ)
+#    b, b_pullback = Myrrule(m.F, ϕ)
    
 #    #backwards pass, get the gradient
 #    b_bar = 1 #derivative of F according to F
 #    a_bar = b_pullback(b_bar)
-#    x_bar = [ρ_pullbacks[i](a_bar[i]) for i in 1:length(m.c[1,:])] 
+#    x_bar = [ϕ_pullbacks[i](a_bar[i]) for i in 1:length(m.c[1,:])] 
 #    return(x_bar)
 # end
 
 
-abstract type NonLinearity end
-struct FinnisSinclair{ϵ} <: NonLinearity
+
+struct FinnisSinclair{ϵ}
    ϵ::ϵ
 end
 
-function (a::FinnisSinclair{Float64})(ρ::Vector{Any})
-   return(ρ[1] + sqrt((a.ϵ)^2 + abs(ρ[2])) - a.ϵ)
+function (a::FinnisSinclair{Float64})(ϕ::Vector{Any})
+   return(ϕ[1] + sqrt((a.ϵ)^2 + abs(ϕ[2])) - a.ϵ)
 end
 
-function (a::FinnisSinclair{Float64})(ρ::Vector{Float64})
-   return(ρ[1] + sqrt((a.ϵ)^2 + abs(ρ[2])) - a.ϵ)
+function (a::FinnisSinclair{Float64})(ϕ::Vector{Float64})
+   return(ϕ[1] + sqrt((a.ϵ)^2 + abs(ϕ[2])) - a.ϵ)
 end
 
-struct ToyExp{} <: NonLinearity  end
+struct ToyExp{} end
 
-function (a::ToyExp)(ρ::Vector{Any})
-   return(ρ[1] + exp(-ρ[2]^2))
+function (a::ToyExp)(ϕ::Vector{Any})
+   return(ϕ[1] + exp(-ϕ[2]^2))
 end
 
-function (a::ToyExp)(ρ::Vector{Float64})
-   return(ρ[1] + exp(-ρ[2]^2))
+function (a::ToyExp)(ϕ::Vector{Float64})
+   return(ϕ[1] + exp(-ϕ[2]^2))
 end
 
-function Myrrule(F::FinnisSinclair{Float64}, ρ)
-   ρ1_θ = 1
-   ρ2_θ = (1/2)*(1/(sqrt((1/10)^2 + abs(ρ[2]))))*(ρ[2]/abs(ρ[2]))
-   return(F(ρ),k -> k .* [ρ1_θ,ρ2_θ])
+function Myrrule(F::FinnisSinclair{Float64}, ϕ)
+   ϕ1_θ = 1
+   ϕ2_θ = (1/2)*(1/(sqrt((1/10)^2 + abs(ϕ[2]))))*(ϕ[2]/abs(ϕ[2]))
+   return(F(ϕ),k -> k .* [ϕ1_θ,ϕ2_θ])
 end
 
-function Myrrule(F::ToyExp, ρ)
-   ρ1_θ = 1
-   ρ2_θ = -2*ρ[2]*exp(-ρ[2]^2)
-   return(F(ρ),k -> k .* [ρ1_θ,ρ2_θ])
+function Myrrule(F::ToyExp, ϕ)
+   ϕ1_θ = 1
+   ϕ2_θ = -2*ϕ[2]*exp(-ϕ[2]^2)
+   return(F(ϕ),k -> k .* [ϕ1_θ,ϕ2_θ])
 end
 
 
