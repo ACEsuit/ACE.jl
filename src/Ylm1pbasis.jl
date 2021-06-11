@@ -133,11 +133,6 @@ get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
 
 
-function new_evaluate(Ylm::Ylm1pBasis, X::AbstractState)
-
-end
-
-
 #
 # function add_into_A_dA!(A, dA, tmpd, basis::RnYlm1pBasis, R, iz::Integer, iz0::Integer)
 #    r = norm(R)
@@ -168,4 +163,12 @@ end
 
 rrule(::typeof(evaluate), basis::Ylm1pBasis, X::AbstractState) = 
       evaluate(basis, X), 
-      w -> (NO_FIELDS, NoTangent(), _rrule_evaluate(basis, X, w))
+      w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate(basis, X, w))
+
+
+rrule(::typeof(evaluate_d), basis::Ylm1pBasis, X::AbstractState) = 
+      evaluate_d(basis, X), 
+      w -> (NO_FIELDS, NO_FIELDS, 
+            @not_implemented("""Ylm config gradients is currently not implemented
+                                composition with vectorial features is therefore 
+                                not yet supported."""))
