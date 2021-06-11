@@ -17,14 +17,6 @@ groupaction(X::AbstractState) = groupaction(typeof(X))
 
 # ----------- This file implements the abstract one-particle basis interface
 
-alloc_B(basis::OneParticleBasis, args...) = zeros( fltype(basis), length(basis) )
-
-alloc_dB(basis::OneParticleBasis, X::AbstractState) =
-      zeros(gradtype(basis, X), length(basis))
-
-alloc_dB(basis::OneParticleBasis, cfg::AbstractConfiguration) =
-      zeros(gradtype(basis, X), (length(basis), length(cfg)))
-
 
 function evaluate!(A, tmp, basis::OneParticleBasis,
                    cfg::AbstractConfiguration)

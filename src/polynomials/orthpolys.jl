@@ -423,7 +423,7 @@ function _rrule_evaluate_d(J::OrthPolyBasis, t::Number,
    α = J.A[2] * t + J.B[2]
    P2 = α * P1
    dP2 = α * dP1 + J.A[2] * P1
-   ddP2 = α * ddP1 + J.A[2] * dP1
+   ddP2 = α * ddP1 + 2 * J.A[2] * dP1
    a += (ddP2 * dt^2 + dP2 * ddt) * w[2] 
    if maxn == 2
       return a 
@@ -433,25 +433,22 @@ function _rrule_evaluate_d(J::OrthPolyBasis, t::Number,
       α = J.A[n] * t + J.B[n]
       P3 = α * P2 + J.C[n] * P1
       dP3 = α * dP2 + J.C[n] * dP1 + J.A[n] * P2
-      ddP3 = α * ddP2 + J.C[n] * ddP1 + J.A[n] * dP2
+      ddP3 = α * ddP2 + J.C[n] * ddP1 + 2 * J.A[n] * dP2
       a += (ddP3 * dt^2 + dP3 * ddt) * w[n] 
       P2, P1 = P3, P2
       dP2, dP1 = dP3, dP2
       ddP2, ddP1 = ddP3, ddP2
    end
-
    return a
 end 
 
 
 function _rrule_evaluate_d(P::TransformedPolys, x::Number, 
                            w::AbstractVector{<: Number})
-   ddP = derivative(x -> evaluate_d(P, x), x)
-   return dot(ddP, w)
-   # t = transform(P.trans, x)
-   # dt = transform_d(P.trans, x)
-   # ddt = transform_dd(P.trans, x)
-   # return _rrule_evaluate_d(P.J, t, dx, dt, ddt)
+   t = transform(P.trans, x)
+   dt = transform_d(P.trans, x)
+   ddt = transform_dd(P.trans, x)
+   return _rrule_evaluate_d(P.J, t, w, dt, ddt)
 end
 
 

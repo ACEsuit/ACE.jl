@@ -56,10 +56,9 @@ read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) =
                       varsym = Symbol(D["varsym"]), 
                       nsym = Symbol(D["nsym"]))
 
-fltype(basis::Rn1pBasis{T}) where T = T
+valtype(basis::Rn1pBasis{T}) where T = T
 
-gradtype(B::Rn1pBasis, X::AbstractState) = 
-            dstate_type(fltype(B), X)
+gradtype(B::Rn1pBasis, X::AbstractState) = dstate_type(valtype(B), X)
 
 symbols(Rn::Rn1pBasis) = [ _nsym(Rn) ]
 
@@ -78,22 +77,15 @@ rand_radial(basis::Rn1pBasis) = rand_radial(basis.R)
 # ---------------------------  Evaluation code
 #
 
-alloc_B(basis::Rn1pBasis, args...) = alloc_B(basis.R)
-
-alloc_dB(basis::Rn1pBasis, X::AbstractState) =
-      zeros( gradtype(basis, X), length(basis) )
-
-alloc_temp(basis::Rn1pBasis, args...) = alloc_temp(basis.R)
-
-alloc_temp_d(basis::Rn1pBasis, args...) =
-      (
-      # alloc_temp_d(basis.R)...,
-      dRdr = zeros(fltype(basis.R), length(basis.R)),
-      )
-
 
 evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.R, norm(_rr(X, basis)))
+
+function evaluate(basis::Rn1pBasis, X::AbstractState)
+   rr = _rr(X, basis)
+   return evaluate(basis.R, norm(rr))
+end
+
 
 function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::AbstractState)
    TDX = eltype(dB)
@@ -101,15 +93,48 @@ function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::AbstractState)
    rr = _rr(X, basis)
    r = norm(rr)
    r̂ = rr / r
-   evaluate_d!(tmpd.dRdr, tmpd, basis.R, r)
+   dRdr = evaluate_d(basis.R, r)
    for n = 1:length(basis)
-      dB[n] = TDX( NamedTuple{(RR,)}( (tmpd.dRdr[n] * r̂,) ) )
+      dB[n] = TDX( NamedTuple{(RR,)}( (dRdr[n] * r̂,) ) )
    end
    return dB
 end
 
-function evaluate_ed!(B, dB, tmpd, basis::Rn1pBasis, X::AbstractState)
-   evaluate!(B, tmpd, basis, X)
-   evaluate_d!(dB, tmpd, basis, X)
-   return nothing
+
+# ----------------- AD 
+
+function _rrule_evaluate(basis::Rn1pBasis, X::AbstractState, 
+                         w::AbstractVector{<: Number})
+   rr = _rr(X, basis)
+   r = norm(rr)
+   a = _rrule_evaluate(basis.R, r, w)
+   TDX = ACE.dstate_type(a/r, X)
+   return TDX( NamedTuple{(_varsym(basis),)}( (a * rr / r,)) )
+end
+
+rrule(::typeof(evaluate), basis::Rn1pBasis, X::AbstractState) = 
+                  evaluate(basis, X), 
+                  w -> (NO_FIELDS, NoTangent(), _rrule_evaluate(basis, X, w))
+
+                  
+function _rrule_evaluate_d(basis::Rn1pBasis, X::AbstractState, 
+                           w::AbstractVector, 
+                           dRn = evaluate_d(basis.R, norm(_rr(X, basis))))
+   rr = _rr(X, basis); r = norm(rr); r̂ = rr/r
+   w_r̂ = [ dot(_rr(w, basis), r̂)  for w in w ]
+   w2 = [ _rr(w[n], basis) - w_r̂[n] * r̂ for n = 1:length(w) ]
+   a = _rrule_evaluate_d(basis.R, r, w_r̂)
+   b = sum(dRn .* w2) / r 
+   TDX = ACE.dstate_type(a, X)
+   return TDX( NamedTuple{(_varsym(basis),)}( (a * r̂ + b,) ) )
+end
+
+function ChainRules.rrule(::typeof(evaluate_d), basis::Rn1pBasis, X::AbstractState)
+   rr = _rr(X, basis); r = norm(rr); r̂ = rr/r
+   dRn_ = evaluate_d(basis.R, r);
+   TDX = dstate_type(valtype(basis), X)
+   dRn = [ TDX( NamedTuple{(_varsym(basis),)}( (dr * r̂,) ) ) 
+           for dr in dRn_ ]
+   return dRn, 
+          w -> (NO_FIELDS, NoTangent(), _rrule_evaluate_d(basis, X, w, dRn_))
 end

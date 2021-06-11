@@ -8,6 +8,7 @@ import Base: *, +, -, zero, rand, randn, show, promote_rule, rtoldefault,
        isapprox, getproperty, real 
 import LinearAlgebra: norm, promote_leaf_eltypes
 
+
 abstract type XState{SYMS, TT} <: ACE.AbstractState end 
 
 """
@@ -36,7 +37,9 @@ const CTSTT = Union{AbstractFloat, Complex{<: AbstractFloat},
                SVector{N, <: AbstractFloat}, 
                SVector{N, <: Complex}} where {N}
 
-@generated function dstate_type(X::ACE.State{SYMS, TT}) where {SYMS, TT}
+dstate_type(X::DState) = typeof(X)
+
+@generated function dstate_type(X::State{SYMS, TT}) where {SYMS, TT}
    syms2 = Symbol[] 
    tt2 = DataType[]
    for i = 1:length(SYMS)
@@ -59,7 +62,7 @@ _mypromrl(T::Type{<: Number}, S::Type{<: Number}) =
 _mypromrl(T::Type{<: Number}, ::Type{<: SVector{N, P}}) where {N, P} = 
       SVector{N, promote_type(T, P)}
 
-@generated function dstate_type(x::S, X::ACE.State{SYMS, TT}
+@generated function dstate_type(x::S, X::ACE.XState{SYMS, TT}
                                 ) where {S, SYMS, TT}
    syms2 = Symbol[] 
    tt2 = DataType[]
@@ -109,7 +112,7 @@ DState(X::TX) where {TX <: State} =
 
 DState(t::NamedTuple{SYMS, TT}) where {SYMS, TT} = DState{SYMS, TT}(t)
 
-DState(; kwargs...) = DState(kwargs)
+DState(; kwargs...) = DState(NamedTuple(kwargs))
 
 _x(X::XState) = getfield(X, :x)
 getproperty(X::XState, sym::Symbol) = getproperty(_x(X), sym)
@@ -183,6 +186,9 @@ isapprox(X1::TX, X2::TX, args...; kwargs...
 # ----- Implementation of a Position State, as a basic example 
 PositionState{T} = State{(:rr,), Tuple{SVector{3, T}}}
 
+PositionState(r::AbstractVector{T}) where {T <: AbstractFloat} = 
+      (@assert length(r) == 3; PositionState{T}(; rr = SVector{3, T}(r)))
+
 promote_rule(::Union{Type{S}, Type{PositionState{S}}}, 
              ::Type{PositionState{T}}) where {S, T} = 
       PositionState{promote_type(S, T)}
@@ -212,3 +218,16 @@ Base.iterate(cfg::AbstractConfiguration, i::Integer) =
 Base.length(cfg::AbstractConfiguration) = length(cfg.Xs)
 
 Base.eltype(cfg::AbstractConfiguration) = eltype(cfg.Xs)
+
+
+
+# ---------------- AD code 
+
+# this function makes sure that gradients w.r.t. a State become a DState 
+function rrule(::typeof(getproperty), X::ACE.XState, sym::Symbol) 
+   val = getproperty(X, sym)
+   return val, w -> ( NO_FIELDS, 
+                      dstate_type(w[1], X)( NamedTuple{(sym,)}((w,)) ), 
+                      NoTangent() )
+end
+
