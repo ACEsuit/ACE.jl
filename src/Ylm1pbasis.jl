@@ -132,6 +132,12 @@ get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
 
 
+
+function new_evaluate(Ylm::Ylm1pBasis, X::AbstractState)
+
+end
+
+
 #
 # function add_into_A_dA!(A, dA, tmpd, basis::RnYlm1pBasis, R, iz::Integer, iz0::Integer)
 #    r = norm(R)
@@ -147,3 +153,19 @@ get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 #    end
 #    return nothing
 # end
+
+
+
+# -------------- AD 
+
+function _rrule_evaluate(basis::Ylm1pBasis, X::AbstractState, 
+                         w::AbstractVector{<: Number})
+   dY = evaluate_d(basis, X)
+   a = sum( real(w) * real.(d.rr) + imag(w) * imag.(d.rr)
+            for (w, d) in zip(w, dY)  )
+   return DState(rr = a)
+end
+
+rrule(::typeof(evaluate), basis::Ylm1pBasis, X::AbstractState) = 
+      evaluate(basis, X), 
+      w -> (NO_FIELDS, NoTangent(), _rrule_evaluate(basis, X, w))

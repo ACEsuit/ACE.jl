@@ -231,3 +231,9 @@ function rrule(::typeof(getproperty), X::ACE.XState, sym::Symbol)
                       NoTangent() )
 end
 
+# function rrule(::typeof(getproperty), X::ACE.XState, sym::Symbol) 
+#    val = getproperty(X, sym)
+#    return val, w -> ( NO_FIELDS, 
+#                       DState( NamedTuple{(sym,)}((w,)) ), 
+#                       NoTangent() )
+# end
