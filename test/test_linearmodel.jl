@@ -80,6 +80,28 @@ for (fun, funref, str) in [
 end
 
 ##
+
+@info("Check linear model gradients for a covariant vector")
+φ = ACE.EuclideanVector{ComplexF64}()
+pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
+basis = SymmetricBasis(pibasis, φ; isreal=false)
+c = rand(length(basis)) .- 0.5
+standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
+evaluate(standard, cfg)
+ACE.grad_config(standard, cfg)
+
+for ntest = 1:30
+   Us = rand(SVector{3, Float64}, length(cfg))
+   a = rand(3)
+   _cfgt = t -> ACEConfig( cfg.Xs + t * Us )
+   _cfgt(0.1)
+   F = t -> dot(a, real(evaluate(standard, _cfgt(t)).val))
+   dF = t -> dot(a, sum(real.(d) * u 
+               for (d, u) in zip( ACE.grad_config(standard, _cfgt(t)), Us ) ) )
+   print_tf(@test( all( ACEbase.Testing.fdtest(F, dF, 0.0, verbose=false) )))
+end 
+
+##
    
 end
    

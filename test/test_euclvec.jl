@@ -10,7 +10,8 @@ using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest
 
-# construct the 1p-basis
+## construct the 1p-basis
+
 D = NaiveTotalDegree()
 maxdeg = 6
 ord = 3
@@ -87,7 +88,7 @@ for ntest = 1:30
 end
 println()
 
-# ## keep for further profiling
+## keep for further profiling
 #
 # φ = ACE.EuclideanVector(Complex{Float64})
 # pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
