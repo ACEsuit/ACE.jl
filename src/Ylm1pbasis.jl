@@ -153,6 +153,8 @@ get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
 # -------------- AD 
 
+import ChainRules: rrule, NO_FIELDS, @not_implemented
+
 function _rrule_evaluate(basis::Ylm1pBasis, X::AbstractState, 
                          w::AbstractVector{<: Number})
    dY = evaluate_d(basis, X)

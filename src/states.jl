@@ -25,6 +25,17 @@ struct State{SYMS, TT} <: XState{SYMS, TT}
 
 end
 
+struct DState{SYMS, TT} <: XState{SYMS, TT}
+   x::NamedTuple{SYMS, TT}
+
+   DState{SYMS, TT}(t::NamedTuple{SYMS1, TT1}) where {SYMS, SYMS1, TT, TT1} = 
+      ( SYMS == SYMS1 ? new{SYMS, TT1}(t) 
+                      : DState{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) ) )
+
+end
+
+
+
 State(t::NamedTuple{SYMS, TT}) where {SYMS, TT} = State{SYMS, TT}(t)
 State{SYMS}(t::NamedTuple{SYMS1, TT}) where {SYMS, SYMS1, TT} = State{SYMS, TT}(t)
 
@@ -97,15 +108,6 @@ dstate_type(S::Type, X::ACE.State) = dstate_type(zero(S), X)
 end
 
 
-
-struct DState{SYMS, TT} <: XState{SYMS, TT}
-   x::NamedTuple{SYMS, TT}
-
-   DState{SYMS, TT}(t::NamedTuple{SYMS1, TT1}) where {SYMS, SYMS1, TT, TT1} = 
-      ( SYMS == SYMS1 ? new{SYMS, TT1}(t) 
-                      : DState{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) ) )
-
-end
 
 DState(X::TX) where {TX <: State} = 
       (dstate_type(X))( select(_x(X), _ctssyms(_x(X))) )

@@ -103,6 +103,8 @@ end
 
 # ----------------- AD 
 
+import ChainRules: rrule, NO_FIELDS
+
 function _rrule_evaluate(basis::Rn1pBasis, X::AbstractState, 
                          w::AbstractVector{<: Number})
    rr = _rr(X, basis)
@@ -114,7 +116,7 @@ end
 
 rrule(::typeof(evaluate), basis::Rn1pBasis, X::AbstractState) = 
                   evaluate(basis, X), 
-                  w -> (NO_FIELDS, NoTangent(), _rrule_evaluate(basis, X, w))
+                  w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate(basis, X, w))
 
                   
 function _rrule_evaluate_d(basis::Rn1pBasis, X::AbstractState, 
@@ -129,12 +131,12 @@ function _rrule_evaluate_d(basis::Rn1pBasis, X::AbstractState,
    return TDX( NamedTuple{(_varsym(basis),)}( (a * r̂ + b,) ) )
 end
 
-function ChainRules.rrule(::typeof(evaluate_d), basis::Rn1pBasis, X::AbstractState)
+function rrule(::typeof(evaluate_d), basis::Rn1pBasis, X::AbstractState)
    rr = _rr(X, basis); r = norm(rr); r̂ = rr/r
    dRn_ = evaluate_d(basis.R, r);
    TDX = dstate_type(valtype(basis), X)
    dRn = [ TDX( NamedTuple{(_varsym(basis),)}( (dr * r̂,) ) ) 
            for dr in dRn_ ]
    return dRn, 
-          w -> (NO_FIELDS, NoTangent(), _rrule_evaluate_d(basis, X, w, dRn_))
+          w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate_d(basis, X, w, dRn_))
 end

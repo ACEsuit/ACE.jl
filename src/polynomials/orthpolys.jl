@@ -20,7 +20,7 @@ using ForwardDiff: derivative
 import Base: ==
 
 import ChainRules: rrule, NO_FIELDS, NoTangent
-import ACE: evaluate, evaluate_d 
+import ACE: evaluate, evaluate_d, _rrule_evaluate, _rrule_evaluate_d
 
 export transformed_jacobi
 
