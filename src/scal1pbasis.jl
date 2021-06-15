@@ -14,17 +14,21 @@ One-particle basis of the form $P_n(x_i)$ for a general scalar, invariant
 input `x`. This type basically just translates the `TransformedPolys` into a valid
 one-particle basis.
 """
-mutable struct Scal1pBasis{T, TT, TJ} <: OneParticleBasis{T}
+mutable struct Scal1pBasis{VSYM, ISYM, T, TT, TJ} <: OneParticleBasis{T}
    P::TransformedPolys{T, TT, TJ}
-   varsym::Symbol
-   idxsym::Symbol
 end
 
 scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; kwargs...) = 
-            Scal1pBasis( ACE.OrthPolys.transformed_jacobi(args...; kwargs...), 
-                         varsym, idxsym )
+            Scal1pBasis(varsym, idxsym,  
+                  ACE.OrthPolys.transformed_jacobi(args...; kwargs...))
 
-_varsym(basis::Scal1pBasis) = basis.varsym
+Scal1pBasis(varsym::Symbol, idxsym::Symbol, P::TransformedPolys{T, TT, TJ}
+            ) where {T, TT, TJ} = 
+      Scal1pBasis{varsym, idxsym, T, TT, TJ}(P)
+
+_varsym(basis::Scal1pBasis{VSYM}) where {VSYM} = VSYM
+
+_idxsym(basis::Scal1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = ISYM
 
 _val(X::AbstractState, basis::Scal1pBasis) = 
    getproperty(X, _varsym(basis))
@@ -37,18 +41,18 @@ _val(x::Number, basis::Scal1pBasis) = x
 Base.length(basis::Scal1pBasis) = length(basis.P)
 
 get_spec(basis::Scal1pBasis) =
-      [  NamedTuple{(basis.idxsym,)}(n) for n = 1:length(basis) ]
+      [  NamedTuple{(_idxsym(basis),)}(n) for n = 1:length(basis) ]
 
 ==(P1::Scal1pBasis, P2::Scal1pBasis) =  ACE._allfieldsequal(P1, P2)
 
 write_dict(basis::Scal1pBasis{T}) where {T} = Dict(
       "__id__" => "ACE_Scal1pBasis",
           "P" => write_dict(basis.P) , 
-          "varsym" => string(basis.varsym), 
-          "idxsym" => string(basis.idxsym) )
+          "varsym" => string(_varsym(basis)), 
+          "idxsym" => string(_idxsym(basis)) )
 
 read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =   
-      Scal1pBasis(read_dict(D["P"]), Symbol(D["varsym"]), Symbol(D["idxsym"]))
+      Scal1pBasis(Symbol(D["varsym"]), Symbol(D["idxsym"]), read_dict(D["P"]))
 
 @noinline valtype(basis::Scal1pBasis, cfg::AbstractConfiguration) = 
       valtype(basis, zero(eltype(cfg)))
@@ -59,11 +63,11 @@ read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =
 @noinline gradtype(basis::Scal1pBasis, X::AbstractState) = 
       dstate_type(valtype(basis, X), X)
 
-symbols(basis::Scal1pBasis) = [basis.idxsym]
+symbols(basis::Scal1pBasis) = [ _idxsym(basis) ]
 
-indexrange(basis::Scal1pBasis) = NamedTuple{(basis.idxsym,)}((1:length(basis),))
+indexrange(basis::Scal1pBasis) = NamedTuple{(_idxsym(basis), )}((1:length(basis),))
 
-_getidx(b, basis::Scal1pBasis) = b[basis.idxsym]
+_getidx(b, basis::Scal1pBasis) = b[_idxsym(basis) ]
 
 isadmissible(b, basis::Scal1pBasis) = (1 <= _getidx(b, basis) <= length(basis))
 
@@ -97,7 +101,7 @@ function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::AbstractState)
    TDX = eltype(dB)
    evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, _val(X, basis))
    for n = 1:length(basis)
-      dB[n] = TDX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
+      dB[n] = TDX( NamedTuple{(_varsym(basis),)}((tmpd.dBP[n],)) )
    end
    return dB
 end
@@ -108,7 +112,7 @@ function evaluate_ed!(B, dB, tmpd, basis::Scal1pBasis, X::AbstractState)
    evaluate!(B, tmpd.tmpdP, basis.P, x)
    evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, x)
    for n = 1:length(basis)
-      dB[n] = TDX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
+      dB[n] = TDX( NamedTuple{(_varsym(basis),)}((tmpd.dBP[n],)) )
    end
    return B, dB
 end
