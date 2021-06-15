@@ -38,8 +38,10 @@ Rn = B1p.bases[1]
 Ylm = B1p.bases[2]
 Pk = B1p.bases[3]
 
-ACE.gradtype(B1p, X)
-ACE.valtype(B1p, X)
+ACE.gradtype(B1p, cfg)
+ACE.valtype(B1p, cfg)
+
+ACE.alloc_B(Pk, cfg)
 
 A = evaluate(B1p, cfg)
 dA = evaluate_d(B1p, cfg)
