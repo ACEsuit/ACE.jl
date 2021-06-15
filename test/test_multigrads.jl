@@ -39,6 +39,7 @@ Ylm = B1p.bases[2]
 Pk = B1p.bases[3]
 
 ACE.gradtype(B1p, X)
+ACE.valtype(B1p, X)
 
 A = evaluate(B1p, cfg)
 dA = evaluate_d(B1p, cfg)

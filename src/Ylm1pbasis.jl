@@ -66,10 +66,10 @@ read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) =
                  lsym = Symbol(D["lsym"]), 
                  msym = Symbol(D["msym"]) )
 
-fltype(basis::Ylm1pBasis{T}) where T = Complex{T}
-rfltype(basis::Ylm1pBasis{T}) where T = T
+valtype(basis::Ylm1pBasis{T}, X::AbstractConfiguration) where T = Complex{T}
+valtype(basis::Ylm1pBasis{T}, X::AbstractState) where T = Complex{T}
 
-gradtype(basis::Ylm1pBasis, X::AbstractState) = dstate_type(fltype(basis), X)
+gradtype(basis::Ylm1pBasis, X::AbstractState) = dstate_type(valtype(basis, X), X)
 
 symbols(basis::Ylm1pBasis) = [_lsym(basis), _msym(basis)]
 
@@ -91,10 +91,10 @@ end
 # ---------------------------  Evaluation code
 #
 
-alloc_B(basis::Ylm1pBasis, args...) = alloc_B(basis.SH)
+# alloc_B(basis::Ylm1pBasis, args...) = alloc_B(basis.SH)
 
-alloc_dB(basis::Ylm1pBasis, X::AbstractState) = 
-      zeros(gradtype(basis, X), length(basis)) 
+# alloc_dB(basis::Ylm1pBasis, X::AbstractState) = 
+#       zeros(gradtype(basis, X), length(basis)) 
 
 alloc_temp(basis::Ylm1pBasis, args...) = alloc_temp(basis.SH)
 

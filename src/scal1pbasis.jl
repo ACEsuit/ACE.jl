@@ -24,6 +24,13 @@ scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; kwargs...) =
             Scal1pBasis( ACE.OrthPolys.transformed_jacobi(args...; kwargs...), 
                          varsym, idxsym )
 
+_varsym(basis::Scal1pBasis) = basis.varsym
+
+_val(X::AbstractState, basis::Scal1pBasis) = 
+   getproperty(X, _varsym(basis))
+
+_val(x::Number, basis::Scal1pBasis) = x
+
 # ---------------------- Implementation of Scal1pBasis
 
 
@@ -43,10 +50,14 @@ write_dict(basis::Scal1pBasis{T}) where {T} = Dict(
 read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =   
       Scal1pBasis(read_dict(D["P"]), Symbol(D["varsym"]), Symbol(D["idxsym"]))
 
-fltype(basis::Scal1pBasis{T}) where T = T
+@noinline valtype(basis::Scal1pBasis, cfg::AbstractConfiguration) = 
+      valtype(basis, zero(eltype(cfg)))
 
-gradtype(basis::Scal1pBasis, X::AbstractState) = 
-      dstate_type(fltype(basis), X)
+@noinline valtype(basis::Scal1pBasis, X::AbstractState) = 
+      valtype(basis.P, _val(X, basis))
+
+@noinline gradtype(basis::Scal1pBasis, X::AbstractState) = 
+      dstate_type(valtype(basis, X), X)
 
 symbols(basis::Scal1pBasis) = [basis.idxsym]
 
@@ -65,44 +76,76 @@ rand_radial(basis::Scal1pBasis) = rand_radial(basis.P)
 # ---------------------------  Evaluation code
 #
 
-alloc_B(basis::Scal1pBasis, args...) = alloc_B(basis.P)
+alloc_temp(basis::Scal1pBasis, X::AbstractState) = 
+      alloc_temp(basis.P, _val(X, basis))
 
-alloc_dB(basis::Scal1pBasis, X::AbstractState) = 
-      zeros(gradtype(basis, X), length(basis))
-
-alloc_temp(basis::Scal1pBasis, args...) = alloc_temp(basis.P)
-
-alloc_temp_d(basis::Scal1pBasis, args...) = 
+alloc_temp_d(basis::Scal1pBasis, X::AbstractState) = 
       ( 
-         tmpdP = alloc_temp_d(basis.P), 
-         dBP = alloc_dB(basis.P)
+         tmpdP = alloc_temp_d(basis.P, _val(X, basis)), 
+         dBP = alloc_dB(basis.P, _val(X, basis))
       )
 
 
-_getval(X::AbstractState, basis::Scal1pBasis) = getproperty(X, basis.varsym)
-_getval(x::Number, basis::Scal1pBasis) = x
 
 evaluate!(B, tmp, basis::Scal1pBasis, X::AbstractState) =
-      evaluate!(B, tmp, basis, _getval(X, basis))
+      evaluate!(B, tmp, basis, _val(X, basis))
 
 evaluate!(B, tmp, basis::Scal1pBasis, x::Number) =
       evaluate!(B, tmp, basis.P, x)
 
-function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::TX) where {TX <: AbstractState}
-   evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, _getval(X, basis))
+function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::AbstractState)
+   TDX = eltype(dB)
+   evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, _val(X, basis))
    for n = 1:length(basis)
-      dB[n] = TX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
+      dB[n] = TDX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
    end
    return dB
 end
 
 function evaluate_ed!(B, dB, tmpd, basis::Scal1pBasis, X::AbstractState)
    TDX = eltype(dB)
-   x = _getval(X, basis)
+   x = _val(X, basis)
    evaluate!(B, tmpd.tmpdP, basis.P, x)
    evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, x)
    for n = 1:length(basis)
       dB[n] = TDX( NamedTuple{(basis.varsym,)}((tmpd.dBP[n],)) )
    end
    return B, dB
+end
+
+
+# -------------- AD codes 
+
+import ChainRules: rrule, NO_FIELDS
+
+function _rrule_evaluate(basis::Scal1pBasis, X::AbstractState, 
+                         w::AbstractVector{<: Number})
+   x = _val(X, basis)
+   a = _rrule_evaluate(basis.P, x, w)
+   TDX = ACE.dstate_type(a, X)
+   return TDX( NamedTuple{(_varsym(basis),)}( (a,) ) )
+end
+
+rrule(::typeof(evaluate), basis::Scal1pBasis, X::AbstractState) = 
+                  evaluate(basis, X), 
+                  w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate(basis, X, w))
+
+             
+                  
+function _rrule_evaluate_d(basis::Scal1pBasis, X::AbstractState, 
+                           w::AbstractVector)
+   x = _val(X, basis)
+   w1 = [ _val(w, basis) for w in w ]
+   a = _rrule_evaluate_d(basis.P, x, w1)
+   TDX = ACE.dstate_type(a, X)
+   return TDX( NamedTuple{(_varsym(basis),)}( (a,) ) )
+end
+
+function rrule(::typeof(evaluate_d), basis::Scal1pBasis, X::AbstractState)
+   x = _val(X, basis)
+   dB_ = evaluate_d(basis.P, x)
+   TDX = dstate_type(valtype(basis), X)
+   dB = [ TDX( NamedTuple{(_varsym(basis),)}( (dx,) ) )  for dx in dB_ ]
+   return dB, 
+          w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate_d(basis, X, w))
 end

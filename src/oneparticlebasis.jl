@@ -34,24 +34,32 @@ function evaluate!(A, tmp, basis::OneParticleBasis, X::AbstractState)
 end
 
 evaluate_d(basis::OneParticleBasis, cfg::AbstractConfiguration) = 
-   evaluate_ed!(alloc_B(basis), alloc_dB(basis, cfg), 
+   evaluate_ed!(alloc_B(basis, cfg), alloc_dB(basis, cfg), 
                   alloc_temp_d(basis, cfg), basis, cfg)
+
+
+# TODO: first signs of significant rewrite need here: 
+#       probably get rid of all non-allocating versions here...
 
 function evaluate_ed!(A, dA, tmpd, basis::OneParticleBasis,
                       cfg::AbstractConfiguration)
    fill!(A, 0)
-   fill!(dA, zero(eltype(dA)))  # TODO: this should not be necessary!
+   # fill!(dA, zero(eltype(dA)))  # TODO: this should not be necessary!
    for (j, X) in enumerate(cfg)
-      dAview = @view dA[:, j]
-      add_into_A_dA!(A, dAview, tmpd, basis, X)
+      A[:] .+= evaluate(basis, X)
+      dA[:, j] = evaluate_d(basis, X)
+      # dAview = @view dA[:, j]      
+      # add_into_A_dA!(A, dAview, tmpd, basis, X)
    end
    return dA
 end
 
 
 function evaluate_ed!(A, dA, tmpd, basis::OneParticleBasis, X::AbstractState)
-   fill!(A, 0)
-   add_into_A_dA!(A, dA, tmpd, basis, X)
+   # fill!(A, 0)
+   # add_into_A_dA!(A, dA, tmpd, basis, X)
+   A[:] .= evaluate(basis, X) 
+   dA[:] .= evaluate_d(basis, X)
    return dA
 end
 
@@ -59,19 +67,6 @@ end
 
 
 
-# # TODO: fix the dispatch structure on alloc_dB
-# alloc_dB(basis::OneParticleBasis, ::JVec) = alloc_dB(basis, 1)
-# alloc_dB(basis::OneParticleBasis, Rs::AbstractVector{<: JVec}, args...) =
-#       alloc_dB(basis, length(Rs))
-# alloc_dB(basis::OneParticleBasis) = alloc_dB(basis, 1)
-#
-# function alloc_dB(basis::OneParticleBasis, maxN::Integer)
-#    NZ = numz(basis)
-#    maxlen = maximum( sum( length(basis, iz, iz0) for iz = 1:NZ )
-#                      for iz0 = 1:NZ )
-#    T = fltype(basis)
-#    return zeros(JVec{T}, (maxlen, maxN))
-# end
 
 # function set_Aindices!(basis::OneParticleBasis)
 #    NZ = numz(basis)

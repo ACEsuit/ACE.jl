@@ -56,9 +56,10 @@ read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) =
                       varsym = Symbol(D["varsym"]), 
                       nsym = Symbol(D["nsym"]))
 
-valtype(basis::Rn1pBasis{T}) where T = T
+valtype(basis::Rn1pBasis{T}, ::AbstractConfiguration) where T = T
+valtype(basis::Rn1pBasis{T}, X::AbstractState) where T = T
 
-gradtype(B::Rn1pBasis, X::AbstractState) = dstate_type(valtype(B), X)
+gradtype(B::Rn1pBasis, X::AbstractState) = dstate_type(valtype(B, X), X)
 
 symbols(Rn::Rn1pBasis) = [ _nsym(Rn) ]
 

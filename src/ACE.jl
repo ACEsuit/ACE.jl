@@ -28,18 +28,9 @@ function coco_dot end
 # TODO 
 # * decide on rand(basis) interface
 # * move these the following definitions to ACEbase
-function valtype end 
-function gradtype end 
 function _rrule_evaluate end 
 function _rrule_evaluate_d end 
-alloc_B(B::ACEBasis, x) = zeros(valtype(B, x), length(B))
-alloc_dB(B::ACEBasis, x) = zeros(gradtype(B, x), length(B))
-
-# * The next one is still old-style ACE; could this be done in a neater warntype
-#   to simplify differentiation w.r.t. complex configurations?
-alloc_dB(basis::ACEBasis, cfg::AbstractConfiguration) =
-      zeros(gradtype(basis, X), (length(basis), length(cfg)))
-
+import  ACEbase: gradtype, valtype, alloc_B, alloc_dB
 
 include("auxiliary.jl")
 

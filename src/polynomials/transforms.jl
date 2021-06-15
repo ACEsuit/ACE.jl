@@ -50,6 +50,8 @@ transform(t::PolyTransform, r::Number) = poly_trans(t.p, t.r0, r)
 
 transform_d(t::PolyTransform, r::Number) = poly_trans_d(t.p, t.r0, r)
 
+transform_dd(t::PolyTransform, r::Number) = poly_trans_dd(t.p, t.r0, r)
+
 inv_transform(t::PolyTransform, x::Number) = poly_trans_inv(t.p, t.r0, x)
 
 (t::PolyTransform)(x) = transform(t, x)

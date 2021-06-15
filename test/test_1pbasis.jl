@@ -49,7 +49,7 @@ end
 ##
 
 @info("Ylm1pBasis gradients")
-Y = ACE.alloc_B(Ylm)
+Y = ACE.alloc_B(Ylm, Xs[1])
 dY = ACE.alloc_dB(Ylm, Xs[1])
 tmpd = ACE.alloc_temp_d(Ylm)
 ACE.evaluate_ed!(Y, dY, tmpd, Ylm, Xs[1])
@@ -83,12 +83,16 @@ println()
 @info("Product basis evaluate_ed! tests")
 
 tmp_d = ACE.alloc_temp_d(B1p, cfg)
-A1 = ACE.alloc_B(B1p)
-A2 = ACE.alloc_B(B1p)
+A1 = ACE.alloc_B(B1p, cfg)
+A2 = ACE.alloc_B(B1p, cfg)
 ACE.evaluate!(A1, tmp_d, B1p, cfg)
 dA = ACE.alloc_dB(B1p, cfg)
 ACE.evaluate_ed!(A2, dA, tmp_d, B1p, cfg)
 println(@test A1 ≈ A2)
+
+evaluate_d(B1p, cfg)
+ACE.alloc_temp_d(B1p, cfg)
+
 
 println(@test( evaluate_d(B1p, cfg) ≈ dA ))
 

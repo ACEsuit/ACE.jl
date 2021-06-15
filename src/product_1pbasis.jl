@@ -2,16 +2,14 @@
 
 # -------------- Implementation of Product Basis
 
-struct Product1pBasis{NB, TB <: Tuple, NSYM, SYMS, T} <: OneParticleBasis{T}
+struct Product1pBasis{NB, TB <: Tuple, NSYM, SYMS} <: OneParticleBasis{Any}
    bases::TB
    spec::Vector{NamedTuple{SYMS, NTuple{NSYM, Int}}}
    indices::Vector{NTuple{NB, Int}}
-   _typeT::Type{T}
 end
 
 function Product1pBasis(bases;
-                        SYMS = _symbols_prod(bases),
-                        T = promote_type(fltype.(bases)...) )
+                        SYMS = _symbols_prod(bases), )
    # TODO: discuss whether to construct an optimal ordering, e.g.
    #       should the discrete bases come first once we implement the
    #       "strongzero" method?
@@ -19,8 +17,7 @@ function Product1pBasis(bases;
    NB = length(bases)
    Product1pBasis( tuple(bases...),
                    NamedTuple{SYMS, NTuple{NSYM, Int}}[],
-                   NTuple{NB, Int}[],
-                   T )
+                   NTuple{NB, Int}[] )
 end
 
 
@@ -54,43 +51,51 @@ write_dict(B::Product1pBasis) =
 
 function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
    bases = tuple( read_dict.(D["bases"])... )
-   T = promote_type(fltype.(bases)...)
    spec = namedtuple.( D["spec"] )
    indices = [ tuple(v...) for v in D["indices"] ]
-   return Product1pBasis(bases, spec, indices, T)
+   return Product1pBasis(bases, spec, indices)
 end
 
 
 # ------------------------------------
 
 
-fltype(basis::Product1pBasis) = promote_type(fltype.(basis.bases)...)
+valtype(basis::Product1pBasis, X::AbstractState) = 
+      promote_type(valtype.(basis.bases, Ref(X))...)
+
+valtype(basis::Product1pBasis, cfg::AbstractConfiguration) = 
+      promote_type( valtype.(basis.bases, Ref(iterate(cfg)[1]))... )
 
 gradtype(basis::Product1pBasis, cfg::Union{AbstractConfiguration, AbstractVector}) = 
-      dstate_type(fltype(basis), zero(eltype(cfg)))
+      gradtype(basis, zero(eltype(cfg)))
 
-gradtype(basis::Product1pBasis, X::AbstractState) = 
-      dstate_type(fltype(basis), X)
+function gradtype(basis::Product1pBasis, X::AbstractState) 
+   VALT = valtype(basis, X)
+   return dstate_type(VALT, X)
+end
 
-alloc_temp(basis::Product1pBasis, args...) =
+alloc_temp(basis::Product1pBasis, arg) =
       (
-         B = alloc_B.(basis.bases),
-         tmp = alloc_temp.(basis.bases)
+         B = alloc_B.(basis.bases, Ref(arg)),
+         tmp = alloc_temp.(basis.bases, Ref(arg))
       )
 
 
 alloc_dB(basis::Product1pBasis, cfg::AbstractConfiguration) = 
       zeros(gradtype(basis, cfg), (length(basis), length(cfg)) )
 
-alloc_temp_d(basis::Product1pBasis, cfg::AbstractConfiguration) = begin 
-      X = zero(eltype(cfg)); 
+
+
+alloc_temp_d(basis::Product1pBasis, cfg::AbstractConfiguration) = 
+      alloc_temp_d(basis, zero(eltype(cfg)) )
+
+alloc_temp_d(basis::Product1pBasis, X::AbstractState) = 
       (
-         B = alloc_B.(basis.bases),
-         tmp = alloc_temp.(basis.bases),
+         B = alloc_B.(basis.bases, Ref(X)),
+         tmp = alloc_temp.(basis.bases, Ref(X)),
          dB = alloc_dB.(basis.bases, Ref(X)),
          tmpd = alloc_temp_d.(basis.bases, Ref(X))
       )
-   end
 
 
 @generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
@@ -147,6 +152,53 @@ end
    end
 end
 
+
+@generated function add_into_A_dA!(A, dA, tmpd, basis::Product1pBasis{NB}, X
+                                   ) where {NB}
+   quote
+      Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+         if !(basis.bases[i] isa Discrete1pBasis)
+            # only evaluate basis gradients for a continuous basis
+            evaluate_ed!(tmpd.B[i], tmpd.dB[i], tmpd.tmpd[i], basis.bases[i], X)
+         else
+            # we still need the basis values for the discrete basis though
+            evaluate!(tmpd.B[i], tmpd.tmpd[i], basis.bases[i], X)
+         end
+      end)
+      for (iA, ϕ) in enumerate(basis.indices)
+         # evaluate A
+         t = one(eltype(A))
+         Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+            t *= tmpd.B[i][ϕ[i]]
+         end)
+         A[iA] += t
+
+         # evaluate dA
+         # TODO: redo this with adjoints!!!!
+         #     also reverse order of operations to make fewer multiplications!
+         dA[iA] = zero(eltype(dA))
+         Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
+            if !(basis.bases[a] isa Discrete1pBasis)
+               dt = tmpd.dB[a][ϕ[a]]
+               Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
+                  if b != a
+                     dt *= tmpd.B[b][ϕ[b]]
+                  end
+               end)
+               dA[iA] += dt
+            end
+         end)
+      end
+      return nothing
+   end
+end
+
+
+function evaluate_d!(dA, tmpd, basis::Product1pBasis, X)
+   A = alloc_B(basis, X)
+   add_into_A_dA!(A, dA, tmpd, basis, X)
+   return dA 
+end
 
 
 _symbols_prod(bases) = tuple(union( symbols.(bases)... )...)

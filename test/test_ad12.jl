@@ -201,6 +201,55 @@ fdtest( x -> f4_1( Ylm, ACE.State(rr = SVector{3}(x)) ),
 @btime f4_1($Ylm, $X)
 @btime Zygote.gradient($f4_1, $Ylm, $X);
 
+
+## [5] Scalar 1p Basis (the one for the invariant features....)
+
+@info("AD tests for the scalar 1p basis")
+
+using ACE: State 
+maxdeg = 10 
+r0 = 1.0 
+rcut = 3.0 
+bscal = ACE.scal1pbasis(:x, :k, maxdeg, PolyTransform(1, r0), rcut)
+
+ACE.evaluate(bscal, State(x = 1.2))
+ACE.evaluate_d(bscal, State(x = 1.0))
+
+X = State(x=1.1)
+f5_1(basis::ACE.Scal1pBasis, X) = sum( (exp ∘ cos).(evaluate(basis, X)) )
+
+f5_1(bscal, X)
+Zygote.gradient(f5_1, bscal, X)
+
+fdtest(x -> f5_1(bscal, State(x = x)), 
+       x -> Zygote.gradient(f5_1, bscal, State(x=x))[2].x, 
+       X.x)
+
+
+@info("  Timings: not great, gradient(f5_1) / f5_1 ~ factor 20")
+@btime f5_1($bscal, $X)
+@btime Zygote.gradient($f5_1, $bscal, $X)
+
+##
+
+X = State(x=1.1)
+f5_2(basis::ACE.Scal1pBasis, X) = 
+      sum( (exp ∘ cos).( getproperty.(evaluate_d(basis, X), :x) ) )
+
+f5_2(bscal, X)
+Zygote.gradient(f5_2, bscal, X)
+
+fdtest(x -> f5_2(bscal, State(x = x)), 
+       x -> Zygote.gradient(f5_2, bscal, State(x=x))[2].x, 
+       X.x)
+
+@info("""  Second test differentiating evaluate_d; 
+           Ratio is a bit better gradient(f5_2) / f5_2 ~ factor 14
+           but this might be just because f5_2 has extra allocations itself""")
+@btime f5_2($bscal, $X)
+@btime Zygote.gradient($f5_2, $bscal, $X)
+           
+
 ##
 
 ## then a product basis as a function of a single argument  
