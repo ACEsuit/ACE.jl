@@ -8,6 +8,7 @@ using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACEbase.Testing: fdtest
 import ChainRulesCore: rrule, NO_FIELDS
 
+
 ## [1] 
 
 
@@ -170,6 +171,7 @@ B = ACE.alloc_B(Ylm, X)
 tmp = ACE.alloc_temp(Ylm, X)
 @btime evaluate($Ylm, $X)
 @btime ACE.evaluate!($B, $tmp, $Ylm, $X)
+@btime ACE.evaluate2($Ylm, $X)
 dB = ACE.alloc_dB(Ylm, X)
 tmpd = ACE.alloc_temp_d(Ylm, X)
 @btime evaluate_d($Ylm, $X)
@@ -219,19 +221,19 @@ fdtest( x -> f4_1( Ylm, ACE.State(rr = SVector{3}(x)) ),
 
 
 
-@info("Basic test of LinearACEModel construction and evaluation")
+# @info("Basic test of LinearACEModel construction and evaluation")
 
-# construct the 1p-basis
-D = NaiveTotalDegree()
-maxdeg = 6
-ord = 3
-B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
+# # construct the 1p-basis
+# D = NaiveTotalDegree()
+# maxdeg = 6
+# ord = 3
+# B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
-# generate a configuration
-nX = 10
-Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
-cfg = ACEConfig(Xs)
+# # generate a configuration
+# nX = 10
+# Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+# cfg = ACEConfig(Xs)
 
-fltype(B1p)
+# fltype(B1p)
 
-##
+# ##

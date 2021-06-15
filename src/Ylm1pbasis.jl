@@ -131,6 +131,13 @@ degree(b, Ylm::Ylm1pBasis, weight::Dict) = weight[_lsym(Ylm)] * degree(b, Ylm)
 get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
 
+# ---------- Experimental allocating evaluation code 
+
+evaluate2(Ylm::Ylm1pBasis, X::AbstractState) = 
+      SphericalHarmonics.evaluate2(Ylm.SH, _rr(X, Ylm))
+
+
+#
 
 
 #

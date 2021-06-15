@@ -585,4 +585,27 @@ function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 end
 
 
+# --------- Experimental new evaluation code
+
+const __Y = ComplexF64[] 
+const __P = Float64[] 
+
+function __grow_YP!(SH::AbstractSHBasis)
+	if length(SH) > length(__Y)
+		resize!(__Y, length(SH))
+	end
+	if sizeP(SH.maxL) > length(__P)
+		resize!(__P, sizeP(SH.maxL))
+	end
+	return __Y, __P
 end
+
+function evaluate2(SH::AbstractSHBasis, R::SVector{3})
+	Y, P = __grow_YP!(SH)
+	evaluate!(Y, (P = P,), SH, R)	
+	return @view(Y[1:length(SH)])
+end
+
+
+end
+
