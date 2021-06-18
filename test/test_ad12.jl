@@ -134,6 +134,8 @@ function f3_2(Rn, X)
    # return sum( 1/(1 + norm(dr.rr))^2 for dr in dRn_ )
 end
 
+f3_2(Rn, X)
+
 @info("testing AD for Rn with f3_2 :")
 Zygote.refresh()
 g = Zygote.gradient(f3_2, Rn, X)[2]
@@ -203,6 +205,7 @@ fdtest( x -> f4_1( Ylm, ACE.State(rr = SVector{3}(x)) ),
 
 
 ## [5] Scalar 1p Basis (the one for the invariant features....)
+#   looking ok ...
 
 @info("AD tests for the scalar 1p basis")
 
@@ -248,11 +251,39 @@ fdtest(x -> f5_2(bscal, State(x = x)),
            but this might be just because f5_2 has extra allocations itself""")
 @btime f5_2($bscal, $X)
 @btime Zygote.gradient($f5_2, $bscal, $X)
-           
+
+
+## [6] then a product basis as a function of a single argument  
+
+B1p = Rn * Ylm * bscal
+ACE.init1pspec!(B1p; maxdeg = maxdeg, Deg = ACE.NaiveTotalDegree())
+
+X = State( rr = rand(SVector{3, Float64}), x = rand() )
+evaluate(B1p, X)
+evaluate_d(B1p, X)
 
 ##
 
-## then a product basis as a function of a single argument  
+function f6_1(B1p, X)
+   B = evaluate(B1p, X)
+   a = 1 ./ (1:length(B1p))
+   return real(sum( (B - a).^2 ))^2 
+end
+
+Zygote.refresh()
+f6_1(B1p, X)
+Zygote.gradient(f6_1, B1p, X)
+
+
+_x2X = x -> State( rr = SVector{3}(x[1:3]), x = x[4] )
+_X2x = X -> [ X.rr; [X.x] ]
+x0 = _X2x(X)
+X0 = _x2X(x0)
+F = x -> f6_1(B1p, _x2X(x))
+F(x0)
+dF = x -> _X2x(Zygote.gradient(f6_1, B1p, _x2X(x))[2])
+dF(x0)
+fdtest(F, dF, x0)
 
 ## density projection (argument is a vector)
 

@@ -98,6 +98,9 @@ alloc_temp_d(basis::Product1pBasis, X::AbstractState) =
       )
 
 
+
+
+
 @generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
    quote
       Base.Cartesian.@nexprs $NB i -> evaluate!(tmp.B[i], tmp.tmp[i], basis.bases[i], X)
@@ -260,3 +263,62 @@ function rand_radial(basis::Product1pBasis)
    end
    return nothing
 end
+
+
+
+
+# --------------- AD codes
+
+import ChainRules: rrule, NO_FIELDS, ZeroTangent
+
+_evaluate_bases(basis::Product1pBasis{NB}, X::AbstractState) where {NB} = 
+      ntuple(i -> evaluate(basis.bases[i], X), NB)
+
+_evaluate_A(basis::Product1pBasis{NB}, BB) where {NB} = 
+      [ prod(BB[i][ϕ[i]] for i = 1:NB) for ϕ in basis.indices ]
+
+evaluate(basis::Product1pBasis, X::AbstractState) = 
+      _evaluate_A(basis, _evaluate_bases(basis, X)) 
+
+function _rrule_evaluate(basis::Product1pBasis{NB}, X::AbstractState, 
+                         w::AbstractVector{<: Number}, 
+                         BB = _evaluate_bases(basis, X)) where {NB}
+   TDX = ACE.dstate_type(valtype(basis, X), X)
+   VT = promote_type(valtype(basis, X), eltype(w))
+
+   # Compute the differentials for the individual sub-bases 
+   Wsub = ntuple(i -> zeros(VT, length(BB[i])), NB) 
+   for (ivv, vv) in enumerate(basis.indices)
+      for t = 1:NB 
+         _w = one(VT) * w[ivv]
+         for s = 1:NB 
+            if s != t 
+               _w *= BB[s][vv[s]]
+            end
+         end
+         Wsub[t][vv[t]] += _w 
+      end
+   end
+
+   # now these can be propagated into the inner basis 
+   #  -> type instab to be fixed here 
+   g = sum( _rrule_evaluate(basis.bases[t], X, Wsub[t] )
+            for t = 1:NB )
+   return g::TDX
+end
+
+function rrule(::typeof(evaluate), basis::Product1pBasis, X::AbstractState)
+   BB = _evaluate_bases(basis, X)
+   A = _evaluate_A(basis, BB)
+   return A, 
+      w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate(basis, X, w, BB))
+end
+
+
+#    function _rrule_evaluate(basis::Scal1pBasis, X::AbstractState, 
+#       w::AbstractVector{<: Number})
+# x = _val(X, basis)
+# a = _rrule_evaluate(basis.P, x, w)
+# TDX = ACE.dstate_type(a, X)
+# return TDX( NamedTuple{(_varsym(basis),)}( (a,) ) )
+# end

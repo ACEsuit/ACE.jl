@@ -135,7 +135,7 @@ end
 function rrule(::typeof(evaluate_d), basis::Rn1pBasis, X::AbstractState)
    rr = _rr(X, basis); r = norm(rr); r̂ = rr/r
    dRn_ = evaluate_d(basis.R, r);
-   TDX = dstate_type(valtype(basis), X)
+   TDX = dstate_type(valtype(basis, X), X)
    dRn = [ TDX( NamedTuple{(_varsym(basis),)}( (dr * r̂,) ) ) 
            for dr in dRn_ ]
    return dRn, 

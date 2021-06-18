@@ -72,6 +72,10 @@ _mypromrl(T::Type{<: Number}, S::Type{<: Number}) =
       promote_type(T, S)
 _mypromrl(T::Type{<: Number}, ::Type{<: SVector{N, P}}) where {N, P} = 
       SVector{N, promote_type(T, P)}
+_mypromrl(::Type{<: SVector{N, P}}, T::Type{<: Number}) where {N, P} = 
+      promote_type(T, P)
+_mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P2} = 
+      SVector{N, promote_type(P1, P2)}
 
 @generated function dstate_type(x::S, X::ACE.XState{SYMS, TT}
                                 ) where {S, SYMS, TT}

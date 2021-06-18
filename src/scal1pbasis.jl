@@ -148,7 +148,7 @@ end
 function rrule(::typeof(evaluate_d), basis::Scal1pBasis, X::AbstractState)
    x = _val(X, basis)
    dB_ = evaluate_d(basis.P, x)
-   TDX = dstate_type(valtype(basis), X)
+   TDX = dstate_type(valtype(basis, X), X)
    dB = [ TDX( NamedTuple{(_varsym(basis),)}( (dx,) ) )  for dx in dB_ ]
    return dB, 
           w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate_d(basis, X, w))

@@ -167,7 +167,8 @@ function _rrule_evaluate(basis::Ylm1pBasis, X::AbstractState,
    dY = evaluate_d(basis, X)
    a = sum( real(w) * real.(d.rr) + imag(w) * imag.(d.rr)
             for (w, d) in zip(w, dY)  )
-   return DState(rr = a)
+   TDX = dstate_type(a, X)
+   return TDX( NamedTuple{(_varsym(basis),)}( (a,) ) )
 end
 
 rrule(::typeof(evaluate), basis::Ylm1pBasis, X::AbstractState) = 
