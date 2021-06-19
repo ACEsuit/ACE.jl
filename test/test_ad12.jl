@@ -268,9 +268,9 @@ function f6_1(B1p, X)
    B = evaluate(B1p, X)
    a = 1 ./ (1:length(B1p))
    b = 1 ./ (1:length(B1p)).^2
-#    return sum( (real.(B) .* a).^2 + cos.(imag.(B)) .* b )^2
+   return sum( (real.(B) .* a).^2 + cos.(imag.(B)) .* b )^2
 #    return real( sum(a .* B) )
-   return sum(b .* imag.(B) + a .* real.(B))
+#    return sum(b .* imag.(B) + a .* real.(B))
 end
 
 Zygote.refresh()
@@ -282,15 +282,25 @@ _df1 = Zygote.gradient(f6_1, B1p, X)[2]
 _x2X = x -> State( rr = SVector{3}(x[1:3]), x = x[4] )
 _X2x = X -> [ X.rr; [X.x] ]
 x0 = _X2x(X)
-X0 = _x2X(x0)
 F = x -> f6_1(B1p, _x2X(x))
-F(x0)
 dF = x -> _X2x(Zygote.gradient(f6_1, B1p, _x2X(x))[2])
-dF(x0)
 fdtest(F, dF, x0)
 
+##
 
-
+@info("""timing test for rrule for evaluate-Product1pBasis
+            evaluate: ~ 35 us 
+            Zygote.gradient: ~ 537 us
+            rrule: ~ 360 us 
+      => factor 10; this code is full of type instability and 
+      can surely be improved!
+      """)
+@btime f6_1($B1p, $X)
+@btime Zygote.gradient($f6_1, $B1p, $X);
+w = evaluate(B1p, X)
+BB = ACE._evaluate_bases(B1p, X)
+@btime ACE._rrule_evaluate($B1p, $X, $w, $BB)
+@code_warntype ACE._rrule_evaluate(B1p, X, w, BB)
 ## density projection (argument is a vector)
 
 
