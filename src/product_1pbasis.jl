@@ -283,20 +283,23 @@ evaluate(basis::Product1pBasis, X::AbstractState) =
 function _rrule_evaluate(basis::Product1pBasis{NB}, X::AbstractState, 
                          w::AbstractVector{<: Number}, 
                          BB = _evaluate_bases(basis, X)) where {NB}
-   TDX = ACE.dstate_type(valtype(basis, X), X)
    VT = promote_type(valtype(basis, X), eltype(w))
+
+   # dB = evaluate_d(basis, X)
+   # return sum( (real(w) * real(db) + imag(w) * imag(db)) 
+   #             for (w, db) in zip(w, dB) )
 
    # Compute the differentials for the individual sub-bases 
    Wsub = ntuple(i -> zeros(VT, length(BB[i])), NB) 
    for (ivv, vv) in enumerate(basis.indices)
       for t = 1:NB 
-         _w = one(VT) * w[ivv]
+         _A = one(VT)
          for s = 1:NB 
             if s != t 
-               _w *= BB[s][vv[s]]
+               _A *= BB[s][vv[s]]
             end
          end
-         Wsub[t][vv[t]] += _w 
+         Wsub[t][vv[t]] += w[ivv] * conj(_A)
       end
    end
 
@@ -304,7 +307,7 @@ function _rrule_evaluate(basis::Product1pBasis{NB}, X::AbstractState,
    #  -> type instab to be fixed here 
    g = sum( _rrule_evaluate(basis.bases[t], X, Wsub[t] )
             for t = 1:NB )
-   return g::TDX
+   return g
 end
 
 function rrule(::typeof(evaluate), basis::Product1pBasis, X::AbstractState)

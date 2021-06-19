@@ -110,7 +110,7 @@ function _rrule_evaluate(basis::Rn1pBasis, X::AbstractState,
                          w::AbstractVector{<: Number})
    rr = _rr(X, basis)
    r = norm(rr)
-   a = _rrule_evaluate(basis.R, r, w)
+   a = _rrule_evaluate(basis.R, r, real.(w))
    TDX = ACE.dstate_type(a/r, X)
    return TDX( NamedTuple{(_varsym(basis),)}( (a * rr / r,)) )
 end

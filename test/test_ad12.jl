@@ -267,13 +267,17 @@ evaluate_d(B1p, X)
 function f6_1(B1p, X)
    B = evaluate(B1p, X)
    a = 1 ./ (1:length(B1p))
-   return real(sum( (B - a).^2 ))^2 
+   b = 1 ./ (1:length(B1p)).^2
+#    return sum( (real.(B) .* a).^2 + cos.(imag.(B)) .* b )^2
+#    return real( sum(a .* B) )
+   return sum(b .* imag.(B) + a .* real.(B))
 end
 
 Zygote.refresh()
 f6_1(B1p, X)
-Zygote.gradient(f6_1, B1p, X)
+_df1 = Zygote.gradient(f6_1, B1p, X)[2]
 
+##
 
 _x2X = x -> State( rr = SVector{3}(x[1:3]), x = x[4] )
 _X2x = X -> [ X.rr; [X.x] ]
@@ -284,6 +288,8 @@ F(x0)
 dF = x -> _X2x(Zygote.gradient(f6_1, B1p, _x2X(x))[2])
 dF(x0)
 fdtest(F, dF, x0)
+
+
 
 ## density projection (argument is a vector)
 

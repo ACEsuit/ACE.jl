@@ -128,6 +128,12 @@ _myrl(x::SVector) = real.(x)
 Base.real(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} = 
       TDX( NamedTuple{SYMS}( ntuple(i -> _myrl(getproperty(X, SYMS[i])), length(SYMS)) ) )
 
+_myim(x::Number) = imag(x)
+_myim(x::SVector) = imag.(x)
+Base.imag(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} = 
+      TDX( NamedTuple{SYMS}( ntuple(i -> _myim(getproperty(X, SYMS[i])), length(SYMS)) ) )
+      
+
 for f in (:zero, :rand, :randn) 
    eval( quote 
       function $f(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 

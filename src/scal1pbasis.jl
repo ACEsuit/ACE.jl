@@ -125,7 +125,7 @@ import ChainRules: rrule, NO_FIELDS
 function _rrule_evaluate(basis::Scal1pBasis, X::AbstractState, 
                          w::AbstractVector{<: Number})
    x = _val(X, basis)
-   a = _rrule_evaluate(basis.P, x, w)
+   a = _rrule_evaluate(basis.P, x, real.(w))
    TDX = ACE.dstate_type(a, X)
    return TDX( NamedTuple{(_varsym(basis),)}( (a,) ) )
 end
