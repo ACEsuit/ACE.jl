@@ -63,8 +63,36 @@ function evaluate_ed!(A, dA, tmpd, basis::OneParticleBasis, X::AbstractState)
    return dA
 end
 
+# -------------------- AD codes 
 
+import Zygote, ChainRules
+import Zygote: Buffer
+import ChainRules: rrule, NoTangent, ZeroTangent
 
+function evaluate(basis::OneParticleBasis, 
+                  cfg::AbstractConfiguration)
+   A = zeros(valtype(basis, cfg), length(basis))
+   for X in cfg
+      A[:] += evaluate(basis, X)
+   end
+   return A
+end
+
+function _rrule_evaluate(basis::OneParticleBasis, 
+                         cfg::ACEConfig, 
+                         W )
+   dXs = [ _rrule_evaluate(basis, X, W) for X in cfg ] 
+   return DACEConfig(dXs)
+end 
+
+function rrule(::typeof(evaluate), basis::OneParticleBasis, 
+                cfg::AbstractConfiguration) 
+   return evaluate(basis, cfg), 
+          w -> (NoTangent(), ZeroTangent(), 
+                _rrule_evaluate(basis, cfg, w) )
+end
+
+# -------------------- END AD codes 
 
 
 

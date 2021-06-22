@@ -301,7 +301,41 @@ w = evaluate(B1p, X)
 BB = ACE._evaluate_bases(B1p, X)
 @btime ACE._rrule_evaluate($B1p, $X, $w, $BB)
 @code_warntype ACE._rrule_evaluate(B1p, X, w, BB)
-## density projection (argument is a vector)
+
+
+## [7] density projection (argument is a vector)
+
+Rn
+_rndX() = State( rr = (Rn.R.rl + rand() * (Rn.R.ru - Rn.R.rl)) * ACE.Random.rand_sphere(), 
+                 x = (bscal.P.rl + rand() * (bscal.P.ru - bscal.P.rl)) )
+cfg = ACEConfig( [_rndX() for _=1:10 ])
+
+function f7_1(B1p, cfg)
+      B = evaluate(B1p, cfg)
+      a = 1 ./ (1:length(B1p))
+      b = 1 ./ (1:length(B1p)).^2
+      return sum( (real.(B) .* a).^2 + cos.(imag.(B)) .* b )^2
+end
+
+##
+
+
+f7_1(B1p, cfg)
+Zygote.refresh()
+Zygote.gradient(f7_1, B1p, cfg)
+
+##
+
+_dotuu = (u1, u2) -> dot(u1.rr, u2.rr) + dot(u1.x, u2.x)
+Us = DACEConfig( [ _rndX() for _=1:10 ] ) 
+cfg_t = t -> cfg + t * Us 
+F = t -> f7_1(B1p, cfg_t(t))
+dF = t -> sum(  _dotuu(u, dx)  for (u, dx) in zip(Us, 
+                        Zygote.gradient(f7_1, B1p, cfg_t(t))[2] ) )
+fdtest(F, dF, 0.0)
+
+##
+
 
 
 ## PIbasis

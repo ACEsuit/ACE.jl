@@ -1,6 +1,6 @@
 
 
-export ACEConfig, PositionState
+export ACEConfig, PositionState, DACEConfig
 
 using ACE, StaticArrays, NamedTupleTools
 
@@ -151,7 +151,7 @@ _2str(x::SVector{N, <: AbstractFloat}) where {N} = string(round.(x, digits=_show
 _2str(x::SVector{N, <: Complex}) where {N} = string(round.(x, digits=_showdigits))[11:end]
 
 _showsym(X::State) = ""
-_showsym(X::DState) = "'"
+_showsym(X::DState) = "′"
 
 show(io::IO, X::XState{SYMS}) where {SYMS} = 
       print(io, "{" * prod( "$(sym)$(_2str(getproperty(_x(X), sym))), " 
@@ -214,22 +214,33 @@ real(X::PositionState{T}) where {T} =
 
 # ------------------ Basic Configurations Code 
 
-struct ACEConfig{STT} <: AbstractConfiguration
+abstract type XACEConfig <: AbstractConfiguration  end 
+struct ACEConfig{STT} <: XACEConfig
    Xs::Vector{STT}   # list of states
 end
+
+
+struct DACEConfig{STT} <: XACEConfig
+   Xs::Vector{STT}   # list of states
+end
+
+import Base: * 
+*(t::Number, dcfg::DACEConfig) = DACEConfig( t * dcfg.Xs )
++(cfg::ACEConfig, dcfg::DACEConfig) = ACEConfig( cfg.Xs + dcfg.Xs )
+
 
 # --- iterator to go through all states in an abstract configuration assuming
 #     that the states are stored in cfg.Xs
 
-Base.iterate(cfg::AbstractConfiguration) =
+Base.iterate(cfg::XACEConfig) =
    length(cfg.Xs) == 0 ? nothing : (cfg.Xs[1], 1)
 
-Base.iterate(cfg::AbstractConfiguration, i::Integer) =
+Base.iterate(cfg::XACEConfig, i::Integer) =
    length(cfg.Xs) == i ? nothing : (cfg.Xs[i+1], i+1)
 
-Base.length(cfg::AbstractConfiguration) = length(cfg.Xs)
+Base.length(cfg::XACEConfig) = length(cfg.Xs)
 
-Base.eltype(cfg::AbstractConfiguration) = eltype(cfg.Xs)
+Base.eltype(cfg::XACEConfig) = eltype(cfg.Xs)
 
 
 
@@ -243,9 +254,4 @@ function rrule(::typeof(getproperty), X::ACE.XState, sym::Symbol)
                       NoTangent() )
 end
 
-# function rrule(::typeof(getproperty), X::ACE.XState, sym::Symbol) 
-#    val = getproperty(X, sym)
-#    return val, w -> ( NO_FIELDS, 
-#                       DState( NamedTuple{(sym,)}((w,)) ), 
-#                       NoTangent() )
-# end
+
