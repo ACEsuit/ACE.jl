@@ -69,14 +69,22 @@ import Zygote, ChainRules
 import Zygote: Buffer
 import ChainRules: rrule, NoTangent, ZeroTangent
 
-function evaluate(basis::OneParticleBasis, 
-                  cfg::AbstractConfiguration)
-   A = zeros(valtype(basis, cfg), length(basis))
+function evaluate!(A, basis::OneParticleBasis, 
+                      cfg::AbstractConfiguration)
+   fill!(A, 0)
    for X in cfg
-      A[:] += evaluate(basis, X)
+   add_into_A!(A, basis, X)
    end
    return A
 end
+
+function evaluate(basis::OneParticleBasis, 
+                  cfg::AbstractConfiguration)
+   A = acquire!(ACE._pool, valtype(basis, cfg), (length(basis),))
+   return evaluate!(A, basis, cfg)
+end
+
+
 
 function _rrule_evaluate(basis::OneParticleBasis, 
                          cfg::ACEConfig, 

@@ -1,7 +1,12 @@
 
 module ACE
 
+using Base: NamedTuple
 using Reexport
+
+include("objectpools.jl")
+using ACE.ObjectPools: acquire!, release!
+const _pool = ObjectPools.ArrayPool()
 
 # external imports that are useful for all submodules
 include("imports.jl")

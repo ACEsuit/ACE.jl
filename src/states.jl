@@ -189,6 +189,11 @@ promote_leaf_eltypes(X::XState{SYMS}) where {SYMS} =
 norm(X::XState{SYMS}) where {SYMS} = 
       sum( norm( getproperty(_x(X), sym) for sym in SYMS )^2 )
 
+import LinearAlgebra: dot 
+dot(X1::DState{SYMS}, X2::DState{SYMS}) where {SYMS} = 
+   sum( dot( getproperty(_x(X1), sym), getproperty(_x(X2), sym) )
+        for sym in SYMS )
+
 isapprox(X1::TX, X2::TX, args...; kwargs...
          ) where {TX <: XState{SYMS}} where {SYMS} = 
    all( isapprox( getproperty(_x(X1), sym), getproperty(_x(X2), sym), 

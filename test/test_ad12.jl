@@ -1,7 +1,7 @@
 
 ##
 
-
+using Yota
 using ACE, ACEbase, Zygote, ChainRules, BenchmarkTools, StaticArrays
 using Printf, Test, LinearAlgebra, ACE.Testing, Random
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
@@ -172,12 +172,15 @@ Ylm = ACE.Ylm1pBasis(6)
 B = ACE.alloc_B(Ylm, X)
 tmp = ACE.alloc_temp(Ylm, X)
 @btime evaluate($Ylm, $X)
+@btime ACE.evaluate!($B, $Ylm, $X)
 @btime ACE.evaluate!($B, $tmp, $Ylm, $X)
-@btime ACE.evaluate2($Ylm, $X)
 dB = ACE.alloc_dB(Ylm, X)
 tmpd = ACE.alloc_temp_d(Ylm, X)
 @btime evaluate_d($Ylm, $X)
 @btime ACE.evaluate_d!($dB, $tmpd, $Ylm, $X)
+dY = zeros(SVector{3, ComplexF64}, length(Ylm))
+@btime ACE.evaluate_d!($dY, $(Ylm.SH), $(X.rr)) 
+@btime ACE.evaluate_d!($dB, $Ylm, $X) 
 
 ##
 
@@ -324,7 +327,7 @@ f7_1(B1p, cfg)
 Zygote.refresh()
 Zygote.gradient(f7_1, B1p, cfg)
 
-##
+## fd test 
 
 _dotuu = (u1, u2) -> dot(u1.rr, u2.rr) + dot(u1.x, u2.x)
 Us = DACEConfig( [ _rndX() for _=1:10 ] ) 
@@ -334,11 +337,36 @@ dF = t -> sum(  _dotuu(u, dx)  for (u, dx) in zip(Us,
                         Zygote.gradient(f7_1, B1p, cfg_t(t))[2] ) )
 fdtest(F, dF, 0.0)
 
-##
+## timing 
 
+@info("Timing of 1p-basis on cfg")
+
+@info("   evaluate vs evaluate!")
+A = ACE.alloc_B(B1p, cfg)
+tmp = ACE.alloc_temp(B1p, cfg)
+@btime evaluate($B1p, $cfg)
+@btime ACE.evaluate!($A, $B1p, $cfg)
+@btime ACE.evaluate!($A, $tmp, $B1p, $cfg)
+
+
+@info("""   evaluate_ed! vs rrule
+            note that evaluate_ed! is currently hyper-not optimised!!!""")
+
+dA = ACE.alloc_dB(B1p, cfg);
+tmpd = ACE.alloc_temp_d(B1p, cfg);
+W = rand(ComplexF64, length(B1p))
+print("    evaluate_ed!: "); @btime ACE.evaluate_ed!($A, $dA, $tmpd, $B1p, $cfg);
+print(" _rrule_evaluate: "); @btime ACE._rrule_evaluate($B1p, $cfg, $W);
+
+@info("""   f7_1 vs AD-gradient: 
+            ca factor 65; needs a lot of improvement""")
+@btime f7_1($B1p, $cfg);
+@btime Zygote.gradient( $f7_1, $B1p, $cfg); 
 
 
 ## PIbasis
+
+
 
 
 ## SymmetricBasis

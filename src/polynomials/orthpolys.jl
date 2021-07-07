@@ -20,9 +20,11 @@ using ForwardDiff: derivative
 import Base: ==
 
 import ChainRules: rrule, NO_FIELDS, NoTangent
-import ACE: evaluate, evaluate_d, _rrule_evaluate, _rrule_evaluate_d
+import ACE: evaluate, evaluate_d, evaluate_dd, 
+            _rrule_evaluate, _rrule_evaluate_d
 
 export transformed_jacobi
+
 
 # these inner functions have been timed to run at 
 #    6.7ns, 9.2ns, 11.7ns => no need to hand-optimise
@@ -199,11 +201,10 @@ function OrthPolyBasis(N::Integer,
 end
 
 
-
 evaluate_P1(J::OrthPolyBasis, t) =
    J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
 
-function evaluate!(P, tmp, J::OrthPolyBasis, t; maxn=length(J))
+function evaluate!(P, J::OrthPolyBasis, t; maxn=length(J))
    @assert length(P) >= maxn
    P[1] = evaluate_P1(J, t)
    if maxn == 1; return P; end
@@ -214,6 +215,9 @@ function evaluate!(P, tmp, J::OrthPolyBasis, t; maxn=length(J))
    end
    return P
 end
+
+evaluate!(P, tmp, J::OrthPolyBasis, t; maxn=length(J)) = 
+      evaluate!(P, J::OrthPolyBasis, t; maxn=maxn)
 
 function evaluate_d!(dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
    @assert maxn <= length(dP)
@@ -235,6 +239,30 @@ function evaluate_d!(dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
    end
    return dP
 end
+
+
+# function evaluate_dd!(ddP, J::OrthPolyBasis, t; maxn=length(J))
+#    @assert maxn <= length(dP)
+
+#    P1 = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+#    dP1 = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
+#    ddP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
+#    if maxn == 1; return dP; end
+
+#    α = J.A[2] * t + J.B[2]
+#    P2 = α * P1
+#    dP[2] = α * dP[1] + J.A[2] * P1
+#    if maxn == 2; return dP; end
+
+#    @inbounds for n = 3:maxn
+#       α = J.A[n] * t + J.B[n]
+#       P3 = α * P2 + J.C[n] * P1
+#       P2, P1 = P3, P2
+#       dP[n] = α * dP[n-1] + J.C[n] * dP[n-2] + J.A[n] * P1
+#    end
+#    return dP
+# end
+
 
 
 
@@ -309,13 +337,17 @@ end
 _cutoff(J::TransformedPolys) = J.ru
 
 
-function evaluate!(P, tmp, J::TransformedPolys, r; maxn=length(J))
+function evaluate!(P, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
    t = transform(J.trans, r)
    # evaluate the actual polynomials
-   evaluate!(P, nothing, J.J, t; maxn=maxn)
+   evaluate!(P, J.J, t; maxn=maxn)
    return P
 end
+
+evaluate!(P, tmp, J::TransformedPolys, r; maxn=length(J)) = 
+      evaluate!(P, J::TransformedPolys, r; maxn=maxn)
+
 
 function evaluate_d!(dP, tmp, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
@@ -327,6 +359,8 @@ function evaluate_d!(dP, tmp, J::TransformedPolys, r; maxn=length(J))
    return dP
 end
 
+
+evaluate_dd(J::TransformedPolys, r) = derivative(r -> evaluate_d(J, r), r)
 
 
 """
@@ -356,6 +390,8 @@ end
 
 
 # ------------- AD
+
+
 
 
 function _rrule_evaluate(J::OrthPolyBasis, t::Number, 
@@ -404,8 +440,6 @@ function rrule(::typeof(evaluate), P::TransformedPolys, x::Number)
 end
 
 
-# This function is buggy and has temporarily been 
-# replaced with a ForwardDiff Implementation
 function _rrule_evaluate_d(J::OrthPolyBasis, t::Number, 
                            w::AbstractVector{<: Number}, 
                            dt = 1.0, ddt = 0.0)

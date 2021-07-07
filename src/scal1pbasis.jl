@@ -14,24 +14,24 @@ One-particle basis of the form $P_n(x_i)$ for a general scalar, invariant
 input `x`. This type basically just translates the `TransformedPolys` into a valid
 one-particle basis.
 """
-mutable struct Scal1pBasis{VSYM, ISYM, T, TT, TJ} <: OneParticleBasis{T}
+mutable struct Scal1pBasis{VSYM, VIDX, ISYM, T, TT, TJ} <: OneParticleBasis{T}
    P::TransformedPolys{T, TT, TJ}
 end
 
-scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; kwargs...) = 
-            Scal1pBasis(varsym, idxsym,  
+scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; varidx = 1, kwargs...) = 
+            Scal1pBasis(varsym, varidx, idxsym,  
                   ACE.OrthPolys.transformed_jacobi(args...; kwargs...))
 
-Scal1pBasis(varsym::Symbol, idxsym::Symbol, P::TransformedPolys{T, TT, TJ}
+Scal1pBasis(varsym::Symbol, varidx::Integer, idxsym::Symbol, P::TransformedPolys{T, TT, TJ}
             ) where {T, TT, TJ} = 
-      Scal1pBasis{varsym, idxsym, T, TT, TJ}(P)
+      Scal1pBasis{varsym, Int(varidx), idxsym, T, TT, TJ}(P)
 
 _varsym(basis::Scal1pBasis{VSYM}) where {VSYM} = VSYM
-
-_idxsym(basis::Scal1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = ISYM
+_varidx(basis::Scal1pBasis{VSYM, VIDX}) where {VSYM, VIDX} = VIDX
+_idxsym(basis::Scal1pBasis{VSYM, VIDX, ISYM}) where {VSYM, VIDX, ISYM} = ISYM
 
 _val(X::AbstractState, basis::Scal1pBasis) = 
-   getproperty(X, _varsym(basis))
+   getproperty(X, _varsym(basis)[_varidx(basis)])
 
 _val(x::Number, basis::Scal1pBasis) = x
 
@@ -49,10 +49,12 @@ write_dict(basis::Scal1pBasis{T}) where {T} = Dict(
       "__id__" => "ACE_Scal1pBasis",
           "P" => write_dict(basis.P) , 
           "varsym" => string(_varsym(basis)), 
+          "varidx" => _varidx(basis), 
           "idxsym" => string(_idxsym(basis)) )
 
 read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =   
-      Scal1pBasis(Symbol(D["varsym"]), Symbol(D["idxsym"]), read_dict(D["P"]))
+      Scal1pBasis(Symbol(D["varsym"]), Int(D["varidx"]), Symbol(D["idxsym"]), 
+                  read_dict(D["P"]))
 
 @noinline valtype(basis::Scal1pBasis, cfg::AbstractConfiguration) = 
       valtype(basis, zero(eltype(cfg)))
@@ -75,10 +77,13 @@ degree(b, basis::Scal1pBasis) = _getidx(b, basis) - 1
 
 get_index(basis::Scal1pBasis, b) = _getidx(b, basis)
 
+# TODO: need better structure to support this ... 
 rand_radial(basis::Scal1pBasis) = rand_radial(basis.P)
 
 # ---------------------------  Evaluation code
 #
+
+const _Scal1pBasis_pool = ACE.ObjectPools.ArrayPool()
 
 alloc_temp(basis::Scal1pBasis, X::AbstractState) = 
       alloc_temp(basis.P, _val(X, basis))
@@ -92,16 +97,45 @@ alloc_temp_d(basis::Scal1pBasis, X::AbstractState) =
 
 
 evaluate!(B, tmp, basis::Scal1pBasis, X::AbstractState) =
-      evaluate!(B, tmp, basis, _val(X, basis))
+      evaluate!(B, basis, X)
 
 evaluate!(B, tmp, basis::Scal1pBasis, x::Number) =
       evaluate!(B, tmp, basis.P, x)
+
+evaluate!(B, basis::Scal1pBasis, X::AbstractState) =
+      evaluate!(B, basis.P, _val(X, basis))
+
+
+@generated function __e(::SVector{N}, ::Val{I}, x::T) where {N, I, T}
+   code = "SA["
+   for i = 1:N 
+      if i == I
+         code *= "x,"
+      else 
+         code *= "0,"
+      end
+   end
+   code *= "]"
+   quote 
+      $( Meta.parse(code) )
+   end
+end
+
+__e(::Number, ::Any, x) = x
+
+
+function _scal1pbasis_grad(TDX::Type, basis::Scal1pBasis, gval)
+   gval_tdx = __e( getproperty(zero(TDX), _varsym(basis)), 
+                   Val(_varidx(basis)), 
+                   gval )
+   return TDX( NamedTuple{(_varsym(basis),)}((gval1,)) )
+end
 
 function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::AbstractState)
    TDX = eltype(dB)
    evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, _val(X, basis))
    for n = 1:length(basis)
-      dB[n] = TDX( NamedTuple{(_varsym(basis),)}((tmpd.dBP[n],)) )
+      dB[n] = _scal1pbasis_grad(TDX, basis, tmpd.dBP[n])
    end
    return dB
 end
@@ -112,10 +146,17 @@ function evaluate_ed!(B, dB, tmpd, basis::Scal1pBasis, X::AbstractState)
    evaluate!(B, tmpd.tmpdP, basis.P, x)
    evaluate_d!(tmpd.dBP, tmpd.tmpdP, basis.P, x)
    for n = 1:length(basis)
-      dB[n] = TDX( NamedTuple{(_varsym(basis),)}((tmpd.dBP[n],)) )
+      dB[n] = _scal1pbasis_grad(TDX, basis, tmpd.dBP[n])
    end
    return B, dB
 end
+
+function evaluate_dd(basis::Scal1pBasis, X::AbstractState) 
+   ddP = ForwardDiff.derivative(x -> evaluate_d(basis, _val(X, basis)))
+   TDX = gradtype(basis, X)
+   return _scal1pbasis_grad.(Ref(TDX), Ref(basis), ddP_n)
+end
+
 
 
 # -------------- AD codes 
@@ -124,6 +165,7 @@ import ChainRules: rrule, NO_FIELDS
 
 function _rrule_evaluate(basis::Scal1pBasis, X::AbstractState, 
                          w::AbstractVector{<: Number})
+   @assert _varidx(basis) == 1
    x = _val(X, basis)
    a = _rrule_evaluate(basis.P, x, real.(w))
    TDX = ACE.dstate_type(a, X)
@@ -138,6 +180,7 @@ rrule(::typeof(evaluate), basis::Scal1pBasis, X::AbstractState) =
                   
 function _rrule_evaluate_d(basis::Scal1pBasis, X::AbstractState, 
                            w::AbstractVector)
+   @assert _varidx(basis) == 1
    x = _val(X, basis)
    w1 = [ _val(w, basis) for w in w ]
    a = _rrule_evaluate_d(basis.P, x, w1)
@@ -146,6 +189,7 @@ function _rrule_evaluate_d(basis::Scal1pBasis, X::AbstractState,
 end
 
 function rrule(::typeof(evaluate_d), basis::Scal1pBasis, X::AbstractState)
+   @assert _varidx(basis) == 1
    x = _val(X, basis)
    dB_ = evaluate_d(basis.P, x)
    TDX = dstate_type(valtype(basis, X), X)

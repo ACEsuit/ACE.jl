@@ -98,7 +98,7 @@ alloc_temp_d(basis::Product1pBasis, X::AbstractState) =
       )
 
 
-
+import Base.Cartesian: @nexprs
 
 
 @generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
@@ -114,6 +114,25 @@ alloc_temp_d(basis::Product1pBasis, X::AbstractState) =
 end
 
 
+@generated function add_into_A!(A, basis::Product1pBasis{NB}, X) where {NB}
+   quote
+      @nexprs $NB i -> begin 
+         bas_i = basis.bases[i]
+         B_i = acquire!( _pool, valtype(bas_i, X), (length(bas_i), ) )
+         evaluate!(B_i, bas_i, X)
+      end 
+      for (iA, ϕ) in enumerate(basis.indices)
+         t = one(eltype(A))
+         @nexprs $NB i -> (t *= B_i[ϕ[i]])
+         A[iA] += t
+      end
+      @nexprs $NB i -> release!(_pool, B_i)
+      return nothing
+   end
+end
+
+
+
 
 @generated function add_into_A_dA!(A, dA, tmpd, basis::Product1pBasis{NB}, X
                                    ) where {NB}
@@ -197,7 +216,7 @@ end
 end
 
 
-function evaluate_d!(dA, tmpd, basis::Product1pBasis, X)
+function evaluate_d!(dA, tmpd, basis::Product1pBasis, X::AbstractState)
    A = alloc_B(basis, X)
    add_into_A_dA!(A, dA, tmpd, basis, X)
    return dA 
@@ -263,6 +282,7 @@ function rand_radial(basis::Product1pBasis)
    end
    return nothing
 end
+
 
 
 

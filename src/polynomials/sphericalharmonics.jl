@@ -7,13 +7,12 @@ using StaticArrays, LinearAlgebra
 
 import ACE
 
-import ACE: alloc_B, alloc_dB, fltype,
+import ACE: alloc_B, alloc_dB, fltype, valtype, grad_type, 
 		      alloc_temp, alloc_temp_d, evaluate!, evaluate_d!, evaluate_ed!,
 			   write_dict, read_dict,
 				ACEBasis
 
 export SHBasis, RSHBasis
-
 
 
 # --------------------------------------------------------
@@ -90,9 +89,7 @@ Return the index into a flat array of Associated Legendre Polynomials ``P_l^m``
 for the given indices ``(l,m)``.
 ``P_l^m`` are stored in l-major order i.e. [P(0,0), [P(1,0), P(1,1), P(2,0), ...]
 """
-# Base.@pure index_p(l,m) = m + div(l*(l+1), 2) + 1
-@inline index_p(l::Int,m::Int) = m + div(l*(l+1), 2) + 1
-index_p(l::Integer, m::Integer) = index_y(Int(l), Int(m))
+@inline index_p(l::Integer,m::Integer) = m + div(l*(l+1), 2) + 1
 
 """
 	index_y(l,m)
@@ -102,8 +99,7 @@ for the given indices ``(l,m)``.
 ``Y_{l,m}`` are stored in l-major order i.e.
 [Y(0,0), [Y(1,-1), Y(1,0), Y(1,1), Y(2,-2), ...]
 """
-Base.@pure index_y(l::Int, m::Int) = m + l + (l*l) + 1
-index_y(l::Integer, m::Integer) = index_y(Int(l), Int(m))
+@inline index_y(l::Integer, m::Integer) = m + l + (l*l) + 1
 
 # # i = m + l + l^2 + 1
 # # m = i - l - l^2 - 1
@@ -516,6 +512,9 @@ RSHBasis(maxL::Integer, T::Type=Float64) =
 rfltype(SH::AbstractSHBasis{T}) where {T} = T
 Base.length(S::AbstractSHBasis) = sizeY(S.maxL)
 
+ACE.valtype(::SHBasis{T}, args...) where {T} = Complex{T}
+ACE.valtype(::RSHBasis{T}, args...) where {T} = T
+
 fltype(::SHBasis{T}) where {T} = Complex{T}
 fltype(::RSHBasis{T}) where {T} = T
 
@@ -543,6 +542,10 @@ alloc_temp_d(SH::AbstractSHBasis{T}, args...) where {T} = (
 		 P = Vector{T}(undef, sizeP(SH.maxL)),
 		dP = Vector{T}(undef, sizeP(SH.maxL)) )
 
+const P_pool = ACE.ObjectPools.StaticVectorPool{Float64}()
+const dP_pool = ACE.ObjectPools.StaticVectorPool{Float64}()
+		
+
 
 _evaluate!(Y, L, S, P, ::SHBasis) = cYlm!(Y, L, S, P)
 _evaluate!(Y, L, S, P, ::RSHBasis) = rYlm!(Y, L, S, P)
@@ -563,13 +566,32 @@ function evaluate!(Y, tmp, SH::AbstractSHBasis, R::SVector{3})
 	return Y
 end
 
-function evaluate_d!(dY, tmp, SH::AbstractSHBasis, R::SVector{3})
+function evaluate!(Y, SH::AbstractSHBasis{T}, R::SVector{3}) where {T} 
 	L=SH.maxL
-	@assert 0 <= L <= SH.maxL
+	@assert length(Y) >= sizeY(L)
+	S = cart2spher(R)
+	P = ACE.acquire!( P_pool, sizeP(SH.maxL) )
+	compute_p!(L, S, SH.coeff, P)
+	_evaluate!(Y, L, S, P, SH)
+	return Y
+end
+
+function evaluate_d!(dY, tmp, SH::AbstractSHBasis, R::SVector{3})
+	L = SH.maxL
 	S = cart2spher(R)
 	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
 	_evaluate_d!(dY, L, S, tmp.P, tmp.dP, SH)
 end
+
+function evaluate_d!(dY, SH::AbstractSHBasis, R::SVector{3})
+	L = SH.maxL
+	S = cart2spher(R)
+	P = ACE.acquire!( P_pool, sizeP(SH.maxL) )
+	dP = ACE.acquire!( dP_pool, sizeP(SH.maxL) )
+	compute_dp!(L, S, SH.coeff, P, dP)
+	_evaluate_d!(dY, L, S, P, dP, SH)
+end
+
 
 function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	L=SH.maxL
@@ -584,27 +606,6 @@ function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
 	# return Y, dY
 end
 
-
-# --------- Experimental new evaluation code
-
-const __Y = ComplexF64[] 
-const __P = Float64[] 
-
-function __grow_YP!(SH::AbstractSHBasis)
-	if length(SH) > length(__Y)
-		resize!(__Y, length(SH))
-	end
-	if sizeP(SH.maxL) > length(__P)
-		resize!(__P, sizeP(SH.maxL))
-	end
-	return __Y, __P
-end
-
-function evaluate2(SH::AbstractSHBasis, R::SVector{3})
-	Y, P = __grow_YP!(SH)
-	evaluate!(Y, (P = P,), SH, R)	
-	return @view(Y[1:length(SH)])
-end
 
 
 end

@@ -110,6 +110,11 @@ _rr(X, basis::Ylm1pBasis) = getproperty(X, _varsym(basis))
 evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.SH, _rr(X, basis))
 
+
+evaluate!(B, basis::Ylm1pBasis, X::AbstractState) = 
+      evaluate!(B, basis.SH, _rr(X, basis))
+
+
 evaluate_d!(dB, tmpd, basis::Ylm1pBasis, X::AbstractState) = 
       (evaluate_ed!(tmpd.Bsh, dB, tmpd, basis, X); dB)
 
@@ -122,7 +127,21 @@ function evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState)
    end
    return nothing 
 end
+
+const __dY_pool = ACE.ObjectPools.StaticVectorPool{SVector{3, ComplexF64}}()
+
+function evaluate_d!(dB, basis::Ylm1pBasis, X::AbstractState)
+   TDX = eltype(dB)
+   RSYM = _varsym(basis)
+   dY = ACE.acquire!(__dY_pool, length(basis))
+   evaluate_d!(dY, basis.SH, _rr(X, basis))
+   for n = 1:length(basis)
+      dB[n] = TDX( NamedTuple{(RSYM,)}((dY[n],)) )
+   end
+   return dB 
+end
    
+
 
 degree(b, Ylm::Ylm1pBasis) = _l(b, Ylm)
 

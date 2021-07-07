@@ -28,7 +28,7 @@ end
 
 
 gensparse(N::Integer, deg::Real; degfun = ν -> sum(ν), kwargs...) =
-   gensparse(N; admissible = ν -> (degfun(ν) <= deg), kwargs...)
+   gensparse(; NU=N, admissible = ν -> (degfun(ν) <= deg), kwargs...)
 
 """
 `gensparse(...)` : utility function to generate high-dimensional sparse grids

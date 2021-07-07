@@ -82,6 +82,9 @@ rand_radial(basis::Rn1pBasis) = rand_radial(basis.R)
 evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, tmp, basis.R, norm(_rr(X, basis)))
 
+evaluate!(B, basis::Rn1pBasis, X::AbstractState) =
+      evaluate!(B, basis.R, norm(_rr(X, basis)))
+
 function evaluate(basis::Rn1pBasis, X::AbstractState)
    rr = _rr(X, basis)
    return evaluate(basis.R, norm(rr))
