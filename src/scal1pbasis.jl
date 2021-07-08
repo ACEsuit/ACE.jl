@@ -22,6 +22,9 @@ scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; varidx = 1, kwargs...) =
             Scal1pBasis(varsym, varidx, idxsym,  
                   ACE.OrthPolys.transformed_jacobi(args...; kwargs...))
 
+Scal1pBasis(varsym::Symbol, idxsym::Symbol, P::TransformedPolys{T, TT, TJ}
+            ) where {T, TT, TJ} = Scal1pBasis(varsym, 1, idxsym, P)
+
 Scal1pBasis(varsym::Symbol, varidx::Integer, idxsym::Symbol, P::TransformedPolys{T, TT, TJ}
             ) where {T, TT, TJ} = 
       Scal1pBasis{varsym, Int(varidx), idxsym, T, TT, TJ}(P)
@@ -31,7 +34,7 @@ _varidx(basis::Scal1pBasis{VSYM, VIDX}) where {VSYM, VIDX} = VIDX
 _idxsym(basis::Scal1pBasis{VSYM, VIDX, ISYM}) where {VSYM, VIDX, ISYM} = ISYM
 
 _val(X::AbstractState, basis::Scal1pBasis) = 
-   getproperty(X, _varsym(basis)[_varidx(basis)])
+      getproperty(X, _varsym(basis))[_varidx(basis)]
 
 _val(x::Number, basis::Scal1pBasis) = x
 
@@ -128,7 +131,7 @@ function _scal1pbasis_grad(TDX::Type, basis::Scal1pBasis, gval)
    gval_tdx = __e( getproperty(zero(TDX), _varsym(basis)), 
                    Val(_varidx(basis)), 
                    gval )
-   return TDX( NamedTuple{(_varsym(basis),)}((gval1,)) )
+   return TDX( NamedTuple{(_varsym(basis),)}((gval_tdx,)) )
 end
 
 function evaluate_d!(dB, tmpd, basis::Scal1pBasis, X::AbstractState)
