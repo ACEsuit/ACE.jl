@@ -7,7 +7,7 @@ using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
 using ACE.SphericalHarmonics
 using ACE.SphericalHarmonics: dspher_to_dcart, SphericalCoords,
                cart2spher, spher2cart
-using ACE: evaluate, evaluate_d
+using ACE: evaluate, evaluate_d, evaluate_ed
 using ACE.Testing
 
 verbose = false
@@ -71,15 +71,18 @@ println()
 verbose=false
 @info("Test: check derivatives of associated legendre polynomials")
 for nsamples = 1:30
-   θ = 0.1+0.4 * pi * rand()
+   θ = rand() * π
+   φ = (rand()-0.5) * 2*π
+   S = ACE.SphericalHarmonics.SphericalCoords(φ, θ)
    L = 5
-   P = ACE.SphericalHarmonics.compute_p(L, θ)
-   P1, dP = ACE.SphericalHarmonics.compute_dp(L, θ)
+   alp = ACE.SphericalHarmonics.ALPolynomials(L)
+   P = evaluate(alp, S)
+   P1, dP = ACE.SphericalHarmonics._evaluate_ed(alp, S)
    # -------------
    P_eq_P1 = true
    for l = 0:L, m = 0:l
       i = ACE.SphericalHarmonics.index_p(l, m)
-      if ((m == 0) && !(P[i] ≈ P1[i])) || ((m > 0) && !(P[i] ≈ P1[i] * sin(θ)))
+      if ((m == 0) && !(P[i] ≈ P1[i])) || ((m > 0) && !(P[i] ≈ P1[i] * S.sinθ))
          P_eq_P1 = false; break;
       end
    end
@@ -89,7 +92,8 @@ for nsamples = 1:30
    verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
-      dPh = (ACE.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+      Sh = ACE.SphericalHarmonics.SphericalCoords(φ, θ + h)
+      dPh = (evaluate(alp, Sh) - P) / h
       push!(errs, norm(dP - dPh, Inf))
       verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
@@ -103,14 +107,16 @@ println()
 @info("      ... same near pole")
 for nsamples = 1:30
    θ = rand() * 1e-8
+   S = ACE.SphericalHarmonics.SphericalCoords(0.0, θ)
    L = 5
-   P = ACE.SphericalHarmonics.compute_p(L, θ)
-   _, dP = ACE.SphericalHarmonics.compute_dp(L, θ)
+   P = evaluate(alp, S)
+   _, dP = ACE.SphericalHarmonics._evaluate_ed(alp, S)
    errs = []
    verbose && @printf("     h    | error \n")
    for p = 2:10
       h = 0.1^p
-      dPh = (ACE.SphericalHarmonics.compute_p(L, θ+h) - P) / h
+      Sh = ACE.SphericalHarmonics.SphericalCoords(0.0, θ + h)
+      dPh = (evaluate(alp, Sh) - P) / h
       push!(errs, norm(dP - dPh, Inf))
       verbose && @printf(" %.2e | %.2e \n", h, errs[end])
    end
