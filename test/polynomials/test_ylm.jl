@@ -5,7 +5,7 @@
 import ACE
 using LinearAlgebra, StaticArrays, BenchmarkTools, Test, Printf
 using ACE.SphericalHarmonics
-using ACE.SphericalHarmonics: dspher_to_dcart, PseudoSpherical,
+using ACE.SphericalHarmonics: dspher_to_dcart, SphericalCoords,
                cart2spher, spher2cart
 using ACE: evaluate, evaluate_d
 using ACE.Testing
@@ -131,7 +131,7 @@ println()
 ##
 
 @info("Test : spher-cart jacobian")
-φθ(S::PseudoSpherical) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
+φθ(S::SphericalCoords) = [atan(S.sinφ, S.cosφ), atan(S.sinθ, S.cosθ)]
 φθ(R::AbstractVector) = φθ(cart2spher(R))
 EE = [ [1,0,0], [0,1,0], [0,0,1] ]
 h = 1e-5
@@ -175,22 +175,5 @@ println()
 
 ##
 
-# another test, which we could add but isn't really necessary
-# R = SVector(0.589275, 0.468925, 0.00509384)
-# # R /= norm(R)
-# u = SVector(0.318475, 0.734832, 0.598829)
-# SH = SHBasis(5)
-# Y, dY = evaluate_ed(SH, R)
-# dY_u = dot.(Ref(u), dY)
-# errs = []
-# @printf("     h    | error \n")
-# for p = 2:10
-#    h = 0.1^p
-#    dYh_u = (evaluate(SH, R + h * u) - Y) / h
-#    push!(errs, norm(dY_u - dYh_u, Inf))
-#    @printf(" %.2e | %.2e \n", h, errs[end])
-# end
-
-##
 
 end # @testset

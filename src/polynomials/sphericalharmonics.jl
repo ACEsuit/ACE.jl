@@ -21,13 +21,13 @@ export SHBasis, RSHBasis
 
 
 """
-`struct PseudoSpherical` : a simple datatype storing spherical coordinates
-of a point (x,y,z) in the format (r, cosφ, sinφ, cosθ, sinθ).
+`struct SphericalCoords` : a simple datatype storing spherical coordinates
+of a point (x,y,z) in the format `(r, cosφ, sinφ, cosθ, sinθ)`.
 
 Use `spher2cart` and `cart2spher` to convert between cartesian and spherical
 coordinates.
 """
-struct PseudoSpherical{T}
+struct SphericalCoords{T}
 	r::T
 	cosφ::T
 	sinφ::T
@@ -35,7 +35,7 @@ struct PseudoSpherical{T}
 	sinθ::T
 end
 
-spher2cart(S::PseudoSpherical) = S.r * SVector(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
+spher2cart(S::SphericalCoords) = S.r * SVector(S.cosφ*S.sinθ, S.sinφ*S.sinθ, S.cosθ)
 
 function cart2spher(R::AbstractVector)
 	@assert length(R) == 3
@@ -44,10 +44,10 @@ function cart2spher(R::AbstractVector)
 	sinφ, cosφ = sincos(φ)
 	cosθ = R[3] / r
 	sinθ = sqrt(R[1]^2+R[2]^2) / r
-	return PseudoSpherical(r, cosφ, sinφ, cosθ, sinθ)
+	return SphericalCoords(r, cosφ, sinφ, cosθ, sinθ)
 end
 
-PseudoSpherical(φ, θ) = PseudoSpherical(1.0, cos(φ), sin(φ), cos(θ), sin(θ))
+SphericalCoords(φ, θ) = SphericalCoords(1.0, cos(φ), sin(φ), cos(θ), sin(θ))
 
 """
 convert a gradient with respect to spherical coordinates to a gradient
@@ -158,7 +158,7 @@ allocate_p(L::Int) = Array{Float64}(undef, sizeP(L))
 Compute an entire set of Associated Legendre Polynomials ``P_l^m(x)``
 using the given coefficients, and store in the array P.
 """
-function compute_p!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
+function compute_p!(L::Integer, S::SphericalCoords{T}, coeff::ALPCoefficients{T},
 					     P::Array{T,1}) where {T}
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
@@ -193,7 +193,7 @@ function compute_p!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T}
 end
 
 
-function compute_dp!(L::Integer, S::PseudoSpherical{T}, coeff::ALPCoefficients{T},
+function compute_dp!(L::Integer, S::SphericalCoords{T}, coeff::ALPCoefficients{T},
 					     P::Array{T,1}, dP::Array{T,1}) where T
 	@assert length(coeff.A) >= sizeP(L)
 	@assert length(coeff.B) >= sizeP(L)
@@ -256,14 +256,14 @@ end
 Compute an entire set of Associated Legendre Polynomials ``P_l^m(x)`` where
 ``0 ≤ l ≤ L`` and ``0 ≤ m ≤ l``. Assumes ``|x| ≤ 1``.
 """
-function compute_p(L::Integer, S::PseudoSpherical{T}) where {T}
+function compute_p(L::Integer, S::SphericalCoords{T}) where {T}
 	P = Array{T}(undef, sizeP(L))
 	coeff = compute_coefficients(L)
 	compute_p!(L, S, coeff, P)
 	return P
 end
 
-function compute_dp(L::Integer, S::PseudoSpherical{T}) where {T}
+function compute_dp(L::Integer, S::SphericalCoords{T}) where {T}
 	P = Array{T}(undef, sizeP(L))
 	dP = Array{T}(undef, sizeP(L))
 	coeff = compute_coefficients(L)
@@ -272,10 +272,10 @@ function compute_dp(L::Integer, S::PseudoSpherical{T}) where {T}
 end
 
 compute_p(L::Integer, θ::Real) =
-	compute_p(L, PseudoSpherical(0.0, 0.0, 0.0, cos(θ), sin(θ)))
+	compute_p(L, SphericalCoords(0.0, 0.0, 0.0, cos(θ), sin(θ)))
 
 compute_dp(L::Integer, θ::Real) =
-	compute_dp(L, PseudoSpherical(0.0, 0.0, 0.0, cos(θ), sin(θ)))
+	compute_dp(L, SphericalCoords(0.0, 0.0, 0.0, cos(θ), sin(θ)))
 
 
 
@@ -286,7 +286,7 @@ compute_dp(L::Integer, θ::Real) =
 """
 evaluate complex spherical harmonics
 """
-function cYlm!(Y, L, S::PseudoSpherical, P)
+function cYlm!(Y, L, S::SphericalCoords, P)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
@@ -316,7 +316,7 @@ end
 """
 evaluate gradients of complex spherical harmonics
 """
-function cYlm_d!(dY, L, S::PseudoSpherical, P, dP)
+function cYlm_d!(dY, L, S::SphericalCoords, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(dY) >= sizeY(L)
    # @assert abs(S.cosθ) < 1.0
@@ -350,7 +350,7 @@ end
 """
 evaluate gradients of complex spherical harmonics
 """
-function cYlm_ed!(Y, dY, L, S::PseudoSpherical, P, dP)
+function cYlm_ed!(Y, dY, L, S::SphericalCoords, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
 	@assert length(dY) >= sizeY(L)
@@ -389,7 +389,7 @@ end
 """
 evaluate real spherical harmonics
 """
-function rYlm!(Y::AbstractVector{T}, L, S::PseudoSpherical, P) where {T <: Real}
+function rYlm!(Y::AbstractVector{T}, L, S::SphericalCoords, P) where {T <: Real}
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
@@ -423,7 +423,7 @@ end
 evaluate gradients of real spherical harmonics
 """
 function rYlm_d!(Y::AbstractVector{T}, dY,
-					  L, S::PseudoSpherical, P, dP) where {T <: Real}
+					  L, S::SphericalCoords, P, dP) where {T <: Real}
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
    @assert abs(S.cosθ) <= 1.0
