@@ -20,7 +20,9 @@ include("imports.jl")
 @extimports
 @baseimports
 
-# TODO - move to imports
+# TODO 
+# - move to imports
+# - retire alloc_B, alloc_dB 
 
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
@@ -58,8 +60,8 @@ include("auxiliary.jl")
 
 include("rotations3d.jl")
 using ACE.Rotations3D
-include("testing/wigner.jl")
 
+include("polynomials/wigner.jl")
 
 include("states.jl")
 include("properties.jl")
@@ -105,11 +107,7 @@ include("evaluator.jl")
 
 # # orthogonal basis
 # include("orth.jl")
-#
-# lots of stuff related to random samples:
-#  - random configurations
-#  - random potentials
-#  ...
+
 include("random.jl")
 @reexport using ACE.Random
 
@@ -123,6 +121,7 @@ include("utils.jl")
 
 
 include("testing/testing.jl")
+
 
 # - bond model
 # - pure basis

@@ -6,7 +6,8 @@ module Random
 
 import LinearAlgebra: norm
 import ACE: rand_radial, scaling, fltype, rfltype,
-            PositionState, ACEBasis
+            PositionState, ACEBasis, 
+            rand_sphere, rand_rot, rand_refl, rand_O3 
 
 using Random: shuffle
 
@@ -17,10 +18,6 @@ export rand_nhd, rand_config, rand_sym, randcoeffs, randcombine
 # -------------------------------------------
 #   random neighbourhoods and  configurations
 
-function rand_sphere(T = Float64)
-   R = randn(SVector{3, T})
-   return R / norm(R)
-end
 
 Base.rand(::Type{TX}, basis::ACEBasis) where {TX <: PositionState} =
          TX( (rr = rand_radial(basis) * rand_sphere(),) )
@@ -28,11 +25,6 @@ Base.rand(::Type{TX}, basis::ACEBasis) where {TX <: PositionState} =
 Base.rand(T::Type{TX}, basis::ACEBasis, N::Integer) where {TX <: PositionState} =
          [ rand(T, basis) for _=1:N ]
 
-rand_rot() = (K = (@SMatrix rand(3,3)) .- 0.5; exp(K - K'))
-
-rand_refl() = rand([-1,1])
-
-rand_O3() = rand_refl() * rand_rot()
 
 function rand_rot(Xs::AbstractVector)
    Q = rand_rot()

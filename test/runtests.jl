@@ -7,7 +7,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # ------------------------------------------
     #   basic polynomial basis building blocks
     include("polynomials/test_ylm.jl")
-    # include("testing/test_wigner.jl")
+    include("testing/test_wigner.jl")
     # include("polynomials/test_transforms.jl")
     # include("polynomials/test_orthpolys.jl")
 

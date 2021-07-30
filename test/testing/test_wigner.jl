@@ -9,15 +9,12 @@ using ACE: evaluate
 using Random, Printf, Test, ACE.Testing
 using ACE, Test, Printf, LinearAlgebra, BenchmarkTools
 
+
 ##
 
-SH = ACE.SphericalHarmonics.SHBasis(3)
-for L = 0:3
+for L = 0:5
    @info("Check correctness of Wigner-D matrix of order $L")
-   println()
-
-   φ = ACE.SphericalVector(L; T = ComplexF64)
-
+   SH = ACE.SphericalHarmonics.SHBasis(L)
    for ntest = 1:20
       Q, D = ACE.Wigner.rand_QD(L)
       x = randn(SVector{3, Float64})
@@ -28,5 +25,7 @@ for L = 0:3
    end
    println()
 end
+
+##
 
 end
