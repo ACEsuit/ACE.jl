@@ -68,6 +68,7 @@ end
 println()
 ##
 
+
 verbose=false
 @info("Test: check derivatives of associated legendre polynomials")
 for nsamples = 1:30
@@ -109,6 +110,7 @@ for nsamples = 1:30
    θ = rand() * 1e-8
    S = ACE.SphericalHarmonics.SphericalCoords(0.0, θ)
    L = 5
+   alp = ACE.SphericalHarmonics.ALPolynomials(L)
    P = evaluate(alp, S)
    _, dP = ACE.SphericalHarmonics._evaluate_ed(alp, S)
    errs = []
@@ -158,7 +160,9 @@ println()
 for nsamples = 1:30
    R = @SVector rand(3)
    SH = SHBasis(5)
-   Y, dY = evaluate(SH, R), evaluate_d(SH, R)
+   Y1 = evaluate(SH, R)
+   Y, dY = evaluate_ed(SH, R)
+   print_tf(@test(Y ≈ Y1))
    DY = Matrix(transpose(hcat(dY...)))
    errs = []
    verbose && @printf("     h    | error \n")

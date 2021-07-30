@@ -85,11 +85,15 @@ struct StaticVectorPool{T}
 end
 
 function acquire!(pool::StaticVectorPool{T}, len::Integer) where {T}
-    x = pool.arrays[1] 
-    if len > length(x) 
-        resize!(x, len)
-    end 
-    return x 
+    if length(pool.arrays) > 0     
+        x = pop!(pool.arrays)
+        if len > length(x) 
+            resize!(x, len)
+        end 
+        return x 
+    else
+        return Vector{T}(undef, len)
+    end
 end
 
 function release!(pool::StaticVectorPool{T}, x::Vector{T}) where {T}

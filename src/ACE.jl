@@ -23,9 +23,9 @@ include("imports.jl")
 # TODO - move to imports
 
 using ForwardDiff: derivative
-import ChainRules: rrule, NO_FIELDS, NoTangent
-import ACE: evaluate, evaluate_d 
-
+import ChainRules: rrule, ZeroTangent, NoTangent
+import ACEbase: evaluate, evaluate_d 
+import  ACEbase: gradtype, valtype, alloc_B, alloc_dB
 
 abstract type AbstractACEModel end 
 
@@ -41,7 +41,17 @@ function coco_dot end
 # * move these the following definitions to ACEbase
 function _rrule_evaluate end 
 function _rrule_evaluate_d end 
-import  ACEbase: gradtype, valtype, alloc_B, alloc_dB
+
+evaluate(basis::ACEBasis, args...) =  
+      evaluate!( acquire_B!(basis, args...), basis, args... )
+
+evaluate_d(basis::ACEBasis, args...) =  
+      evaluate_d!( acquire_dB!(basis, args...), basis, args... )
+
+evaluate_ed(basis::ACEBasis, args...) =  
+      evaluate_ed!( acquire_B!(basis, args...), acquire_dB!(basis, args...), 
+                    basis, args... )
+
 
 include("auxiliary.jl")
 

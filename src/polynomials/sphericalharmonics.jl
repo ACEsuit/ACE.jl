@@ -11,7 +11,8 @@ import ACE: alloc_B, alloc_dB, fltype, valtype, grad_type,
 		      alloc_temp, alloc_temp_d, evaluate!, evaluate_d!, evaluate_ed!,
 			   write_dict, read_dict,
 				ACEBasis, 
-				acquire!, release!, acquire_B!, release_B! 
+				acquire!, release!, acquire_B!, release_B!, 
+				acquire_dB!, release_dB! 
 
 import ACE.ObjectPools: StaticVectorPool
 
@@ -141,10 +142,10 @@ valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} =
 gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
 			promote_type(T, S) 
 
-acquire_B!(alp::ALPolynomials) = acquire!(alp.P_pool, sizeP(alp.L))
+acquire_B!(alp::ALPolynomials, args...) = acquire!(alp.P_pool, sizeP(alp.L))
 release_B!(alp::ALPolynomials, B) = release!(alp.P_pool, B)
 
-acquire_dB!(alp::ALPolynomials) = acquire_B!(alp)
+acquire_dB!(alp::ALPolynomials, args...) = acquire_B!(alp)
 release_dB!(alp::ALPolynomials, B) = release_B!(alp, B)
 
 
@@ -198,7 +199,7 @@ end
 
 
 _evaluate_ed(alp::ALPolynomials, S::SphericalCoords) = 
-	_evaluate_ed!(alloc_B(alp), alloc_dB(alp), alp::ALPolynomials, S::SphericalCoords)
+	_evaluate_ed!(acquire_B!(alp), acquire_dB!(alp), alp::ALPolynomials, S::SphericalCoords)
 
 # this doesn't use the standard name because it doesn't 
 # technically perform the derivative w.r.t. S, but w.r.t. θ
@@ -317,7 +318,7 @@ read_dict(::Val{:ACE_SHBasis}, D::Dict) =
 Base.length(S::AbstractSHBasis) = sizeY(maxL(S))
 
 
-acquire_B!(sh::SHBasis) = 
+acquire_B!(sh::SHBasis, args...) = 
 		acquire!(sh.B_pool, length(sh))
 release_B!(sh::SHBasis, B) = 
 		release!(sh.B_pool, B)
@@ -334,10 +335,9 @@ _evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)
 
 _evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_ed!(Y, dY, L, S, P, dP)
 
-function evaluate!(Y, SH::AbstractSHBasis{T}, R::AbstractVector) where {T} 
+function evaluate!(Y, SH::AbstractSHBasis, R::AbstractVector)
 	@assert length(R) == 3
 	L = maxL(SH)
-	@assert length(Y) >= sizeY(L)
 
 	P = acquire_B!(SH.alp)
 	__evaluate!(Y, SH, P, R)
@@ -347,24 +347,31 @@ function evaluate!(Y, SH::AbstractSHBasis{T}, R::AbstractVector) where {T}
 end
 
 # this is just for performance testing 
-function __evaluate!(Y, SH::SHBasis{T}, P, R::AbstractVector) where {T} 
+function __evaluate!(Y, SH::SHBasis, P, R::AbstractVector) 
 	S = cart2spher(R)
 	evaluate!(P, SH.alp, S)
 	cYlm!(Y, maxL(SH), S, P)
 	return Y 
 end
 
-function evaluate_ed!(Y, dY, SH::AbstractSHBasis, R::SVector{3})
-	L=maxL(SH)
-	@assert 0 <= L <= maxL(SH)
-	@assert length(Y) >= sizeY(L)
-	# if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
-	# 	R = SVector(R[1]+1e-9, R[2], R[3])
-	# end
+
+function evaluate_ed!(Y, dY, SH::AbstractSHBasis, R::AbstractVector)
+	@assert length(R) == 3
+	L = maxL(SH)
+
+	P = acquire_B!(SH.alp)
+	dP = acquire_dB!(SH.alp)
+	__evaluate_ed!(Y, dY, SH, P, dP, R)
+	release_B!(SH.alp, P)
+	release_dB!(SH.alp, dP)
+	return Y, dY
+end
+
+# this is just for performance testing 
+function __evaluate_ed!(Y, dY, SH::SHBasis, P, dP, R::AbstractVector)
 	S = cart2spher(R)
-	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
-	_evaluate_ed!(Y, dY, L, S, tmp.P, tmp.dP, SH)
-	# return Y, dY
+	_evaluate_ed!(P, dP, SH.alp, S)
+	return cYlm_ed!(Y, dY, maxL(SH), S, P, dP)
 end
 
 

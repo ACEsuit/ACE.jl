@@ -65,8 +65,7 @@ end
 
 # -------------------- AD codes 
 
-import Zygote, ChainRules
-import Zygote: Buffer
+import ChainRules
 import ChainRules: rrule, NoTangent, ZeroTangent
 
 function evaluate!(A, basis::OneParticleBasis, 

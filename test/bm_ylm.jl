@@ -69,3 +69,14 @@ P_sh = acquire_B!(sh.alp)
 @btime ACE.SphericalHarmonics.__evaluate!($B_sh, $sh, $P_sh, $x)
 @info("ALP allocates via pool, Bsh is passed in")
 @btime evaluate!($B_sh, $sh, $x)
+
+##
+
+@info("Spherical Harmonics gradients")
+dB_sh = ACE.SphericalHarmonics.acquire_dB!(sh, x)
+dP_sh = acquire_dB!(sh.alp)
+
+@info("non-allocating")
+@btime ACE.SphericalHarmonics.__evaluate_ed!($B_sh, $dB_sh, $sh, $P_sh, $dP_sh, $x)
+@info("ALP allocates via pool, Bsh is passed in")
+@btime ACE.evaluate_ed!($B_sh, $dB_sh, $sh, $x)
