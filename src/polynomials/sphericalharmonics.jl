@@ -5,12 +5,15 @@ module SphericalHarmonics
 
 using StaticArrays, LinearAlgebra
 
-import ACE
+import ACE, ACEbase 
 
 import ACE: alloc_B, alloc_dB, fltype, valtype, grad_type, 
 		      alloc_temp, alloc_temp_d, evaluate!, evaluate_d!, evaluate_ed!,
 			   write_dict, read_dict,
-				ACEBasis
+				ACEBasis, 
+				acquire!, release!, acquire_B!, release_B! 
+
+import ACE.ObjectPools: StaticVectorPool
 
 export SHBasis
 
@@ -120,11 +123,30 @@ struct ALPolynomials{T} <: ACEBasis
 	L::Int
 	A::Vector{T}
 	B::Vector{T}
+	P_pool::StaticVectorPool{T}
 end
 
-fltype(alp::ALPolynomials{T}) where {T} = T 
+ALPolynomials(L::Integer, A::Vector{T}, B::Vector{T}) where {T}  = 
+		ALPolynomials(L, A, B, StaticVectorPool{T}())
 
 Base.length(alp::ALPolynomials) = sizeP(alp.L)
+
+import Base.==
+==(B1::ALPolynomials, B2::ALPolynomials) = ACEbase._allfieldsequal(B1, B2)
+
+
+valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
+			promote_type(T, S) 
+
+gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
+			promote_type(T, S) 
+
+acquire_B!(alp::ALPolynomials) = acquire!(alp.P_pool, sizeP(alp.L))
+release_B!(alp::ALPolynomials, B) = release!(alp.P_pool, B)
+
+acquire_dB!(alp::ALPolynomials) = acquire_B!(alp)
+release_dB!(alp::ALPolynomials, B) = release_B!(alp, B)
+
 
 function ALPolynomials(L::Integer, T::Type=Float64)
 	# Precompute coefficients ``a_l^m`` and ``b_l^m`` for all l <= L, m <= l
@@ -141,14 +163,8 @@ function ALPolynomials(L::Integer, T::Type=Float64)
 	return alp
 end
 
-# _alp_pool = 
-# release_B!(alp::ALPolynomials, B) = release!(_alp_pool, B)
 
-alloc_B(alp::ALPolynomials) = Vector{Float64}(undef, sizeP(alp.L))
-
-alloc_dB(alp::ALPolynomials, args...) = Vector{Float64}(undef, sizeP(alp.L))
-
-function evaluate!(P, tmp, alp::ALPolynomials, S::SphericalCoords)
+function evaluate!(P, alp::ALPolynomials, S::SphericalCoords)
 	L = alp.L 
 	A = alp.A 
 	B = alp.B 
@@ -253,6 +269,106 @@ end
 # ------------------------------------------------------------------------
 
 """
+`AbstractSHBasis`: This extra abstraction is no longer needed, but there uses 
+to be a real SH basis and in case this is revived, I am keeping it for now. 
+"""
+abstract type AbstractSHBasis{T} <: ACEBasis end
+
+"""
+complex spherical harmonics
+"""
+struct SHBasis{T} <: AbstractSHBasis{T}
+	alp::ALPolynomials{T}
+	B_pool::StaticVectorPool{Complex{T}}
+	dB_pool::StaticVectorPool{SVector{3, Complex{T}}}
+end
+
+SHBasis(maxL::Integer, T::Type=Float64) = SHBasis(ALPolynomials(maxL, T))
+
+SHBasis(alp::ALPolynomials{T}) where {T} = SHBasis(alp, 
+		StaticVectorPool{Complex{T}}(), StaticVectorPool{SVector{3, Complex{T}}}())
+
+
+"""
+max L degree for which the alp coefficients have been precomputed
+"""
+maxL(sh::AbstractSHBasis) = sh.alp.L
+
+valtype(sh::SHBasis{T}, x::AbstractVector{S}) where {T, S} = 
+			Complex{promote_type(T, S)}
+
+gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
+			SVector{3, Complex{promote_type(T, S) }}
+
+
+import Base.==
+==(B1::AbstractSHBasis, B2::AbstractSHBasis) =
+		(B1.alp == B2.alp) && (typeof(B1) == typeof(B2))
+
+write_dict(SH::SHBasis{T}) where {T} =
+		Dict("__id__" => "ACE_SHBasis",
+			  "T" => write_dict(T),
+			  "maxL" => maxL(SH))
+
+read_dict(::Val{:ACE_SHBasis}, D::Dict) =
+		SHBasis(D["maxL"], read_dict(D["T"]))
+
+
+Base.length(S::AbstractSHBasis) = sizeY(maxL(S))
+
+
+acquire_B!(sh::SHBasis) = 
+		acquire!(sh.B_pool, length(sh))
+release_B!(sh::SHBasis, B) = 
+		release!(sh.B_pool, B)
+
+acquire_dB!(sh::SHBasis{T}, x::AbstractVector{T}) where {T} = 
+		acquire!(sh.dB_pool, length(sh))
+release_dB!(sh::SHBasis, dB) = 
+		release!(sh.dB_pool, dB)
+
+
+
+
+_evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)
+
+_evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_ed!(Y, dY, L, S, P, dP)
+
+function evaluate!(Y, SH::AbstractSHBasis{T}, R::AbstractVector) where {T} 
+	@assert length(R) == 3
+	L = maxL(SH)
+	@assert length(Y) >= sizeY(L)
+
+	P = acquire_B!(SH.alp)
+	__evaluate!(Y, SH, P, R)
+	release_B!(SH.alp, P)
+
+	return Y
+end
+
+# this is just for performance testing 
+function __evaluate!(Y, SH::SHBasis{T}, P, R::AbstractVector) where {T} 
+	S = cart2spher(R)
+	evaluate!(P, SH.alp, S)
+	cYlm!(Y, maxL(SH), S, P)
+	return Y 
+end
+
+function evaluate_ed!(Y, dY, SH::AbstractSHBasis, R::SVector{3})
+	L=maxL(SH)
+	@assert 0 <= L <= maxL(SH)
+	@assert length(Y) >= sizeY(L)
+	# if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
+	# 	R = SVector(R[1]+1e-9, R[2], R[3])
+	# end
+	S = cart2spher(R)
+	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
+	_evaluate_ed!(Y, dY, L, S, tmp.P, tmp.dP, SH)
+	# return Y, dY
+end
+
+
+"""
 evaluate complex spherical harmonics
 """
 function cYlm!(Y, L, S::SphericalCoords, P)
@@ -282,39 +398,6 @@ function cYlm!(Y, L, S::SphericalCoords, P)
 end
 
 
-"""
-evaluate gradients of complex spherical harmonics
-"""
-function cYlm_d!(dY, L, S::SphericalCoords, P, dP)
-	@assert length(P) >= sizeP(L)
-	@assert length(dY) >= sizeY(L)
-   # @assert abs(S.cosθ) < 1.0
-
-	# m = 0 case
-	ep = 1 / sqrt(2)
-	for l = 0:L
-		dY[index_y(l, 0)] = dspher_to_dcart(S, 0.0, dP[index_p(l, 0)] * ep)
-	end
-
-   sig = 1
-   ep_fact = S.cosφ + im * S.sinφ
-
-	for m in 1:L
-		sig *= -1
-		ep *= ep_fact            # ep =   exp(i *   m  * φ)
-		em = sig * conj(ep)      # ep = ± exp(i * (-m) * φ)
-		dep_dφ = im *   m  * ep
-		dem_dφ = im * (-m) * em
-		for l in m:L
-			p_div_sinθ = P[index_p(l,m)]
-			dp_dθ = dP[index_p(l,m)]
-			@inbounds dY[index_y(l, -m)] = dspher_to_dcart(S, dem_dφ * p_div_sinθ, em * dp_dθ)
-			@inbounds dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p_div_sinθ, ep * dp_dθ)
-		end
-	end
-	return dY
-end
-
 
 """
 evaluate gradients of complex spherical harmonics
@@ -323,7 +406,6 @@ function cYlm_ed!(Y, dY, L, S::SphericalCoords, P, dP)
 	@assert length(P) >= sizeP(L)
 	@assert length(Y) >= sizeY(L)
 	@assert length(dY) >= sizeY(L)
-   # @assert abs(S.cosθ) < 1.0
 
 	# m = 0 case
 	ep = 1 / sqrt(2)
@@ -351,127 +433,9 @@ function cYlm_ed!(Y, dY, L, S::SphericalCoords, P, dP)
 			@inbounds dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p_div_sinθ, ep * dp_dθ)
 		end
 	end
-	# return Y, dY
+	return Y, dY
 end
 
-
-
-
-
-# ---------------------------------------------
-#      The nice basis interface
-# ---------------------------------------------
-
-"""
-This extra abstraction is no longer needed, but there use to be a real SH basis
-and in case this is revived, I am keeping it for now. 
-"""
-abstract type AbstractSHBasis{T} <: ACEBasis end
-
-"""
-complex spherical harmonics
-"""
-struct SHBasis{T} <: AbstractSHBasis{T}
-	alp::ALPolynomials{T}
-end
-
-maxL(sh::AbstractSHBasis) = sh.alp.L
-
-
-
-import Base.==
-==(B1::AbstractSHBasis, B2::AbstractSHBasis) =
-		(B1.alp == B2.alp) && (typeof(B1) == typeof(B2))
-
-write_dict(SH::SHBasis{T}) where {T} =
-		Dict("__id__" => "ACE_SHBasis",
-			  "T" => write_dict(T),
-			  "maxL" => maxL(SH))
-
-read_dict(::Val{:ACE_SHBasis}, D::Dict) =
-		SHBasis(D["maxL"], read_dict(D["T"]))
-
-SHBasis(maxL::Integer, T::Type=Float64) =
-		SHBasis(ALPolynomials(maxL, T))
-
-Base.length(S::AbstractSHBasis) = sizeY(maxL(S))
-
-ACE.valtype(::SHBasis{T}, args...) where {T} = Complex{T}
-
-gradtype(::SHBasis{T}) where {T} = SVector{3, Complex{T}}
-
-alloc_B( S::SHBasis{T}, args...) where {T} =
-		Vector{Complex{T}}(undef, length(S))
-
-alloc_dB(S::SHBasis{T}, args...) where {T} =
-		Vector{SVector{3, Complex{T}}}(undef, length(S))
-
-alloc_temp(SH::AbstractSHBasis{T}, args...) where {T} = (
-		P = alloc_B(SH.alp), )
-
-alloc_temp_d(SH::AbstractSHBasis{T}, args...) where {T} = (
-		 P = alloc_B(SH.alp),
-		dP = alloc_dB(SH.alp) )
-
-const P_pool = ACE.ObjectPools.StaticVectorPool{Float64}()
-const dP_pool = ACE.ObjectPools.StaticVectorPool{Float64}()
-		
-
-
-_evaluate!(Y, L, S, P, ::SHBasis) = cYlm!(Y, L, S, P)
-
-_evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)
-
-_evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_ed!(Y, dY, L, S, P, dP)
-
-function evaluate!(Y, tmp, SH::AbstractSHBasis, R::SVector{3})
-	L = maxL(SH)
-	@assert length(Y) >= sizeY(L)
-	S = cart2spher(R)
-	evaluate!(tmp.P, nothing, SH.alp, S)
-	_evaluate!(Y, L, S, tmp.P, SH)
-	return Y
-end
-
-function evaluate!(Y, SH::AbstractSHBasis{T}, R::SVector{3}) where {T} 
-	L=SH.maxL
-	@assert length(Y) >= sizeY(L)
-	S = cart2spher(R)
-	P = ACE.acquire!( P_pool, sizeP(SH.maxL) )
-	compute_p!(L, S, SH.coeff, P)
-	_evaluate!(Y, L, S, P, SH)
-	return Y
-end
-
-function evaluate_d!(dY, tmp, SH::AbstractSHBasis, R::SVector{3})
-	L = SH.maxL
-	S = cart2spher(R)
-	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
-	_evaluate_d!(dY, L, S, tmp.P, tmp.dP, SH)
-end
-
-function evaluate_d!(dY, SH::AbstractSHBasis, R::SVector{3})
-	L = SH.maxL
-	S = cart2spher(R)
-	P = ACE.acquire!( P_pool, sizeP(SH.maxL) )
-	dP = ACE.acquire!( dP_pool, sizeP(SH.maxL) )
-	compute_dp!(L, S, SH.coeff, P, dP)
-	_evaluate_d!(dY, L, S, P, dP, SH)
-end
-
-
-function evaluate_ed!(Y, dY, tmp, SH::AbstractSHBasis, R::SVector{3})
-	L=SH.maxL
-	@assert 0 <= L <= SH.maxL
-	@assert length(Y) >= sizeY(L)
-	# if R[1]^2+R[2]^2 < 1e-20 * R[3]^2
-	# 	R = SVector(R[1]+1e-9, R[2], R[3])
-	# end
-	S = cart2spher(R)
-	compute_dp!(L, S, SH.coeff, tmp.P, tmp.dP)
-	_evaluate_ed!(Y, dY, L, S, tmp.P, tmp.dP, SH)
-	# return Y, dY
-end
 
 
 

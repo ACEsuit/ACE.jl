@@ -92,5 +92,10 @@ function acquire!(pool::StaticVectorPool{T}, len::Integer) where {T}
     return x 
 end
 
+function release!(pool::StaticVectorPool{T}, x::Vector{T}) where {T}
+    push!(pool.arrays, x)
+    return nothing 
+end
+
 
 end # module

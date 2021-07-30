@@ -5,6 +5,12 @@ using Base: NamedTuple
 using Reexport
 
 include("objectpools.jl")
+
+function acquire_B! end 
+function release_B! end 
+function acquire_dB! end 
+function release_dB! end 
+
 using ACE.ObjectPools: acquire!, release!
 const _pool = ObjectPools.ArrayPool()
 
