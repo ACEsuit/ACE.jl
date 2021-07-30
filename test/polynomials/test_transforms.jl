@@ -2,13 +2,15 @@
 
 @testset "Transforms" begin
 
-#---
+##
 using ACE, Printf, Test, LinearAlgebra
 using ACE: evaluate, evaluate_d, read_dict, write_dict
 using ACE.Testing
 
 verbose = false
 maxdeg = 10
+
+##
 
 @info("Testing Transforms and TransformedPolys")
 for p in 2:4
@@ -38,7 +40,8 @@ for p in 2:4
    end
 end
 
-#---
+##
+
 @info("Testing PolyTransforms")
 for p = 2:4
    r0 = 1+rand()
@@ -47,7 +50,8 @@ for p = 2:4
 end
 println()
 
-#---
+##
+
 @info("Testing Morse Transform")
 for lam = 1.0:3.0
    r0 = 1+rand()
@@ -56,7 +60,7 @@ for lam = 1.0:3.0
 end
 println()
 
-#---
+##
 
 @info("Testing Agnesi Transform")
 for p = 2:4
@@ -66,7 +70,7 @@ for p = 2:4
 end
 println()
 
-# #---
+##
 
 # TODO: This could be moved to some Tools package
 #       to visualize the good transforms

@@ -10,6 +10,7 @@ using ACE, Test, ForwardDiff
 using LinearAlgebra: norm, cond
 using ACE.OrthPolys: OrthPolyBasis
 using ACE: evaluate, evaluate_d
+using ACEbase.Testing: print_tf
 
 ##
 
@@ -55,18 +56,15 @@ tdf = rand(1000)
 ww = 1.0 .+ rand(1000)
 Jd = OrthPolyBasis(N, 2, 1.0, 2, -1.0, tdf, ww)
 
-let errtol = 1e-12, ntest = 100
-   nfail = 0
+let errtol = 1e-12, ntest = 50
    for itest = 1:ntest
       x = 2*rand() - 1
       dJx = evaluate_d(Jd, x)
       adJx = ForwardDiff.derivative(x -> evaluate(Jd, x), x)
       err = maximum(abs.(dJx - adJx) ./ (1.0 .+ abs.(dJx)))
-      if err > errtol
-         nfail += 1
-      end
+      print_tf(@test (err < errtol))
    end
-   println((@test nfail == 0))
+   println()
 end
 
 

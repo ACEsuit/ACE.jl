@@ -84,6 +84,9 @@ struct StaticVectorPool{T}
     StaticVectorPool{T}() where {T} = new( [ Vector{T}(undef, 0) ] )
 end
 
+acquire!(pool::StaticVectorPool{T}, len::Integer, S::Type{T}) where {T} = 
+        acquire!(pool, len)
+
 function acquire!(pool::StaticVectorPool{T}, len::Integer) where {T}
     if length(pool.arrays) > 0     
         x = pop!(pool.arrays)
@@ -100,6 +103,14 @@ function release!(pool::StaticVectorPool{T}, x::Vector{T}) where {T}
     push!(pool.arrays, x)
     return nothing 
 end
+
+# fallbacks 
+
+acquire!(pool::StaticVectorPool{T}, len::Integer, S::DataType) where {T} = 
+        Vector{S}(undef, len)
+
+release!(pool::StaticVectorPool{T}, x::AbstractVector) where {T} = 
+    nothing 
 
 
 end # module

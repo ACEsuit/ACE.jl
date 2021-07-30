@@ -11,9 +11,13 @@ import ACE: evaluate!, evaluate_d!, read_dict, write_dict,
             alloc_B, alloc_dB, 
             transform, transform_d, transform_dd, inv_transform,
             ACEBasis, ScalarACEBasis, 
-            valtype, gradtype
+            valtype, gradtype, 
+            acquire!, release!, acquire_B!, release_B!, 
+            acquire_dB!, release_dB!
 
 using ACE.Transforms: DistanceTransform
+
+import ACE.ObjectPools: StaticVectorPool
 
 using ForwardDiff: derivative
 
@@ -92,7 +96,16 @@ struct OrthPolyBasis{T} <: ScalarACEBasis
    #                   but useful to have since it defines the notion of orth.
    tdf::Vector{T}
    ww::Vector{T}
+   # -------------
+   B_pool::StaticVectorPool{T}
+   dB_pool::StaticVectorPool{T}
 end
+
+OrthPolyBasis(pl, tl::T, pr, tr::T, A::Vector{T}, B::Vector{T}, C::Vector{T}, 
+              tdf, ww) where {T} = 
+   OrthPolyBasis(pl, tl, pr, tr, A, B, C, tdf, ww, 
+                 StaticVectorPool{T}(), StaticVectorPool{T}())                 
+
 
 valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
       promote_type(T, TX)
@@ -216,13 +229,11 @@ function evaluate!(P, J::OrthPolyBasis, t; maxn=length(J))
    return P
 end
 
-evaluate!(P, tmp, J::OrthPolyBasis, t; maxn=length(J)) = 
-      evaluate!(P, J::OrthPolyBasis, t; maxn=maxn)
 
-function evaluate_d!(dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
+function evaluate_d!(dP, J::OrthPolyBasis, t; maxn=length(J))
    @assert maxn <= length(dP)
 
-   P1 = J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
+   P1 = evaluate_P1(J, t)
    dP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
    if maxn == 1; return dP; end
 
@@ -241,6 +252,7 @@ function evaluate_d!(dP, tmp, J::OrthPolyBasis, t; maxn=length(J))
 end
 
 
+# INCORRECT???
 # function evaluate_dd!(ddP, J::OrthPolyBasis, t; maxn=length(J))
 #    @assert maxn <= length(dP)
 
@@ -289,6 +301,13 @@ struct TransformedPolys{T, TT, TJ} <: ScalarACEBasis
    trans::TT      # coordinate transform
    rl::T          # lower bound r
    ru::T          # upper bound r = rcut
+   B_pool::StaticVectorPool{T}
+   dB_pool::StaticVectorPool{T}
+end
+
+function TransformedPolys(J::OrthPolyBasis{T}, trans, rl, ru)  where {T}
+   B_pool = StaticVectorPool{T}()
+   return TransformedPolys(J, trans, T(rl), T(ru), B_pool, B_pool)
 end
 
 ==(J1::TransformedPolys, J2::TransformedPolys) = (
@@ -316,9 +335,6 @@ TransformedPolys(D::Dict) =
       D["ru"]
    )
 
-read_dict(::Val{:SHIPs_TransformedPolys}, D::Dict) =
-   read_dict(Val{:ACE_TransformedPolys}(), D)
-
 read_dict(::Val{:ACE_TransformedPolys}, D::Dict) = TransformedPolys(D)
 
 Base.length(J::TransformedPolys) = length(J.J)
@@ -326,6 +342,13 @@ Base.length(J::TransformedPolys) = length(J.J)
 valtype(P::TransformedPolys, args...) = valtype(P.J, args...)
 
 gradtype(P::TransformedPolys, args...) = gradtype(P.J, args...)
+
+# acquire_B!(P::TransformedPolys, args...) = 
+#       acquire!(P.B_pool, length(P), valtype(P, args...))
+# release_B!(P::TransformedPolys, B) = release!(P.B_pool, B)
+# acquire_dB!(P::TransformedPolys, args...) = 
+#       acquire!(P.B_pool, length(P), gradtype(P, args...))
+# release_dB!(P::TransformedPolys, dB) = release_B!(P, dB)
 
 
 function ACE.rand_radial(J::TransformedPolys)
@@ -345,16 +368,13 @@ function evaluate!(P, J::TransformedPolys, r; maxn=length(J))
    return P
 end
 
-evaluate!(P, tmp, J::TransformedPolys, r; maxn=length(J)) = 
-      evaluate!(P, J::TransformedPolys, r; maxn=maxn)
 
-
-function evaluate_d!(dP, tmp, J::TransformedPolys, r; maxn=length(J))
+function evaluate_d!(dP, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
    t = transform(J.trans, r)
    dt = transform_d(J.trans, r)
    # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-   evaluate_d!(dP, nothing, J.J, t, maxn=maxn)
+   evaluate_d!(dP, J.J, t, maxn=maxn)
    @. dP *= dt
    return dP
 end

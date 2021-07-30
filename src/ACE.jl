@@ -5,14 +5,15 @@ using Base: NamedTuple
 using Reexport
 
 include("objectpools.jl")
+using ACE.ObjectPools: acquire!, release!
 
+# TODO - could these have nice fall-backs? 
 function acquire_B! end 
 function release_B! end 
 function acquire_dB! end 
 function release_dB! end 
 
-using ACE.ObjectPools: acquire!, release!
-const _pool = ObjectPools.ArrayPool()
+
 
 # external imports that are useful for all submodules
 include("imports.jl")
@@ -28,6 +29,17 @@ using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
 import ACEbase: evaluate, evaluate_d 
 import  ACEbase: gradtype, valtype, alloc_B, alloc_dB
+
+# draft fallbacks 
+
+acquire_B!(basis::ACEBasis, args...) = 
+      acquire!(basis.B_pool, length(basis), valtype(basis, args...))
+release_B!(basis::ACEBasis, B) = release!(basis.B_pool, B)
+
+acquire_dB!(basis::ACEBasis, args...) = 
+      acquire!(basis.dB_pool, length(basis), gradtype(basis, args...))
+release_dB!(basis::ACEBasis, dB) = release!(basis.dB_pool, dB)
+
 
 abstract type AbstractACEModel end 
 
