@@ -34,10 +34,12 @@ import  ACEbase: gradtype, valtype, alloc_B, alloc_dB
 
 acquire_B!(basis::ACEBasis, args...) = 
       acquire!(basis.B_pool, length(basis), valtype(basis, args...))
+
 release_B!(basis::ACEBasis, B) = release!(basis.B_pool, B)
 
 acquire_dB!(basis::ACEBasis, args...) = 
       acquire!(basis.dB_pool, length(basis), gradtype(basis, args...))
+      
 release_dB!(basis::ACEBasis, dB) = release!(basis.dB_pool, dB)
 
 

@@ -1,7 +1,7 @@
 
 # This is inspired by 
 #      https://github.com/tpapp/ObjectPools.jl
-# but considerably simplified
+# but considerably simplified and now evolved 
 
 module ObjectPools
 
@@ -81,11 +81,12 @@ export StaticVectorPool
 struct StaticVectorPool{T}
     arrays::Vector{Vector{T}}
 
-    StaticVectorPool{T}() where {T} = new( [ Vector{T}(undef, 0) ] )
+    StaticVectorPool{T}() where {T} = new( Vector{T}[ ] )
 end
 
-acquire!(pool::StaticVectorPool{T}, len::Integer, S::Type{T}) where {T} = 
+acquire!(pool::StaticVectorPool{T}, len::Integer, ::Type{T}) where {T} = 
         acquire!(pool, len)
+
 
 function acquire!(pool::StaticVectorPool{T}, len::Integer) where {T}
     if length(pool.arrays) > 0     
@@ -106,7 +107,7 @@ end
 
 # fallbacks 
 
-acquire!(pool::StaticVectorPool{T}, len::Integer, S::DataType) where {T} = 
+acquire!(pool::StaticVectorPool{T}, len::Integer, S::Type{T1}) where {T, T1} = 
         Vector{S}(undef, len)
 
 release!(pool::StaticVectorPool{T}, x::AbstractVector) where {T} = 
