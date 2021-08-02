@@ -86,7 +86,8 @@ rand_radial(basis::Scal1pBasis) = rand_radial(basis.P)
 # ---------------------------  Evaluation code
 #
 
-const _Scal1pBasis_pool = ACE.ObjectPools.ArrayPool()
+# TODO - replace 
+# const _Scal1pBasis_pool = ACE.ObjectPools.ArrayPool()
 
 alloc_temp(basis::Scal1pBasis, X::AbstractState) = 
       alloc_temp(basis.P, _val(X, basis))

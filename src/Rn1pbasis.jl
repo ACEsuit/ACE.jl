@@ -1,7 +1,8 @@
 
 import ACE.OrthPolys: TransformedPolys
 
-
+# TODO: it feels like there should be a generic wrapper implementation which 
+#       unifies Rn, Ylm and Pk and then just needs a tiny bit of wrapping...
 
 @doc raw"""
 `struct Rn1pBasis <: OneParticleBasis`
@@ -16,14 +17,22 @@ scalar but gradient is vectorial.
 The default symbols are `:rr` for the state and `:n` for the index of the 
 basis function. 
 """
-mutable struct Rn1pBasis{T, TT, TJ, VSYM, NSYM} <: OneParticleBasis{T}
+mutable struct Rn1pBasis{T, TT, TJ, VSYM, NSYM, TDX} <: OneParticleBasis{T}
    R::TransformedPolys{T, TT, TJ}
+   B_pool::VectorPool{T}
+   dB_pool::VectorPool{TDX}
 end
-
 
 Rn1pBasis(R::TransformedPolys{T, TT, TJ}; varsym = :rr, nsym = :n
             ) where {T, TT, TJ} = 
       Rn1pBasis{T, TT, TJ, varsym, nsym}(R)
+
+function Rn1pBasis{T, TT, TJ, VSYM, NSYM}(R::TransformedPolys{T, TT, TJ}
+                                         ) where {T, TT, TJ, VSYM, NSYM} 
+   TDX = DState{(VSYM,), Tuple{SVector{3, T}}}
+   return Rn1pBasis{T, TT, TJ, VSYM, NSYM, TDX}(
+               R, VectorPool{T}(), VectorPool{TDX}())
+end
 
 # ---------------------- Implementation of Rn1pBasis
 
@@ -56,9 +65,12 @@ read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) =
                       varsym = Symbol(D["varsym"]), 
                       nsym = Symbol(D["nsym"]))
 
+# should the valtype use a type promotion here what if the input if 
+# a Dual???
 valtype(basis::Rn1pBasis{T}, ::AbstractConfiguration) where T = T
 valtype(basis::Rn1pBasis{T}, X::AbstractState) where T = T
 
+# TODO: this should be a generic fallback I think 
 gradtype(B::Rn1pBasis, X::AbstractState) = dstate_type(valtype(B, X), X)
 
 symbols(Rn::Rn1pBasis) = [ _nsym(Rn) ]
@@ -78,10 +90,6 @@ rand_radial(basis::Rn1pBasis) = rand_radial(basis.R)
 # ---------------------------  Evaluation code
 #
 
-
-evaluate!(B, tmp, basis::Rn1pBasis, X::AbstractState) =
-      evaluate!(B, tmp, basis.R, norm(_rr(X, basis)))
-
 evaluate!(B, basis::Rn1pBasis, X::AbstractState) =
       evaluate!(B, basis.R, norm(_rr(X, basis)))
 
@@ -91,21 +99,23 @@ function evaluate(basis::Rn1pBasis, X::AbstractState)
 end
 
 
-function evaluate_d!(dB, tmpd, basis::Rn1pBasis, X::AbstractState)
+function evaluate_d!(dB, basis::Rn1pBasis, X::AbstractState)
    TDX = eltype(dB)
    RR = _varsym(basis)
    rr = _rr(X, basis)
    r = norm(rr)
    r̂ = rr / r
-   dRdr = evaluate_d(basis.R, r)
+   dRdr = acquire_dB!(basis.R, r)
+   evaluate_d!(dRdr, basis.R, r)
    for n = 1:length(basis)
       dB[n] = TDX( NamedTuple{(RR,)}( (dRdr[n] * r̂,) ) )
    end
+   release_dB!(basis.R, dRdr)
    return dB
 end
 
 
-# ----------------- AD 
+# ----------------- AD ... experimental
 
 import ChainRules: rrule, NO_FIELDS
 

@@ -49,10 +49,13 @@ end
 ##
 
 @info("Ylm1pBasis gradients")
-Y = ACE.alloc_B(Ylm, Xs[1])
-dY = ACE.alloc_dB(Ylm, Xs[1])
-tmpd = ACE.alloc_temp_d(Ylm)
-ACE.evaluate_ed!(Y, dY, tmpd, Ylm, Xs[1])
+Y = ACE.acquire_B!(Ylm, Xs[1])
+dY = ACE.acquire_dB!(Ylm, Xs[1])
+println(@test (typeof(dY) == eltype(Ylm.dB_pool.arrays)))
+ACE.evaluate!(Y, Ylm, Xs[1])
+ACE.evaluate_d!(dY, Ylm, Xs[1])
+# ACE.evaluate_ed!(Y, dY, tmpd, Ylm, Xs[1])
+println(@test (evaluate(Ylm, Xs[1]) ≈ Y))
 println(@test (evaluate_d(Ylm, Xs[1]) ≈ dY))
 
 _vec2X(x) = PositionState{Float64}((rr = SVector{3}(x),))

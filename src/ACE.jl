@@ -5,7 +5,8 @@ using Base: NamedTuple
 using Reexport
 
 include("objectpools.jl")
-using ACE.ObjectPools: acquire!, release!
+using ACE.ObjectPools: acquire!, release!, 
+      VectorPool
 
 # TODO - could these have nice fall-backs? 
 function acquire_B! end 
@@ -151,3 +152,4 @@ include("ad.jl")
 include("models/models.jl")
 
 end # module
+

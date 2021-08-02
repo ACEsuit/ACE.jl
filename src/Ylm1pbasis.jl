@@ -16,8 +16,10 @@ Fundamental building block of ACE basis sets of the form
 This type basically just translates the `SHBasis` into a valid one-particle
 basis.
 """
-mutable struct Ylm1pBasis{T, VSYM, LSYM, MSYM} <: OneParticleBasis{Complex{T}}
+mutable struct Ylm1pBasis{T, VSYM, LSYM, MSYM, TDX} <: OneParticleBasis{Complex{T}}
    SH::SHBasis{T}  # SH = Ylm
+   B_pool::VectorPool{Complex{T}}
+   dB_pool::VectorPool{TDX}
 end
 
 # ---------------------- Implementation of Ylm1pBasis
@@ -27,7 +29,13 @@ Ylm1pBasis(maxL::Integer, T = Float64; kwargs...) =
       Ylm1pBasis((SHBasis(maxL, T)); kwargs...)
 
 Ylm1pBasis(SH::SHBasis{T}; varsym = :rr, lsym = :l, msym = :m)  where {T} = 
-   Ylm1pBasis{T, varsym, lsym, msym}(SH)
+      Ylm1pBasis{T, varsym, lsym, msym}(SH)
+
+function Ylm1pBasis{T, varsym, lsym, msym}(SH::SHBasis{T}) where {T, varsym, lsym, msym}
+   TDX = ACE.DState{(varsym,), Tuple{SVector{3, Complex{T}}}}
+   return Ylm1pBasis{T, varsym, lsym, msym, TDX}(
+            SH, VectorPool{Complex{T}}(), VectorPool{TDX}() )
+end
 
 Base.length(basis::Ylm1pBasis) = length(basis.SH)
 
@@ -73,9 +81,10 @@ gradtype(basis::Ylm1pBasis, X::AbstractState) = dstate_type(valtype(basis, X), X
 
 symbols(basis::Ylm1pBasis) = [_lsym(basis), _msym(basis)]
 
+_maxL(Ylm::Ylm1pBasis) = ACE.SphericalHarmonics.maxL(Ylm.SH)
 
 function indexrange(basis::Ylm1pBasis)
-   maxl = basis.SH.maxL
+   maxl = _maxL(basis)
    # note we create a stupid tensor product domain and then make up for it
    # by using an index filter during the basis generation process
    return NamedTuple{(_lsym(basis), _msym(basis))}( (0:maxl, -maxl:maxl) )
@@ -84,63 +93,49 @@ end
 
 function isadmissible(b, basis::Ylm1pBasis) 
    l, m = _lm(b, basis)
-   return (0 <= l <= basis.SH.maxL) && (-l <= m <= l) 
+   maxL = _maxL(basis)
+   return (0 <= l <= maxL) && (-l <= m <= l) 
 end
 
 
 # ---------------------------  Evaluation code
 #
 
-# alloc_B(basis::Ylm1pBasis, args...) = alloc_B(basis.SH)
-
-# alloc_dB(basis::Ylm1pBasis, X::AbstractState) = 
-#       zeros(gradtype(basis, X), length(basis)) 
-
-alloc_temp(basis::Ylm1pBasis, args...) = alloc_temp(basis.SH)
-
-alloc_temp_d(basis::Ylm1pBasis, args...) = 
-   ( alloc_temp_d(basis.SH, args...)..., 
-     Bsh = alloc_B(basis.SH), 
-     dBsh = alloc_dB(basis.SH)
-   )
-
-
 _rr(X, basis::Ylm1pBasis) = getproperty(X, _varsym(basis))
-
-evaluate!(B, tmp, basis::Ylm1pBasis, X::AbstractState) =
-      evaluate!(B, tmp, basis.SH, _rr(X, basis))
 
 
 evaluate!(B, basis::Ylm1pBasis, X::AbstractState) = 
       evaluate!(B, basis.SH, _rr(X, basis))
 
 
-evaluate_d!(dB, tmpd, basis::Ylm1pBasis, X::AbstractState) = 
-      (evaluate_ed!(tmpd.Bsh, dB, tmpd, basis, X); dB)
+# TODO -> do we need to revive this? 
+# function evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState)
+#    TDX = eltype(dB)
+#    RSYM = _varsym(basis)
+#    evaluate_ed!(B, tmpd.dBsh, tmpd, basis.SH, _rr(X, basis))
+#    for n = 1:length(basis)
+#       dB[n] = TDX( NamedTuple{(RSYM,)}((tmpd.dBsh[n],)) )
+#    end
+#    return nothing 
+# end
 
-function evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState)
-   TDX = eltype(dB)
-   RSYM = _varsym(basis)
-   evaluate_ed!(B, tmpd.dBsh, tmpd, basis.SH, _rr(X, basis))
-   for n = 1:length(basis)
-      dB[n] = TDX( NamedTuple{(RSYM,)}((tmpd.dBsh[n],)) )
-   end
-   return nothing 
-end
-
-const __dY_pool = ACE.ObjectPools.StaticVectorPool{SVector{3, ComplexF64}}()
 
 function evaluate_d!(dB, basis::Ylm1pBasis, X::AbstractState)
-   TDX = eltype(dB)
+   TDX = eltype(dB)  # need not be the same as gradtype!!!
    RSYM = _varsym(basis)
-   dY = ACE.acquire!(__dY_pool, length(basis))
-   evaluate_d!(dY, basis.SH, _rr(X, basis))
+   rr = _rr(X, basis)
+   Y = acquire_B!(basis.SH, rr)
+   dY = acquire_dB!(basis.SH, rr)
+   # spherical harmonics does only ed since values are essentially free
+   evaluate_ed!(Y, dY, basis.SH, rr)
    for n = 1:length(basis)
       dB[n] = TDX( NamedTuple{(RSYM,)}((dY[n],)) )
    end
+   release_B!(basis.SH, Y)
+   release_dB!(basis.SH, dY)
    return dB 
 end
-   
+
 
 
 degree(b, Ylm::Ylm1pBasis) = _l(b, Ylm)
@@ -149,31 +144,6 @@ degree(b, Ylm::Ylm1pBasis, weight::Dict) = weight[_lsym(Ylm)] * degree(b, Ylm)
 
 get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
-
-# ---------- Experimental allocating evaluation code 
-
-evaluate2(Ylm::Ylm1pBasis, X::AbstractState) = 
-      SphericalHarmonics.evaluate2(Ylm.SH, _rr(X, Ylm))
-
-
-#
-
-
-#
-# function add_into_A_dA!(A, dA, tmpd, basis::RnYlm1pBasis, R, iz::Integer, iz0::Integer)
-#    r = norm(R)
-#    R̂ = R / r
-#    # evaluate the r-basis and the R̂-basis for the current neighbour at R
-#    evaluate_d!(tmpd.BJ, tmpd.dBJ, tmpd.tmpdJ, basis.J, r)
-#    evaluate_d!(tmpd.BY, tmpd.dBY, tmpd.tmpdY, basis.SH, R)
-#    # add the contributions to the A_zklm, ∇A
-#    @inbounds for (i, nlm) in enumerate(basis.spec)
-#       iY = index_y(nlm.l, nlm.m)
-#       A[i] += tmpd.BJ[nlm.n] * tmpd.BY[iY]
-#       dA[i] = (tmpd.dBJ[nlm.n] * tmpd.BY[iY]) * R̂ + tmpd.BJ[nlm.n] * tmpd.dBY[iY]
-#    end
-#    return nothing
-# end
 
 
 
