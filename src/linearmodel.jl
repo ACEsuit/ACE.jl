@@ -162,11 +162,11 @@ end
 
 # ------------------- dispatching the rrule 
 
-import ChainRules: rrule, @thunk, NO_FIELDS, @not_implemented
+import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 
 function rrule(::typeof(evaluate), m::LinearACEModel, env::AbstractConfiguration)
    val = evaluate(m, env)
-   pullback = dv -> (NO_FIELDS, @thunk(grad_params(m, env)), 
+   pullback = dv -> (NoTangent(), @thunk(grad_params(m, env)), 
                                 @thunk(grad_config(m, env)))
    return val, pullback
 end

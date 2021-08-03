@@ -23,7 +23,7 @@ using ForwardDiff: derivative
 
 import Base: ==
 
-import ChainRules: rrule, NO_FIELDS, NoTangent
+import ChainRules: rrule, NoTangent
 import ACE: evaluate, evaluate_d, evaluate_dd, 
             _rrule_evaluate, _rrule_evaluate_d
 
@@ -456,7 +456,7 @@ end
 
 function rrule(::typeof(evaluate), P::TransformedPolys, x::Number)
    B = evaluate(P, x)
-   return B, dx -> (NO_FIELDS, NoTangent(), _rrule_evaluate(P, x, dx))
+   return B, dx -> (NoTangent(), NoTangent(), _rrule_evaluate(P, x, dx))
 end
 
 
@@ -508,7 +508,7 @@ end
 
 function rrule(::typeof(evaluate_d), P::TransformedPolys, x::Number)
    dB = evaluate_d(P, x)
-   return dB, dx -> (NO_FIELDS, NoTangent(), _rrule_evaluate_d(P, x, dx))
+   return dB, dx -> (NoTangent(), NoTangent(), _rrule_evaluate_d(P, x, dx))
 end
 
 

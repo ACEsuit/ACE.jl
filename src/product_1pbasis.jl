@@ -212,7 +212,7 @@ end
 
 # --------------- AD codes
 
-import ChainRules: rrule, NO_FIELDS, ZeroTangent
+import ChainRules: rrule, NoTangent, ZeroTangent
 
 _evaluate_bases(basis::Product1pBasis{NB}, X::AbstractState) where {NB} = 
       ntuple(i -> evaluate(basis.bases[i], X), NB)
@@ -257,7 +257,7 @@ function rrule(::typeof(evaluate), basis::Product1pBasis, X::AbstractState)
    BB = _evaluate_bases(basis, X)
    A = _evaluate_A(basis, BB)
    return A, 
-      w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate(basis, X, w, BB))
+      w -> (NoTangent(), NoTangent(), _rrule_evaluate(basis, X, w, BB))
 end
 
 

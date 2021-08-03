@@ -254,7 +254,7 @@ Base.eltype(cfg::XACEConfig) = eltype(cfg.Xs)
 # this function makes sure that gradients w.r.t. a State become a DState 
 function rrule(::typeof(getproperty), X::ACE.XState, sym::Symbol) 
    val = getproperty(X, sym)
-   return val, w -> ( NO_FIELDS, 
+   return val, w -> ( NoTangent(), 
                       dstate_type(w[1], X)( NamedTuple{(sym,)}((w,)) ), 
                       NoTangent() )
 end

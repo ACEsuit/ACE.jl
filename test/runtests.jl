@@ -26,7 +26,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # Model tests 
     # include("test_linearmodel.jl")
 
-    # include("test_multigrads.jl")
+    include("test_multigrads.jl")
 
 end
 

@@ -18,7 +18,7 @@ function evaluate!(A, basis::OneParticleBasis, X::AbstractState)
    return A
 end
 
-function evaluate_d!(dA, basis::Product1pBasis, 
+function evaluate_d!(dA, basis::OneParticleBasis, 
                      X::Union{AbstractState, AbstractConfiguration})
    A = acquire_B!(basis, X)
    evaluate_ed!(A, dA, basis, X)

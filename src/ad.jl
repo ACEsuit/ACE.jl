@@ -2,7 +2,7 @@
 # Experimental AD codes
 
 import ChainRulesCore, ChainRules
-import ChainRulesCore: rrule, NO_FIELDS 
+import ChainRulesCore: rrule, NoTangent 
 
 struct EVAL{TM, TX}
    m::TM 
@@ -23,7 +23,7 @@ end
 function rrule(y::EVAL, params)
    set_params!(y.m, params)
    val = evaluate(y.m, y.X).val
-   adj = dp -> ( NO_FIELDS, dp * getproperty.(grad_params(y.m, y.X), :val)) 
+   adj = dp -> ( NoTangent(), dp * getproperty.(grad_params(y.m, y.X), :val)) 
    return val, adj
 end
 
@@ -37,7 +37,7 @@ end
 function rrule(y::EVAL_D, params)
    set_params!(y.m, params)
    val = grad_config(y.m, y.X)
-   adj = dp -> ( NO_FIELDS, adjoint_EVAL_D(y.m, y.X, dp) )
+   adj = dp -> ( NoTangent(), adjoint_EVAL_D(y.m, y.X, dp) )
    return val, adj
 end
 

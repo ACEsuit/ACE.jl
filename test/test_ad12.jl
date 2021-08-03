@@ -6,7 +6,7 @@ using ACE, ACEbase, Zygote, ChainRules, BenchmarkTools, StaticArrays
 using Printf, Test, LinearAlgebra, ACE.Testing, Random
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
 using ACEbase.Testing: fdtest
-import ChainRulesCore: rrule, NO_FIELDS
+import ChainRulesCore: rrule, NoTangent
 
 
 ## [1] 
@@ -125,7 +125,7 @@ _rrule_f3_2_Rn_in(Rs, W::Number) =
       [ (-2 * W * r) / (1+sum(abs2, r))^2  for r in Rs ]
            
 ChainRules.rrule(::typeof(f3_2_Rn_in), Rs) =
-      f3_2_Rn_in(Rs), Ws -> ( NO_FIELDS, _rrule_f3_2_Rn_in(Rs, Ws) )
+      f3_2_Rn_in(Rs), Ws -> ( NoTangent(), _rrule_f3_2_Rn_in(Rs, Ws) )
 
 function f3_2(Rn, X)
    dRn_ = getproperty.(evaluate_d(Rn, X), :rr)

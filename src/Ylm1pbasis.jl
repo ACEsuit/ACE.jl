@@ -144,7 +144,7 @@ get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
 # -------------- AD 
 
-import ChainRules: rrule, NO_FIELDS, @not_implemented
+import ChainRules: rrule, NoTangent, @not_implemented
 
 function _rrule_evaluate(basis::Ylm1pBasis, X::AbstractState, 
                          w::AbstractVector{<: Number})
@@ -157,12 +157,12 @@ end
 
 rrule(::typeof(evaluate), basis::Ylm1pBasis, X::AbstractState) = 
       evaluate(basis, X), 
-      w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate(basis, X, w))
+      w -> (NoTangent(), NoTangent(), _rrule_evaluate(basis, X, w))
 
 
 rrule(::typeof(evaluate_d), basis::Ylm1pBasis, X::AbstractState) = 
       evaluate_d(basis, X), 
-      w -> (NO_FIELDS, NO_FIELDS, 
+      w -> (NoTangent(), NoTangent(), 
             @not_implemented("""Ylm config gradients is currently not implemented
                                 composition with vectorial features is therefore 
                                 not yet supported."""))

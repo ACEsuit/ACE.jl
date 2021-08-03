@@ -6,7 +6,7 @@
 using ACE
 using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      Product1pBasis, Scal1pBasis
+           Product1pBasis, Scal1pBasis
 using Random: shuffle
 using ACEbase.Testing: fdtest, print_tf
 
@@ -41,7 +41,7 @@ Pk = B1p.bases[3]
 ACE.gradtype(B1p, cfg)
 ACE.valtype(B1p, cfg)
 
-ACE.alloc_B(Pk, cfg)
+ACE.acquire_B!(Pk, cfg)
 
 A = evaluate(B1p, cfg)
 dA = evaluate_d(B1p, cfg)

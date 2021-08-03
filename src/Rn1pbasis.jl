@@ -123,7 +123,7 @@ end
 
 # ----------------- AD ... experimental
 
-import ChainRules: rrule, NO_FIELDS
+import ChainRules: rrule, NoTangent
 
 function _rrule_evaluate(basis::Rn1pBasis, X::AbstractState, 
                          w::AbstractVector{<: Number})
@@ -136,7 +136,7 @@ end
 
 rrule(::typeof(evaluate), basis::Rn1pBasis, X::AbstractState) = 
                   evaluate(basis, X), 
-                  w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate(basis, X, w))
+                  w -> (NoTangent(), NoTangent(), _rrule_evaluate(basis, X, w))
 
                   
 function _rrule_evaluate_d(basis::Rn1pBasis, X::AbstractState, 
@@ -158,5 +158,5 @@ function rrule(::typeof(evaluate_d), basis::Rn1pBasis, X::AbstractState)
    dRn = [ TDX( NamedTuple{(_varsym(basis),)}( (dr * r̂,) ) ) 
            for dr in dRn_ ]
    return dRn, 
-          w -> (NO_FIELDS, NO_FIELDS, _rrule_evaluate_d(basis, X, w, dRn_))
+          w -> (NoTangent(), NoTangent(), _rrule_evaluate_d(basis, X, w, dRn_))
 end
