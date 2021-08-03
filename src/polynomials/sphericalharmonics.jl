@@ -7,14 +7,15 @@ using StaticArrays, LinearAlgebra
 
 import ACE, ACEbase 
 
-import ACE: alloc_B, alloc_dB, fltype, valtype, grad_type, 
-		      alloc_temp, alloc_temp_d, evaluate!, evaluate_d!, evaluate_ed!,
+import ACE: valtype, grad_type, 
+		      evaluate!, evaluate_d!, evaluate_ed!,
 			   write_dict, read_dict,
 				ACEBasis, 
-				acquire!, release!, acquire_B!, release_B!, 
-				acquire_dB!, release_dB! 
+				acquire_B!, release_B!, 
+				acquire_dB!, release_dB!, 
+				acquire!
 
-import ACE.ObjectPools: StaticVectorPool
+import ACE.ObjectPools: VectorPool
 
 export SHBasis
 
@@ -106,8 +107,6 @@ index_y(l::Integer, m::Integer) = m + l + (l*l) + 1
 
 # --------------------------------------------------------
 #     Associated Legendre Polynomials
-#     TODO: possibly rewrite within general interface?
-#           - alloc_B, alloc_dB, alloc_temp, ...
 # --------------------------------------------------------
 
 """
@@ -124,11 +123,11 @@ struct ALPolynomials{T} <: ACEBasis
 	L::Int
 	A::Vector{T}
 	B::Vector{T}
-	P_pool::StaticVectorPool{T}
+	B_pool::VectorPool{T}
 end
 
 ALPolynomials(L::Integer, A::Vector{T}, B::Vector{T}) where {T}  = 
-		ALPolynomials(L, A, B, StaticVectorPool{T}())
+		ALPolynomials(L, A, B, VectorPool{T}())
 
 Base.length(alp::ALPolynomials) = sizeP(alp.L)
 
@@ -143,11 +142,9 @@ valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} =
 gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
 			promote_type(T, S) 
 
-acquire_B!(alp::ALPolynomials, args...) = acquire!(alp.P_pool, sizeP(alp.L))
-release_B!(alp::ALPolynomials, B) = release!(alp.P_pool, B)
-
+acquire_B!(alp::ALPolynomials, args...) = acquire!(alp.B_pool, sizeP(alp.L))
 acquire_dB!(alp::ALPolynomials, args...) = acquire_B!(alp)
-release_dB!(alp::ALPolynomials, B) = release_B!(alp, B)
+release_dB!(alp::ALPolynomials, dB) = release_B!(alp, dB)
 
 
 function ALPolynomials(L::Integer, T::Type=Float64)
@@ -281,14 +278,14 @@ complex spherical harmonics
 """
 struct SHBasis{T} <: AbstractSHBasis{T}
 	alp::ALPolynomials{T}
-	B_pool::StaticVectorPool{Complex{T}}
-	dB_pool::StaticVectorPool{SVector{3, Complex{T}}}
+	B_pool::VectorPool{Complex{T}}
+	dB_pool::VectorPool{SVector{3, Complex{T}}}
 end
 
 SHBasis(maxL::Integer, T::Type=Float64) = SHBasis(ALPolynomials(maxL, T))
 
 SHBasis(alp::ALPolynomials{T}) where {T} = SHBasis(alp, 
-		StaticVectorPool{Complex{T}}(), StaticVectorPool{SVector{3, Complex{T}}}())
+		VectorPool{Complex{T}}(), VectorPool{SVector{3, Complex{T}}}())
 
 
 """
@@ -321,15 +318,8 @@ Base.length(S::AbstractSHBasis) = sizeY(maxL(S))
 
 acquire_B!(sh::SHBasis, args...) = 
 		acquire!(sh.B_pool, length(sh))
-release_B!(sh::SHBasis, B) = 
-		release!(sh.B_pool, B)
-
 acquire_dB!(sh::SHBasis{T}, x::AbstractVector{T}) where {T} = 
 		acquire!(sh.dB_pool, length(sh))
-release_dB!(sh::SHBasis, dB) = 
-		release!(sh.dB_pool, dB)
-
-
 
 
 _evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)

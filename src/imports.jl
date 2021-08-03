@@ -20,12 +20,10 @@ end
    import ACEbase
 
    import ACEbase: ACEBasis, ScalarACEBasis, OneParticleBasis, Discrete1pBasis, 
-                   alloc_temp, alloc_temp_d, alloc_temp_dd,
-                   fltype, rfltype, gradtype,
+                   valtype, gradtype,
                    evaluate, evaluate_d, evaluate_dd, evaluate_ed,
                    evaluate!, evaluate_d!, evaluate_dd!, evaluate_ed!,
                    precon!, _allfieldsequal,
-                   alloc_B, alloc_dB,
                    AbstractState,
                    AbstractConfiguration,
                    AbstractContinuousState,
