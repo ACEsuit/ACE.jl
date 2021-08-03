@@ -25,8 +25,8 @@ end
 const StaticVectorPool = VectorPool
 
 
-acquire!(pool::VectorPool{T}, len::Integer, ::Type{T}) where {T} = 
-        acquire!(pool, len)
+acquire!(pool::VectorPool{T}, sz::Union{Integer, Tuple}, ::Type{T}) where {T} = 
+        acquire!(pool, sz)
 
 
 function acquire!(pool::VectorPool{T}, len::Integer) where {T}
@@ -46,9 +46,27 @@ function release!(pool::VectorPool{T}, x::Vector{T}) where {T}
     return nothing 
 end
 
+# Vector -> Array  -> Vector 
+
+function acquire!(pool::VectorPool{T}, sz::NTuple{N}) where {T, N}
+    len = prod(sz)::Integer
+    if length(pool.arrays) > 0     
+        x = pop!(pool.arrays)
+        if len != length(x)
+            resize!(x, len)
+        end 
+        return reshape(x, sz)
+    else
+        return Array{T, N}(undef, sz)
+    end
+end
+
+release!(pool::VectorPool{T}, x::Array{T}) where {T} = 
+        release!(pool, reshape(x, :))
+
 # fallbacks 
 
-acquire!(pool::VectorPool{T}, len::Integer, S::Type{T1}) where {T, T1} = 
+acquire!(pool::VectorPool{T}, sz::Union{Integer, Tuple}, S::Type{T1}) where {T, T1} = 
         Vector{S}(undef, len)
 
 release!(pool::VectorPool{T}, x::AbstractVector) where {T} = 

@@ -1,67 +1,48 @@
 
 
-# ----------- definitions of possible symmetries a 1-p basis may possess
-
-# TODO: attach these properties to the one-particle basis sets
-
-abstract type AbstractSymmetry end
-
-struct EuclideanO3Equivariance  <: AbstractSymmetry end
-
-struct SphericalO3Equivariance  <: AbstractSymmetry end
-
-struct O3Invariance <: AbstractSymmetry end
-
-groupaction(X::AbstractState) = groupaction(typeof(X))
-
 
 # ----------- This file implements the abstract one-particle basis interface
 
 
-function evaluate!(A, tmp, basis::OneParticleBasis,
-                   cfg::AbstractConfiguration)
+function evaluate!(A, basis::OneParticleBasis, cfg::AbstractConfiguration)
    fill!(A, 0)
    for X in cfg
-      add_into_A!(A, tmp, basis, X)
+      add_into_A!(A, basis, X)
    end
    return A
 end
 
-function evaluate!(A, tmp, basis::OneParticleBasis, X::AbstractState)
+function evaluate!(A, basis::OneParticleBasis, X::AbstractState)
    fill!(A, 0)
-   add_into_A!(A, tmp, basis, X)
+   add_into_A!(A, basis, X)
    return A
 end
 
-evaluate_d(basis::OneParticleBasis, cfg::AbstractConfiguration) = 
-   evaluate_ed!(alloc_B(basis, cfg), alloc_dB(basis, cfg), 
-                  alloc_temp_d(basis, cfg), basis, cfg)
+function evaluate_d!(dA, basis::Product1pBasis, 
+                     X::Union{AbstractState, AbstractConfiguration})
+   A = acquire_B!(basis, X)
+   evaluate_ed!(A, dA, basis, X)
+   return dA 
+end
 
-
-# TODO: first signs of significant rewrite need here: 
-#       probably get rid of all non-allocating versions here...
-
-function evaluate_ed!(A, dA, tmpd, basis::OneParticleBasis,
+function evaluate_ed!(A, dA, basis::OneParticleBasis,
                       cfg::AbstractConfiguration)
    fill!(A, 0)
-   # fill!(dA, zero(eltype(dA)))  # TODO: this should not be necessary!
    for (j, X) in enumerate(cfg)
-      A[:] .+= evaluate(basis, X)
-      dA[:, j] = evaluate_d(basis, X)
-      # dAview = @view dA[:, j]      
-      # add_into_A_dA!(A, dAview, tmpd, basis, X)
+      add_into_A_dA!(A, (@view dA[:, j]), basis, X)
    end
-   return dA
+   return A, dA
 end
 
 
-function evaluate_ed!(A, dA, tmpd, basis::OneParticleBasis, X::AbstractState)
-   # fill!(A, 0)
-   # add_into_A_dA!(A, dA, tmpd, basis, X)
-   A[:] .= evaluate(basis, X) 
-   dA[:] .= evaluate_d(basis, X)
-   return dA
+function evaluate_ed!(A, dA, basis::OneParticleBasis, X::AbstractState)
+   fill!(A, 0)
+   add_into_A_dA!(A, dA, basis, X)
+   return A, dA
 end
+
+
+
 
 # -------------------- AD codes 
 
@@ -79,7 +60,8 @@ end
 
 function evaluate(basis::OneParticleBasis, 
                   cfg::AbstractConfiguration)
-   A = acquire!(ACE._pool, valtype(basis, cfg), (length(basis),))
+   # A = acquire!(ACE._pool, valtype(basis, cfg), (length(basis),))
+   A = Vector{valtype(basis, cfg)}(undef, length(basis))
    return evaluate!(A, basis, cfg)
 end
 
@@ -134,12 +116,12 @@ end
 
 Base.length(::One1pBasis) = 1
 
-function evaluate!(B, tmp, basis::One1pBasis, args...)
+function evaluate!(B, basis::One1pBasis, args...)
    B[1] = 1
    return B
 end
 
-function evaluate_d!(dB, tmp, basis::One1pBasis, args...)
+function evaluate_d!(dB, basis::One1pBasis, args...)
    dB[1] = zero(eltype(dB))
    return dB
 end

@@ -133,7 +133,8 @@ ALPolynomials(L::Integer, A::Vector{T}, B::Vector{T}) where {T}  =
 Base.length(alp::ALPolynomials) = sizeP(alp.L)
 
 import Base.==
-==(B1::ALPolynomials, B2::ALPolynomials) = ACEbase._allfieldsequal(B1, B2)
+==(B1::ALPolynomials{T}, B2::ALPolynomials{T}) where {T} = 
+		((B1.L == B2.L) && (B1.A ≈ B2.A) && (B1.B ≈ B2.B))
 
 
 valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
@@ -440,6 +441,7 @@ function cYlm_ed!(Y, dY, L, S::SphericalCoords, P, dP)
 			@inbounds dY[index_y(l,  m)] = dspher_to_dcart(S, dep_dφ * p_div_sinθ, ep * dp_dθ)
 		end
 	end
+
 	return Y, dY
 end
 

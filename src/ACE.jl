@@ -24,7 +24,7 @@ include("imports.jl")
 
 # TODO 
 # - move to imports
-# - retire alloc_B, alloc_dB 
+# - retire alloc_B, alloc_dB entirely?!?
 
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
@@ -33,13 +33,35 @@ import  ACEbase: gradtype, valtype, alloc_B, alloc_dB
 
 # draft fallbacks 
 
-acquire_B!(basis::ACEBasis, args...) = 
-      acquire!(basis.B_pool, length(basis), valtype(basis, args...))
+function acquire_B!(basis::ACEBasis, args...) 
+   VT = valtype(basis, args...)
+   if hasproperty(basis, :B_pool)
+      return acquire!(basis.B_pool, length(basis), VT)
+   end 
+   return Vector{VT}(undef, length(basis))
+end
 
 release_B!(basis::ACEBasis, B) = release!(basis.B_pool, B)
 
-acquire_dB!(basis::ACEBasis, args...) = 
-      acquire!(basis.dB_pool, length(basis), gradtype(basis, args...))
+function acquire_dB!(basis::ACEBasis, args...) 
+   GT = gradtype(basis, args...)
+   if hasproperty(basis, :dB_pool)
+      return acquire!(basis.dB_pool, length(basis), GT)
+   end
+   return Vector{GT}(undef, length(basis))
+end
+
+function acquire_dB!(basis::ACEBasis, cfg::AbstractConfiguration) 
+   GT = gradtype(basis, cfg)
+   sz = (length(basis), length(cfg))
+   if hasproperty(basis, :dB_pool)
+      return acquire!(basis.dB_pool, sz, GT)
+   end
+   return Matrix{GT}(undef, sz)
+end
+   
+alloc_dB(basis::ACEBasis, cfg::AbstractConfiguration) = 
+      Matrix{gradtype(basis, cfg)}(undef, length(basis), length(cfg))
       
 release_dB!(basis::ACEBasis, dB) = release!(basis.dB_pool, dB)
 

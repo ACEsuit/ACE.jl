@@ -59,7 +59,8 @@ function get_spec(basis::Ylm1pBasis{T, VS, L, M}) where {T, VS, L, M}
    return spec
 end
 
-==(P1::Ylm1pBasis, P2::Ylm1pBasis) =  ACE._allfieldsequal(P1, P2)
+==(P1::Ylm1pBasis, P2::Ylm1pBasis) =  
+      ( (P1.SH == P2.SH) && (typeof(P1) == typeof(P2)) )
 
 write_dict(basis::Ylm1pBasis{T}) where {T} = Dict(
       "__id__" => "ACE_Ylm1pBasis",
@@ -108,32 +109,26 @@ evaluate!(B, basis::Ylm1pBasis, X::AbstractState) =
       evaluate!(B, basis.SH, _rr(X, basis))
 
 
-# TODO -> do we need to revive this? 
-# function evaluate_ed!(B, dB, tmpd, basis::Ylm1pBasis, X::AbstractState)
-#    TDX = eltype(dB)
-#    RSYM = _varsym(basis)
-#    evaluate_ed!(B, tmpd.dBsh, tmpd, basis.SH, _rr(X, basis))
-#    for n = 1:length(basis)
-#       dB[n] = TDX( NamedTuple{(RSYM,)}((tmpd.dBsh[n],)) )
-#    end
-#    return nothing 
-# end
-
-
 function evaluate_d!(dB, basis::Ylm1pBasis, X::AbstractState)
+   B = acquire_B!(basis, X)
+   evaluate_ed!(B, dB, basis, X)
+   release_B!(basis, B)
+   return dB 
+end 
+
+
+function evaluate_ed!(B, dB, basis::Ylm1pBasis, X::AbstractState)
    TDX = eltype(dB)  # need not be the same as gradtype!!!
    RSYM = _varsym(basis)
    rr = _rr(X, basis)
-   Y = acquire_B!(basis.SH, rr)
    dY = acquire_dB!(basis.SH, rr)
    # spherical harmonics does only ed since values are essentially free
-   evaluate_ed!(Y, dY, basis.SH, rr)
+   evaluate_ed!(B, dY, basis.SH, rr)
    for n = 1:length(basis)
       dB[n] = TDX( NamedTuple{(RSYM,)}((dY[n],)) )
    end
-   release_B!(basis.SH, Y)
    release_dB!(basis.SH, dY)
-   return dB 
+   return B, dB 
 end
 
 

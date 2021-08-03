@@ -37,9 +37,19 @@ A1 = sum( evaluate(B1p, X) for X in Xs )
 println(@test A1 ≈ A)
 
 @info("test permutation invariance")
-println(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
+for ntest = 1:30
+   print_tf(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
+end
+println()
 
 ##
+
+# test_fio(Ylm)
+# D = ACE.write_dict(Ylm)
+# Ylm_ = ACE.read_dict(D)
+# Ylm.SH.alp == Ylm_.SH.alp
+# Ylm.SH.alp.B ≈ Ylm_.SH.alp.B
+# @which ( Ylm.SH.alp == Ylm_.SH.alp )
 
 @info("Test FIO")
 for _B in (J, Rn, Ylm, B1p)
@@ -54,9 +64,13 @@ dY = ACE.acquire_dB!(Ylm, Xs[1])
 println(@test (typeof(dY) == eltype(Ylm.dB_pool.arrays)))
 ACE.evaluate!(Y, Ylm, Xs[1])
 ACE.evaluate_d!(dY, Ylm, Xs[1])
-# ACE.evaluate_ed!(Y, dY, tmpd, Ylm, Xs[1])
+Y1 = ACE.acquire_B!(Ylm, Xs[1])
+dY1 = ACE.acquire_dB!(Ylm, Xs[1])
+ACE.evaluate_ed!(Y1, dY1, Ylm, Xs[1])
+
 println(@test (evaluate(Ylm, Xs[1]) ≈ Y))
 println(@test (evaluate_d(Ylm, Xs[1]) ≈ dY))
+println(@test ((Y ≈ Y1) && (dY ≈ dY1)) )
 
 _vec2X(x) = PositionState{Float64}((rr = SVector{3}(x),))
 
@@ -85,17 +99,12 @@ println()
 
 @info("Product basis evaluate_ed! tests")
 
-tmp_d = ACE.alloc_temp_d(B1p, cfg)
-A1 = ACE.alloc_B(B1p, cfg)
-A2 = ACE.alloc_B(B1p, cfg)
-ACE.evaluate!(A1, tmp_d, B1p, cfg)
+A1 = ACE.acquire_B!(B1p, cfg)
+ACE.evaluate!(A1, B1p, cfg)
+A2 = ACE.acquire_B!(B1p, cfg)
 dA = ACE.alloc_dB(B1p, cfg)
-ACE.evaluate_ed!(A2, dA, tmp_d, B1p, cfg)
+ACE.evaluate_ed!(A2, dA, B1p, cfg)
 println(@test A1 ≈ A2)
-
-evaluate_d(B1p, cfg)
-ACE.alloc_temp_d(B1p, cfg)
-
 
 println(@test( evaluate_d(B1p, cfg) ≈ dA ))
 

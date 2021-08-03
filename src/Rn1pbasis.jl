@@ -52,7 +52,8 @@ function get_spec(basis::Rn1pBasis)
    return [  NamedTuple{(N,)}((n,)) for n = 1:length(basis) ]
 end
 
-==(P1::Rn1pBasis, P2::Rn1pBasis) =  ACE._allfieldsequal(P1, P2)
+==(P1::Rn1pBasis, P2::Rn1pBasis) = 
+   ( (P1.R == P2.R) && (typeof(P1) == typeof(P2)) )
 
 write_dict(basis::Rn1pBasis{T}) where {T} = Dict(
       "__id__" => "ACE_Rn1pBasis",
@@ -114,6 +115,11 @@ function evaluate_d!(dB, basis::Rn1pBasis, X::AbstractState)
    return dB
 end
 
+function evaluate_ed!(B, dB, basis::Rn1pBasis, X::AbstractState)
+   evaluate!(B, basis, X)
+   evaluate_d!(dB, basis, X)
+   return B, dB 
+end 
 
 # ----------------- AD ... experimental
 

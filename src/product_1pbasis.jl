@@ -74,51 +74,13 @@ function gradtype(basis::Product1pBasis, X::AbstractState)
    return dstate_type(VALT, X)
 end
 
-alloc_temp(basis::Product1pBasis, arg) =
-      (
-         B = alloc_B.(basis.bases, Ref(arg)),
-         tmp = alloc_temp.(basis.bases, Ref(arg))
-      )
-
-
-alloc_dB(basis::Product1pBasis, cfg::AbstractConfiguration) = 
-      zeros(gradtype(basis, cfg), (length(basis), length(cfg)) )
-
-
-
-alloc_temp_d(basis::Product1pBasis, cfg::AbstractConfiguration) = 
-      alloc_temp_d(basis, zero(eltype(cfg)) )
-
-alloc_temp_d(basis::Product1pBasis, X::AbstractState) = 
-      (
-         B = alloc_B.(basis.bases, Ref(X)),
-         tmp = alloc_temp.(basis.bases, Ref(X)),
-         dB = alloc_dB.(basis.bases, Ref(X)),
-         tmpd = alloc_temp_d.(basis.bases, Ref(X))
-      )
-
-
 import Base.Cartesian: @nexprs
-
-
-@generated function add_into_A!(A, tmp, basis::Product1pBasis{NB}, X) where {NB}
-   quote
-      Base.Cartesian.@nexprs $NB i -> evaluate!(tmp.B[i], tmp.tmp[i], basis.bases[i], X)
-      for (iA, ϕ) in enumerate(basis.indices)
-         t = one(eltype(A))
-         Base.Cartesian.@nexprs $NB i -> (t *= tmp.B[i][ϕ[i]])
-         A[iA] += t
-      end
-      return nothing
-   end
-end
-
 
 @generated function add_into_A!(A, basis::Product1pBasis{NB}, X) where {NB}
    quote
       @nexprs $NB i -> begin 
          bas_i = basis.bases[i]
-         B_i = acquire!( _pool, valtype(bas_i, X), (length(bas_i), ) )
+         B_i = acquire_B!(bas_i, X)
          evaluate!(B_i, bas_i, X)
       end 
       for (iA, ϕ) in enumerate(basis.indices)
@@ -126,7 +88,7 @@ end
          @nexprs $NB i -> (t *= B_i[ϕ[i]])
          A[iA] += t
       end
-      @nexprs $NB i -> release!(_pool, B_i)
+      @nexprs $NB i -> release_B!(basis.bases[i], B_i)
       return nothing
    end
 end
@@ -134,24 +96,28 @@ end
 
 
 
-@generated function add_into_A_dA!(A, dA, tmpd, basis::Product1pBasis{NB}, X
+@generated function add_into_A_dA!(A, dA, basis::Product1pBasis{NB}, X
                                    ) where {NB}
    quote
       Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
-         if !(basis.bases[i] isa Discrete1pBasis)
+         bas_i = basis.bases[i] 
+         if !(bas_i isa Discrete1pBasis)
             # only evaluate basis gradients for a continuous basis
-            evaluate_ed!(tmpd.B[i], tmpd.dB[i], tmpd.tmpd[i], basis.bases[i], X)
+            B_i = acquire_B!(bas_i, X)
+            dB_i = acquire_dB!(bas_i, X)
+            Bt, dBt = evaluate_ed!(B_i, dB_i, bas_i, X)
          else
             # we still need the basis values for the discrete basis though
-            evaluate!(tmpd.B[i], tmpd.tmpd[i], basis.bases[i], X)
+            # TODO: maybe the d part should be a no-op and remove this 
+            # case distinction ... 
+            B_i = acquire_B!(bas_i, X)
+            evaluate!(B_i, bas_i, X)
          end
       end)
       for (iA, ϕ) in enumerate(basis.indices)
          # evaluate A
          t = one(eltype(A))
-         Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
-            t *= tmpd.B[i][ϕ[i]]
-         end)
+         @nexprs $NB i -> (t *= B_i[ϕ[i]])
          A[iA] += t
 
          # evaluate dA
@@ -160,66 +126,23 @@ end
          dA[iA] = zero(eltype(dA))
          Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
             if !(basis.bases[a] isa Discrete1pBasis)
-               dt = tmpd.dB[a][ϕ[a]]
+               dt = dB_a[ϕ[a]]
                Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
                   if b != a
-                     dt *= tmpd.B[b][ϕ[b]]
+                     dt *= B_b[ϕ[b]]
                   end
                end)
                dA[iA] += dt
             end
          end)
+
+         Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
+               release_B!(bas_i, B_i)
+               release_dB!(bas_i, dB_i)
+            end ))
       end
       return nothing
    end
-end
-
-
-@generated function add_into_A_dA!(A, dA, tmpd, basis::Product1pBasis{NB}, X
-                                   ) where {NB}
-   quote
-      Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
-         if !(basis.bases[i] isa Discrete1pBasis)
-            # only evaluate basis gradients for a continuous basis
-            evaluate_ed!(tmpd.B[i], tmpd.dB[i], tmpd.tmpd[i], basis.bases[i], X)
-         else
-            # we still need the basis values for the discrete basis though
-            evaluate!(tmpd.B[i], tmpd.tmpd[i], basis.bases[i], X)
-         end
-      end)
-      for (iA, ϕ) in enumerate(basis.indices)
-         # evaluate A
-         t = one(eltype(A))
-         Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
-            t *= tmpd.B[i][ϕ[i]]
-         end)
-         A[iA] += t
-
-         # evaluate dA
-         # TODO: redo this with adjoints!!!!
-         #     also reverse order of operations to make fewer multiplications!
-         dA[iA] = zero(eltype(dA))
-         Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
-            if !(basis.bases[a] isa Discrete1pBasis)
-               dt = tmpd.dB[a][ϕ[a]]
-               Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
-                  if b != a
-                     dt *= tmpd.B[b][ϕ[b]]
-                  end
-               end)
-               dA[iA] += dt
-            end
-         end)
-      end
-      return nothing
-   end
-end
-
-
-function evaluate_d!(dA, tmpd, basis::Product1pBasis, X::AbstractState)
-   A = alloc_B(basis, X)
-   add_into_A_dA!(A, dA, tmpd, basis, X)
-   return dA 
 end
 
 
