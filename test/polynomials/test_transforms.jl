@@ -29,7 +29,7 @@ for p in 2:4
          errs = []
          verbose && @printf("     h    |     error  \n")
          for p = 2:10
-            h = 0.1^p
+            local h = 0.1^p
             dPh = (evaluate(B, r+h) - P) / h
             push!(errs, norm(dPh - dP, Inf))
             verbose && @printf(" %.2e | %2e \n", h, errs[end])

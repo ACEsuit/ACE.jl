@@ -53,7 +53,7 @@ end
 
 for ntest = 1:30
       Xs1 = shuffle(rand_refl(rand_rot(Xs)))
-      BB1 = evaluate(basis, ACEConfig(Xs1))
+      local BB1 = evaluate(basis, ACEConfig(Xs1))
       print_tf(@test isapprox(BB, BB1, rtol=1e-10))
 end
 println()
@@ -61,7 +61,9 @@ println()
 ##
 import ACEbase
 @info("Test FIO")
-println(@test(all(ACEbase.Testing.test_fio(basis; warntype=false))))
+let basis1 = basis 
+   println(@test(all(ACEbase.Testing.test_fio(basis1; warntype=true))))
+end
 
 
 ## 
@@ -105,6 +107,7 @@ println()
 
 for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
+   local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalVector(L; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
    basis = SymmetricBasis(pibasis, φ)
@@ -117,6 +120,7 @@ for L = 0:3
    end
 
    for ntest = 1:30
+      local Q, D, BB1 
       Q, D = ACE.Wigner.rand_QD(L)
       cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
       BB1 = evaluate(basis, cfg1)
@@ -157,6 +161,7 @@ end
 
 for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
+   local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
    pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
    basis = SymmetricBasis(pibasis, φ)
@@ -164,6 +169,7 @@ for L1 = 0:2, L2 = 0:2
    BB = evaluate(basis, cfg)
 
    for ntest = 1:30
+      local Q, D1, D2, BB1 
       Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
       cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
       BB1 = evaluate(basis, cfg1)
@@ -192,6 +198,7 @@ end
 
 for L = 0:3
    @info "L = $L"
+   local Xs, cfg 
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
    pibasis1 = PIBasis(B1p, ord, maxdeg; property = φ1, isreal = false)
    basis1 = SymmetricBasis(pibasis1, φ1)
@@ -222,6 +229,7 @@ pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
 basis2 = SymmetricBasis(pibasis2, φ2)
 
 for ntest = 1:30
+   local Xs, cfg, BB 
    Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
    cfg = ACEConfig(Xs)
    BB = evaluate(basis, cfg)

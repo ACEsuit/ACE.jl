@@ -55,6 +55,7 @@ tol = 1e-10
 
 @info("check for rotation, permutation and inversion equivariance")
 for ntest = 1:30
+   local Xs, BB
    Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
    BB = evaluate(basis, ACEConfig(Xs))
    Q = rand([-1,1]) * ACE.Random.rand_rot()
@@ -77,6 +78,7 @@ println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isrea
 
 @info("check for rotation, permutation and inversion equivariance")
 for ntest = 1:30
+   local Xs, BB
    Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
    BB = evaluate(basis, ACEConfig(Xs))
    Q = rand([-1,1]) * ACE.Random.rand_rot()

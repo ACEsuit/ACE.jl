@@ -166,7 +166,7 @@ for nsamples = 1:30
    errs = []
    verbose && @printf("     h    | error \n")
    for p = 2:10
-      h = 0.1^p
+      local h = 0.1^p
       DYh = similar(DY)
       Rh = Vector(R)
       for i = 1:3

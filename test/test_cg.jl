@@ -56,10 +56,10 @@ try
    		m1, m2 = rand(-l1:l1), rand(-l2:l2)
    		# ... evaluated at random spherical coordinates
    		θ = rand() * π
-   		φ = (rand()-0.5) * 2*π
+   		local φ = (rand()-0.5) * 2*π
    		R = SVector( cos(φ)*sin(θ), sin(φ)*sin(θ), cos(θ) )
    		# evaluate all relevant Ylms (up to l1 + l2)
-   		Ylm = evaluate(SHBasis(l1+l2), R)
+   		local Ylm = evaluate(SHBasis(l1+l2), R)
    		# evaluate the product p = Y_l1_m1 * Y_l2_m2
    		p = Ylm[index_y(l1,  m1)] * Ylm[index_y(l2,m2)]
    		# and its expansion in terms of CG coeffs
