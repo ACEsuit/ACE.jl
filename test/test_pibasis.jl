@@ -7,10 +7,9 @@
 
 using ACE, Random
 using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
-using ACE: evaluate, evaluate_d, NaiveTotalDegree
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      PositionState, Product1pBasis
+      PositionState, Product1pBasis, NaiveTotalDegree
 
 ##
 
@@ -66,8 +65,6 @@ println(@test( all(test_fio(pibasis)) ))
 ## Testing derivatives
 
 @info("Derivatives of PIbasis")
-tmpd = ACE.alloc_temp_d(pibasis, cfg)
-dAA = ACE.alloc_dB(pibasis, cfg)
 AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
 println(@test AA1 ≈ AA)
 

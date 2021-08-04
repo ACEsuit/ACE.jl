@@ -66,6 +66,8 @@ read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =
       Scal1pBasis(Symbol(D["varsym"]), Int(D["varidx"]), Symbol(D["idxsym"]), 
                   read_dict(D["P"]))
 
+valtype(basis::Scal1pBasis) = valtype(basis.P)
+
 valtype(basis::Scal1pBasis, cfg::AbstractConfiguration) = 
       valtype(basis, zero(eltype(cfg)))
 

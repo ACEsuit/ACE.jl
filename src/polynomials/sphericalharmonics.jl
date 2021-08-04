@@ -7,7 +7,7 @@ using StaticArrays, LinearAlgebra
 
 import ACE, ACEbase 
 
-import ACE: valtype, grad_type, 
+import ACE: valtype, gradtype, 
 		      evaluate!, evaluate_d!, evaluate_ed!,
 			   write_dict, read_dict,
 				ACEBasis, 
@@ -295,10 +295,6 @@ maxL(sh::AbstractSHBasis) = sh.alp.L
 
 valtype(sh::SHBasis{T}, x::AbstractVector{S}) where {T, S} = 
 			Complex{promote_type(T, S)}
-
-gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
-			SVector{3, Complex{promote_type(T, S) }}
-
 
 import Base.==
 ==(B1::AbstractSHBasis, B2::AbstractSHBasis) =

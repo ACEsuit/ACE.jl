@@ -59,6 +59,8 @@ end
 
 # ------------------------------------
 
+valtype(basis::Product1pBasis) = 
+      promote_type(valtype.(basis.bases)...)
 
 valtype(basis::Product1pBasis, X::AbstractState) = 
       promote_type(valtype.(basis.bases, Ref(X))...)

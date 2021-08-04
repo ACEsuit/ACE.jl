@@ -8,7 +8,6 @@ using LinearAlgebra: dot
 import ACE
 
 import ACE: evaluate!, evaluate_d!, read_dict, write_dict,
-            alloc_B, alloc_dB, 
             transform, transform_d, transform_dd, inv_transform,
             ACEBasis, ScalarACEBasis, 
             valtype, gradtype, 
@@ -342,13 +341,6 @@ Base.length(J::TransformedPolys) = length(J.J)
 valtype(P::TransformedPolys, args...) = valtype(P.J, args...)
 
 gradtype(P::TransformedPolys, args...) = gradtype(P.J, args...)
-
-# acquire_B!(P::TransformedPolys, args...) = 
-#       acquire!(P.B_pool, length(P), valtype(P, args...))
-# release_B!(P::TransformedPolys, B) = release!(P.B_pool, B)
-# acquire_dB!(P::TransformedPolys, args...) = 
-#       acquire!(P.B_pool, length(P), gradtype(P, args...))
-# release_dB!(P::TransformedPolys, dB) = release_B!(P, dB)
 
 
 function ACE.rand_radial(J::TransformedPolys)

@@ -66,10 +66,9 @@ read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) =
                       varsym = Symbol(D["varsym"]), 
                       nsym = Symbol(D["nsym"]))
 
-# should the valtype use a type promotion here what if the input if 
-# a Dual???
-valtype(basis::Rn1pBasis{T}, ::AbstractConfiguration) where T = T
-valtype(basis::Rn1pBasis{T}, X::AbstractState) where T = T
+# TODO: this seems really poor; should the valtype use a type promotion here 
+# what if the input is a Dual???
+valtype(basis::Rn1pBasis{T}, args...) where {T} = T
 
 # TODO: this should be a generic fallback I think 
 gradtype(B::Rn1pBasis, X::AbstractState) = dstate_type(valtype(B, X), X)

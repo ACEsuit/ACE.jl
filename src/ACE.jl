@@ -41,7 +41,11 @@ function acquire_B!(basis::ACEBasis, args...)
    return Vector{VT}(undef, length(basis))
 end
 
-release_B!(basis::ACEBasis, B) = release!(basis.B_pool, B)
+function release_B!(basis::ACEBasis, B) 
+   if hasproperty(basis, :B_pool)
+      release!(basis.B_pool, B)
+   end
+end 
 
 function acquire_dB!(basis::ACEBasis, args...) 
    GT = gradtype(basis, args...)
@@ -59,11 +63,17 @@ function acquire_dB!(basis::ACEBasis, cfg::AbstractConfiguration)
    end
    return Matrix{GT}(undef, sz)
 end
+
+function release_dB!(basis::ACEBasis, dB) 
+   if hasproperty(basis, :dB_pool)
+      release!(basis.dB_pool, dB)
+   end
+end 
+
    
 alloc_dB(basis::ACEBasis, cfg::AbstractConfiguration) = 
       Matrix{gradtype(basis, cfg)}(undef, length(basis), length(cfg))
       
-release_dB!(basis::ACEBasis, dB) = release!(basis.dB_pool, dB)
 
 
 abstract type AbstractACEModel end 

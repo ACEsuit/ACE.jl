@@ -16,6 +16,7 @@ end
 
 Base.length(spec::PIBasisSpec) = length(spec.orders)
 
+maxcorrorder(spec::PIBasisSpec) = size(spec.iAA2iA, 2)
 
 function _get_pibfcn(spec0, Aspec, vv)
    vv1 = vv[2:end]
@@ -112,20 +113,29 @@ PIBasis(basis1p, N, D, maxdeg)
 * `D` : an abstract degee specification, e.g., SparsePSHDegree
 * `maxdeg` : the maximum polynomial degree as measured by `D`
 """
-mutable struct PIBasis{BOP, REAL} <: ACEBasis
+mutable struct PIBasis{BOP, REAL, TB, TA} <: ACEBasis
    basis1p::BOP             # a one-particle basis
    spec::PIBasisSpec
    real::REAL     # could be `real` or `identity` to keep AA complex
-   # evaluator    # classic vs graph
+   # evaluator    # classic vs graph   
+   B_pool::VectorPool{TB}
+   dAA_pool::VectorPool{TA}
 end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
-==(B1::PIBasis, B2::PIBasis) = ACE._allfieldsequal(B1, B2)
+==(B1::PIBasis, B2::PIBasis) = 
+      ( (B1.basis1p == B2.basis1p) && 
+        (B1.spec == B2.spec) && 
+        (B1.real == B2.real) )
 
-# TODO: allow the option of converting to real part?
-fltype(basis::PIBasis) = basis.real( fltype(basis.basis1p) )
-rfltype(basis::PIBasis) = real( fltype(basis) )
+valtype(basis::PIBasis) = basis.real( valtype(basis.basis1p) )
+
+valtype(basis::PIBasis, cfg::AbstractConfiguration) = 
+      basis.real( valtype(basis.basis1p, cfg) )
+
+gradtype(basis::PIBasis, cfgorX) = 
+      basis.real( gradtype(basis.basis1p, cfgorX) )
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
@@ -133,6 +143,13 @@ PIBasis(basis1p, args...; isreal = true, kwargs...) =
    PIBasis(basis1p, PIBasisSpec(basis1p, args...; kwargs...),
            isreal ? Base.real : Base.identity )
 
+function PIBasis(basis1p::OneParticleBasis, spec::PIBasisSpec, real)
+   VT1 = valtype(basis1p)
+   VT = real(VT1)  # default valtype 
+   B_pool = VectorPool{VT}()
+   dAA_pool = VectorPool{VT1}()
+   return PIBasis(basis1p, spec, real, B_pool, dAA_pool)
+end
 
 get_spec(pibasis::PIBasis) =
    [ get_spec(pibasis, i) for i = 1:length(pibasis) ]
@@ -143,6 +160,7 @@ get_spec(pibasis::PIBasis, i::Integer) =
 setreal(basis::PIBasis, isreal::Bool) =
    PIBasis(basis.basis1p, basis.spec, isreal)
 
+maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
 
 # function scaling(pibasis::PIBasis, p)
 #    ww = zeros(Float64, length(pibasis))
@@ -163,9 +181,9 @@ setreal(basis::PIBasis, isreal::Bool) =
 #
 # standardevaluator(basis::PIBasis) =
 #    PIBasis(basis.basis1p, zlist(basis), basis.inner, StandardEvaluator())
-#
-#
-#
+
+
+
 # -------------------------------------------------
 # FIO codes
 
@@ -192,16 +210,9 @@ read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
 # -------------------------------------------------
 # Evaluation codes
 
-alloc_B(basis::PIBasis, args...) = zeros( fltype(basis), length(basis) )
-
-alloc_temp(basis::PIBasis, args...) =
-      ( A = alloc_B(basis.basis1p, args...),
-        tmp1p = alloc_temp(basis.basis1p, args...),
-      )
-
-
-function evaluate!(AA, tmp, basis::PIBasis, config::AbstractConfiguration)
-   A = evaluate!(tmp.A, tmp.tmp1p, basis.basis1p, config)
+function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
+   A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
+   evaluate!(A, basis.basis1p, config)
    fill!(AA, 1)
    for iAA = 1:length(basis)
       aa = one(eltype(A))
@@ -210,6 +221,7 @@ function evaluate!(AA, tmp, basis::PIBasis, config::AbstractConfiguration)
       end
       AA[iAA] = basis.real(aa)
    end
+   release_B!(basis.basis1p, A)
    return AA
 end
 
@@ -217,35 +229,20 @@ end
 # -------------------------------------------------
 # gradients
 
-gradtype(basis::PIBasis, cfgorX) = 
-      basis.real( gradtype(basis.basis1p, cfgorX) )
-
-alloc_dB(basis::PIBasis, cfg::AbstractConfiguration, nmax = length(cfg)) =
-      zeros(gradtype(basis, cfg), (length(basis), nmax))
-
-alloc_temp_d(basis::PIBasis, cfg::AbstractConfiguration, nmax = length(cfg)) =
-      (
-        A = alloc_B(basis.basis1p),
-        dA = alloc_dB(basis.basis1p, cfg),
-        tmp_basis1p = alloc_temp(basis.basis1p),
-        tmpd_basis1p = alloc_temp_d(basis.basis1p, cfg),
-        # ---- adjoint stuff
-        dAAdA = zeros(fltype(basis.basis1p),
-                      maximum(basis.spec.orders))
-      )
-
-# TODO: This is a naive forwardmode implementation; we need
-#       to switch this to reverse mode differentiation
-
-function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
+function evaluate_ed!(AA, dAA, basis::PIBasis,
                       cfg::AbstractConfiguration)
-   evaluate_ed!(tmpd.A, tmpd.dA, tmpd.tmpd_basis1p, basis.basis1p, cfg)
-   evaluate_ed!(AA, dAA, tmpd, basis, tmpd.A, tmpd.dA)
+   A = acquire_B!(basis.basis1p, cfg)
+   dA = acquire_dB!(basis.basis1p, cfg)   # TODO: THIS WILL ALLOCATE!!!!!
+   evaluate_ed!(A, dA, basis.basis1p, cfg)
+   evaluate_ed!(AA, dAA, basis, A, dA)
+   release_dB!(basis.basis1p, dA)
+   release_B!(basis.basis1p, A)
+   return AA, dAA 
 end
 
 function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
    @assert length(dAAdA) >= ord
-   # TODO - optimize?
+   # TODO - optimize a bit more? can move one operation out of the loop
    # Forward pass:
    @inbounds dAAdA[1] = 1
    @inbounds AAfwd = A[iAA2iA[iAA, 1]]
@@ -264,11 +261,11 @@ function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
    return aa 
 end
 
-function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
+function evaluate_ed!(AA, dAA, basis::PIBasis,
                       A::AbstractVector, dA::AbstractMatrix)
-   dAAdA = tmpd.dAAdA
    orders = basis.spec.orders
    iAA2iA = basis.spec.iAA2iA
+   dAAdA = acquire!(basis.dAA_pool, maxcorrorder(basis))
 
    for iAA = 1:length(basis)
       ord = orders[iAA]
@@ -284,4 +281,5 @@ function evaluate_ed!(AA, dAA, tmpd, basis::PIBasis,
       end
    end
 
+   return AA, dAA 
 end

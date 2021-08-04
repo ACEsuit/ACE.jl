@@ -75,8 +75,9 @@ read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) =
                  lsym = Symbol(D["lsym"]), 
                  msym = Symbol(D["msym"]) )
 
-valtype(basis::Ylm1pBasis{T}, X::AbstractConfiguration) where T = Complex{T}
-valtype(basis::Ylm1pBasis{T}, X::AbstractState) where T = Complex{T}
+# TODO: fix the type promotion...
+
+valtype(basis::Ylm1pBasis{T}, args...) where T = Complex{T}
 
 gradtype(basis::Ylm1pBasis, X::AbstractState) = dstate_type(valtype(basis, X), X)
 
