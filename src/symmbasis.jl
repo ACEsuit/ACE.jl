@@ -25,25 +25,42 @@ SymmetricBasis(φ, basis1p, maxν, maxdeg;
 will first construct a `PIBasis` from these inputs and then call the first
 constructor.
 """
-struct SymmetricBasis{BOP, PROP, REAL} <: ACEBasis
+struct SymmetricBasis{BOP, PROP, REAL, VPROP} <: ACEBasis
    pibasis::PIBasis{BOP}
    A2Bmap::SparseMatrixCSC{PROP, Int}
    real::REAL
+   B_pool::VectorPool{VPROP}
 end
-
 
 Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
       size(basis.A2Bmap, 1)
 
-fltype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =  basis.real(PROP)
+valtype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} = basis.real(PROP)
 
-# rfltype(basis::SymmetricBasis) = rfltype(basis.pibasis)
+# TODO: this is not nice, there should be proper promotion 
+valtype(basis::SymmetricBasis{BOP, PROP}, X::AbstractState) where {BOP, PROP} = 
+      valtype(basis)
 
+gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
 
+function gradtype(basis::SymmetricBasis, cfgorX)
+   φ = zero(eltype(basis.A2Bmap))
+   dAA = zero(gradtype(basis.pibasis, cfgorX))
+   return typeof(_myreal1234( coco_o_daa(φ, dAA), basis.real))
+end
+
+# weird hacky name to avoid clashes 
+# TODO: there must be a more elegant way to do this 
+#       come to think of it, why did we do this in the first place???
+_myreal1234(a, ::typeof(Base.identity)) = a
+_myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)
 
 # -------- FIO
 
-==(B1::SymmetricBasis, B2::SymmetricBasis) = _allfieldsequal(B1, B2)
+==(B1::SymmetricBasis, B2::SymmetricBasis) = 
+      ( (B1.pibasis == B2.pibasis) && 
+        (B1.A2Bmap == B2.A2Bmap) && 
+        (B1.real == B2.real) )
 
 write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
       Dict( "__id__" => "ACE_SymmetricBasis",
@@ -85,8 +102,7 @@ function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
    # TODO: should this be stored with the basis?
    #       or maybe written to a file on disk? and then flushed every time
    #       we finish with a basis construction???
-   #rotc = Rot3DCoeffs(rfltype(pibasis))
-   rotc = Rot3DCoeffs(φ, rfltype(pibasis))
+   rotc = Rot3DCoeffs(φ, real(valtype(pibasis)))
    # allocate triplet format
    Irow, Jcol, vals = Int[], Int[], TP[]
    # count the number of PI basis functions = number of rows
@@ -133,6 +149,12 @@ function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
    return SymmetricBasis(pibasis, A2Bmap, isreal ? Base.real : Base.identity)
+end
+
+function SymmetricBasis(pibasis, A2Bmap, _real) 
+   PROP = _myreal1234(eltype(A2Bmap), _real)
+   B_pool = VectorPool{PROP}() 
+   return SymmetricBasis(pibasis, A2Bmap, _real, B_pool)
 end
 
 
@@ -238,6 +260,8 @@ end
 
 # ---------------- A modified sparse matmul
 
+# TODO: move this stuff all to aux? 
+
 using SparseArrays: AbstractSparseMatrixCSC,
 				        nonzeros, rowvals, nzrange
 
@@ -260,9 +284,6 @@ function genmul!(C, A::AbstractSparseMatrixCSC, B, mulop)
     end
     return C
 end
-
-# for (T, t) in ((Adjoint, adjoint), (Transpose, transpose))
-#    @eval function mul!(C::StridedVecOrMat, xA::$T{<:Any,<:AbstractSparseMatrixCSC}, B::DenseInputVecOrMat, α::Number, β::Number)
 
 
 function genmul!(C, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B, mulop)
@@ -288,64 +309,38 @@ end
 
 # ---------------- Evaluation code
 
-alloc_temp(basis::SymmetricBasis, args...) =
-      (  AA = alloc_B(basis.pibasis),
-         tmppi = alloc_temp(basis.pibasis) )
 
-alloc_B(basis::SymmetricBasis, args...) =
-      zeros(fltype(basis), length(basis))
-
-function evaluate!(B, tmp, basis::SymmetricBasis,
-                   cfg::AbstractConfiguration)
+function evaluate!(B, basis::SymmetricBasis, cfg::AbstractConfiguration)
    # compute AA
-   evaluate!(tmp.AA, tmp.tmppi, basis.pibasis, cfg)
-   return evaluate!(B, tmp, basis, tmp.AA)
+   AA = acquire_B!(basis.pibasis, cfg)
+   evaluate!(AA, basis.pibasis, cfg)
+   return evaluate!(B, basis, AA)
 end
 
 # this function allows us to attach multiple symmetric bases to a single
-#  𝑨 basis
+#     𝑨 basis
 #  TODO: this is extremely inefficient for multiple species But it is simple
 #        and clean and will do for now...
-function evaluate!(B, tmp, basis::SymmetricBasis,
-                   AA::AbstractVector{<: Number})
+function evaluate!(B, basis::SymmetricBasis, AA::AbstractVector{<: Number})
    genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
 end
 
-# ---- gradients
 
+# ---------------- gradients
 
-gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
-
-function gradtype(basis::SymmetricBasis, cfgorX)
-   φ = zero(eltype(basis.A2Bmap))
-   dAA = zero(gradtype(basis.pibasis, cfgorX))
-   return typeof(_myreal1234( coco_o_daa(φ, dAA), basis.real))
-end
-
-alloc_temp_d(basis::SymmetricBasis, cfg::AbstractConfiguration, nmax::Integer = length(cfg)) =
-      (  AA = alloc_B(basis.pibasis),
-         dAA = alloc_dB(basis.pibasis, cfg),
-         tmppi = alloc_temp(basis.pibasis),
-         tmpdpi = alloc_temp_d(basis.pibasis, cfg) )
-
-alloc_dB(basis::SymmetricBasis, cfg::AbstractConfiguration, nmax::Integer = length(cfg)) =
-      zeros(gradtype(basis, cfg), (length(basis), nmax))
-
-function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
-                     cfg::AbstractConfiguration)
+function evaluate_d!(dB, basis::SymmetricBasis, cfg::AbstractConfiguration)
    # compute AA
-   evaluate_ed!(tmpd.AA, tmpd.dAA, tmpd.tmpdpi, basis.pibasis, cfg)
-   evaluate_d!(dB, tmpd, basis, tmpd.AA, tmpd.dAA)
+   AA = acquire_B!(basis.pibasis, cfg)
+   dAA = acquire_dB!(basis.pibasis, cfg)
+   evaluate_ed!(AA, dAA, basis.pibasis, cfg)
+   evaluate_d!(dB, basis, AA, dAA)
    return dB
 end
 
 
-function evaluate_d!(dB, tmpd, basis::SymmetricBasis,
+function evaluate_d!(dB, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
    genmul!(dB, basis.A2Bmap, dAA, 
            (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
 end
 
-# weird name to avoid clashes
-_myreal1234(a, ::typeof(Base.identity)) = a
-_myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)

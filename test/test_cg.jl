@@ -1,5 +1,5 @@
 
-@testset "Clebsch-Gordan" begin
+
 
 @info("Testset Clebsch-Gordan")
 
@@ -82,5 +82,3 @@ catch e   # try importing some python packages
 end
 
 #---
-
-end # @testset

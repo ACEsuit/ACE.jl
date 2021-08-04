@@ -6,7 +6,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
 @testset "ACE.jl" begin
     # ------------------------------------------
     #   basic polynomial basis building blocks
-    include("polynomials/test_ylm.jl")
+    @testset "Ylm" begin include("polynomials/test_ylm.jl") end 
     include("testing/test_wigner.jl")
     include("polynomials/test_transforms.jl")
     include("polynomials/test_orthpolys.jl")
@@ -14,18 +14,19 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # --------------------------------------------
     # core permutation-invariant functionality
     include("test_1pbasis.jl")
-    include("test_pibasis.jl")
+    include("test_multigrads.jl")
+    @testset "PIBasis" begin include("test_pibasis.jl") end
 
     # ------------------------
-    #   rotation_invariance
-    # include("test_cg.jl")
-    # include("test_symmbasis.jl")
-    # include("test_euclvec.jl")
+    #   O(3) equi-variance
+    @testset "Clebsch-Gordan" begin include("test_cg.jl") end
+    @testset "SymmetricBasis" begin include("test_symmbasis.jl") end
+    @testset "EuclideanVector" begin include("test_euclvec.jl") end
 
     # Model tests 
     # include("test_linearmodel.jl")
 
-    include("test_multigrads.jl")
+    
 
 end
 
