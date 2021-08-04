@@ -5,7 +5,7 @@ module Random
 # TODO: rename rand_radial -> rand???
 
 import LinearAlgebra: norm
-import ACE: rand_radial, scaling, fltype, rfltype,
+import ACE: rand_radial, scaling, 
             PositionState, ACEBasis, 
             rand_sphere, rand_rot, rand_refl, rand_O3 
 

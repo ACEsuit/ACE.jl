@@ -152,7 +152,7 @@ function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
 end
 
 function SymmetricBasis(pibasis, A2Bmap, _real) 
-   PROP = _myreal1234(eltype(A2Bmap), _real)
+   PROP = _real(eltype(A2Bmap))
    B_pool = VectorPool{PROP}() 
    return SymmetricBasis(pibasis, A2Bmap, _real, B_pool)
 end

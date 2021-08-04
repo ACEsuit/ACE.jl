@@ -7,14 +7,14 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # ------------------------------------------
     #   basic polynomial basis building blocks
     @testset "Ylm" begin include("polynomials/test_ylm.jl") end 
-    include("testing/test_wigner.jl")
-    include("polynomials/test_transforms.jl")
-    include("polynomials/test_orthpolys.jl")
+    @testset "TestWigner" begin include("testing/test_wigner.jl") end 
+    @testset "Transforms" begin include("polynomials/test_transforms.jl") end 
+    @testset "OrthogonalPolynomials" begin include("polynomials/test_orthpolys.jl") end 
 
     # --------------------------------------------
     # core permutation-invariant functionality
-    include("test_1pbasis.jl")
-    include("test_multigrads.jl")
+    @testset "1-Particle Basis"  begin include("test_1pbasis.jl") end 
+    @testset "Experimental Multi Grads" begin  include("test_multigrads.jl") end 
     @testset "PIBasis" begin include("test_pibasis.jl") end
 
     # ------------------------
@@ -25,8 +25,6 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
 
     # Model tests 
     # include("test_linearmodel.jl")
-
-    
 
 end
 

@@ -1,5 +1,5 @@
 
-@testset "TestWigner" begin
+
 
 ##
 using ACE, StaticArrays, ACE.SphericalHarmonics;
@@ -27,5 +27,3 @@ for L = 0:5
 end
 
 ##
-
-end

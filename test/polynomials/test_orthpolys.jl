@@ -1,6 +1,6 @@
 
 
-@testset "OrthogonalPolynomials" begin
+
 
 @info("--------- Testing OrthogonalPolynomials ----------")
 
@@ -124,7 +124,6 @@ println()
 
 ##
 
-end
 
 # ## Quick look at the basis
 # using Plots

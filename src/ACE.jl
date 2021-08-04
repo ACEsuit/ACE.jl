@@ -29,7 +29,7 @@ include("imports.jl")
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
 import ACEbase: evaluate, evaluate_d 
-import  ACEbase: gradtype, valtype, alloc_B, alloc_dB
+import ACEbase: gradtype, valtype
 
 # draft fallbacks 
 
@@ -69,10 +69,6 @@ function release_dB!(basis::ACEBasis, dB)
       release!(basis.dB_pool, dB)
    end
 end 
-
-   
-alloc_dB(basis::ACEBasis, cfg::AbstractConfiguration) = 
-      Matrix{gradtype(basis, cfg)}(undef, length(basis), length(cfg))
       
 
 

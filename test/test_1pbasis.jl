@@ -1,5 +1,4 @@
 
-@testset "1-Particle Basis"  begin
 
 ##
 
@@ -102,7 +101,7 @@ println()
 A1 = ACE.acquire_B!(B1p, cfg)
 ACE.evaluate!(A1, B1p, cfg)
 A2 = ACE.acquire_B!(B1p, cfg)
-dA = ACE.alloc_dB(B1p, cfg)
+dA = ACE.acquire_dB!(B1p, cfg)
 ACE.evaluate_ed!(A2, dA, B1p, cfg)
 println(@test A1 ≈ A2)
 
@@ -121,4 +120,3 @@ end
 println()
 ##
 
-end
