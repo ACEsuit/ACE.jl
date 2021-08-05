@@ -16,7 +16,7 @@ import ACE: evaluate!, evaluate_d!, read_dict, write_dict,
 
 using ACE.Transforms: DistanceTransform
 
-import ACE.ObjectPools: StaticVectorPool
+import ACE: VectorPool
 
 using ForwardDiff: derivative
 
@@ -96,14 +96,14 @@ struct OrthPolyBasis{T} <: ScalarACEBasis
    tdf::Vector{T}
    ww::Vector{T}
    # -------------
-   B_pool::StaticVectorPool{T}
-   dB_pool::StaticVectorPool{T}
+   B_pool::VectorPool{T}
+   dB_pool::VectorPool{T}
 end
 
 OrthPolyBasis(pl, tl::T, pr, tr::T, A::Vector{T}, B::Vector{T}, C::Vector{T}, 
               tdf, ww) where {T} = 
    OrthPolyBasis(pl, tl, pr, tr, A, B, C, tdf, ww, 
-                 StaticVectorPool{T}(), StaticVectorPool{T}())                 
+                 VectorPool{T}(), VectorPool{T}())                 
 
 
 valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
@@ -300,12 +300,12 @@ struct TransformedPolys{T, TT, TJ} <: ScalarACEBasis
    trans::TT      # coordinate transform
    rl::T          # lower bound r
    ru::T          # upper bound r = rcut
-   B_pool::StaticVectorPool{T}
-   dB_pool::StaticVectorPool{T}
+   B_pool::VectorPool{T}
+   dB_pool::VectorPool{T}
 end
 
 function TransformedPolys(J::OrthPolyBasis{T}, trans, rl, ru)  where {T}
-   B_pool = StaticVectorPool{T}()
+   B_pool = VectorPool{T}()
    return TransformedPolys(J, trans, T(rl), T(ru), B_pool, B_pool)
 end
 

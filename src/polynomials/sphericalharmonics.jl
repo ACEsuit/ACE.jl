@@ -15,7 +15,7 @@ import ACE: valtype, gradtype,
 				acquire_dB!, release_dB!, 
 				acquire!
 
-import ACE.ObjectPools: VectorPool
+import ACE: VectorPool
 
 export SHBasis
 
