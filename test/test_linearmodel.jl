@@ -65,7 +65,8 @@ for (fun, funref, str) in [
       ]
    @info("Testing `$str` for different model evaluators")
    for ntest = 1:30
-      cgf = rand(PositionState{Float64}, B1p.bases[1], nX) |> ACEConfig
+      local c, cfg
+      cfg = rand(PositionState{Float64}, B1p.bases[1], nX) |> ACEConfig
       c = rand(length(basis)) .- 0.5 
       ACE.set_params!(naive, c)
       ACE.set_params!(standard, c)
@@ -78,6 +79,3 @@ for (fun, funref, str) in [
 end
 
 ##
-   
-end
-   
