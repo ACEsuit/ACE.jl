@@ -15,11 +15,11 @@
 # Another advantage is that model, and full model construction are all stored 
 # together for future inspection.
 
-struct LinearACEModel{TB, TP, TEV, TDX} <: AbstractACEModel 
+struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel 
    basis::TB
    c::Vector{TP}
    evaluator::TEV   
-   grad_pool::VectorPool{TDX}
+   # grad_params_pool::VectorPool{TP}
 end 
 
 struct NaiveEvaluator end 
@@ -29,7 +29,7 @@ function LinearACEModel(basis::SymmetricBasis, c = zeros(length(basis));
    if evaluator == :naive 
       ev = NaiveEvaluator()
    elseif evaluator == :standard 
-      ev = PIEvaluator(basis, c) 
+      ev = ProductEvaluator(basis, c) 
    elseif evaluator == :recursive 
       error("Recursive evaluator not yet implemented")
    else 
@@ -37,6 +37,9 @@ function LinearACEModel(basis::SymmetricBasis, c = zeros(length(basis));
    end
    return LinearACEModel(basis, c, ev)
 end
+
+# LinearACEModel(basis::SymmetricBasis, c::Vector, evaluator) = 
+#          LinearACEModel(basis, c, ev, VectorPool{eltype(c)})
 
 # ------- parameter wrangling 
 
@@ -79,19 +82,28 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
       NaiveEvaluator()
 
 
-# --------- 
 
+
+# ------- managing temporaries 
+
+# TODO: consider providing a generic object pool / array pool 
+# acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
+acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
+      Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
+
+release_grad_config!(m::LinearACEModel, g) = nothing 
+      #release!(m.grad_cfg_pool, g)
+
+acquire_grad_params!(m::LinearACEModel, args...) = 
+      acquire_B!(m.basis, args...)
+
+release_grad_params!(m::LinearACEModel, g) = 
+      release_B!(m.basis, g)
 
 # ------------------- dispatching on the evaluators 
 
-
 evaluate(m::LinearACEModel, X::AbstractConfiguration) = 
       evaluate(m::LinearACEModel, m.evaluator, X::AbstractConfiguration)
-
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
-
-release_grad_config!(m::LinearACEModel, g) = release!(m.grad_cfg_pool, g)
 
 grad_config(m::LinearACEModel, X::AbstractConfiguration) = 
       grad_config!(acquire_grad_config!(m, X), m, X)
@@ -99,9 +111,8 @@ grad_config(m::LinearACEModel, X::AbstractConfiguration) =
 grad_config!(g, m::LinearACEModel, X::AbstractConfiguration) = 
       grad_config!(g, m, m.evaluator, X) 
 
-
 grad_params(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      grad_params!(acquire_B!(m.basis, cfg), m, cfg)
+      grad_params!(acquire_grad_params!(m, cfg), m, cfg)
 
 function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
    evaluate!(g, m.basis, cfg) 
@@ -113,11 +124,13 @@ function grad_params_config(m::LinearACEModel, cfg::AbstractConfiguration)
    return grad_params_config!(dB, m, cfg)
 end
 
+# ∂_params ∂_config V
 # this function should likely never be used in production, but could be 
 # useful for testing
 grad_params_config!(dB, m::LinearACEModel, cfg::AbstractConfiguration)  = 
       evaluate_d!(dB, m.basis, cfg) 
 
+# TODO: fix terminology, bring in linear with the _rrule_.... thing 
 adjoint_EVAL_D(m::LinearACEModel, cfg::AbstractConfiguration, w) = 
       adjoint_EVAL_D(m, m.evaluator, cfg, w)
 
@@ -126,8 +139,7 @@ adjoint_EVAL_D(m::LinearACEModel, cfg::AbstractConfiguration, w) =
 #  this is only intended for testing, as it uses the naive evaluation of  
 #  the symmetric basis, rather than the conversion to the AA basis
 
-function evaluate(tmp, m::LinearACEModel, ::NaiveEvaluator, 
-                  cfg::AbstractConfiguration)  
+function evaluate(m::LinearACEModel, ::NaiveEvaluator, cfg::AbstractConfiguration)  
    B = acquire_B!(m.basis, cfg)
    evaluate!(B, m.basis, cfg)
    val = sum(prod, zip(m.c, B))
@@ -140,7 +152,7 @@ function grad_config!(g, m::LinearACEModel, ::NaiveEvaluator,
    dB = acquire_dB!(m.basis, cfg) 
    evaluate_d!(dB, m.basis, cfg) 
    fill!(g, zero(eltype(g)))
-   for ix = 1:length(X), ib = 1:length(m.basis)
+   for ix = 1:length(cfg), ib = 1:length(m.basis)
       g[ix] += m.c[ib] * dB[ib, ix]
    end
    release_dB!(m.basis, dB)

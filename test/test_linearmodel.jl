@@ -1,12 +1,13 @@
 
-@testset "LinearACEModel"  begin
+
 
 ##
 
 
 using ACE, ACEbase
 using Printf, Test, LinearAlgebra, ACE.Testing, Random
-using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
+using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis, 
+           grad_config, grad_params
 using ACEbase.Testing: fdtest
 
 ##
@@ -42,13 +43,11 @@ using ACEbase.Testing: test_fio
 println(@test(all(test_fio(naive; warntype = false))))
 println(@test(all(test_fio(standard; warntype = false))))
 
-
 ##
 
-
-# evaluate(naivemodel, cfg)
-# evaluate(standard, cfg)
-# ACE.grad_config(standard, cfg)
+evaluate(naive, cfg) ≈  evaluate(standard, cfg)
+grad_params(naive, cfg) ≈  grad_params(standard, cfg)
+grad_config(naive, cfg) ≈ grad_config(standard, cfg)
 
 evaluate_ref(basis, cfg, c) = sum(evaluate(basis, cfg) .* c)
 
@@ -57,7 +56,6 @@ grad_config_ref(basis, cfg, c) = permutedims(evaluate_d(basis, cfg)) * c
 grad_params_ref(basis, cfg, c) = evaluate(basis, cfg)
 
 grad_params_config_ref(basis, cfg, c) = evaluate_d(basis, cfg)
-
 
 for (fun, funref, str) in [ 
          (evaluate, evaluate_ref, "evaluate"), 

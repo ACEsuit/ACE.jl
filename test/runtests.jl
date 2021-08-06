@@ -24,7 +24,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     @testset "EuclideanVector" begin include("test_euclvec.jl") end
 
     # Model tests 
-    # include("test_linearmodel.jl")
+    @testset "LinearACEModel"  begin include("test_linearmodel.jl") end 
 
 end
 

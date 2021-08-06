@@ -261,11 +261,13 @@ function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
    return aa 
 end
 
+_acquire_dAAdA!(basis::PIBasis) = acquire!(basis.dAA_pool, maxcorrorder(basis))
+
 function evaluate_ed!(AA, dAA, basis::PIBasis,
                       A::AbstractVector, dA::AbstractMatrix)
    orders = basis.spec.orders
    iAA2iA = basis.spec.iAA2iA
-   dAAdA = acquire!(basis.dAA_pool, maxcorrorder(basis))
+   dAAdA = _acquire_dAAdA!(basis)
 
    for iAA = 1:length(basis)
       ord = orders[iAA]
