@@ -15,10 +15,11 @@
 # Another advantage is that model, and full model construction are all stored 
 # together for future inspection.
 
-struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel 
+struct LinearACEModel{TB, TP, TEV, TDX} <: AbstractACEModel 
    basis::TB
    c::Vector{TP}
    evaluator::TEV   
+   grad_pool::VectorPool{TDX}
 end 
 
 struct NaiveEvaluator end 
@@ -77,75 +78,72 @@ write_dict(ev::NaiveEvaluator) =
 read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) = 
       NaiveEvaluator()
 
+
+# --------- 
+
+
 # ------------------- dispatching on the evaluators 
 
-alloc_temp(m::LinearACEModel) = alloc_temp(m.evaluator, m)
 
 evaluate(m::LinearACEModel, X::AbstractConfiguration) = 
-      evaluate!(alloc_temp(m), m, X)
+      evaluate(m::LinearACEModel, m.evaluator, X::AbstractConfiguration)
 
-evaluate!(tmp, m::LinearACEModel, X::AbstractConfiguration) = 
-      evaluate!(tmp, m::LinearACEModel, m.evaluator, X::AbstractConfiguration)
+acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
+      acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
 
-alloc_temp_d(m::LinearACEModel, X::AbstractConfiguration, N::Integer = length(X)) = 
-      alloc_temp_d(m, m.evaluator, X, N)
-
-# this one seems generic and doesn't need to be dispatched?
-alloc_grad_config(m::LinearACEModel, X::AbstractConfiguration) = 
-      Vector{gradtype(m.basis, X)}(undef, length(X))
+release_grad_config!(m::LinearACEModel, g) = release!(m.grad_cfg_pool, g)
 
 grad_config(m::LinearACEModel, X::AbstractConfiguration) = 
-      grad_config!(alloc_grad_config(m, X), alloc_temp_d(m, X), m, X)
+      grad_config!(acquire_grad_config!(m, X), m, X)
 
-grad_config!(g, tmpd, m::LinearACEModel, X::AbstractConfiguration) = 
-      grad_config!(g, tmpd, m, m.evaluator, X) 
+grad_config!(g, m::LinearACEModel, X::AbstractConfiguration) = 
+      grad_config!(g, m, m.evaluator, X) 
 
-grad_params(m::LinearACEModel, X::AbstractConfiguration) = 
-      grad_params!(alloc_B(m.basis), alloc_temp(m.basis), m, X)
 
-function grad_params!(g, tmp, m::LinearACEModel, X::AbstractConfiguration) 
-   evaluate!(g, tmp, m.basis, X) 
+grad_params(m::LinearACEModel, cfg::AbstractConfiguration) = 
+      grad_params!(acquire_B!(m.basis, cfg), m, cfg)
+
+function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
+   evaluate!(g, m.basis, cfg) 
    return g 
 end
 
-function grad_params_config(m::LinearACEModel, X::AbstractConfiguration) 
-   tmpd = alloc_temp_d(m.basis, X)
-   dB = alloc_dB(m.basis, X)
-   return grad_params_config!(dB, tmpd, m, X)
+function grad_params_config(m::LinearACEModel, cfg::AbstractConfiguration) 
+   dB = acquire_dB!(m.basis, cfg)
+   return grad_params_config!(dB, m, cfg)
 end
 
-adjoint_EVAL_D(m::LinearACEModel, X::AbstractConfiguration, w) = 
-      adjoint_EVAL_D(m, m.evaluator, X, w)
+# this function should likely never be used in production, but could be 
+# useful for testing
+grad_params_config!(dB, m::LinearACEModel, cfg::AbstractConfiguration)  = 
+      evaluate_d!(dB, m.basis, cfg) 
 
-grad_params_config!(dB, tmpd, m::LinearACEModel, X::AbstractConfiguration)  = 
-      evaluate_d!(dB, tmpd, m.basis, X) 
+adjoint_EVAL_D(m::LinearACEModel, cfg::AbstractConfiguration, w) = 
+      adjoint_EVAL_D(m, m.evaluator, cfg, w)
+
 
 # ------------------- implementation of naive evaluator 
+#  this is only intended for testing, as it uses the naive evaluation of  
+#  the symmetric basis, rather than the conversion to the AA basis
 
-alloc_temp(::NaiveEvaluator, m::LinearACEModel) = 
-   ( tmpbasis = alloc_temp(m.basis), 
-     B = alloc_B(m.basis)
-   )
-
-function evaluate!(tmp, m::LinearACEModel, ::NaiveEvaluator, 
-                    X::AbstractConfiguration)  
-   evaluate!(tmp.B, tmp.tmpbasis, m.basis, X)
-   return sum(prod, zip(m.c, tmp.B))
+function evaluate(tmp, m::LinearACEModel, ::NaiveEvaluator, 
+                  cfg::AbstractConfiguration)  
+   B = acquire_B!(m.basis, cfg)
+   evaluate!(B, m.basis, cfg)
+   val = sum(prod, zip(m.c, B))
+   release_B!(m.basis, B) 
+   return val 
 end 
 
-alloc_temp_d(m::LinearACEModel, ::NaiveEvaluator, X::AbstractConfiguration, N::Integer = length(X)) = 
-      ( tmpdbasis = alloc_temp_d(m.basis, X), 
-        B = alloc_B(m.basis), 
-        dB = alloc_dB(m.basis, X)
-      )
-
-function grad_config!(g, tmpd, m::LinearACEModel, ::NaiveEvaluator, 
-                     X::AbstractConfiguration)
-   evaluate_d!(tmpd.dB, tmpd.tmpdbasis, m.basis, X) 
+function grad_config!(g, m::LinearACEModel, ::NaiveEvaluator, 
+                     cfg::AbstractConfiguration)
+   dB = acquire_dB!(m.basis, cfg) 
+   evaluate_d!(dB, m.basis, cfg) 
    fill!(g, zero(eltype(g)))
    for ix = 1:length(X), ib = 1:length(m.basis)
-      g[ix] += m.c[ib] * tmpd.dB[ib, ix]
+      g[ix] += m.c[ib] * dB[ib, ix]
    end
+   release_dB!(m.basis, dB)
    return g 
 end
 
@@ -156,6 +154,7 @@ function adjoint_EVAL_D(m::LinearACEModel, ::NaiveEvaluator,
    for i = 1:length(g), j = 1:size(dB, 2)
       g[i] += dot(dB[i, j], w[j])
    end
+   release_dB!(m.basis, dB)
    return g
 end
 
