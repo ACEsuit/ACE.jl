@@ -1,4 +1,4 @@
-@testset "GNLModel"  begin
+#@testset "GNLModel"  begin
 
 ##
 using LinearAlgebra: length
@@ -37,6 +37,7 @@ BB = evaluate(basis, cfg)
 fun(ϕ) = ϕ[1] + sqrt((1/10)^2 + abs(ϕ[2])) + ϕ[3]*ϕ[4] #other non-linearity
 Nϕ = 4 #number of ϕ, important that it corresponds to the non-linearity
 c = [rand(length(BB)).-0.5 for i = 1:Nϕ]
+c = rand(length(BB),Nϕ).-0.5
 
 GNL = ACE.Models.NLModel(basis, c, evaluator = :standard, F = fun)
 
@@ -44,16 +45,50 @@ GNL = ACE.Models.NLModel(basis, c, evaluator = :standard, F = fun)
 # #    Finite difference test
 # # ------------------------------------------------------------------------
 
+#same function just doesn't enforce x to be an AbstractArray
+function fdtestMatrix(F, dF, x; h0 = 1.0, verbose=true)
+    errors = Float64[]
+    E = F(x)
+    dE = dF(x)
+    # loop through finite-difference step-lengths
+    verbose && @printf("---------|----------- \n")
+    verbose && @printf("    h    | error \n")
+    verbose && @printf("---------|----------- \n")
+    for p = 2:11
+       h = 0.1^p
+       dEh = copy(dE)
+       for n = 1:length(dE)
+          x[n] += h
+          dEh[n] = (F(x) - E) / h
+          x[n] -= h
+       end
+       push!(errors, norm(dE - dEh, Inf))
+       verbose && @printf(" %1.1e | %4.2e  \n", h, errors[end])
+    end
+    verbose && @printf("---------|----------- \n")
+    if minimum(errors) <= 1e-3 * maximum(errors)
+       verbose && println("passed")
+       return true
+    else
+       @warn("""It seems the finite-difference test has failed, which indicates
+       that there is an inconsistency between the function and gradient
+       evaluation. Please double-check this manually / visually. (It is
+       also possible that the function being tested is poorly scaled.)""")
+       return false
+    end
+end
+
+
 @info("FD test grad_param")
 outer_nonL(x) = 2*x + cos(x)
 tEval = ACE.Models.EVAL_NL(GNL,cfg)
 test_fe(θ) = outer_nonL(tEval(θ))
 cfg = ACEConfig(Xs)
 for ntest = 1:30
-    c_tst = [rand(length(BB)).-0.5 for i = 1:Nϕ]
-    F = t ->  test_fe(c_tst + [reshape(t,(length(BB),Nϕ))[:,i] for i = 1:Nϕ])
-    dF = t -> collect(Iterators.flatten(Zygote.gradient(test_fe,c_tst)[1]))
-    print_tf(@test fdtest(F, dF, zeros(length(collect(Iterators.flatten(c_tst)))), verbose=false))
+    c_tst = rand(length(BB),Nϕ).-0.5
+    F = t ->  test_fe(c_tst + t)
+    dF = t -> Zygote.gradient(test_fe,c_tst)[1]
+    print_tf(@test fdtestMatrix(F, dF, zeros(size(c_tst)), verbose=false))
 end
 println()
 
@@ -62,7 +97,7 @@ for ntest = 1:30
     Us = randn(SVector{3, Float64}, length(Xs))
     F = t ->  ACE.Models.EVAL_NL(GNL,ACEConfig(Xs + t[1] * Us))(c)
     dF = t -> [sum([ dot(u, g) for (u, g) in zip(Us, ACE.Models.EVAL_D_NL(GNL,ACEConfig(Xs + t[1] * Us))(c))])]
-    print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+    print_tf(@test fdtestMatrix(F, dF, [0.0], verbose=false))
 end
 println()
 
@@ -78,10 +113,10 @@ en = ACE.Models.ENERGY_NL(GNL, at, emt)
 e_me(θ) = outer_nonL(en(θ))
 
 for ntest = 1:3
-    c_tst = [rand(length(BB)).-0.5 for i = 1:Nϕ]
-    F = t ->  e_me(c_tst + [reshape(t,(length(BB),Nϕ))[:,i] for i = 1:Nϕ])
-    dF = t -> [collect(Iterators.flatten(Zygote.gradient(e_me,c_tst)[1]))[i] for i in 1:length(c_tst[:])]
-    print_tf(@test fdtest(F, dF, zeros(length(collect(Iterators.flatten(c_tst)))), verbose=false))
+    c_tst = rand(length(BB),Nϕ).-0.5
+    F = t ->  e_me(c_tst + t)
+    dF = t -> Zygote.gradient(e_me,c_tst)[1]
+    print_tf(@test fdtestMatrix(F, dF, zeros(size(c_tst)), verbose=false))
 end
 println()
 
@@ -90,10 +125,10 @@ fr = ACE.Models.FORCES_NL(GNL, at, emt)
 f_me(θ) = sum(sum(fr(θ)))
 
 for ntest = 1:3
-    c_tst = [rand(length(BB)).-0.5 for i = 1:Nϕ]
-    F = t ->  f_me(c_tst + [reshape(t,(length(BB),Nϕ))[:,i] for i = 1:Nϕ])
-    dF = t -> [collect(Iterators.flatten(Zygote.gradient(f_me,c_tst)[1]))[i] for i in 1:length(c_tst[:])]
-    print_tf(@test fdtest(F, dF, zeros(length(collect(Iterators.flatten(c_tst)))), verbose=false))
+    c_tst = rand(length(BB),Nϕ).-0.5
+    F = t ->  f_me(c_tst + t)
+    dF = t -> Zygote.gradient(f_me,c_tst)[1]
+    print_tf(@test fdtestMatrix(F, dF, zeros(size(c_tst)), verbose=false))
 end
 println()
 
@@ -122,11 +157,11 @@ wf = 1.0
 L_FS(θ) = sum([we^2*sum(abs2,Efun[i](θ) - Et[i]) + wf^2*sum(abs2,sum(Ffun[i](θ) - Ft[i])) for i in 1:3])/3
 
 for ntest = 1:3
-    c_tst = [rand(length(BB)).-0.5 for i = 1:Nϕ]
-    F = t ->  L_FS(c_tst + [reshape(t,(length(BB),Nϕ))[:,i] for i = 1:Nϕ])
-    dF = t -> [collect(Iterators.flatten(Zygote.gradient(L_FS,c_tst)[1]))[i] for i in 1:length(c_tst[:])]
-    print_tf(@test fdtest(F, dF, zeros(length(collect(Iterators.flatten(c_tst)))), verbose=false))
+    c_tst = rand(length(BB),Nϕ).-0.5
+    F = t ->  L_FS(c_tst + t)
+    dF = t -> Zygote.gradient(L_FS,c_tst)[1]
+    print_tf(@test fdtestMatrix(F, dF, zeros(size(c_tst)), verbose=false))
 end
 println()
 
-end
+#end

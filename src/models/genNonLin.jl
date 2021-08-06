@@ -29,7 +29,7 @@ end
 
 function set_params!(m::NLModel,c)
     for (i,lm) in enumerate(m.LM)
-        ACE.set_params!(lm, c[i])
+        ACE.set_params!(lm, c[:,i])
     end
 end
 
@@ -47,7 +47,7 @@ function NLModel(basis, c;
    else 
       error("unknown evaluator")
    end
-   LM = [ACE.LinearACEModel(basis, c[i], ev(c[i])) for i=1:length(c)]
+   LM = [ACE.LinearACEModel(basis, c[:,i], ev(c[:,i])) for i=1:length(c[1,:])]
    return NLModel(basis, LM, ev, F)
 end
 
@@ -58,7 +58,7 @@ struct EVAL_NL{TM, TX}
  end
 
 function (y::EVAL_NL)(θ)
-    return y.m.F([ACE.EVAL(y.m.LM[i],y.X)(θ[i]) for i=1:length(θ)])
+    return y.m.F([ACE.EVAL(y.m.LM[i],y.X)(θ[:,i]) for i=1:length(θ[1,:])])
 end
 
 #wrapper around forces. EVAL_D_NL returns the force of a site.
@@ -68,8 +68,8 @@ struct EVAL_D_NL{TM, TX}
 end
 
 function (y::EVAL_D_NL)(θ)
-    g(x) = Zygote.gradient(y.m.F, [ACE.EVAL(y.m.LM[i],y.X)(x[i]) for i=1:length(x)])[1]
-    return sum([ACE.EVAL_D(y.m.LM[i],y.X)(θ[i])*g(θ)[i] for i=1:length(θ)])
+    g(x) = Zygote.gradient(y.m.F, [ACE.EVAL(y.m.LM[i],y.X)(x[:,i]) for i=1:length(x[1,:])])[1]
+    return sum([ACE.EVAL_D(y.m.LM[i],y.X)(θ[:,i])*g(θ)[i] for i=1:length(θ[1,:])])
 end
 
 
@@ -107,26 +107,27 @@ end
  #then we need 3 things, dθX, dθ and dX. We simply construct the adjoint
  #"manually" by multiplying these elements accordingly.
  function rrule(y::EVAL_D_NL, θ)
-    at = [ACE.EVAL(y.m.LM[i],y.X)(θ[i]) for i=1:length(θ)]
+    at = [ACE.EVAL(y.m.LM[i],y.X)(θ[:,i]) for i=1:length(θ[1,:])]
     #derivative of nonlinearity and hessian
     g_nl = Zygote.gradient(y.m.F, at)[1]
     h = Zygote.hessian(y.m.F, at)
     #derivative of EVAL_D calls the smart adjoint
-    dXθ = [Zygote.pullback(ACE.EVAL_D(y.m.LM[i],y.X),θ[i])[2] for i=1:length(θ)] 
-    dX = [ACE.grad_config(y.m.LM[i], y.X) for i=1:length(θ)] 
-    dθ = [ACE.getproperty.(ACE.grad_params(y.m.LM[i], y.X), :val) for i=1:length(θ)] 
+    dXθ = [Zygote.pullback(ACE.EVAL_D(y.m.LM[i],y.X),θ[:,i])[2] for i=1:length(θ[1,:])] 
+    dX = [ACE.grad_config(y.m.LM[i], y.X) for i=1:length(θ[1,:])] 
+    dθ = [ACE.getproperty.(ACE.grad_params(y.m.LM[i], y.X), :val) for i=1:length(θ[1,:])] 
     
     #product rule
     function adj(dp)
 
-       sol = [dXθ[i](dp)[1] .* g_nl[i] + 
-                sum([h[j,i] .* muldXdθ(genMul(dθ[i],dX[j]),dp) for j=1:size(h,1)])
-                 for i=1:length(θ)]
+        sol = zeros(size(θ))
+        for i=1:length(θ[1,:])
+            sol[:,i] = dXθ[i](dp)[1] .* g_nl[i] + sum([h[j,i] .* muldXdθ(genMul(dθ[i],dX[j]),dp) for j=1:size(h,1)])
+        end
 
        return ( NO_FIELDS ,  sol )       
     end
 
-    val = sum([ACE.EVAL_D(y.m.LM[i],y.X)(θ[i])*g_nl[i] for i=1:length(θ)])
+    val = sum([ACE.EVAL_D(y.m.LM[i],y.X)(θ[:,i])*g_nl[i] for i=1:length(θ[1,:])])
 
     return val, adj
  end

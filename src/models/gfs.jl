@@ -52,6 +52,8 @@ end
 
 # ------------------- dispatching on the evaluators 
 
+#could maybe make the linear models when we make the FS and save them,
+#then use setparams! here instead
 evaluate(m::GfsModel, X::AbstractConfiguration) = 
       m.F([evaluate(
          ACE.LinearACEModel(m.basis, m.c[:,i], m.evaluator(m.c[:,i])), X).val 
