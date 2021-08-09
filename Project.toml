@@ -1,6 +1,6 @@
 name = "ACE"
 uuid = "3e8ccfd2-c8b0-11ea-32f1-f3a5990fd77a"
-version = "0.12.0"
+version = "0.12.1"
 
 [deps]
 ACEbase = "14bae519-eb20-449c-a949-9c58ed33163e"
@@ -21,7 +21,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-ACEbase = "0.1.6"
+ACEbase = "0.2"
 julia = "1.5,1.6"
 
 [extras]
