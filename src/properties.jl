@@ -37,7 +37,7 @@ function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState{SYMS}} wher
    return TX( NamedTuple{SYMS}(vals) )
 end
 
-coco_o_daa(cc::Number, b::Number) = cc * b 
+coco_o_daa(cc::Number, b::Number) = cc * b
 coco_o_daa(cc::Number, b::SVector) = cc * b
 coco_o_daa(cc::SVector, b::SVector) = cc * transpose(b)
 coco_o_daa(cc::SMatrix{N1,N2}, b::SVector{N3}) where {N1,N2,N3} =
@@ -217,7 +217,7 @@ rot3Dcoeffs(::SphericalVector, T::DataType=Float64) = Rot3DCoeffs(T)
 
 const __rotcoeff_inv = Rotations3D.Rot3DCoeffs(Invariant())
 
-using ACE.Wigner: rotation_D_matrix_ast, rotation_D_matrix
+using ACE.Wigner: wigner_D_indices
 
 # Equation (1.2) - vector value coupling coefficients
 # ∫_{SO3} D^{ll}_{μμmm} D^*(Q) e^t dQ -> 2L+1 column vector
@@ -225,7 +225,7 @@ function vec_cou_coe(rotc::Rot3DCoeffs{T},
 					      l::Integer, m::Integer, μ::Integer,
 					      L::Integer, t::Integer) where {T,N}
 	@assert 0 < t <= 2L+1
-	D = rotation_D_matrix_ast(L)   # Dt = D[:,t]  -->  # D^* ⋅ e^t
+	D = wigner_D_indices(L)'   # Dt = D[:,t]  -->  # D^* ⋅ e^t
 	LL = SA[l, L]
 	Z = ntuple(i -> begin
 			cc = (rotc(LL, SA[μ, D[i, t].m], SA[m, D[i, t].μ]).val)::T
@@ -235,7 +235,7 @@ function vec_cou_coe(rotc::Rot3DCoeffs{T},
 end
 
 function _select_t(φ::SphericalVector{L}, l, M, K) where {L}
-	D = rotation_D_matrix_ast(L)
+	D = wigner_D_indices(L)'
 	tret = -1; numt = 0
 	for t = 1:2L+1
 		prodμt = prod( (D[i, t].μ + M) for i in 1:2L+1)  # avoid more allocations
@@ -318,8 +318,8 @@ function mat_cou_coe(rotc::Rot3DCoeffs{T},
 							::Val{L1}, ::Val{L2}) where {T, L1, L2}
 	@assert (0 < a <= 2L1 + 1) && (0 < b <= 2L2 + 1)
 	Z = zero(MMatrix{2L1+1, 2L2+1, Complex{T}})  # zeros(2 * L1 + 1, 2 * L2 + 1)
-	Dp = rotation_D_matrix_ast(L1)
-	Dq = rotation_D_matrix(L2)
+	Dp = wigner_D_indices(L1)'
+	Dq = wigner_D_indices(L2)
 	LL = SA[l, L1, L2]
 	for i = 1:(2 * L1 + 1)
 		for j = 1:(2 * L2 + 1)
@@ -335,8 +335,8 @@ end
 
 
 function _select_ab(φ::SphericalMatrix{L1,L2}, M, K) where {L1,L2}
-   Dp = rotation_D_matrix_ast(L1)
-   Dq = rotation_D_matrix(L2)
+   Dp = wigner_D_indices(L1)'
+   Dq = wigner_D_indices(L2)
    list_ab = Tuple{Int, Int}[]
    for a = 1:2L1+1
       for b = 1:2L2+1
