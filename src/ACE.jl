@@ -79,6 +79,7 @@ include("sparsegrids.jl")
 # for other bases but can also be a useful export itself
 include("pibasis.jl")
 
+include("symmetrygroups.jl")
 include("symmbasis.jl")
 
 

@@ -31,7 +31,9 @@ end
 
 
 function PIBasisSpec( basis1p::OneParticleBasis,
-                      maxν::Integer, maxdeg::Real;
+                      symgrp::SymmetryGroup, 
+                      maxν::Integer, 
+                      maxdeg::Real;
                       Deg = NaiveTotalDegree(),
                       property = nothing,
                       filterfun = _->true,
@@ -139,8 +141,10 @@ gradtype(basis::PIBasis, cfgorX) =
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
-PIBasis(basis1p, args...; isreal = true, kwargs...) =
-   PIBasis(basis1p, PIBasisSpec(basis1p, args...; kwargs...),
+PIBasis(basis1p, symgrp, maxν, maxdeg; 
+        isreal = true, kwargs...) =
+   PIBasis(basis1p, 
+           PIBasisSpec(basis1p, symgrp, maxν, maxdeg; kwargs...),
            isreal ? Base.real : Base.identity )
 
 function PIBasis(basis1p::OneParticleBasis, spec::PIBasisSpec, real)
