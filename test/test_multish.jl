@@ -41,7 +41,9 @@ for ntest = 1:30
    print_tf(@test evaluate(basis, cfg) ≈ evaluate(basis_r, cfg))
 end 
 
-##
+## 
+
+@info("Construct a basis for (rr, ss) without spin-orbit coupling")
 
 X = State( rr = rands3(), ss = rands3nrm() )
 MagState = typeof(X)
