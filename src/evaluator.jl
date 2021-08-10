@@ -47,7 +47,7 @@ end
 function set_params!(ev::ProductEvaluator, basis::SymmetricBasis, c::AbstractVector)
    len_AA = length(ev.pibasis)
    @assert len_AA == size(basis.A2Bmap, 2)
-   c̃ = acquire!(basis.B_pool, len_AA)
+   c̃ = _acquire_ctilde(basis,len_AA, c)
    _get_eff_coeffs!(c̃, basis, c)
    set_params!(ev, basis.pibasis, c̃)
    release!(basis.B_pool, c̃)
@@ -58,12 +58,23 @@ end
 _get_eff_coeffs!(c̃, basis::SymmetricBasis, c::AbstractVector) = 
       genmul!(c̃, transpose(basis.A2Bmap), c, *)
 
-function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector{<: Number})
+function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector)
    # c̃ = acquire_B!(basis, size(basis.A2Bmap, 2))
-   c̃ = zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
+   c̃ = _alloc_ctilde(basis,c)
    return _get_eff_coeffs!(c̃, basis, c) 
 end
 
+_acquire_ctilde(basis::SymmetricBasis, len_AA, c::Vector{<: SVector}) = 
+   acquire!(basis.B_pool, len_AA, SVector{length(c[1]),eltype(basis.A2Bmap)})
+
+_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector) = 
+   acquire!(basis.B_pool, len_AA)
+
+_alloc_ctilde(basis::SymmetricBasis,c::Vector{<: SVector}) = 
+   zeros(SVector{length(c[1]),eltype(basis.A2Bmap)}, size(basis.A2Bmap, 2))
+   
+_alloc_ctilde(basis::SymmetricBasis,c::AbstractVector) = 
+   zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
 
 
