@@ -126,10 +126,19 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    c̃ = V.coeffs
    spec = V.pibasis.spec
    fill!(dAco, zero(eltype(dAco)))
-   @inbounds for iAA = 1:length(spec)
-      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
-      @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA])
+   if(length(c̃[1])>1)
+      @inbounds for iAA = 1:length(spec)
+         _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+         @fastmath for t = 1:spec.orders[iAA]
+            dAco[spec.iAA2iA[iAA, t]] += sum(dAAdA[t] .* complex.(c̃[iAA]))
+         end
+      end
+   else
+      @inbounds for iAA = 1:length(spec)
+         _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+         @fastmath for t = 1:spec.orders[iAA]
+            dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA])
+         end
       end
    end
 

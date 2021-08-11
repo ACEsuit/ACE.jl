@@ -1,8 +1,7 @@
 
 using LinearAlgebra: length
 using ACE, ACEbase
-using Printf, Test, LinearAlgebra, ACE.Testing, Random
-using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
+using ACE: evaluate, SymmetricBasis, NaiveTotalDegree, PIBasis
 
 using StaticArrays
 
@@ -49,3 +48,7 @@ ACE.grad_params(multiSpecies,cfg)
 @info("grad_config")
 ACE.grad_config(singlSpecies,cfg)
 ACE.grad_config(multiSpecies,cfg)
+
+@info("grad_config")
+ACE.grad_params_config(singlSpecies,cfg)
+ACE.grad_params_config(multiSpecies,cfg);
