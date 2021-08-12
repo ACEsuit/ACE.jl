@@ -4,6 +4,8 @@
 # NOTE: at the moment these are ad hoc implementations for each group that 
 #       we decide we need. eventually we can hopefully simplify and merge 
 #       many of these codes
+#       The first version was written before NamedTupleTools (or before I 
+#        knew about it -> this will simplify the code here a bit)
 
 
 using NamedTupleTools: delete, merge, namedtuple
@@ -20,6 +22,10 @@ struct NoSym <: SymmetryGroup
 end 
 
 # -----------------------  O3 SYMMETRY 
+
+# this is a prototype implemenation; eventually (asap!) we need to allow 
+# rotation of multiple features at once, e.g., spin-orbit coupling!
+
 """
 `struct O3 <: SymmetryGroup` : this is the default symmetry group; describing 
 the action of a single O3 group on the basis. 
@@ -80,6 +86,7 @@ function rpe_basis(A::Rot3DCoeffs,
 						 nn::SVector{N, TN},
 						 ll::SVector{N, Int}) where {N, TN}
 	Ure, Mre = Rotations3D.re_basis(A, ll)
+   @show size(Ure) 
 	G = _gramian(nn, ll, Ure, Mre)
    S = svd(G)
    rk = rank(Diagonal(S.S); rtol =  1e-7)
@@ -153,17 +160,24 @@ end
 
 # -------------- O3 ⊗ O3 
 
-struct O3O3{LSYM1, MSYM1, LSYM2, MSYM2} 
+# this is a preliminary implementation; eventually we may want a more 
+# general description composition of arbitrary isometry combinations 
+
+struct O3O3{LSYM1, MSYM1, LSYM2, MSYM2} <: SymmetryGroup
    G1::O3{LSYM1, MSYM1} 
    G2::O3{LSYM2, MSYM2}
 end
 
-import Base: ⊗ 
-function ⊗(G1::O3, G2::O3)
+import Base: kron
+
+function kron(G1::O3, G2::O3)
    @assert lsym(G1) != lsym(G2) 
    @assert msym(G1) != msym(G2)
    return O3O3(G1, G2)
 end
+
+⊗(G1::O3, G2::O3) = kron(G1, G2)
+export ⊗
 
 
 is_refbasisfcn(G::O3O3, AA) = all( bi[msym(grp)] == 0 
@@ -178,37 +192,71 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
       error("correlation order 0 is currently not allowed")
    end
 
+   # the prototype namedtuple describing a single 1p basis fcn 
+   PROTOTUPLE = prototype(bb[1])
+   NU = length(bb)
+
    # convert to (nn, ll, mm) format for Rotations3D
-   ll1, ll2, nn = _b2llnn(symgrp, bb)
+   ll1, ll2, nn, ll12 = _b2llnn(symgrp, bb)
    # ... and construct the coupling coefficients for the individual subgroups 
    U1, M1 = Rotations3D.re_basis(rotc, ll1)
    U2, M2 = Rotations3D.re_basis(rotc, ll2)
 
+   nU1 = size(U1, 1)
+   nU2 = size(U2, 1)
+   UT = promote_type(eltype(U1), eltype(U2))      
+
+   if size(U1, 1) == 0 || size(U2, 1) == 0  
+      return UT[], SVector{NU, PROTOTUPLE}[]
+   end
+
    # now combine them into the effective coupling coeffs 
-   Ure = [ U1[i1] * U2[i2] for i1 = 1:length(U1), i2 = 1:length(U2) ]
-   Mre = [ _nnllmm2b(G, nn, ll1, M1[i1], ll2, M2[i2])
-           for i1 = 1:length(U1), i2 = 1:length(U2) ]
+   # each column Ure[:, i] corresponds to one rotation-invariant basis fcn 
+   Ure = zeros( UT, (nU1 * nU2, size(U1, 2) * size(U2, 2)) )
+   idx = 0
+   for i1 = 1:size(U1, 1), i2 = 1:size(U2, 1)
+      idx += 1
+      jdx = 0 
+      for j1 = 1:size(U1, 2), j2 = 1:size(U2, 2)
+         jdx += 1
+         Ure[idx, jdx] = U1[i1, j1] * U2[i2, j2]
+      end
+   end
+
+   # get the combined Ms
+   M1M2TUPLE = namedtuple(msym(symgrp.G1), msym(symgrp.G2))
+   Mre = [ M1M2TUPLE.(M1[i1], M2[i2]) for i1 = 1:nU1, i2 = 1:nU2 ] 
+
+
+   # insert another reduction step 
+   Gre = [ sum(coco_dot.(Ure[i1, :], Ure[i2, :])) for i1 = 1:size(Ure, 1), i2 = 1:size(Ure, 1) ]
+   Sre = svd(Gre)
+   rk = rank(Diagonal(Sre.S); rtol =  1e-7)
+   Ure = Sre.U[:, 1:rk]' * Ure 
 
    # now symmetrize w.r.t. permutations 
+   G = _gramian(nn, ll12, Ure, Mre)
+   S = svd(G)
+   rk = rank(Diagonal(S.S); rtol =  1e-7)
+   Urpe = S.U[:, 1:rk]'
+   U = Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure
 
-   # but now we need to convert the m spec back to complete basis function
-   # specifications (provided by sending in a prototype b = bb[1])
-   rpebs = [ _nnllmm2b(symgrp, bb[1], nn, ll, mm) for mm in Ms ]
+   # @show size(U1), size(U2), size(Ure), size(U)
 
+   # reconstruct the basis function specifications
+   rpebs = [ PROTOTUPLE.(merge.(nn, ll12, mm12)) for mm12 in Mre ]
+   
    return U, rpebs
 end
 
 function _b2llnn(G::O3O3{L1, M1, L2, M2}, bb) where {L1, M1, L2, M2}
+   N = length(bb)
    @assert all( iszero(b[M]) for b in bb, M in (M1, M2) )
-   ll1 = ntuple( i -> bb[i][L1], length(bb) )  |> SVector
-   ll2 = ntuple( i -> bb[i][L2], length(bb) )  |> SVector
-   nn = ntuple( i -> delete(bb[i], (L1, M1, L2, M2)), length(bb) )
-   return ll1, ll2, nn 
+   ll1 = ntuple(i -> bb[i][L1], N)  |> SVector
+   ll2 = ntuple(i -> bb[i][L2], N)  |> SVector
+   nn  = ntuple(i -> delete(bb[i], (L1, M1, L2, M2)), N)
+   ll12 = ntuple(i -> select(bb[i], (L1, L2)), N)
+   return ll1, ll2, nn, ll12 
 end
 
-function _nnllmm2b(G::O3O3{L1, M1, L2, M2}, nn, ll1, mm1, ll2, mm2
-                  ) where {L1, M1, L2, M2}
-   NTPROTO = namedtuple(L1, M1, L2, M2)
-   return ntuple( i -> merge(nn[i], NTPROTO(ll1[i], mm1[i], ll2[i], mm2[i])), 
-                  length(nn) )
-end
+
