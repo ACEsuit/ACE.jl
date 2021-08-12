@@ -1,4 +1,3 @@
-
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
 using ACE: evaluate, SymmetricBasis, NaiveTotalDegree, PIBasis
@@ -53,7 +52,7 @@ println()
 @info("grad_params")
 #for now grad_params only gets B ONCE, we could copy it multiple times.
 for i in 1:length(c_m[1])
-    print_tf(@test(getproperty.(ACE.grad_params(singlProp[i],cfg),:val) ≈ getproperty.(ACE.grad_params(multiProp,cfg),:val)))
+    print_tf(@test(getproperty.(ACE.grad_params(singlProp[i],cfg),:val) ≈ getproperty.(ACE.grad_params(multiProp,cfg)[:,i],:val)))
 end
 println()
 
@@ -78,4 +77,12 @@ for i in 1:length(c_m[1])
 end
 println()
 
+@info("grad_params_config")
 
+for i in 1:length(c_m[1])
+    singl = ACE.grad_params_config(singlProp[i],cfg)[1]
+    multi = ACE.grad_params_config(multiProp,cfg)[i]
+
+    print_tf(@test(config_dist_eq(singl, multi)))
+end
+println()

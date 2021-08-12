@@ -64,19 +64,19 @@ function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector)
    return _get_eff_coeffs!(c̃, basis, c) 
 end
 
-_acquire_ctilde(basis::SymmetricBasis, len_AA, c::Vector{<: SVector}) = 
+_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) = 
    acquire!(basis.B_pool, len_AA, SVector{length(c[1]),eltype(basis.A2Bmap)})
 
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector) = 
    acquire!(basis.B_pool, len_AA)
 
-_alloc_ctilde(basis::SymmetricBasis,c::Vector{<: SVector}) = 
+_alloc_ctilde(basis::SymmetricBasis,c::AbstractVector{<: SVector}) = 
    zeros(SVector{length(c[1]),eltype(basis.A2Bmap)}, size(basis.A2Bmap, 2))
    
 _alloc_ctilde(basis::SymmetricBasis,c::AbstractVector) = 
    zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
-_alloc_dAco(dAAdA, A, c̃::Vector{<: SVector}) = 
+_alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
    zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
    
 _alloc_dAco(dAAdA, A, c̃::AbstractVector) = 
@@ -116,8 +116,6 @@ end
 grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
       grad_config!(g, V, cfg)
 
-#attempting to do a different dispatch for a vector of invariants
-Base.complex(c::Vector{<: ACE.Invariant{Float64}}) = complex.(c)
 
 # compute one site energy
 function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)

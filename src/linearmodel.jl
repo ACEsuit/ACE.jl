@@ -89,14 +89,28 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
 # TODO: consider providing a generic object pool / array pool 
 # acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
 acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-   Matrix{ACEbase.gradtype(m.basis, cfg)}(undef, length(cfg), length(m.c[1]))
+   Matrix{gradtype(m.basis, cfg)}(undef, length(cfg), length(m.c[1]))
 #Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
 
 release_grad_config!(m::LinearACEModel, g) = nothing 
       #release!(m.grad_cfg_pool, g)
 
 acquire_grad_params!(m::LinearACEModel, args...) = 
-      acquire_B!(m.basis, args...)
+      alloc_B!(m.basis, m.c, args...)
+
+#This probably needs adjusting since we are now alocating a matrix
+function alloc_B!(basis::ACEBasis, c::AbstractVector , args...) 
+   VT = valtype(basis, args...)
+   return Matrix{VT}(undef, length(basis), length(c[1]))
+end
+
+# function acquire_B!(basis::ACEBasis, c::AbstractVector , args...) 
+#    VT = valtype(basis, args...)
+#    if hasproperty(basis, :B_pool)
+#       return acquire!(basis.B_pool, length(basis), VT)
+#    end 
+#    return Vector{VT}(undef, length(basis))
+# end
 
 release_grad_params!(m::LinearACEModel, g) = 
       release_B!(m.basis, g)
@@ -116,13 +130,17 @@ grad_params(m::LinearACEModel, cfg::AbstractConfiguration) =
       grad_params!(acquire_grad_params!(m, cfg), m, cfg)
 
 function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
-   evaluate!(g, m.basis, cfg) 
+   for i in 1:size(g)[2]
+      g[:,i] = evaluate!(g[:,i], m.basis, cfg)
+   end 
    return g 
 end
 
+#lazy fix for now. We need to think about allocations and weather we want these
+#derivatives as a vector of matrices, a tensor, or even if we want them at all.
 function grad_params_config(m::LinearACEModel, cfg::AbstractConfiguration) 
    dB = acquire_dB!(m.basis, cfg)
-   return grad_params_config!(dB, m, cfg)
+   return [grad_params_config!(dB, m, cfg) for i = 1:length(m.c[1])]
 end
 
 # ∂_params ∂_config V
