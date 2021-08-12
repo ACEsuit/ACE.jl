@@ -89,7 +89,8 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
 # TODO: consider providing a generic object pool / array pool 
 # acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
 acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
+   Matrix{ACEbase.gradtype(m.basis, cfg)}(undef, length(cfg), length(m.c[1]))
+#Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
 
 release_grad_config!(m::LinearACEModel, g) = nothing 
       #release!(m.grad_cfg_pool, g)

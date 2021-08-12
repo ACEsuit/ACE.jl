@@ -76,6 +76,12 @@ _alloc_ctilde(basis::SymmetricBasis,c::Vector{<: SVector}) =
 _alloc_ctilde(basis::SymmetricBasis,c::AbstractVector) = 
    zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
+_alloc_dAco(dAAdA, A, c̃::Vector{<: SVector}) = 
+   zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
+   
+_alloc_dAco(dAAdA, A, c̃::AbstractVector) = 
+   zeros(eltype(dAAdA), length(A))
+
 
 
 # ------------------------------------------------------------
@@ -110,6 +116,9 @@ end
 grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
       grad_config!(g, V, cfg)
 
+#attempting to do a different dispatch for a vector of invariants
+Base.complex(c::Vector{<: ACE.Invariant{Float64}}) = complex.(c)
+
 # compute one site energy
 function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
@@ -117,36 +126,28 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    A = acquire_B!(V.pibasis.basis1p, cfg)
    dA = acquire_dB!(V.pibasis.basis1p, cfg)
    dAAdA = _acquire_dAAdA!(V.pibasis)
-
+   
    # stage 1: precompute all the A values
    evaluate_ed!(A, dA, basis1p, cfg)
 
    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
-   dAco = zeros(eltype(dAAdA), length(A)) # tmpd.dAco  # TODO: ALLOCATION 
    c̃ = V.coeffs
+   dAco =  _alloc_dAco(dAAdA, A, c̃) # tmpd.dAco  # TODO: ALLOCATION 
    spec = V.pibasis.spec
+
    fill!(dAco, zero(eltype(dAco)))
-   if(length(c̃[1])>1)
-      @inbounds for iAA = 1:length(spec)
-         _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
-         @fastmath for t = 1:spec.orders[iAA]
-            dAco[spec.iAA2iA[iAA, t]] += sum(dAAdA[t] .* complex.(c̃[iAA]))
-         end
-      end
-   else
-      @inbounds for iAA = 1:length(spec)
-         _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
-         @fastmath for t = 1:spec.orders[iAA]
-            dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA])
-         end
+   @inbounds for iAA = 1:length(spec)
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      @fastmath for t = 1:spec.orders[iAA]
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA]) #trying to avoid using .* and complex.()
       end
    end
 
    # stage 3: get the gradients
    fill!(g, zero(eltype(g)))
-   for iX = 1:length(cfg)
-      @inbounds @fastmath for iA = 1:length(basis1p)
-         g[iX] += _real(dAco[iA] * dA[iA, iX])
+   for iP = 1:length(c̃[1]), iX = 1:length(cfg)
+      for iA = 1:length(basis1p)
+         g[iX, iP] += _real(dAco[iA][iP] * dA[iA, iX])
       end
    end
 

@@ -1,6 +1,6 @@
 
 using LinearAlgebra: length
-using ACE, ACEbase
+using ACE, ACEbase, Test, ACE.Testing
 using ACE: evaluate, SymmetricBasis, NaiveTotalDegree, PIBasis
 
 using StaticArrays
@@ -27,28 +27,55 @@ basis = SymmetricBasis(pibasis, φ)
        
 BB = evaluate(basis, cfg)
 
-c1 = rand(length(BB))
-c2 = rand(SVector{7,Float64}, length(BB))
+c_m = rand(SVector{7,Float64}, length(BB))
 
-singlSpecies = ACE.LinearACEModel(basis, c1, evaluator = :standard)
-multiSpecies = ACE.LinearACEModel(basis, c2, evaluator = :standard)
+singlProp = [ACE.LinearACEModel(basis, rand(length(BB)), evaluator = :standard) for i in 1:length(c_m[1])]
+multiProp = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 
 @info("set_params!")
-ACE.set_params!(singlSpecies,c1)
-ACE.set_params!(multiSpecies,c2)
+c_s = [[c_m[j][i] for j in 1:length(c_m)] for i in 1:length(c_m[1])]
+
+ACE.set_params!(multiProp,c_m)
+for i in 1:length(c_m[1])
+    ACE.set_params!(singlProp[i],c_s[i])
+    print_tf(@test(c_s[i] ≈ singlProp[i].c))
+end
+println()
 
 @info("evaluate")
-@show evaluate(singlSpecies,cfg)
-@show evaluate(multiSpecies,cfg)
+
+for i in 1:length(c_m[1])
+    print_tf(@test(evaluate(singlProp[i],cfg).val ≈ evaluate(multiProp,cfg)[i].val))
+end
+println()
+
 
 @info("grad_params")
-ACE.grad_params(singlSpecies,cfg)
-ACE.grad_params(multiSpecies,cfg)
+#for now grad_params only gets B ONCE, we could copy it multiple times.
+for i in 1:length(c_m[1])
+    print_tf(@test(getproperty.(ACE.grad_params(singlProp[i],cfg),:val) ≈ getproperty.(ACE.grad_params(multiProp,cfg),:val)))
+end
+println()
+
 
 @info("grad_config")
-ACE.grad_config(singlSpecies,cfg)
-ACE.grad_config(multiSpecies,cfg)
 
-@info("grad_config")
-ACE.grad_params_config(singlSpecies,cfg)
-ACE.grad_params_config(multiSpecies,cfg);
+function config_dist_eq(A,B)
+    pass = true
+    for i in 1:length(A)
+        if(A[i].rr != B[i].rr)
+            pass = false
+        end
+    end
+    return pass
+end
+
+for i in 1:length(c_m[1])
+    singl = ACE.grad_config(singlProp[i],cfg)
+    multi = ACE.grad_config(multiProp,cfg)[:,i]
+
+    print_tf(@test(config_dist_eq(singl, multi)))
+end
+println()
+
+
