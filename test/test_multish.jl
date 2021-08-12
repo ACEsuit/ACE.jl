@@ -73,9 +73,75 @@ evaluate(B1p, Xs[1])
 evaluate(B1p, cfg)
 
 ## 
-@info("Symmetrize the rs-1p-basis")
+
+@info("Symmetrize only w.r.t. rr but leave ss.")
 
 ord = 4
-maxdeg = 6
+maxdeg = 7
+basis = SymmetricBasis(φ, B1p, O3(:lr, :mr), ord, maxdeg; Deg = D)
+
+@info("Check for consistenty of r-rotation")
+for ntest = 1:30
+   cfg = ACEConfig(rand(MagState, nX))
+   Qr = ACE.Random.rand_rot() * ACE.Random.rand_refl()
+   cfg_sym = ACEConfig( shuffle( [MagState(rr = Qr * X.rr, ss = X.ss) for X in cfg] ) )   
+   print_tf(@test( evaluate(basis, cfg) ≈ evaluate(basis, cfg_sym) )) 
+end
+println()
+
+@info("Check for inconsistency of s-rotation")
+toterr_rs = 0.0 
+toterr_rr = 0.0 
+for ntest = 1:30
+   cfg = ACEConfig(rand(MagState, nX))
+   Qr = ACE.Random.rand_rot() * ACE.Random.rand_refl()
+   Qs = ACE.Random.rand_rot() * ACE.Random.rand_refl()
+   cfg_rs = ACEConfig( shuffle( [MagState(rr = Qr * X.rr, ss = Qs * X.ss) for X in cfg] ) )
+   cfg_rr = ACEConfig( shuffle( [MagState(rr = Qr * X.rr, ss = Qr * X.ss) for X in cfg] ) )
+   toterr_rs += norm( evaluate(basis, cfg) - evaluate(basis, cfg_rs), Inf )
+   toterr_rr += norm( evaluate(basis, cfg) - evaluate(basis, cfg_rr), Inf )
+   print(".")
+end
+println()
+println(@test (toterr_rs > 1))
+println(@test (toterr_rr > 1))
+
+## 
+
+ord = 3
+maxdeg = 7
 basis = SymmetricBasis(φ, B1p, O3(:lr, :mr) ⊗ O3(:ls, :ms), ord, maxdeg; Deg = D)
-length(basis)
+# basis = SymmetricBasis(φ, B1p, O3(:lr, :mr), ord, maxdeg; Deg = D)
+
+# for ntest = 1:30
+cfg = ACEConfig(rand(MagState, nX))
+Qr = ACE.Random.rand_rot() #* ACE.Random.rand_refl()
+Qs = ACE.Random.rand_rot() #* ACE.Random.rand_refl()
+cfg_rs = ACEConfig( shuffle( [MagState(rr = Qr * X.rr, ss = Qs * X.ss) for X in cfg] ) )
+B = evaluate(basis, cfg)
+B_rs = evaluate(basis, cfg_rs)
+@show norm(B - B_rs, Inf)
+
+spec = ACE.get_spec(basis)
+
+# [ evaluate(basis, cfg)  evaluate(basis, cfg_sym)  spec ] |> display 
+
+##
+ctr = 0
+ctr_first = 0
+for i = 1:length(basis) 
+   if !(B[i] ≈ B_rs[i])
+      print("i = $i : ")
+      display( spec[i] )
+      ctr += 1 
+      if ctr_first == 0; ctr_first = i; end 
+      if ctr == 10; break; end 
+   end
+end
+
+##
+
+ctr_first
+
+display(spec[ [200, 205, 210, 211, 213] ])
+

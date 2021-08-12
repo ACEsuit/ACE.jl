@@ -189,6 +189,20 @@ function _get_ordered(bb, invAspec)
 end
 
 
+# ------------------- exporting the basis spec 
+
+# this doesn't provide the "full" specification, just collects 
+# the n and l but not the m or coupling coefficients. 
+
+function get_spec(basis::SymmetricBasis)
+   spec_AA = get_spec(basis.pibasis)
+   spec_B = [] 
+   for iB = 1:length(basis)
+      iAA = findfirst(norm.(basis.A2Bmap[iB, :]) .!= 0)
+      push!(spec_B, get_sym_spec(basis.symgrp, spec_AA[iAA]))
+   end
+   return identity.(spec_B)
+end
 
 # ---------------- A modified sparse matmul
 

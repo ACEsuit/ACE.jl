@@ -60,6 +60,7 @@ struct Invariant{T} <: AbstractProperty
    val::T
 end
 
+Base.show(io::IO, φ::Invariant) = print(io, "i($(φ.val))")
 
 
 Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))

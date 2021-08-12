@@ -57,6 +57,8 @@ getm(G::O3, b::NamedTuple) = b[msym(G)]
 
 is_refbasisfcn(G::O3, AA) = all( bi[msym(G)] == 0 for bi in AA )
 
+get_sym_spec(G::O3, bb) = delete.(bb, (msym(G),))
+
 
 function coupling_coeffs(symgrp::O3, bb, rotc::Rot3DCoeffs)
    # bb = [ b1, b2, b3, ... ]
@@ -86,7 +88,6 @@ function rpe_basis(A::Rot3DCoeffs,
 						 nn::SVector{N, TN},
 						 ll::SVector{N, Int}) where {N, TN}
 	Ure, Mre = Rotations3D.re_basis(A, ll)
-   @show size(Ure) 
 	G = _gramian(nn, ll, Ure, Mre)
    S = svd(G)
    rk = rank(Diagonal(S.S); rtol =  1e-7)
@@ -183,6 +184,7 @@ export ⊗
 is_refbasisfcn(G::O3O3, AA) = all( bi[msym(grp)] == 0 
                                    for bi in AA, grp in (G.G1, G.G2) )
 
+get_sym_spec(G::O3O3, bb) = delete.(bb, Ref( (msym(G.G1), msym(G.G2)) ))
 
 function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
    # bb = [ b1, b2, b3, ... ]
@@ -204,6 +206,8 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
 
    nU1 = size(U1, 1)
    nU2 = size(U2, 1)
+   @assert size(U1, 2) == length(M1) 
+   @assert size(U2, 2) == length(M2)
    UT = promote_type(eltype(U1), eltype(U2))      
 
    if size(U1, 1) == 0 || size(U2, 1) == 0  
@@ -214,7 +218,7 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
    # each column Ure[:, i] corresponds to one rotation-invariant basis fcn 
    Ure = zeros( UT, (nU1 * nU2, size(U1, 2) * size(U2, 2)) )
    idx = 0
-   for i1 = 1:size(U1, 1), i2 = 1:size(U2, 1)
+   for i1 = 1:nU1, i2 = 1:nU2
       idx += 1
       jdx = 0 
       for j1 = 1:size(U1, 2), j2 = 1:size(U2, 2)
@@ -225,23 +229,25 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
 
    # get the combined Ms
    M1M2TUPLE = namedtuple(msym(symgrp.G1), msym(symgrp.G2))
-   Mre = [ M1M2TUPLE.(M1[i1], M2[i2]) for i1 = 1:nU1, i2 = 1:nU2 ] 
+   Mre = [ M1M2TUPLE.(M1[i1], M2[i2]) for i1 = 1:size(U1, 2), i2 = 1:size(U2, 2) ] 
 
+   @assert nU1 == nU2 == size(Ure, 1) == 1
+   @assert length(Mre) == size(Ure, 2)
 
-   # insert another reduction step 
-   Gre = [ sum(coco_dot.(Ure[i1, :], Ure[i2, :])) for i1 = 1:size(Ure, 1), i2 = 1:size(Ure, 1) ]
-   Sre = svd(Gre)
-   rk = rank(Diagonal(Sre.S); rtol =  1e-7)
-   Ure = Sre.U[:, 1:rk]' * Ure 
+   # # insert another reduction step 
+   # Gre = [ sum(coco_dot.(Ure[i1, :], Ure[i2, :])) for i1 = 1:size(Ure, 1), i2 = 1:size(Ure, 1) ]
+   # Sre = svd(Gre)
+   # rk = rank(Diagonal(Sre.S); rtol =  1e-7)
+   # Ure = Sre.U[:, 1:rk]' * Ure 
 
-   # now symmetrize w.r.t. permutations 
-   G = _gramian(nn, ll12, Ure, Mre)
-   S = svd(G)
-   rk = rank(Diagonal(S.S); rtol =  1e-7)
-   Urpe = S.U[:, 1:rk]'
-   U = Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure
+   # # now symmetrize w.r.t. permutations 
+   # G = _gramian(nn, ll12, Ure, Mre)
+   # S = svd(G)
+   # rk = rank(Diagonal(S.S); rtol =  1e-7)
+   # Urpe = S.U[:, 1:rk]'
+   # U = Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure
 
-   # @show size(U1), size(U2), size(Ure), size(U)
+   U = Ure    
 
    # reconstruct the basis function specifications
    rpebs = [ PROTOTUPLE.(merge.(nn, ll12, mm12)) for mm12 in Mre ]
