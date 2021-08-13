@@ -120,21 +120,6 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis;
 
    # loop through AA basis, but skip most of them ...
    for (iAA, AA) in enumerate(AAspec)
-      # ~~~~~~~~~~
-      # # AA = [b1, b2, ...], each bi = (n = ..., l = .., m = ...)
-      # # skip it unless all m are zero, because we want to consider each
-      # # (nn, ll, ...) block only once.
-      # # the loop over all possible `mm` must be taken care of inside
-      # # the `coupling_coeffs` implementation
-      # if !all(b.m == 0 for b in AA)
-      #    continue
-      # end
-      # # get the coupling coefficients: here, we could help out a bit and make 
-      # # it easier to find the the relevant basis functions?
-      # # AAcols will be in spec format i.e. named tuples
-      # U, AAcols = coupling_coeffs(AA, rotc)
-      # ~~~~~~~~~~
-
       # determine whether we need to compute coupling coefficients for this 
       # basis function or whether it will be included in a different 
       # coco computation? 
