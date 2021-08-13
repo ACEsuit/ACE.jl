@@ -12,8 +12,6 @@ import LinearAlgebra: norm, promote_leaf_eltypes
 @inline *(φ::T, a::Union{Number, AbstractMatrix}) where {T <: AbstractProperty} =
       T(φ.val * a)
 
-*(φ1::Invariant, φ2::Invariant) = Invariant(φ1.val * φ2.val)
-
 @inline norm(φ::AbstractProperty) = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
@@ -72,6 +70,8 @@ complex(φ::Invariant) = Invariant(complex(φ.val))
 complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
+
+*(φ1::Invariant, φ2::Invariant) = Invariant(φ1.val * φ2.val)
 
 write_dict(φ::Invariant{T})  where {T} =
    Dict("__id__" => "ACE_Invariant",

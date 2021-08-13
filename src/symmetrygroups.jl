@@ -204,35 +204,43 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
    U1, M1 = Rotations3D.re_basis(rotc, ll1)
    U2, M2 = Rotations3D.re_basis(rotc, ll2)
 
-   nU1 = size(U1, 1)
-   nU2 = size(U2, 1)
-   @assert size(U1, 2) == length(M1) 
-   @assert size(U2, 2) == length(M2)
-   UT = promote_type(eltype(U1), eltype(U2))      
+   nU1, nM1 = size(U1)
+   nU2, nM2 = size(U2)
+   @assert nM1 == length(M1) 
+   @assert nM2 == length(M2)
+   UT = promote_type(eltype(U1), eltype(U2))
 
-   if size(U1, 1) == 0 || size(U2, 1) == 0  
+   # there is admissible combination: 
+   if nU1 == 0 || nU2 == 0  
       return UT[], SVector{NU, PROTOTUPLE}[]
+   end
+
+   # get the combined Ms
+   M1M2TUPLE = namedtuple(msym(symgrp.G1), msym(symgrp.G2))
+   _T = M1M2TUPLE.(M1[1], M2[1]) 
+   Mre = [] 
+   jdx = 0 
+   for j1 = 1:nM1, j2 = 1:nM2
+      jdx += 1
+      push!(Mre, M1M2TUPLE.(M1[j1], M2[j2])) 
    end
 
    # now combine them into the effective coupling coeffs 
    # each column Ure[:, i] corresponds to one rotation-invariant basis fcn 
-   Ure = zeros( UT, (nU1 * nU2, size(U1, 2) * size(U2, 2)) )
+   Ure = zeros( UT, (nU1 * nU2, nM1 * nM2) )
    idx = 0
    for i1 = 1:nU1, i2 = 1:nU2
       idx += 1
       jdx = 0 
-      for j1 = 1:size(U1, 2), j2 = 1:size(U2, 2)
+      for j1 = 1:nM1, j2 = 1:nM2
          jdx += 1
          Ure[idx, jdx] = U1[i1, j1] * U2[i2, j2]
       end
    end
 
-   # get the combined Ms
-   M1M2TUPLE = namedtuple(msym(symgrp.G1), msym(symgrp.G2))
-   Mre = [ M1M2TUPLE.(M1[i1], M2[i2]) for i1 = 1:size(U1, 2), i2 = 1:size(U2, 2) ] 
-
+   
    @assert nU1 == nU2 == size(Ure, 1) == 1
-   @assert length(Mre) == size(Ure, 2)
+   @assert length(Mre) == size(Ure, 2) == nM1 * nM2 
 
    # # insert another reduction step 
    # Gre = [ sum(coco_dot.(Ure[i1, :], Ure[i2, :])) for i1 = 1:size(Ure, 1), i2 = 1:size(Ure, 1) ]

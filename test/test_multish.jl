@@ -108,15 +108,15 @@ println(@test (toterr_rr > 1))
 
 ## 
 
-ord = 3
+ord = 4
 maxdeg = 7
 basis = SymmetricBasis(φ, B1p, O3(:lr, :mr) ⊗ O3(:ls, :ms), ord, maxdeg; Deg = D)
 # basis = SymmetricBasis(φ, B1p, O3(:lr, :mr), ord, maxdeg; Deg = D)
 
 # for ntest = 1:30
 cfg = ACEConfig(rand(MagState, nX))
-Qr = ACE.Random.rand_rot() #* ACE.Random.rand_refl()
-Qs = ACE.Random.rand_rot() #* ACE.Random.rand_refl()
+Qr = ACE.Random.rand_rot() * ACE.Random.rand_refl()
+Qs = ACE.Random.rand_rot() * ACE.Random.rand_refl()
 cfg_rs = ACEConfig( shuffle( [MagState(rr = Qr * X.rr, ss = Qs * X.ss) for X in cfg] ) )
 B = evaluate(basis, cfg)
 B_rs = evaluate(basis, cfg_rs)
@@ -138,10 +138,10 @@ for i = 1:length(basis)
       if ctr == 10; break; end 
    end
 end
+ctr_first
 
 ##
 
-ctr_first
 
 display(spec[ [200, 205, 210, 211, 213] ])
 
