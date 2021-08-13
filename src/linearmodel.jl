@@ -130,7 +130,7 @@ grad_params(m::LinearACEModel, cfg::AbstractConfiguration) =
       grad_params!(acquire_grad_params!(m, cfg), m, cfg)
 
 function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
-   for i in 1:size(g)[2]
+   for i in 1:size(g,2)
       g[:,i] = evaluate!(g[:,i], m.basis, cfg)
    end 
    return g 

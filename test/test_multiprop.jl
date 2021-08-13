@@ -1,12 +1,13 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
 using ACE: evaluate, SymmetricBasis, NaiveTotalDegree, PIBasis
-
 using StaticArrays
 
 
 ##
     
+@info(" Testset for Multiple Properties in a Linear ACEModel")
+
 # construct the 1p-basis
 D = NaiveTotalDegree()
 maxdeg = 6
@@ -18,7 +19,6 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 nX = 54
 Xs() = ACE.State(rr = rand(SVector{3, Float64}), u = rand())
 cfg = ACEConfig([Xs() for i in 1:nX])
-a(x) = fieldnames(typeof(x))
 
 φ = ACE.Invariant()
 pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
