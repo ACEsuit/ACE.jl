@@ -215,48 +215,37 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
       return UT[], SVector{NU, PROTOTUPLE}[]
    end
 
-   # get the combined Ms
+   # now combine them into the effective coupling coeffs and combined Ms 
+   # each column Ure[:, i] corresponds to one rotation-invariant basis fcn 
    M1M2TUPLE = namedtuple(msym(symgrp.G1), msym(symgrp.G2))
-   _T = M1M2TUPLE.(M1[1], M2[1]) 
-   Mre = [] 
-   jdx = 0 
+   Mre = Vector{typeof(Vector(M1M2TUPLE.(M1[1], M2[1])))}(undef, nM1 * nM2)
+   Ure = zeros( UT, (nU1 * nU2, nM1 * nM2) )
+   jdx = 0
    for j1 = 1:nM1, j2 = 1:nM2
       jdx += 1
-      push!(Mre, M1M2TUPLE.(M1[j1], M2[j2])) 
-   end
-
-   # now combine them into the effective coupling coeffs 
-   # each column Ure[:, i] corresponds to one rotation-invariant basis fcn 
-   Ure = zeros( UT, (nU1 * nU2, nM1 * nM2) )
-   idx = 0
-   for i1 = 1:nU1, i2 = 1:nU2
-      idx += 1
-      jdx = 0 
-      for j1 = 1:nM1, j2 = 1:nM2
-         jdx += 1
+      Mre[jdx] = Vector(M1M2TUPLE.(M1[j1], M2[j2]))
+      idx = 0 
+      for i1 = 1:nU1, i2 = 1:nU2
+         idx += 1
          Ure[idx, jdx] = U1[i1, j1] * U2[i2, j2]
       end
    end
 
-   
-   @assert nU1 == nU2 == size(Ure, 1) == 1
-   @assert length(Mre) == size(Ure, 2) == nM1 * nM2 
+   # insert another reduction step 
+   # in my tests this never reduces the size, but I haven't had the time
+   # to actually prove it isn't needed, so we will keep it for now 
+   Gre = [ sum(coco_dot.(Ure[i1, :], Ure[i2, :])) for i1 = 1:size(Ure, 1), i2 = 1:size(Ure, 1) ]
+   Sre = svd(Gre)
+   rk = rank(Diagonal(Sre.S); rtol =  1e-7)
+   Ure = Sre.U[:, 1:rk]' * Ure 
 
-   # # insert another reduction step 
-   # Gre = [ sum(coco_dot.(Ure[i1, :], Ure[i2, :])) for i1 = 1:size(Ure, 1), i2 = 1:size(Ure, 1) ]
-   # Sre = svd(Gre)
-   # rk = rank(Diagonal(Sre.S); rtol =  1e-7)
-   # Ure = Sre.U[:, 1:rk]' * Ure 
-
-   # # now symmetrize w.r.t. permutations 
-   # G = _gramian(nn, ll12, Ure, Mre)
-   # S = svd(G)
-   # rk = rank(Diagonal(S.S); rtol =  1e-7)
-   # Urpe = S.U[:, 1:rk]'
-   # U = Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure
-
-   U = Ure    
-
+   # now symmetrize w.r.t. permutations 
+   G = _gramian(nn, ll12, Ure, Mre)
+   S = svd(G)
+   rk = rank(Diagonal(S.S); rtol =  1e-7)
+   Urpe = S.U[:, 1:rk]'
+   U = Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure
+ 
    # reconstruct the basis function specifications
    rpebs = [ PROTOTUPLE.(merge.(nn, ll12, mm12)) for mm12 in Mre ]
    
@@ -272,5 +261,4 @@ function _b2llnn(G::O3O3{L1, M1, L2, M2}, bb) where {L1, M1, L2, M2}
    ll12 = ntuple(i -> select(bb[i], (L1, L2)), N)
    return ll1, ll2, nn, ll12 
 end
-
 

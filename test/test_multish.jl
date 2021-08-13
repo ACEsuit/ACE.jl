@@ -108,40 +108,21 @@ println(@test (toterr_rr > 1))
 
 ## 
 
-ord = 4
+@info("Now test a basis with O(3,3) symmetry")
+ord = 5
 maxdeg = 7
 basis = SymmetricBasis(φ, B1p, O3(:lr, :mr) ⊗ O3(:ls, :ms), ord, maxdeg; Deg = D)
-# basis = SymmetricBasis(φ, B1p, O3(:lr, :mr), ord, maxdeg; Deg = D)
+@show length(basis) 
 
-# for ntest = 1:30
-cfg = ACEConfig(rand(MagState, nX))
-Qr = ACE.Random.rand_rot() * ACE.Random.rand_refl()
-Qs = ACE.Random.rand_rot() * ACE.Random.rand_refl()
-cfg_rs = ACEConfig( shuffle( [MagState(rr = Qr * X.rr, ss = Qs * X.ss) for X in cfg] ) )
-B = evaluate(basis, cfg)
-B_rs = evaluate(basis, cfg_rs)
-@show norm(B - B_rs, Inf)
-
-spec = ACE.get_spec(basis)
-
-# [ evaluate(basis, cfg)  evaluate(basis, cfg_sym)  spec ] |> display 
-
-##
-ctr = 0
-ctr_first = 0
-for i = 1:length(basis) 
-   if !(B[i] ≈ B_rs[i])
-      print("i = $i : ")
-      display( spec[i] )
-      ctr += 1 
-      if ctr_first == 0; ctr_first = i; end 
-      if ctr == 10; break; end 
-   end
+for ntest = 1:30
+   cfg = ACEConfig(rand(MagState, nX))
+   Qr = ACE.Random.rand_rot() * ACE.Random.rand_refl()
+   Qs = ACE.Random.rand_rot() * ACE.Random.rand_refl()
+   cfg_rs = ACEConfig( shuffle( [MagState(rr = Qr * X.rr, ss = Qs * X.ss) for X in cfg] ) )
+   B = evaluate(basis, cfg)
+   B_rs = evaluate(basis, cfg_rs)
+   print_tf(@test(B ≈ B_rs))
 end
-ctr_first
+
 
 ##
-
-
-display(spec[ [200, 205, 210, 211, 213] ])
-
