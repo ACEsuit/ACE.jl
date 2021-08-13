@@ -1,8 +1,8 @@
 
-# Developer Documentation
+# Developer Documentation / Internals 
 
 !!! warning "WARNING"
-    This documentation describes what will be implemented on the `rewrite` branch, and not what is currently implemented!
+    This documentation is very much a work in progress
 
 
 ## Summary of types and type hierarchy
@@ -12,26 +12,26 @@ The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), w
 * `OneParticleBasis` : abstract supertype of a 1-particle basis
 * `PIBasis` : concrete implementation of a permutation-invariant basis, employing a `OneParticleBasis` and a specification of all possible correlations
 * `SymmetricBasis` : implementation of the "coupling" to achieve O(3) symmetries
+* `LinearACEModel` : representation of one or more properties in terms of a basis.
 
-TODO: this section could be expanded significantly
 
 ## States (Input variables)
 
 Each particle is described by one or more variables, including e.g. its
-position, species, etc. The input space ``\mathbb{X}`` is simply the
+position, species, spin, charge, etc. The input space ``\mathbb{X}`` is simply the
 space in which those variables reside. The input variable must be a subtype `AbstractState` following some strict conventions.
 
-#### Example
-
-The original ACE models interatomic interaction with each state describing one atom in terms of its (relative) position and species. In this case the state could be defined as follow:
+In practise one would most likely use the `State` type which simply wraps a `NamedTuple`. E.g. if we wanted a particle that only has a position we could define this as 
 ```julia
-struct AtomState{T} <: AbstractState
-   mu::AtomicNumber
-   rr::SVector{3, T}
-end
+X = State(rr = rand(SVector{3, Float64}))
 ```
-It is crucial that the properties `mu, rr` are known to the one-particle basis, i.e. when evaluating ``\phi_v(X)`` the one-particle basis ``\phi_v`` must "know" that it can obtain the position by calling `X.rr`.
+If we have a particle that has position `rr` and species `Z` attributes, and maybe an invariant feature `u`, then we would define this as 
+```julia 
+X = State(rr = rand(SVector{3, Float64}), Z = 13, u = rand())
+```
+The data can be accessed via `.` or `getproperty`.
 
+It is crucial that the attributes/features `rr, Z, u` are known to the one-particle basis, i.e. when evaluating ``\phi_v(X)`` the one-particle basis ``\phi_v`` must "know" that it can obtain the position by calling `X.rr`; more on this below. 
 
 ## One Particle Basis
 
