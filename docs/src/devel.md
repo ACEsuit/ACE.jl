@@ -1,16 +1,18 @@
 
 # Developer Documentation / Internals 
 
+```@meta
+CurrentModule = ACE
+```
+
 !!! warning "WARNING"
-    This documentation is very much a work in progress
+    This documentation is very much a work in progress since the general framework for ACE.jl has only slowly been developing. That said, it is now slowly settling, and documentation will be updated and improved over time. Please [file issues](https://github.com/ACEsuit/ACE.jl/issues), [ask questions](https://github.com/ACEsuit/ACE.jl/discussions) or make PRs. 
 
-
-!!! note "TODO"
-    need to properly specify the interface for all the main components
 
 ## Summary of types and type hierarchy
 
-The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), which is well aligned with Julia's type system and recommended style. Basis sets and calculators are built from the following two base types:
+The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), which is well aligned with Julia's type system and recommended style. Basis sets and calculators are built from the following base types.
+
 
 * `OneParticleBasis` : abstract supertype of a 1-particle basis
 * `PIBasis` : concrete implementation of a permutation-invariant basis, employing a `OneParticleBasis` and a specification of all possible correlations
@@ -155,9 +157,7 @@ Components from which to build a `Product1pBasis` are listed below.
 
 ### Concrete Implementations of One-particle Bases
 
-!!! note "TODO"
-    Provide a list of all 1p-basis implementations to build from
-
+<!-- provide links to docs -->
 * `Rn1pBasis`
 * `Ylm1pBasis`
 * `Scal1pBasis`

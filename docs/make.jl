@@ -8,6 +8,7 @@ makedocs(sitename="ACE.jl Documentation",
         "Home" => "index.md",
         "Getting Started" => "gettingstarted.md",
         "Developer Docs" => "devel.md",
+        "Types & Functions" => "docs.md"
          ])
 
         #  https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.014104

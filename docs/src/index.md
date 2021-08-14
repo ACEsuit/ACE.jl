@@ -16,8 +16,8 @@ The original implemention was based on the Atomic Cluster Expansion (ACE) descri
 ```@contents
 Pages = ["gettingstarted.md",
          "devel.md",
-         "polyproducts.md"]
-Depth = 1
+         "docs.md"]
+Depth = 2
 ```
 
 ### Editing and Building the Documentation Locally
