@@ -7,7 +7,7 @@ Although the original focus was on modelling atomic interactions, the scope is i
 
 The original implemention was based on the Atomic Cluster Expansion (ACE) described in the following references:
 
-* Drautz, R.: Atomic cluster expansion for accurate and transferable interatomic potentials. Phys. Rev. B Condens. Matter. 99, 014104 (2019). doi:10.1103/PhysRevB.99.014104
+* Drautz, R.: Atomic cluster expansion for accurate and transferable interatomic potentials. Phys. Rev. B Condens. Matter. 99, 014104 (2019). doi:10.1103/PhysRevB.99.014104, [[html]](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.99.014104)
 * M. Bachmayr, G. Csanyi, G. Dusson, S. Etter, C. van der Oord, and C. Ortner. Atomic cluster expansion: Cluster Expansion: Completeness, Efficiency and Stability. arXiv:1911.03550v3; [[http]](https://arxiv.org/abs/1911.03550) [[PDF]](https://arxiv.org/pdf/1911.03550.pdf)
 * Drautz, R.: Atomic cluster expansion of scalar, vectorial, and tensorial properties including magnetism and charge transfer, Phys. Rev. B 102, 024104, 2020 [[http]](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.102.024104)
 
@@ -22,4 +22,4 @@ Depth = 1
 
 ### Editing and Building the Documentation Locally
 
-To build the documentation locally, use the `make.jl` script. Simply switch to `ACE/docs` and execute `julia --project=.. make.jl`
+To build the documentation locally, use the `make.jl` script. Simply switch to `ACE/docs` and execute `julia --project=.. make.jl`, then open `./build/index.html`.

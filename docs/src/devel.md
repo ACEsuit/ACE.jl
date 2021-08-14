@@ -5,6 +5,9 @@
     This documentation is very much a work in progress
 
 
+!!! note "TODO"
+    need to properly specify the interface for all the main components
+
 ## Summary of types and type hierarchy
 
 The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), which is well aligned with Julia's type system and recommended style. Basis sets and calculators are built from the following two base types:
@@ -15,7 +18,9 @@ The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), w
 * `LinearACEModel` : representation of one or more properties in terms of a basis.
 
 
-## States (Input variables)
+## States and Configurations (Inputs)
+
+### States 
 
 Each particle is described by one or more variables, including e.g. its
 position, species, spin, charge, etc. The input space ``\mathbb{X}`` is simply the
@@ -33,55 +38,66 @@ The data can be accessed via `.` or `getproperty`.
 
 It is crucial that the attributes/features `rr, Z, u` are known to the one-particle basis, i.e. when evaluating ``\phi_v(X)`` the one-particle basis ``\phi_v`` must "know" that it can obtain the position by calling `X.rr`; more on this below. 
 
+### Configurations
+
+A collection of *states* is a configuration. The supertype for configurations is `AbstractACEConfiguration`. The simples concrete implementatin is `ACEConfiguration` which simply wraps a `Vector{<: AbstractState}`. Configurations must be iterable. Example: 
+
+```julia
+cfg = ACEConfig( [ State(rr = randn(SVector{3, Float64})) for _=1:10 ])
+```
+creates a configuration containing 10 particles having only a position as an attribute.
+
+### DStates 
+
+While a `State` is just a description of an object, a `DState` can be thought of as an element of a vector space which we can manipulate. A classical analogy is that a `State` might be a point while a `DState` a vector pointing to it. E.g. we can add two `DState`s or multipy them with a scalar. This is not allowed for a `State`. This places certain restrictions on what a `DState` might contain. 
+
+The main application of this in ACE.jl is that `DState`s are derivatives of `State`s. 
+
+**TODO:** write a more thorough explanation and how they are used and constructed. 
+
 ## One Particle Basis
+
+The one-particle basis is arguably the most important object in defining an ACE model. It is the fundamental building block for reprenting an input, before the generic methods/algorithms for correlatons and symmetrisation take over.
 
 A one-particle basis is a basis of functions ``\phi_v : \mathbb{X} \to \mathbb{C}`` (or, ``\mathbb{R}``) defined through a subtype of
 ```julia
 abstract type OneParticleBasis end
 ```
-Concrete subtypes must implement the projection of the atom density onto the one-particle basis:
+Concrete subtypes must implement the projection of the atom density onto the one-particle basis, 
 ```math
-  A_{v}( \{ X_j \}_{j \neq i}; X_i )
-   = \sum_{j} \phi_v(X_i, X_j),
+  A_{v}( \{ X_j \}_{j} ) = \sum_{j} \phi_v(X_j).
 ```
-where including the centre-atom ``X_i`` in the argument allows us to compute relative positions, and incorporate centre-atom information into the basis. For example, this can be used to construct a different radial basis for all species pairs, incorporating information such as atomic radii.
-The "standard" evaluation of a single ``\phi_v(X; X_0)`` is of course a special case. In addition, the gradients of individual basis functions, ``\nabla \phi_v(X; X_0)`` must be provided; this gradient may be taken with respect to all continuous variables.
-
-Assuming that `basis1p isa OneParticleBasis`, this is done with the following interface:
+This is done with the following interface:
 ```julia
-A = alloc_B(basis1p)               # allocate storage for A = [ A_z for iz=1:NZ ]
-tmp = alloc_temp(basis1p, args...)    # allocate temporary arrays
-evaluate!(A, tmp, basis1p, Xs, X0)    # fill A = [ A_z for iz=1:NZ ]
+A = ...      # allocate storage for A = [ A_z for iz=1:NZ ]
+evaluate!(A, basis1p, cfg)    # fill A = [ A_z for iz=1:NZ ]
 ```
-
-!!! warning "WARNING"
-    The gradient interface is not really done yet and needs some design work!
-
-For the gradients the following must be provided:
-```julia
-dPhi = alloc_dB(basis1p)                     # storage for (∇ϕ_k)_k
-tmpd = alloc_temp_d(basis1p, args...)        # temporary storage
-evaluate_d!(dPhi, tmpd, basis1p, X, X0)   # fill dPhi with (∇ϕ_k)_k
+In practise this would more conveniently be called via
+```julia 
+A = evaluate(basis1p, cfg)
 ```
-The interface does not require `evaluate_d!(dPhi, tmpd, basis1p, Xs, X0)`.
+with the allocation occuring behind the scenes. Normally, `basis1p` will have an object pool implemented, then the array `A` when no longer needed can be returned to the pool via 
+```julia 
+release_B!(basis1p, A)
+```
+For example when 1p-basis evaluate occurs as part of the full ACE model, then all allocations occur at a suitable point in the evaluation chain. The user need not be concerned about this. 
 
 There is a lot of code duplication in the implementation of `OneParticleBasis`, which we can avoid by a generic implementation of `evaluate!` which loops through all `X in Xs` and then calls
 ```julia
-add_into_A!(A, tmp, basis1p, X, X0)
+add_into_A!(A, basis1p, X)
+# should be equivalent to A[:] += evaluate(basis1p, X)
 ```
-an implementation of `OneParticleBasis` then only needs to overload `add_into_A!` which evaluates all ``\phi_v`` at one state pair `(X, X0)` and adds the basis values into a pre-allocated vector `A`.
+an implementation of `OneParticleBasis` then only needs to overload `add_into_A!` which evaluates all ``\phi_v`` at one state pair `X` and adds the basis values into a pre-allocated vector `A`.
 
-The most common situation is that `basis1p` is a product of basis functions acting on different variables. This can be constructed using `Product1pBasis`. For example, a one-particle basis of the kind
-```math
-   \phi_{\mu n l m}(X) = \delta(\mu_X - \mu) R_n(r_X) Y_l^m({\bm r}_X)
-```
-can be constructed as
+
+Although in most cases AD and backpropagation will be used to take gradients, for performance reasons it is important to have hand-coded gradients for the 1p-basis implementations. For the gradients w.r.t. a single state the following must be provided:
 ```julia
-Bμ = Species1PBasisCtr(species)
-Rn = Rn1pBasis(ACE.Utils.radial_basis())
-Ylm = Ylm1pBasis(10)
-basis1p = Product1pBasis( (Bμ, Rn, Ylm) )
+dPhi =  .....                     # storage for (∇ϕ_k)_k
+evaluate_d!(dPhi, basis1p, X)     # fill dPhi with (∇ϕ_k)_k
 ```
+The interface does not require `evaluate_d!(dPhi, basis1p, cfg)`, which is done behind the scenes (see `oneparticlebasis.jl`). 
+
+### Basis Indexing
 
 To build a `PIBasis` (see below) the `OneParticleBasis` musts also provide methods that specify it:
 ```
@@ -100,11 +116,53 @@ also on the species, or if the radial basis is given as ``R_{nl}``.
 To let the generic code know which indices are available and what the range
 of each index is the one-particle basis must implement `symbols` and `indexrange`.
 
+### Notes
+
+!!! note "Bonds vs Sites"
+      The theory allows some extensions that are currently only accessible through an ad hoc "hack", but which may turn out to be the best strategy to implement them anyhow: The most important case is that when modelling e.g. an atomic environment, the one-particle basis may also depend on the center-atom, which could be written as 
+      ```math 
+         A_v = \sum_{j} \phi_v(X_j, X_i).
+      ```
+      This is not directly supported. Instead one should simply identify a state ``X_j`` with the state of the bond ``(X_i, X_j)`` and include the attributes of the center-atom in ``X_j``. For example, if ``\phi_v`` depends also on the species of atoms ``i, j``, this might take the form 
+      ```julia 
+         X_j = State(rr = position[j] - position[i], Z = Z[j], Z0 = Z[i])
+      ```
+
+
+!!! note "TODO"
+    It could be worth enabling the possibility to overload `evaluate_d!(dPhi, basis1p, cfg)` for faster (e.g. AVXd) evaluation.
+
+!!! warning "WARNING"
+    The gradient interface is not really done yet and may need more design work! The issue remaining is to decide how to manage the situation that gradient with only specific attributes of a state might be required but not w.r.t. the entire state. 
+
+
+
+### Product 1p-Basis
+
+The most common situation is that `basis1p` is a product of basis functions acting on different variables. This can be constructed using `Product1pBasis`. For example, a one-particle basis of the kind
+```math
+   \phi_{\mu n l m}(X) = \delta(\mu_X - \mu) R_n(r_X) Y_l^m({\bm r}_X)
+```
+can be constructed as
+```julia
+Bμ = Species1PBasis(species)
+Rn = Rn1pBasis(ACE.Utils.radial_basis())
+Ylm = Ylm1pBasis(10)
+basis1p = Product1pBasis( (Bμ, Rn, Ylm) )
+```
+Components from which to build a `Product1pBasis` are listed below.
+
+
 ### Concrete Implementations of One-particle Bases
 
 !!! note "TODO"
     Provide a list of all 1p-basis implementations to build from
 
+* `Rn1pBasis`
+* `Ylm1pBasis`
+* `Scal1pBasis`
+* `ACEatoms.jl` provides also a species-1p-basis
+* wip: discrete, one-hot, ...
 
 ## Permutation-Invariant Basis
 
