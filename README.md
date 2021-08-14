@@ -1,7 +1,7 @@
 # ACE.jl
 
 <!-- [![tests](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml/badge.svg)](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml) -->
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ACEsuit/ACE.jl/Tests) [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/ACEsuit/ACE.jl/dev) 
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ACEsuit/ACE.jl/Tests) [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://acesuit.github.io/ACE.jl/dev/) 
 <!-- [![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://libatoms.github.io/ExtXYZ.jl/stable) -->
 <!-- [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/ACEsuit/ACE.jl/dev) -->
 
