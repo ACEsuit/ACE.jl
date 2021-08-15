@@ -25,6 +25,12 @@ struct State{SYMS, TT} <: XState{SYMS, TT}
 
 end
 
+"""
+`struct DState`: A `State`-like variable but acting like vector with arithmetic 
+operations defined on it, while `State` acts more like a fixed object that cannot 
+be manipulated. The main application of `DState` is as a derivative of a 
+`State`; see also `dstate_type`, ``
+"""
 struct DState{SYMS, TT} <: XState{SYMS, TT}
    x::NamedTuple{SYMS, TT}
 
@@ -220,6 +226,11 @@ real(X::PositionState{T}) where {T} =
 # ------------------ Basic Configurations Code 
 
 abstract type XACEConfig <: AbstractConfiguration  end 
+
+"""
+`struct ACEConfig`: The canonical implementation of an `AbstractConfiguration`. 
+Just wraps a `Vector{<: AbstractState}`
+"""
 struct ACEConfig{STT} <: XACEConfig
    Xs::Vector{STT}   # list of states
 end

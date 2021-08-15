@@ -16,7 +16,6 @@ CurrentModule = ACE
 * `OneParticleBasis` : part of `ACEbase`, not sure why; discuss. 
 
 ```@docs
-XState
 State
 DState
 ACEConfig 

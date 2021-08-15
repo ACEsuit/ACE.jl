@@ -6,7 +6,7 @@ CurrentModule = ACE
 ```
 
 !!! warning "WARNING"
-    This documentation is very much a work in progress since the general framework for ACE.jl has only slowly been developing. That said, it is now slowly settling, and documentation will be updated and improved over time. Please [file issues](https://github.com/ACEsuit/ACE.jl/issues), [ask questions](https://github.com/ACEsuit/ACE.jl/discussions) or make PRs. 
+    This documentation is very much a work in progress since the general framework for ACE.jl has only slowly been developing. There are likely leftovers from earlier version. That said, the framework is now slowly establishing itself, and documentation will now get updated and improved over time. Please [file issues](https://github.com/ACEsuit/ACE.jl/issues), [ask questions](https://github.com/ACEsuit/ACE.jl/discussions) or make PRs. 
 
 
 ## Summary of types and type hierarchy
@@ -15,9 +15,9 @@ The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), w
 
 
 * `OneParticleBasis` : abstract supertype of a 1-particle basis
-* `PIBasis` : concrete implementation of a permutation-invariant basis, employing a `OneParticleBasis` and a specification of all possible correlations
-* `SymmetricBasis` : implementation of the "coupling" to achieve O(3) symmetries
-* `LinearACEModel` : representation of one or more properties in terms of a basis.
+* [`PIBasis`](@ref) : concrete implementation of a permutation-invariant basis, employing a `OneParticleBasis` and a specification of all possible correlations
+* [`SymmetricBasis`](@ref) : implementation of the "coupling" to achieve O(3) symmetries
+* [`LinearACEModel`](@ref) : representation of one or more properties in terms of a basis.
 
 
 ## States and Configurations (Inputs)
@@ -158,11 +158,11 @@ Components from which to build a `Product1pBasis` are listed below.
 ### Concrete Implementations of One-particle Bases
 
 <!-- provide links to docs -->
-* `Rn1pBasis`
-* `Ylm1pBasis`
-* `Scal1pBasis`
+* [`Rn1pBasis`](@ref)
+* [`Ylm1pBasis`](@ref)
+* [`Scal1pBasis`](@ref)
 * `ACEatoms.jl` provides also a species-1p-basis
-* wip: discrete, one-hot, ...
+* wip: discrete, one-hot, Fourier, other symmetries
 
 ## Permutation-Invariant Basis
 
@@ -170,41 +170,35 @@ The permutation-invariant basis is a *concrete* type
 ```julia
 struct PIBasis end
 ```
-which implements the tensor-product like basis functions
+which implements the ``N``-correlations which can be thought of as 
+tensor-product like basis functions
 ```math
-   {\bm A}_{\bm z \bm k}^{z_0}
+   {\bm A}_{\bm v}
    =
-   \prod_{\alpha = 1}^N A_{k_\alpha}^{z_\alpha z_0},
+   \prod_{t = 1}^N A_{v_t}
    \qquad \text{where} \quad
-   {\bm z} \in \mathbb{Z}^N, {\bm k} \in \mathbb{N}^N
+   {\bm v} \in \mathbb{N}^N
 ```
-as well as the gradients
-```math
-   \frac{\partial A_{\bm z \bm k}^{z_0}}{\partial {\bm r}_j}
-```
-The interface for this is as follows:
+The (naive) interface for this is as follows:
 ```julia
-alloc_B(pibasis::PIBasis)
-alloc_tmp(pibasis::PIBasis)
-evaluate!(AA, tmp, pibasis, Rs, Zs, z0)
-alloc_dB(pibasis::PIBasis)
-alloc_tmp_d(pibasis::PIBasis)
-evaluate_d!(dAA, tmp, pibasis, Rs, Zs, z0)
+evaluate!(AA, pibasis, cfg)
+evaluate_ed!(AA, dAA, pibasis, cfg)
 ```
 where the storage arrays are
 * `AA::Vector{<: Number}` : to store any AA_kk^{zz, z0} with z0 fixed, i.e. the AA vector for a single site only. To use a PIBasis as the *actual* basis rather than an auxiliary one should wrap it (see bonds -- TODO!)
-* `dAA::Matrix{<: JVec}` with dimension basis-length x number of particles
+* `dAA::Matrix{<: ??}` with dimension basis-length x number of particles, the `eltype` is specified by what the derivatives of the states are. E.g. if the states are described by a `State` then `dAA::Matrix{<: DState}`
 
 We don't provide a detailed description here of the implementation, since it is already the final product. But we can summarize the functionality that is provided that can be used to construct further basis sets from it.
 
 
+### Generating a `OneParticleBasis` and `PIBasis` via `gen_sparse`
 
-## Generating a `OneParticleBasis` and `PIBasis` via `gen_sparse`
+TODO: explain how the basis sets are generated, and what options there are,
+      
 
-!!! note TODO
-      explain how the basis sets are generated, and what options there are,
-      discuss what a degree is etc.
+### Interface for degrees
 
+TODO: discuss what a degree is etc, what is the interface, the standard implementations 
 
 
 ## Properties and symmetries
@@ -215,7 +209,7 @@ satisfies
 ```math
    \varphi \circ Q = \varphi
 ```
-An equivariant Euclidean vector ``\varphi \in \mathbb{R}^3`` satisfies
+A covariant Euclidean vector ``\varphi \in \mathbb{R}^3`` satisfies
 ```math
    \varphi \circ Q = Q \varphi.
 ```
@@ -240,7 +234,9 @@ such as arithmetic operations.
 
 
 !!! note "TODO"
-      discuss the interface how the properties specify their symmetry
+      discuss the interface how the properties specify their symmetry. For the 
+      moment this can be looked up in `properties.jl`. It is done through the 
+      initial condition for the coupling coefficient recursion.
 
 ## The symmetric basis
 
@@ -252,8 +248,12 @@ from the density correlation basis ``\mathbf{A}`` to a symmetry adapted variant
 by computing all possible couplings of the spherical harmonics that produce
 the desired symmetry.
 ```math
- {\bm B} = C \cdot {\bm A}.
+ {\bm B} = \mathcal{U} \cdot {\bm A}.
 ```
-Note this relies on a specific choice of the one-particle basis; see references. The implementation of the ``C`` coefficients in `rotations3d.jl` is based on a numerical SVD as opposed to an analytic SVD.
+Note this relies on a specific choice of the one-particle basis; see references. The implementation of the ``\mathcal{U} `` coefficients in `rotations3d.jl` and `symmetrygroups.jl` is based on several numerical SVDs performed in small blocks. 
 
 The `RPIBasis` type stores only two fields: the `PIBasis` and the coefficients ``C``.
+
+### Specifying the symmetry on the 1-particle basis 
+
+TODO 

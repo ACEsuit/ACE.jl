@@ -14,22 +14,14 @@
 
 [Preliminary Documentation](https://acesuit.github.io/ACE.jl/dev/)
 
-This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, imposing permutation and isometry invariance.
-Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. There are also implementations of pure permutation invariant bases and of bases with only cylindrical symmetries for bond energies.
-Documentation is a work in progress; if you wish to use the code please contact the author.
+This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, such as permutation and isometry invariance.
+Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. Implementations of other symmetries are in preparation. 
 
 * Main new development towards full AD is on `dev-v0.12` branch
 * The `dev-v0.11` branch will be developed as needed for new features pre-AD, but otherwise will be just maintenance.
 * All previous branches are in maintenance mode.
 
-
-## References
-
-When using this software, please cite the following references
-
-* Drautz, R.: Atomic cluster expansion for accurate and transferable interatomic potentials. Phys. Rev. B Condens. Matter. 99, 014104 (2019). doi:10.1103/PhysRevB.99.014104
-
-* M. Bachmayr, G. Csanyi, G. Dusson, S. Etter, C. van der Oord, and C. Ortner. Approximation of potential energy surfaces with spherical harmonics. arXiv:1911.03550v2; [http](https://arxiv.org/abs/1911.03550) [PDF](https://arxiv.org/pdf/1911.03550.pdf)
+See [Documentation](https://acesuit.github.io/ACE.jl/dev/) for more details on ACE and for references. 
 
 
 ## License
