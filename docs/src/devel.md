@@ -16,7 +16,7 @@ The `ACE.jl` package heavily utilizes composition (as opposed to inheritance), w
 
 * `OneParticleBasis` : abstract supertype of a 1-particle basis
 * [`PIBasis`](@ref) : concrete implementation of a permutation-invariant basis, employing a `OneParticleBasis` and a specification of all possible correlations
-* [`SymmetricBasis`](@ref) : implementation of the "coupling" to achieve O(3) symmetries
+* [`SymmetricBasis`](@ref) : implementation of the "coupling" to achieve additional symmetries, e.g. O(3)
 * [`LinearACEModel`](@ref) : representation of one or more properties in terms of a basis.
 
 
@@ -131,11 +131,11 @@ of each index is the one-particle basis must implement `symbols` and `indexrange
       ```
 
 
-!!! note "TODO"
-    It could be worth enabling the possibility to overload `evaluate_d!(dPhi, basis1p, cfg)` for faster (e.g. AVXd) evaluation.
+!!! note "TODO - vectorisation"
+    It could be worth enabling the possibility to overload `evaluate_d!(dPhi, basis1p, cfg)` for faster evaluation, e.g. AVX, GPU acceleration. This hasn't been explored at all yet. 
 
 !!! warning "WARNING"
-    The gradient interface is not really done yet and may need more design work! The issue remaining is to decide how to manage the situation that gradient with only specific attributes of a state might be required but not w.r.t. the entire state. 
+    The gradient interface is not really done yet and may need more design work! The issue remaining is to decide how to manage the situation that gradient with only specific attributes of a state might be required but not w.r.t. the entire state. This is the main open problem in the current redesign of ACE.jl 
 
 
 
@@ -157,11 +157,10 @@ Components from which to build a `Product1pBasis` are listed below.
 
 ### Concrete Implementations of One-particle Bases
 
-<!-- provide links to docs -->
-* [`Rn1pBasis`](@ref)
-* [`Ylm1pBasis`](@ref)
-* [`Scal1pBasis`](@ref)
-* `ACEatoms.jl` provides also a species-1p-basis
+* [`Rn1pBasis`](@ref) : radial basis of type $$R_n(r)$$ wrapping an orthogonal polynomial basis in transformed coordinates. 
+* [`Ylm1pBasis`](@ref) : wrapping complex spherical harmonics 
+* [`Scal1pBasis`](@ref) : a generic scalar 1p basis component. It differs from `Rn1pBasis` in that it takes a scalar as input while `Rn1pBasis` takes a vector and transforms it to a scalar via `norm`. In hindsight, these two codes should probably be compined streamlined into a single one.
+* `ACEatoms.jl` provides also a species-1p-basis; see docs for ACEatoms.jl
 * wip: discrete, one-hot, Fourier, other symmetries
 
 ## Permutation-Invariant Basis
@@ -188,15 +187,14 @@ where the storage arrays are
 * `AA::Vector{<: Number}` : to store any AA_kk^{zz, z0} with z0 fixed, i.e. the AA vector for a single site only. To use a PIBasis as the *actual* basis rather than an auxiliary one should wrap it (see bonds -- TODO!)
 * `dAA::Matrix{<: ??}` with dimension basis-length x number of particles, the `eltype` is specified by what the derivatives of the states are. E.g. if the states are described by a `State` then `dAA::Matrix{<: DState}`
 
-We don't provide a detailed description here of the implementation, since it is already the final product. But we can summarize the functionality that is provided that can be used to construct further basis sets from it.
-
+There are two implementations for evaluating the a `PIBasis`, one based on explicitly going through the loop ``\prod_t``, the other on a recursive evaluation via a DAG (currently disabled). TODO: need to re-enable this, and add references.
 
 ### Generating a `OneParticleBasis` and `PIBasis` via `gen_sparse`
 
 TODO: explain how the basis sets are generated, and what options there are,
       
 
-### Interface for degrees
+### Interface for degrees (wip)
 
 TODO: discuss what a degree is etc, what is the interface, the standard implementations 
 
@@ -240,8 +238,9 @@ such as arithmetic operations.
 
 ## The symmetric basis
 
-A key aspect of `ACE.jl` is to treat permutation symmetry *AND* O(3) symmetries.
-Given a propert ``\varphi`` which has certain symmetries attached to it we want
+A key aspect of `ACE.jl` is to treat permutation symmetry *AND* additional possibly continuous symmetries, O(3) being the main prototype. Other symmetries are WIP, in particular general ``O(d)`` and  ``O(d1, d2)``, but we plan to also provide ``U(n)`` and maybe others. 
+
+Given a property ``\varphi`` which has certain symmetries attached to it we want
 to generate a basis ``\mathbf{B}`` which respects these symmetries as well.
 In `ACE.jl` this is provided by the `SymmetricBasis` type, which transforms
 from the density correlation basis ``\mathbf{A}`` to a symmetry adapted variant
@@ -254,6 +253,30 @@ Note this relies on a specific choice of the one-particle basis; see references.
 
 The `RPIBasis` type stores only two fields: the `PIBasis` and the coefficients ``C``.
 
+### Examples 
+
+* `Invariant` : ``\varphi \circ Q = \varphi`` 
+* `EuclideanVector` : ``\varphi \circ Q = Q \varphi``
+* `EuclideanMatrix` (wip) : ``\varphi \circ Q = Q \varphi Q^T`` 
+* `SphericalVector` : ``\varphi \circ Q = D(Q) \varphi``
+* `SphericalMatrix` : ``\varphi \circ Q = D(Q) \varphi D(Q)^T`` 
+
 ### Specifying the symmetry on the 1-particle basis 
 
-TODO 
+TODO : insert details. 
+
+At the moment this is done manually by specifying exactly what the symmetry group is and what basis indices it is acting on. This is all very much in prototype stages and there are likely more elegant ways to implement this. For details see `symmetrygroups.jl` and `test_multish.jl`. But just to give a taster: 
+```julia
+# standard / default: 
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D, )
+basis = SymmetricBasis(φ, B1p, O3(), ord, maxdeg; Deg = D)
+# Ylm with different indices 
+B1p_r = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D, 
+                                   varsym = :rr, idxsyms = (:nr, :lr, :mr))
+basis_r = SymmetricBasis(φ, B1p_r, O3(:lr, :mr), ord, maxdeg; Deg = D)
+# Magnetism without spin-orbit coupling 
+B1p_r = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D, 
+                                   varsym = :rr, idxsyms = (:nr, :lr, :mr))
+B1p_s = ACE.Ylm1pBasis(maxdeg; varsym = :ss, lsym = :ls, msym = :ms)
+basis = SymmetricBasis(φ, B1p_r * B1p_s, O3(:lr, :mr) ⊗ O3(:ls, :ms), ord, maxdeg; Deg = D)
+```

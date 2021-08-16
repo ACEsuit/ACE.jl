@@ -10,16 +10,17 @@
 
 <!-- [![Codecov](https://codecov.io/gh/JuliaMolSim/ACE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMolSim/ACE.jl) -->
 
-**This is currently a development branch of ACE. For the latest stable version see [DEV-v0.8.x](https://github.com/ACEsuit/ACE.jl/tree/dev-v0.8.x)**
-
-[Preliminary Documentation](https://acesuit.github.io/ACE.jl/dev/)
+Notes: 
+* This is currently a development branch of ACE. For the latest stable version see [DEV-v0.8.x](https://github.com/ACEsuit/ACE.jl/tree/dev-v0.8.x)
+* The tests are failing right now, but this appears to be a bug in the tests, not in the code; to be fixed soon.
+* [Preliminary Documentation](https://acesuit.github.io/ACE.jl/dev/), WIP.
 
 This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, such as permutation and isometry invariance.
 Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. Implementations of other symmetries are in preparation. 
 
-* Main new development towards full AD is on `dev-v0.12` branch
-* The `dev-v0.11` branch will be developed as needed for new features pre-AD, but otherwise will be just maintenance.
-* All previous branches are in maintenance mode.
+* Main new development towards full AD is on `main=dev-v0.12` branch 
+* AD is still a WIP, but expect this to be ready soon
+* All previous branches are now in maintenance mode.
 
 See [Documentation](https://acesuit.github.io/ACE.jl/dev/) for more details on ACE and for references. 
 
