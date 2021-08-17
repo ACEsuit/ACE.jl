@@ -49,12 +49,12 @@ end
 println()
 
 
-@info("grad_params")
-#for now grad_params only gets B ONCE, we could copy it multiple times.
-for i in 1:length(c_m[1])
-    print_tf(@test(getproperty.(ACE.grad_params(singlProp[i],cfg),:val) ≈ getproperty.(ACE.grad_params(multiProp,cfg)[:,i],:val)))
-end
-println()
+# @info("grad_params")
+# #for now grad_params only gets B ONCE, we could copy it multiple times.
+# for i in 1:length(c_m[1])
+#     print_tf(@test(getproperty.(ACE.grad_params(singlProp[i],cfg),:val) ≈ getproperty.(ACE.grad_params(multiProp,cfg)[:,i],:val)))
+# end
+# println()
 
 
 @info("grad_config")

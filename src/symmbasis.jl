@@ -306,6 +306,27 @@ function genmul!(C, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B, mulop)
    return C
 end
 
+#dispatching for SVectors
+#here we simply pass a coppy or a fill() or the mulop to every
+#property on the SVector.
+function genmul!(C::AbstractVector{<: SVector}, A::AbstractSparseMatrixCSC, B, mulop)
+   size(A, 2) == size(B, 1) || throw(DimensionMismatch())
+   size(A, 1) == size(C, 1) || throw(DimensionMismatch())
+   size(B, 2) == size(C, 2) || throw(DimensionMismatch())
+   nzv = nonzeros(A)
+   rv = rowvals(A)
+   fill!(C, zero(eltype(C)))
+   for k in 1:size(C, 2)
+       @inbounds for col in 1:size(A, 2)
+           αxj = B[col,k]
+           for j in nzrange(A, col)
+               mop = mulop(nzv[j], αxj)
+               C[rv[j], k] += mop * ones(SVector{length(C[1]),eltype(mop)})
+           end
+       end
+   end
+   return C
+end
 
 # ---------------- Evaluation code
 

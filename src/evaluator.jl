@@ -67,19 +67,19 @@ end
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) = 
    acquire!(basis.B_pool, len_AA, SVector{length(c[1]),eltype(basis.A2Bmap)})
 
-_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector) = 
+_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
    acquire!(basis.B_pool, len_AA)
 
 _alloc_ctilde(basis::SymmetricBasis,c::AbstractVector{<: SVector}) = 
    zeros(SVector{length(c[1]),eltype(basis.A2Bmap)}, size(basis.A2Bmap, 2))
    
-_alloc_ctilde(basis::SymmetricBasis,c::AbstractVector) = 
+_alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
    zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
 _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
    zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
    
-_alloc_dAco(dAAdA, A, c̃::AbstractVector) = 
+_alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
    zeros(eltype(dAAdA), length(A))
 
 

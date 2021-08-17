@@ -96,24 +96,19 @@ release_grad_config!(m::LinearACEModel, g) = nothing
       #release!(m.grad_cfg_pool, g)
 
 acquire_grad_params!(m::LinearACEModel, args...) = 
-      alloc_B!(m.basis, m.c, args...)
-
-#This probably needs adjusting since we are now alocating a matrix
-function alloc_B!(basis::ACEBasis, c::AbstractVector , args...) 
-   VT = valtype(basis, args...)
-   return Matrix{VT}(undef, length(basis), length(c[1]))
-end
-
-# function acquire_B!(basis::ACEBasis, c::AbstractVector , args...) 
-#    VT = valtype(basis, args...)
-#    if hasproperty(basis, :B_pool)
-#       return acquire!(basis.B_pool, length(basis), VT)
-#    end 
-#    return Vector{VT}(undef, length(basis))
-# end
+      acquire_B!(m.basis, args...)
 
 release_grad_params!(m::LinearACEModel, g) = 
       release_B!(m.basis, g)
+
+
+function ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: SVector})
+   return SVector{length(c[1]), valtype(basis, zero(eltype(cfg)))}
+end
+#calls the regular valtype
+ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
+      valtype(basis, cfg)
+
 
 # ------------------- dispatching on the evaluators 
 
@@ -127,12 +122,10 @@ grad_config!(g, m::LinearACEModel, X::AbstractConfiguration) =
       grad_config!(g, m, m.evaluator, X) 
 
 grad_params(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      grad_params!(acquire_grad_params!(m, cfg), m, cfg)
+      grad_params!(acquire_grad_params!(m, cfg, m.c), m, cfg)
 
 function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
-   for i in 1:size(g,2)
-      g[:,i] = evaluate!(g[:,i], m.basis, cfg)
-   end 
+   evaluate!(g, m.basis, cfg) 
    return g 
 end
 
