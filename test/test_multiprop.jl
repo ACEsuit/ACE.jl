@@ -59,21 +59,11 @@ println()
 
 @info("grad_config")
 
-function config_dist_eq(A,B)
-    pass = true
-    for i in 1:length(A)
-        if(A[i].rr != B[i].rr)
-            pass = false
-        end
-    end
-    return pass
-end
-
 for i in 1:length(c_m[1])
     singl = ACE.grad_config(singlProp[i],cfg)
     multi = ACE.grad_config(multiProp,cfg)[:,i]
 
-    print_tf(@test(config_dist_eq(singl, multi)))
+    print_tf(@test(singl ≈ multi))
 end
 println()
 
@@ -83,6 +73,6 @@ for i in 1:length(c_m[1])
     singl = ACE.grad_params_config(singlProp[i],cfg)[1]
     multi = ACE.grad_params_config(multiProp,cfg)[i]
 
-    print_tf(@test(config_dist_eq(singl, multi)))
+    print_tf(@test(singl ≈ multi))
 end
 println()
