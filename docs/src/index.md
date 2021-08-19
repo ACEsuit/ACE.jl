@@ -15,6 +15,7 @@ The original implemention was based on the Atomic Cluster Expansion (ACE) descri
 
 ```@contents
 Pages = ["gettingstarted.md",
+         "math.md", 
          "devel.md",
          "docs.md"]
 Depth = 2

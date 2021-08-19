@@ -5,6 +5,8 @@ using Combinatorics: permutations
 using LinearAlgebra: rank, svd, Diagonal
 
 
+
+
 """
 `struct SymmetricBasis`
 
@@ -25,9 +27,10 @@ SymmetricBasis(φ, basis1p, maxν, maxdeg;
 will first construct a `PIBasis` from these inputs and then call the first
 constructor.
 """
-struct SymmetricBasis{BOP, PROP, REAL, VPROP} <: ACEBasis
+struct SymmetricBasis{BOP, PROP, SYM, REAL, VPROP} <: ACEBasis
    pibasis::PIBasis{BOP}
    A2Bmap::SparseMatrixCSC{PROP, Int}
+   symgrp::SYM
    real::REAL
    B_pool::VectorPool{VPROP}
 end
@@ -51,7 +54,8 @@ end
 
 # weird hacky name to avoid clashes 
 # TODO: there must be a more elegant way to do this 
-#       come to think of it, why did we do this in the first place???
+#       come to think of it, why did we do this in the first place???3    
+#       .... I still don't remember, need to start documenting better ... 
 _myreal1234(a, ::typeof(Base.identity)) = a
 _myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)
 
@@ -66,18 +70,29 @@ write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
       Dict( "__id__" => "ACE_SymmetricBasis",
             "pibasis" => write_dict(B.pibasis),
             "A2Bmap" => write_dict(B.A2Bmap),
+            "symgrp" => write_dict(B.symgrp), 
             "isreal" => (B.real == Base.real) )
 
 read_dict(::Val{:ACE_SymmetricBasis}, D::Dict) =
       SymmetricBasis(read_dict(D["pibasis"]),
                      read_dict(D["A2Bmap"]),
+                     read_dict(D["symgrp"]), 
                      (D["isreal"] ? Base.real : Base.identity) )
 # --------
 
-SymmetricBasis(φ::AbstractProperty, args...; isreal=false, kwargs...) =
-      SymmetricBasis(PIBasis(args...; kwargs..., property = φ), φ; isreal=isreal)
+SymmetricBasis(φ::AbstractProperty, 
+               basis1p::OneParticleBasis, 
+               symgrp::SymmetryGroup, 
+               maxν::Integer, 
+               maxdeg::Real; 
+               isreal=false, kwargs...) =
+      SymmetricBasis(φ, symgrp, 
+                     PIBasis(basis1p, symgrp, maxν, maxdeg; 
+                             kwargs..., property = φ); 
+                     isreal=isreal)
 
-function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
+function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis; 
+                        isreal=false) where {TP}
 
    # AA index -> AA spec
    AAspec = get_spec(pibasis)
@@ -92,11 +107,6 @@ function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
       invAspec[A] = iA
    end
 
-   # FUTURE: here we could analyze the different symbols and choose
-   # which ones are of the "m"-type. e.g. there might be m1, m2 symbols. We
-   # could create the convention that any symbol starting with m will be
-   # treated like an m from the Ylm basis...
-
    # allocate the datastructure that computes and caches the
    # coupling coefficients
    # TODO: should this be stored with the basis?
@@ -110,20 +120,17 @@ function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
 
    # loop through AA basis, but skip most of them ...
    for (iAA, AA) in enumerate(AAspec)
-      # AA = [b1, b2, ...], each bi = (n = ..., l = .., m = ...)
-      # skip it unless all m are zero, because we want to consider each
-      # (nn, ll, ...) block only once.
-      # the loop over all possible `mm` must be taken care of inside
-      # the `coupling_coeffs` implementation
-      if !all(b.m == 0 for b in AA)
-         continue
-      end
-      # get the coupling coefficients
-      # here, we could help out a bit and make it easier to find the
-      # the relevant basis functions?
-      # AAcols will be in spec format i.e. named tuples
-      U, AAcols = coupling_coeffs(AA, rotc)
-      # loop over the rows of U -> each specifies a basis function
+      # determine whether we need to compute coupling coefficients for this 
+      # basis function or whether it will be included in a different 
+      # coco computation? 
+      if !is_refbasisfcn(symgrp, AA)
+         continue 
+      end 
+      # compute the cocos 
+      U, AAcols = coupling_coeffs(symgrp, AA, rotc)
+
+      # loop over the rows of U -> each specifies a basis function which we now 
+      # need to incorporate into the basis
       for irow = 1:size(U, 1)
          idxB += 1
          # loop over the columns of U / over brows
@@ -148,13 +155,13 @@ function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
    # TODO: filter and throw out everything that hasn't been used!!
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
-   return SymmetricBasis(pibasis, A2Bmap, isreal ? Base.real : Base.identity)
+   return SymmetricBasis(pibasis, A2Bmap, symgrp, isreal ? Base.real : Base.identity)
 end
 
-function SymmetricBasis(pibasis, A2Bmap, _real) 
+function SymmetricBasis(pibasis, A2Bmap, symgrp, _real) 
    PROP = _real(eltype(A2Bmap))
    B_pool = VectorPool{PROP}() 
-   return SymmetricBasis(pibasis, A2Bmap, _real, B_pool)
+   return SymmetricBasis(pibasis, A2Bmap, symgrp, _real, B_pool)
 end
 
 
@@ -167,95 +174,19 @@ function _get_ordered(bb, invAspec)
 end
 
 
-function coupling_coeffs(bb, rotc::Rot3DCoeffs)
-   # bb = [ b1, b2, b3, ...)
-   # bi = (μ = ..., n = ..., l = ..., m = ...)
-   #    (μ, n) -> n; only the l and m are used in the angular basis
-   if length(bb) == 0
-      # return [1.0,], [bb,]
-		error("correlation order 0 is currently not allowed")
+# ------------------- exporting the basis spec 
+
+# this doesn't provide the "full" specification, just collects 
+# the n and l but not the m or coupling coefficients. 
+
+function get_spec(basis::SymmetricBasis)
+   spec_AA = get_spec(basis.pibasis)
+   spec_B = [] 
+   for iB = 1:length(basis)
+      iAA = findfirst(norm.(basis.A2Bmap[iB, :]) .!= 0)
+      push!(spec_B, get_sym_spec(basis.symgrp, spec_AA[iAA]))
    end
-   # convert to a format that the Rotations3D implementation can understand
-   # this utility function splits the bb = (b1, b2 ...) with each
-   # b1 = (μ = ..., n = ..., l = ..., m = ...) into
-   #    l, and a new n = (μ, n)
-   ll, nn = _b2llnn(bb)
-   # now we can call the coupling coefficient construiction!!
-   U, Ms = rpe_basis(rotc, nn, ll)
-
-   # but now we need to convert the m spec back to complete basis function
-   # specifications
-   rpebs = [ _nnllmm2b(bb[1], nn, ll, mm) for mm in Ms ]
-
-   return U, rpebs
-end
-
-
-function rpe_basis(A::Rot3DCoeffs,
-						 nn::SVector{N, TN},
-						 ll::SVector{N, Int}) where {N, TN}
-	Ure, Mre = Rotations3D.re_basis(A, ll)
-	G = _gramian(nn, ll, Ure, Mre)
-   S = svd(G)
-   rk = rank(Diagonal(S.S); rtol =  1e-7)
-	Urpe = S.U[:, 1:rk]'
-	return Diagonal(sqrt.(S.S[1:rk])) * Urpe * Ure, Mre
-end
-
-
-function _gramian(nn, ll, Ure, Mre)
-   N = length(nn)
-   nre = size(Ure, 1)
-   G = zeros(Complex{Float64}, nre, nre)
-   for σ in permutations(1:N)
-      if (nn[σ] != nn) || (ll[σ] != ll); continue; end
-      for (iU1, mm1) in enumerate(Mre), (iU2, mm2) in enumerate(Mre)
-         if mm1[σ] == mm2
-            for i1 = 1:nre, i2 = 1:nre
-               G[i1, i2] += coco_dot(Ure[i1, iU1], Ure[i2, iU2])
-            end
-         end
-      end
-   end
-   return G
-end
-
-
-
-_nnllmm2b(b, nn, ll, mm) = [ _nlm2b(b, n, l, m) for (n, l, m) in zip(nn, ll, mm) ]
-
-@generated function _nlm2b(b::NamedTuple{ALLKEYS}, n::NamedTuple{NKEYS}, l, m) where {ALLKEYS, NKEYS}
-   code =
-      ( "( _b = (" * prod("$(k) = n.$(k), " for k in NKEYS) * "l = l, m = m ); "
-         *
-        " b = (" * prod("$(k) = _b.$(k), " for k in ALLKEYS) * ") )" )
-   :( $(Meta.parse(code)) )
-end
-
-
-function _b2llnn(bb)
-   @assert all( iszero(b.m) for b in bb )
-   ll = SVector( [b.l for b in bb]... )
-   nn = SVector( [_all_but_lm(b) for b in bb]... )
-   return ll, nn
-end
-
-"""
-return a names tuple containing all values in b except those corresponding
-to l and m keys
-"""
-@generated function _all_but_lm(b::NamedTuple{NAMES}) where {NAMES}
-   code = "n = ("
-   for k in NAMES
-      if !(k in [:l, :m])
-         code *= "$(k) = b.$(k), "
-      end
-   end
-   code *= ")"
-   quote
-      $(Meta.parse(code))
-      n
-   end
+   return identity.(spec_B)
 end
 
 # ---------------- A modified sparse matmul

@@ -7,6 +7,7 @@ makedocs(sitename="ACE.jl Documentation",
          pages = [
         "Home" => "index.md",
         "Getting Started" => "gettingstarted.md",
+        "Math" => "math.md",
         "Developer Docs" => "devel.md",
         "Types & Functions" => "docs.md"
          ])
