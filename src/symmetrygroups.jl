@@ -18,6 +18,11 @@ abstract type SymmetryGroup end
 permutation symmetry already baked into the AA basis.
 """
 
+"""
+`struct NoSym <: SymmetryGroup` : no symmetry beyond the standard 
+permutation symmetry. This is currently not used, but could be incorporated 
+to provide a more streamlined experience for the user. 
+"""
 struct NoSym <: SymmetryGroup 
 end 
 
@@ -164,6 +169,25 @@ end
 # this is a preliminary implementation; eventually we may want a more 
 # general description composition of arbitrary isometry combinations 
 
+"""
+`struct O3O3 <: SymmetryGroup` : This type implements the ``O(3,3)`` symmetry 
+group. This is useful when a particle has two euclidean vector attributes, say 
+``{\\bm r}`` and ``{\\bm s}`` and the action of the group on the pair is 
+```math 
+   (Q_r, Q_s)[ (\\boldsymbol{r}, \\boldsymbol{s}) ] = (Q_r \\boldsymbol{r}, Q_s \\boldsymbol{s})
+```
+A canA canonical application is magnetism: it is known that spin-orbit coupling 
+is a very weak effect. By ignoring it, i.e., letting positions and spins rotate 
+independently of one another, one makes a small modelling error. This leads 
+precisely to the ``O(3,3)`` symmetry. 
+
+To construct this group, use 
+```julia
+symgrp = O3(:lr, :mr) ⊗ O3(:ls, :ms)
+```
+or replace those symbols with the appropriate symbols used to specify the 
+corresponding `Ylm1pbasis` objects. 
+"""
 struct O3O3{LSYM1, MSYM1, LSYM2, MSYM2} <: SymmetryGroup
    G1::O3{LSYM1, MSYM1} 
    G2::O3{LSYM2, MSYM2}
