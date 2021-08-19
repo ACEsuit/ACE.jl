@@ -1,7 +1,7 @@
 
-# this module is currently only used for setup and testing covariance properties 
-# the spherically covariant ACE basis. There are few/no optimisations for 
-# performance. 
+# this module is currently only used for setup and testing covariance properties
+# the spherically covariant ACE basis. There are few/no optimisations for
+# performance.
 module Wigner
 
 using StaticArrays
@@ -24,15 +24,10 @@ end
 """
 auxiliary matrix - indices for D matrix
 """
-rotation_D_matrix(L::Integer) = (   @assert L >= 0; 
+wigner_D_indices(L::Integer) = (   @assert L >= 0;
 		[ D_Index(1, i - 1 - L, j - 1 - L) for j = 1:2*L+1, i = 1:2*L+1] )
 
-"""
-auxiliary matrix - indices for D matrix
-"""
-rotation_D_matrix_ast(L) = (  @assert L >= 0;
-		[ D_Index((-1)^(i+j), -(i-1-L), -(j-1-L)) for i = 1:2*L+1, j = 1:2*L+1 ] )
-
+Base.adjoint(idx::D_Index) = D_Index( (-1)^(idx.μ+idx.m), - idx.μ, - idx.m)
 
 """
 One entry of the Wigner-big-D matrix, `[D^l]_{mu, m}`
@@ -42,7 +37,7 @@ wigner_D(μ,m,l,α,β,γ) = (exp(-im*α*m) * wigner_d(m,μ,l,β)  * exp(-im*γ*�
 
 
 """
-One entry of the Wigner-small-d matrix, 
+One entry of the Wigner-small-d matrix,
 
 Wigner small d, modified from
 ```
@@ -84,7 +79,7 @@ mat2ang(Q) = mod(atan(Q[2,3],Q[1,3]),2pi), acos(Q[3,3]), mod(atan(Q[3,2],-Q[3,1]
 
 
 function wigner_D(L::Integer, Q::AbstractMatrix)
-	D = rotation_D_matrix(L);
+	D = wigner_D_indices(L);
 	α, β, γ = mat2ang(Q);
 	Mat_D = [ wigner_D(D[i,j].μ, D[i,j].m, L, α, β, γ)
 			    for i = 1:2*L+1, j = 1:2*L+1 ]
@@ -96,7 +91,7 @@ end
 function rand_QD(L::Integer)
 	# random rotation matrix, reflection
 	Q, σ = rand_rot(), rand_refl()
-	# return resulting D matrix 
+	# return resulting D matrix
 	return σ * Q, σ^L * wigner_D(L, Q)
 end
 

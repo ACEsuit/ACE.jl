@@ -1,31 +1,28 @@
 # ACE.jl
 
-[![tests](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml/badge.svg)](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml)
+<!-- [![tests](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml/badge.svg)](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml) -->
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ACEsuit/ACE.jl/Tests) [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://acesuit.github.io/ACE.jl/dev/) 
+<!-- [![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://libatoms.github.io/ExtXYZ.jl/stable) -->
+<!-- [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/ACEsuit/ACE.jl/dev) -->
+
 
 <!-- [![Build Status](https://travis-ci.com/JuliaMolSim/ACE.jl.svg?branch=master)](https://travis-ci.com/JuliaMolSim/ACE.jl) -->
 
 <!-- [![Codecov](https://codecov.io/gh/JuliaMolSim/ACE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMolSim/ACE.jl) -->
 
-**This is currently a development branch of ACE. For the latest stable version see [DEV-v0.8.x](https://github.com/ACEsuit/ACE.jl/tree/dev-v0.8.x)**
+Notes: 
+* This is currently a development branch of ACE. For the latest stable version see [DEV-v0.8.x](https://github.com/ACEsuit/ACE.jl/tree/dev-v0.8.x)
+* The tests are failing right now, but this appears to be a bug in the tests, not in the code; to be fixed soon.
+* [Preliminary Documentation](https://acesuit.github.io/ACE.jl/dev/), WIP.
 
-[Preliminary Documentation](https://acesuit.github.io/ACE.jl/dev/)
+This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, such as permutation and isometry invariance.
+Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. Implementations of other symmetries are in preparation. 
 
-This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, imposing permutation and isometry invariance.
-Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. There are also implementations of pure permutation invariant bases and of bases with only cylindrical symmetries for bond energies.
-Documentation is a work in progress; if you wish to use the code please contact the author.
+* Main new development towards full AD is on `main=dev-v0.12` branch 
+* AD is still a WIP, but expect this to be ready soon
+* All previous branches are now in maintenance mode.
 
-* Main new development towards full AD is on `dev-v0.12` branch
-* The `dev-v0.11` branch will be developed as needed for new features pre-AD, but otherwise will be just maintenance.
-* All previous branches are in maintenance mode.
-
-
-## References
-
-When using this software, please cite the following references
-
-* Drautz, R.: Atomic cluster expansion for accurate and transferable interatomic potentials. Phys. Rev. B Condens. Matter. 99, 014104 (2019). doi:10.1103/PhysRevB.99.014104
-
-* M. Bachmayr, G. Csanyi, G. Dusson, S. Etter, C. van der Oord, and C. Ortner. Approximation of potential energy surfaces with spherical harmonics. arXiv:1911.03550v2; [http](https://arxiv.org/abs/1911.03550) [PDF](https://arxiv.org/pdf/1911.03550.pdf)
+See [Documentation](https://acesuit.github.io/ACE.jl/dev/) for more details on ACE and for references. 
 
 
 ## License

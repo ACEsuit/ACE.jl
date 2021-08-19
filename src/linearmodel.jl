@@ -15,6 +15,10 @@
 # Another advantage is that model, and full model construction are all stored 
 # together for future inspection.
 
+"""
+`struct LinearACEModel`: linear model for symmetric properties in terms of 
+a `SymmetricBasis`. 
+"""
 struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel 
    basis::TB
    c::Vector{TP}
