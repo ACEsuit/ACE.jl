@@ -1,4 +1,4 @@
-
+using NamedTupleTools: namedtuple
 
 # -------------- Implementation of Product Basis
 
@@ -46,14 +46,32 @@ Base.length(basis::Product1pBasis) = length(basis.spec)
 write_dict(B::Product1pBasis) = 
       Dict("__id__" => "ACE_Product1pBasis", 
             "bases" => write_dict.(B.bases), 
-             "spec" => convert.(Ref(Dict), B.spec),
+             "spec" => _write_dict_1pspec(B.spec), 
           "indices" => B.indices )
 
 function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
    bases = tuple( read_dict.(D["bases"])... )
-   spec = namedtuple.( D["spec"] )
+   spec = _read_dict_1pspec(D["spec"])
    indices = [ tuple(v...) for v in D["indices"] ]
    return Product1pBasis(bases, spec, indices)
+end
+
+# the following two functions are a little hack to make sure 
+# that the basis spec is read in the same symbol-order as it is written
+# (since dicts don't have a specified ordering...)
+
+function _write_dict_1pspec(spec::Vector{NamedTuple{SYMS, NTuple{NSYM, Int}}}) where {SYMS, NSYM}
+   inds = Vector{Int}[]
+   for b in spec 
+      vals = [getproperty(b, sym) for sym in SYMS]
+      push!(inds, vals)
+   end 
+   return Dict("SYMS" => [ string.(SYMS)... ], "inds" => inds)
+end
+
+function _read_dict_1pspec(D::Dict)
+   NTPROTO = namedtuple(D["SYMS"]...)
+   return [ NTPROTO(binds) for binds in D["inds"] ]
 end
 
 
