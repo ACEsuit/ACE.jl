@@ -11,6 +11,7 @@ import LinearAlgebra: norm, promote_leaf_eltypes
       T(a * φ.val)
 @inline *(φ::T, a::Union{Number, AbstractMatrix}) where {T <: AbstractProperty} =
       T(φ.val * a)
+
 @inline norm(φ::AbstractProperty) = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
@@ -57,6 +58,7 @@ struct Invariant{T} <: AbstractProperty
    val::T
 end
 
+Base.show(io::IO, φ::Invariant) = print(io, "i($(φ.val))")
 
 
 Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))
@@ -70,6 +72,8 @@ complex(φ::AbstractVector{<: Invariant}) = complex.(φ)
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
 
+*(φ1::Invariant, φ2::Invariant) = Invariant(φ1.val * φ2.val)
+
 write_dict(φ::Invariant{T})  where {T} =
    Dict("__id__" => "ACE_Invariant",
         "val" => φ.val,
@@ -78,8 +82,27 @@ write_dict(φ::Invariant{T})  where {T} =
 read_dict(::Val{:ACE_Invariant}, D::Dict) =
       Invariant{read_dict(D["T"])}(D["val"])
 
-filter(φ::Invariant, b::Array) = ( length(b) <= 1 ? true :
-     iseven(sum(bi.l for bi in b)) && iszero(sum(bi.m for bi in b))  )
+_is_l(sym::Symbol) = (string(sym)[1] == 'l')
+_is_m(sym::Symbol) = (string(sym)[1] == 'm')
+
+
+function filter(φ::Invariant, b::Array) 
+   if length(b) <= 1
+      return true 
+   end 
+   suml = 0 
+   summ = 0 
+   for bi in b 
+      for (sym, val) in pairs(bi)
+         if _is_l(sym)
+            suml += val 
+         elseif _is_m(sym) 
+            summ += val 
+         end 
+      end
+   end 
+   return iseven(suml) && iszero(summ)
+end
 
 rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 

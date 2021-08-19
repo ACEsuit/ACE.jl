@@ -39,19 +39,23 @@ function Rn_basis(;
       rin = 0.5 * r0,
       pcut = 2,
       pin = 0,
-      constants = false)
+      constants = false, 
+      varsym = :rr, 
+      nsym = :n)
 
    J = transformed_jacobi(maxdeg, trans, rcut, rin; pcut=pcut, pin=pin)
-   return Rn1pBasis(J)
+   return Rn1pBasis(J, varsym = varsym, nsym = nsym)
 end
 
 @doc raw"""
 Construct a ``R_n * Y_l^m`` 1-particle basis.
 All arguments are keyword arguments; see documentation of `ACE.Utils.Rn_basis`.
 """
-function RnYlm_1pbasis(; init = true, Deg = NaiveTotalDegree(), maxdeg=6, kwargs...)
-   Rn = Rn_basis(; maxdeg = maxdeg, kwargs...)
-   Ylm = Ylm1pBasis(maxdeg)
+function RnYlm_1pbasis(; init = true, Deg = NaiveTotalDegree(), maxdeg=6, 
+               varsym = :rr, idxsyms = (:n, :l, :m), kwargs...)
+   Rn = Rn_basis(; maxdeg = maxdeg, varsym = varsym, nsym = idxsyms[1],
+                   kwargs...)
+   Ylm = Ylm1pBasis(maxdeg, varsym = varsym, lsym = idxsyms[2], msym = idxsyms[3])
    B1p = ACE.Product1pBasis((Rn, Ylm))
    if init 
       init1pspec!(B1p, Deg = Deg, maxdeg = maxdeg)
