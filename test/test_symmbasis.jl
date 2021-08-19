@@ -5,7 +5,7 @@
 
 using ACE
 using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
-using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
+using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis, O3
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest
 using ACE.Testing: __TestSVec
@@ -34,9 +34,9 @@ cfg = ACEConfig(Xs)
 @info("SymmetricBasis construction and evaluation: Invariant Scalar")
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
-basis = SymmetricBasis(pibasis, φ)
-@time SymmetricBasis(pibasis, φ);
+pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
+basis = SymmetricBasis(φ, O3(), pibasis)
+@time SymmetricBasis(φ, O3(), pibasis);
 
 BB = evaluate(basis, cfg)
 
@@ -109,9 +109,9 @@ for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalVector(L; T = ComplexF64)
-   pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-   basis = SymmetricBasis(pibasis, φ)
-   @time SymmetricBasis(pibasis, φ);
+   pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ, isreal = false)
+   basis = SymmetricBasis(φ, O3(), pibasis)
+   @time SymmetricBasis(φ, O3(), pibasis);
    BB = evaluate(basis, cfg)
 
    Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
@@ -163,9 +163,9 @@ for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
-   pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal = false)
-   basis = SymmetricBasis(pibasis, φ)
-   @time basis = SymmetricBasis(pibasis, φ)
+   pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ, isreal = false)
+   basis = SymmetricBasis(φ, O3(), pibasis)
+   @time basis = SymmetricBasis(φ, O3(), pibasis)
    BB = evaluate(basis, cfg)
 
    for ntest = 1:30
@@ -200,11 +200,12 @@ for L = 0:3
    @info "L = $L"
    local Xs, cfg 
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
-   pibasis1 = PIBasis(B1p, ord, maxdeg; property = φ1, isreal = false)
-   basis1 = SymmetricBasis(pibasis1, φ1)
+   pibasis1 = PIBasis(B1p, O3(), ord, maxdeg; property = φ1, isreal = false)
+   basis1 = SymmetricBasis(φ1, O3(), pibasis)
+
    φ2 = ACE.SphericalMatrix(L, 0; T = ComplexF64)
-   pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
-   basis2 = SymmetricBasis(pibasis2, φ2)
+   pibasis2 = PIBasis(B1p, O3(), ord, maxdeg; property = φ2, isreal = false)
+   basis2 = SymmetricBasis(φ2, O3(), pibasis)
 
    for ntest = 1:30
       Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
@@ -222,11 +223,11 @@ end
 @info("Consistency between Invariant Scalar & SphericalMatrix")
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
-basis = SymmetricBasis(pibasis, φ)
+pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
+basis = SymmetricBasis(φ, O3(), pibasis)
 φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
-pibasis2 = PIBasis(B1p, ord, maxdeg; property = φ2, isreal = false)
-basis2 = SymmetricBasis(pibasis2, φ2)
+pibasis2 = PIBasis(B1p, O3(), ord, maxdeg; property = φ2, isreal = false)
+basis2 = SymmetricBasis(φ2, O3(), pibasis2)
 
 for ntest = 1:30
    local Xs, cfg, BB 

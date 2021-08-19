@@ -280,3 +280,25 @@ B1p_r = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D,
 B1p_s = ACE.Ylm1pBasis(maxdeg; varsym = :ss, lsym = :ls, msym = :ms)
 basis = SymmetricBasis(φ, B1p_r * B1p_s, O3(:lr, :mr) ⊗ O3(:ls, :ms), ord, maxdeg; Deg = D)
 ```
+
+
+## Linear ACE Model 
+
+A basis can be used to define a linear ACE model (and linear ACE models can then be composed to make up nonlinear ACE models, this will be discussed elsewhere.). 
+In `ACE.jl` this is achieved as follows: after constructing a `basis::SymmetricBasis` following the instructions above, one then has to supply a coefficient vector `c`. Then a linear ACE model is obtained by calling 
+```julia
+model = LinearACEModel(basis, c)
+```
+
+An important comment is that one can also produce multiple properties with a single basis but different coefficients. See the docstring for [`LinearACEModel`](@ref) for more details. 
+
+An ACE model can be evaluated as follows: 
+* `evaluate(model, cfg)`
+* `grad_config(model, cfg)` : gradient w.r.t. configurations (e.g. forces)
+* `grad_params(model, cfg)` : gradient w.r.t. parameters
+
+We are also in the process of completing `rrules` for the linear ACE model so that it can be composed or incorporated into a loss and then automatically differentiated. A good place to explore how to work with `LinearACEModel` are `test_linearmodel.jl` and `test_multiprop.jl`.
+
+## Evaluators 
+
+TODO 

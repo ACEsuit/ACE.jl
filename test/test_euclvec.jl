@@ -28,9 +28,9 @@ cfg = ACEConfig(Xs)
 
 
 φ = ACE.EuclideanVector(Complex{Float64})
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ, isreal=false)
-basis = SymmetricBasis(pibasis, φ; isreal=true)
-@time SymmetricBasis(pibasis, φ; isreal=true);
+pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ, isreal=false)
+basis = SymmetricBasis(φ, O3(), pibasis; isreal=true)
+@time SymmetricBasis(φ, O3(), pibasis; isreal=true)
 
 BB = evaluate(basis, cfg)
 
@@ -69,7 +69,7 @@ println()
 
 @info("Test equivariance properties for complex version")
 
-basis = SymmetricBasis(pibasis, φ; isreal=false)
+basis = SymmetricBasis(φ, O3(), pibasis; isreal=false)
 # a stupid but necessary test
 BB = evaluate(basis, cfg)
 BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)

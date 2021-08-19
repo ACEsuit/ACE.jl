@@ -17,13 +17,15 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
 # generate a configuration
 nX = 54
-Xs() = ACE.State(rr = rand(SVector{3, Float64}), u = rand())
+Xs = () -> ACE.State(rr = rand(SVector{3, Float64}), u = rand())
 cfg = ACEConfig([Xs() for i in 1:nX])
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
-basis = SymmetricBasis(pibasis, φ)
-       
+pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
+basis = SymmetricBasis(φ, O3(), pibasis)
+
+##
+
 BB = evaluate(basis, cfg)
 
 c_m = rand(SVector{7,Float64}, length(BB))
@@ -41,6 +43,8 @@ for i in 1:length(c_m[1])
 end
 println()
 
+##
+
 @info("evaluate")
 
 for i in 1:length(c_m[1])
@@ -56,6 +60,7 @@ println()
 # end
 # println()
 
+##
 
 @info("grad_config")
 
@@ -66,6 +71,9 @@ for i in 1:length(c_m[1])
     print_tf(@test(singl ≈ multi))
 end
 println()
+
+##
+
 
 @info("grad_params_config")
 

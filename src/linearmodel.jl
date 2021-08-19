@@ -18,6 +18,20 @@
 """
 `struct LinearACEModel`: linear model for symmetric properties in terms of 
 a `SymmetricBasis`. 
+
+The typical way to construct a linear model is to first construct a basis 
+`basis`, some default coefficients `c` and then call 
+```julia
+model = LinearACEModel(basis, c)
+```
+
+### Multiple properties 
+
+If `c::Vector{<: Number}` then the output of the model will be the property 
+encoded in the basis. But one can also use a single basis to produce 
+multiple properties (with different coefficients). This can be achieved by 
+simply supplying `c::Vector{SVector{N, T}}` where `N` will then be the 
+number of properties. 
 """
 struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel 
    basis::TB
