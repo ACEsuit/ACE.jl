@@ -111,6 +111,11 @@ release_grad_params!(m::LinearACEModel, g) =
       release_B!(m.basis, g)
 
 
+# TODO: somehow it feels wrong that valtype should depend on c. Here the reason 
+#       is that c lives in the model and not in the basis. We should trace
+#       back how this occured and if possible remove these two methods. 
+#       maybe they can be replaced with "private" methods, then I'd be more 
+#       comfortable. 
 function ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: SVector})
    return SVector{length(c[1]), valtype(basis, zero(eltype(cfg)))}
 end
