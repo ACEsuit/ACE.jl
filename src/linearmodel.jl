@@ -157,11 +157,10 @@ function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration)
    return g 
 end
 
-# lazy fix for now. We need to think about allocations and wether we want these
-# derivatives as a vector of matrices, a tensor, or even if we want them at all.
+# currently doesn't work with multiple properties
 function grad_params_config(m::LinearACEModel, cfg::AbstractConfiguration) 
    dB = acquire_dB!(m.basis, cfg)
-   return [grad_params_config!(dB, m, cfg) for i = 1:length(m.c[1])]
+   return grad_params_config!(dB, m, cfg)
 end
 
 # ∂_params ∂_config V

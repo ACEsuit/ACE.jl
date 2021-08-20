@@ -1,6 +1,6 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
-using ACE: evaluate, SymmetricBasis, NaiveTotalDegree, PIBasis
+using ACE: evaluate, SymmetricBasis, NaiveTotalDegree, PIBasis, O3 
 using StaticArrays
 
 
@@ -53,12 +53,16 @@ end
 println()
 
 
-# @info("grad_params")
-# #for now grad_params only gets B ONCE, we could copy it multiple times.
-# for i in 1:length(c_m[1])
-#     print_tf(@test(getproperty.(ACE.grad_params(singlProp[i],cfg),:val) ≈ getproperty.(ACE.grad_params(multiProp,cfg)[:,i],:val)))
-# end
-# println()
+@info("grad_params")
+
+multiGradP = ACE.grad_params(multiProp,cfg)
+
+for i in 1:length(c_m[1])
+    singl = getproperty.(ACE.grad_params(singlProp[i],cfg),:val)
+    multi = [getproperty(multiGradP[j][i], :val) for j in 1:length(c_m)]
+    print_tf(@test(singl ≈ multi))
+end
+println()
 
 ##
 
@@ -75,12 +79,12 @@ println()
 ##
 
 
-@info("grad_params_config")
+# @info("grad_params_config")
 
-for i in 1:length(c_m[1])
-    singl = ACE.grad_params_config(singlProp[i],cfg)[1]
-    multi = ACE.grad_params_config(multiProp,cfg)[i]
+# for i in 1:length(c_m[1])
+#     singl = ACE.grad_params_config(singlProp[i],cfg)[1]
+#     multi = ACE.grad_params_config(multiProp,cfg)[i]
 
-    print_tf(@test(singl ≈ multi))
-end
-println()
+#     print_tf(@test(singl ≈ multi))
+# end
+# println()
