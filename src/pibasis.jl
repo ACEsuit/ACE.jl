@@ -175,12 +175,6 @@ function scaling(pibasis::PIBasis, p)
    return ww
 end
 
-function scaling(symbasis::SymmetricBasis, p)
-   wwpi = scaling(symbasis.pibasis, p)
-   wwrpi = abs2.(getval(symbasis.A2Bmap)) * abs2.(wwpi)
-   return sqrt.(wwrpi)
-end
-
 # function scaling(pibasis::PIBasis, p)
 #    ww = zeros(Float64, length(pibasis))
 #    for iz0 = 1:numz(pibasis)

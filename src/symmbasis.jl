@@ -37,8 +37,8 @@ Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
 
 valtype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} = basis.real(PROP)
 
-# TODO: this is not nice, there should be proper promotion 
-valtype(basis::SymmetricBasis{BOP, PROP}, X::AbstractState) where {BOP, PROP} = 
+# TODO: this is not nice, there should be proper promotion
+valtype(basis::SymmetricBasis{BOP, PROP}, X::AbstractState) where {BOP, PROP} =
       valtype(basis)
 
 gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
@@ -49,17 +49,17 @@ function gradtype(basis::SymmetricBasis, cfgorX)
    return typeof(_myreal1234( coco_o_daa(φ, dAA), basis.real))
 end
 
-# weird hacky name to avoid clashes 
-# TODO: there must be a more elegant way to do this 
+# weird hacky name to avoid clashes
+# TODO: there must be a more elegant way to do this
 #       come to think of it, why did we do this in the first place???
 _myreal1234(a, ::typeof(Base.identity)) = a
 _myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)
 
 # -------- FIO
 
-==(B1::SymmetricBasis, B2::SymmetricBasis) = 
-      ( (B1.pibasis == B2.pibasis) && 
-        (B1.A2Bmap == B2.A2Bmap) && 
+==(B1::SymmetricBasis, B2::SymmetricBasis) =
+      ( (B1.pibasis == B2.pibasis) &&
+        (B1.A2Bmap == B2.A2Bmap) &&
         (B1.real == B2.real) )
 
 write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
@@ -151,9 +151,9 @@ function SymmetricBasis(pibasis, φ::TP; isreal=false) where {TP}
    return SymmetricBasis(pibasis, A2Bmap, isreal ? Base.real : Base.identity)
 end
 
-function SymmetricBasis(pibasis, A2Bmap, _real) 
+function SymmetricBasis(pibasis, A2Bmap, _real)
    PROP = _real(eltype(A2Bmap))
-   B_pool = VectorPool{PROP}() 
+   B_pool = VectorPool{PROP}()
    return SymmetricBasis(pibasis, A2Bmap, _real, B_pool)
 end
 
@@ -260,7 +260,7 @@ end
 
 # ---------------- A modified sparse matmul
 
-# TODO: move this stuff all to aux? 
+# TODO: move this stuff all to aux?
 
 using SparseArrays: AbstractSparseMatrixCSC,
 				        nonzeros, rowvals, nzrange
@@ -340,7 +340,13 @@ end
 
 function evaluate_d!(dB, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
-   genmul!(dB, basis.A2Bmap, dAA, 
+   genmul!(dB, basis.A2Bmap, dAA,
            (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
 end
 
+
+function scaling(basis::SymmetricBasis, p)
+   wwpi = scaling(basis.pibasis, p)
+   wwrpi = abs2.(getval(basis.A2Bmap)) * abs2.(wwpi)
+   return sqrt.(wwrpi)
+end
