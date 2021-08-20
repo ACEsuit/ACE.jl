@@ -61,7 +61,6 @@ println(@test( AA_naive ≈ AA ))
 @info("FIO Test")
 println(@test( all(test_fio(pibasis)) ))
 
-
 ## Testing derivatives
 
 @info("Derivatives of PIbasis")

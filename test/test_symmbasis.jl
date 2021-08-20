@@ -201,11 +201,11 @@ for L = 0:3
    local Xs, cfg 
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
    pibasis1 = PIBasis(B1p, O3(), ord, maxdeg; property = φ1, isreal = false)
-   basis1 = SymmetricBasis(φ1, O3(), pibasis)
+   basis1 = SymmetricBasis(φ1, O3(), pibasis1)
 
    φ2 = ACE.SphericalMatrix(L, 0; T = ComplexF64)
    pibasis2 = PIBasis(B1p, O3(), ord, maxdeg; property = φ2, isreal = false)
-   basis2 = SymmetricBasis(φ2, O3(), pibasis)
+   basis2 = SymmetricBasis(φ2, O3(), pibasis2)
 
    for ntest = 1:30
       Xs = rand(PositionState{Float64}, B1p.bases[1], nX)

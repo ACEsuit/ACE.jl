@@ -149,7 +149,7 @@ release_dB!(alp::ALPolynomials, dB) = release_B!(alp, dB)
 
 function ALPolynomials(L::Integer, T::Type=Float64)
 	# Precompute coefficients ``a_l^m`` and ``b_l^m`` for all l <= L, m <= l
-	alp = ALPolynomials(L, Vector{T}(undef, sizeP(L)), Vector{T}(undef, sizeP(L)))
+	alp = ALPolynomials(L, zeros(T, sizeP(L)), zeros(T, sizeP(L)))
 	for l in 2:L
 		ls = l*l
 		lm1s = (l-1) * (l-1)
