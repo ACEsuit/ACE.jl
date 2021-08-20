@@ -7,7 +7,7 @@
 using ACE, ACEbase
 using Printf, Test, LinearAlgebra, ACE.Testing, Random
 using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis, 
-           grad_config, grad_params
+           grad_config, grad_params, O3
 using ACEbase.Testing: fdtest
 
 ##
@@ -27,8 +27,8 @@ Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
-basis = SymmetricBasis(pibasis, φ)
+pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
+basis = SymmetricBasis(φ, O3(), pibasis)
 
 BB = evaluate(basis, cfg)
 c = rand(length(BB)) .- 0.5
@@ -56,6 +56,8 @@ grad_config_ref(basis, cfg, c) = permutedims(evaluate_d(basis, cfg)) * c
 grad_params_ref(basis, cfg, c) = evaluate(basis, cfg)
 
 grad_params_config_ref(basis, cfg, c) = evaluate_d(basis, cfg)
+
+(fun, funref, str) = (ACE.grad_params_config, grad_params_config_ref, "grad_params_config")
 
 for (fun, funref, str) in [ 
          (evaluate, evaluate_ref, "evaluate"), 

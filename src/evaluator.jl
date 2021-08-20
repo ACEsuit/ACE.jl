@@ -47,7 +47,7 @@ end
 function set_params!(ev::ProductEvaluator, basis::SymmetricBasis, c::AbstractVector)
    len_AA = length(ev.pibasis)
    @assert len_AA == size(basis.A2Bmap, 2)
-   c̃ = acquire!(basis.B_pool, len_AA)
+   c̃ = _acquire_ctilde(basis,len_AA, c)
    _get_eff_coeffs!(c̃, basis, c)
    set_params!(ev, basis.pibasis, c̃)
    release!(basis.B_pool, c̃)
@@ -58,12 +58,29 @@ end
 _get_eff_coeffs!(c̃, basis::SymmetricBasis, c::AbstractVector) = 
       genmul!(c̃, transpose(basis.A2Bmap), c, *)
 
-function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector{<: Number})
+function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector)
    # c̃ = acquire_B!(basis, size(basis.A2Bmap, 2))
-   c̃ = zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
+   c̃ = _alloc_ctilde(basis,c)
    return _get_eff_coeffs!(c̃, basis, c) 
 end
 
+_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) = 
+   acquire!(basis.B_pool, len_AA, SVector{length(c[1]),eltype(basis.A2Bmap)})
+
+_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
+   acquire!(basis.B_pool, len_AA)
+
+_alloc_ctilde(basis::SymmetricBasis,c::AbstractVector{<: SVector}) = 
+   zeros(SVector{length(c[1]),eltype(basis.A2Bmap)}, size(basis.A2Bmap, 2))
+   
+_alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
+   zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
+
+_alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
+   zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
+   
+_alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
+   zeros(eltype(dAAdA), length(A))
 
 
 
@@ -99,6 +116,7 @@ end
 grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
       grad_config!(g, V, cfg)
 
+
 # compute one site energy
 function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
@@ -106,27 +124,28 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    A = acquire_B!(V.pibasis.basis1p, cfg)
    dA = acquire_dB!(V.pibasis.basis1p, cfg)
    dAAdA = _acquire_dAAdA!(V.pibasis)
-
+   
    # stage 1: precompute all the A values
    evaluate_ed!(A, dA, basis1p, cfg)
 
    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
-   dAco = zeros(eltype(dAAdA), length(A)) # tmpd.dAco  # TODO: ALLOCATION 
    c̃ = V.coeffs
+   dAco =  _alloc_dAco(dAAdA, A, c̃) # tmpd.dAco  # TODO: ALLOCATION 
    spec = V.pibasis.spec
+
    fill!(dAco, zero(eltype(dAco)))
    @inbounds for iAA = 1:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
       @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA])
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA]) #trying to avoid using .* and complex.()
       end
    end
 
    # stage 3: get the gradients
    fill!(g, zero(eltype(g)))
-   for iX = 1:length(cfg)
-      @inbounds @fastmath for iA = 1:length(basis1p)
-         g[iX] += _real(dAco[iA] * dA[iA, iX])
+   for iP = 1:length(c̃[1]), iX = 1:length(cfg)
+      for iA = 1:length(basis1p)
+         g[iX, iP] += _real(dAco[iA][iP] * dA[iA, iX])
       end
    end
 

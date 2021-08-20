@@ -68,6 +68,7 @@ Invariant(T::DataType = Float64) = Invariant{T}()
 real(φ::Invariant) = Invariant(real(φ.val))
 complex(φ::Invariant) = Invariant(complex(φ.val))
 complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
+complex(φ::AbstractVector{<: Invariant}) = complex.(φ)
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
 

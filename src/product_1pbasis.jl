@@ -56,24 +56,6 @@ function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
    return Product1pBasis(bases, spec, indices)
 end
 
-# the following two functions are a little hack to make sure 
-# that the basis spec is read in the same symbol-order as it is written
-# (since dicts don't have a specified ordering...)
-
-function _write_dict_1pspec(spec::Vector{NamedTuple{SYMS, NTuple{NSYM, Int}}}) where {SYMS, NSYM}
-   inds = Vector{Int}[]
-   for b in spec 
-      vals = [getproperty(b, sym) for sym in SYMS]
-      push!(inds, vals)
-   end 
-   return Dict("SYMS" => [ string.(SYMS)... ], "inds" => inds)
-end
-
-function _read_dict_1pspec(D::Dict)
-   NTPROTO = namedtuple(D["SYMS"]...)
-   return [ NTPROTO(binds) for binds in D["inds"] ]
-end
-
 
 # ------------------------------------
 

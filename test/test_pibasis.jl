@@ -9,7 +9,7 @@ using ACE, Random
 using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      PositionState, Product1pBasis, NaiveTotalDegree
+      PositionState, Product1pBasis, NaiveTotalDegree, O3
 
 ##
 
@@ -22,7 +22,7 @@ ord = 3
 
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
 
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
+pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
 
 # generate a configuration
 nX = 10
@@ -60,7 +60,6 @@ println(@test( AA_naive ≈ AA ))
 
 @info("FIO Test")
 println(@test( all(test_fio(pibasis)) ))
-
 
 ## Testing derivatives
 

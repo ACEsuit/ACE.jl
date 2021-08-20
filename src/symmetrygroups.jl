@@ -60,6 +60,15 @@ msym(G::O3{LSYM, MSYM}) where {LSYM, MSYM} = MSYM
 getm(G::O3, b::NamedTuple) = b[msym(G)]
 
 
+write_dict(G::O3) = 
+      Dict("__id__" => "ACE_O3", 
+           "lsym" => lsym(G), 
+           "msym" => msym(G) )
+
+read_dict(::Val{:ACE_O3}, D::Dict) = 
+      O3(Symbol(D["lsym"]), Symbol(D["msym"]))
+
+
 is_refbasisfcn(G::O3, AA) = all( bi[msym(G)] == 0 for bi in AA )
 
 get_sym_spec(G::O3, bb) = delete.(bb, (msym(G),))
@@ -203,6 +212,15 @@ end
 
 ⊗(G1::O3, G2::O3) = kron(G1, G2)
 export ⊗
+
+write_dict(G::O3O3) = 
+      Dict("__id__" => "ACE_O3O3", 
+           "G1" => write_dict(G.G1), 
+           "G2" => write_dict(G.G2) )
+
+read_dict(::Val{:ACE_O3O3}, D::Dict) = 
+      read_dict(D["G1"]) ⊗ read_dict(D["G2"])
+
 
 
 is_refbasisfcn(G::O3O3, AA) = all( bi[msym(grp)] == 0 

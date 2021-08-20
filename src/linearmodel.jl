@@ -18,6 +18,20 @@
 """
 `struct LinearACEModel`: linear model for symmetric properties in terms of 
 a `SymmetricBasis`. 
+
+The typical way to construct a linear model is to first construct a basis 
+`basis`, some default coefficients `c` and then call 
+```julia
+model = LinearACEModel(basis, c)
+```
+
+### Multiple properties 
+
+If `c::Vector{<: Number}` then the output of the model will be the property 
+encoded in the basis. But one can also use a single basis to produce 
+multiple properties (with different coefficients). This can be achieved by 
+simply supplying `c::Vector{SVector{N, T}}` where `N` will then be the 
+number of properties. 
 """
 struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel 
    basis::TB
@@ -93,7 +107,13 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
 # TODO: consider providing a generic object pool / array pool 
 # acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
 acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
+   acquire_grad_config!(m, cfg, m.c)
+
+acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: SVector}) =
+   Matrix{gradtype(m.basis, cfg)}(undef, length(cfg), length(m.c[1]))
+
+acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
+   Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
 
 release_grad_config!(m::LinearACEModel, g) = nothing 
       #release!(m.grad_cfg_pool, g)
@@ -103,6 +123,20 @@ acquire_grad_params!(m::LinearACEModel, args...) =
 
 release_grad_params!(m::LinearACEModel, g) = 
       release_B!(m.basis, g)
+
+
+# TODO: somehow it feels wrong that valtype should depend on c. Here the reason 
+#       is that c lives in the model and not in the basis. We should trace
+#       back how this occured and if possible remove these two methods. 
+#       maybe they can be replaced with "private" methods, then I'd be more 
+#       comfortable. 
+function ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: SVector})
+   return SVector{length(c[1]), valtype(basis, zero(eltype(cfg)))}
+end
+#calls the regular valtype
+ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
+      valtype(basis, cfg)
+
 
 # ------------------- dispatching on the evaluators 
 
@@ -116,13 +150,14 @@ grad_config!(g, m::LinearACEModel, X::AbstractConfiguration) =
       grad_config!(g, m, m.evaluator, X) 
 
 grad_params(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      grad_params!(acquire_grad_params!(m, cfg), m, cfg)
+      grad_params!(acquire_grad_params!(m, cfg, m.c), m, cfg)
 
 function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
    evaluate!(g, m.basis, cfg) 
    return g 
 end
 
+# currently doesn't work with multiple properties
 function grad_params_config(m::LinearACEModel, cfg::AbstractConfiguration) 
    dB = acquire_dB!(m.basis, cfg)
    return grad_params_config!(dB, m, cfg)
