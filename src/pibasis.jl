@@ -31,8 +31,8 @@ end
 
 
 function PIBasisSpec( basis1p::OneParticleBasis,
-                      symgrp::SymmetryGroup, 
-                      maxν::Integer, 
+                      symgrp::SymmetryGroup,
+                      maxν::Integer,
                       maxdeg::Real;
                       Deg = NaiveTotalDegree(),
                       property = nothing,
@@ -119,37 +119,37 @@ mutable struct PIBasis{BOP, REAL, TB, TA} <: ACEBasis
    basis1p::BOP             # a one-particle basis
    spec::PIBasisSpec
    real::REAL     # could be `real` or `identity` to keep AA complex
-   # evaluator    # classic vs graph   
+   # evaluator    # classic vs graph
    B_pool::VectorPool{TB}
    dAA_pool::VectorPool{TA}
 end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
-==(B1::PIBasis, B2::PIBasis) = 
-      ( (B1.basis1p == B2.basis1p) && 
-        (B1.spec == B2.spec) && 
+==(B1::PIBasis, B2::PIBasis) =
+      ( (B1.basis1p == B2.basis1p) &&
+        (B1.spec == B2.spec) &&
         (B1.real == B2.real) )
 
 valtype(basis::PIBasis) = basis.real( valtype(basis.basis1p) )
 
-valtype(basis::PIBasis, cfg::AbstractConfiguration) = 
+valtype(basis::PIBasis, cfg::AbstractConfiguration) =
       basis.real( valtype(basis.basis1p, cfg) )
 
-gradtype(basis::PIBasis, cfgorX) = 
+gradtype(basis::PIBasis, cfgorX) =
       basis.real( gradtype(basis.basis1p, cfgorX) )
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
-PIBasis(basis1p, symgrp, maxν, maxdeg; 
+PIBasis(basis1p, symgrp, maxν, maxdeg;
         isreal = true, kwargs...) =
-   PIBasis(basis1p, 
+   PIBasis(basis1p,
            PIBasisSpec(basis1p, symgrp, maxν, maxdeg; kwargs...),
            isreal ? Base.real : Base.identity )
 
 function PIBasis(basis1p::OneParticleBasis, spec::PIBasisSpec, real)
    VT1 = valtype(basis1p)
-   VT = real(VT1)  # default valtype 
+   VT = real(VT1)  # default valtype
    B_pool = VectorPool{VT}()
    dAA_pool = VectorPool{VT1}()
    return PIBasis(basis1p, spec, real, B_pool, dAA_pool)
@@ -165,6 +165,19 @@ setreal(basis::PIBasis, isreal::Bool) =
    PIBasis(basis.basis1p, basis.spec, isreal)
 
 maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
+
+getval(A2Bmap) =  [norm(A2Bmap[i,j].val) for i = 1:size(A2Bmap)[1], j = 1:size(A2Bmap)[2]]
+
+function scaling(pibasis::PIBasis, p)
+   ww = zeros(Float64, length(pibasis))
+   bspec = get_spec(pibasis)
+   for i = 1:length(pibasis)
+      for b in bspec[i]
+         ww[i] += b.n^p + b.l^p + abs(b.m)^p
+      end
+   end
+   return ww
+end
 
 # function scaling(pibasis::PIBasis, p)
 #    ww = zeros(Float64, length(pibasis))
@@ -215,7 +228,7 @@ read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
 # Evaluation codes
 
 function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
-   A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
+   A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!!
    evaluate!(A, basis.basis1p, config)
    fill!(AA, 1)
    for iAA = 1:length(basis)
@@ -241,7 +254,7 @@ function evaluate_ed!(AA, dAA, basis::PIBasis,
    evaluate_ed!(AA, dAA, basis, A, dA)
    release_dB!(basis.basis1p, dA)
    release_B!(basis.basis1p, A)
-   return AA, dAA 
+   return AA, dAA
 end
 
 function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
@@ -262,7 +275,7 @@ function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
       AAbwd *= A[iAA2iA[iAA, a]]
    end
 
-   return aa 
+   return aa
 end
 
 _acquire_dAAdA!(basis::PIBasis) = acquire!(basis.dAA_pool, maxcorrorder(basis))
@@ -287,5 +300,5 @@ function evaluate_ed!(AA, dAA, basis::PIBasis,
       end
    end
 
-   return AA, dAA 
+   return AA, dAA
 end
