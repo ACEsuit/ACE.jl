@@ -308,10 +308,8 @@ function evaluate_d!(dB, basis::SymmetricBasis,
            (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
 end
 
-_scaling_get_a2b_vals(A2Bmap) =  [norm(A2Bmap[i,j].val) for i = 1:size(A2Bmap)[1], j = 1:size(A2Bmap)[2]]
-
 function scaling(basis::SymmetricBasis, p)
    wwpi = scaling(basis.pibasis, p)
-   wwrpi = abs2.(_scaling_get_a2b_vals(basis.A2Bmap)) * abs2.(wwpi)
+   wwrpi = abs2.(norm.(basis.A2Bmap)) * abs2.(wwpi)
    return sqrt.(wwrpi)
 end

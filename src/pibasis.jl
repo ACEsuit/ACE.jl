@@ -182,13 +182,13 @@ function scaling(pibasis::PIBasis, p)
    bspec = get_spec(pibasis)
    for i = 1:length(pibasis)
       for b in bspec[i]
+         # TODO: revisit how this should be implemented for a general basis
          ww[i] += sum( abs.(values(b)).^p )
       end
    end
    return ww
 end
 
-# TODO: revisit how this should be implemented for a general basis
 
 # function scaling(pibasis::PIBasis, p)
 #    ww = zeros(Float64, length(pibasis))
