@@ -189,14 +189,43 @@ where the storage arrays are
 
 There are two implementations for evaluating the a `PIBasis`, one based on explicitly going through the loop ``\prod_t``, the other on a recursive evaluation via a DAG (currently disabled). TODO: need to re-enable this, and add references.
 
-### Generating a `OneParticleBasis` and `PIBasis` via `gen_sparse`
+### Generating a `OneParticleBasis` and `PIBasis`, and `BasisSelector`s
 
-TODO: explain how the basis sets are generated, and what options there are,
-      
+A 1p basis function is defined by a `NamedTuple`. For example, for an ``R_n Y_l^m`` basis or an ``R_{nl} Y_l^m`` basis a 1p basis function would be specified (e.g.) by a tuple 
+```julia 
+     (n = 3, l = 2, m = -1)
+```
+where `3, 2, -1` just stand for possible values for the basis indices `n, l, m`. Of course we could define the basis indices to be calles `nr, lr, mr` and then the tuple would be `(nr = 3, lr = 2, mr = -1)`. 
 
-### Interface for degrees (wip)
+Creating a 1p basis requires generating the list of all tuples specifying the 1p basis functions. This occurs in [`init1pspec!`](@ref), called via 
+```julia 
+init1pspec!(B1p, Bsel)
+```
+where `B1p` is the 1p basis and `Bsel` a basis selector which specifies which of the tuples will be part of the basis specification. 
 
-TODO: discuss what a degree is etc, what is the interface, the standard implementations 
+A pi basis function (product basis function) is specified via a vector of NamedTuples. The the specification is gives as a list of such vectors of namedtuples and is normally generated via `gensparse`. `gensparse` uses implicitly uses again a basis selector to determine which basis functions to keep. 
+
+### Basis Selectors
+
+A basis selector `Bsel` must specify: 
+* `degree` : several methods to assign a degree to a basis function; this is required since in some places we need an ordering the 1p basis functions 
+* `isadmissible` : decide whether a basis function is part of the basis or not 
+* `maxorder` : the larged correlation-order to be generated in the basis
+
+For example [`SimpleSparseBasis`](@ref) is implemented as follows (sketch)
+```julia 
+struct SimpleSparseBasis <: DownsetBasisSelector
+   maxorder::Int
+   maxdeg::Float64
+end
+```
+The `degree` of a 1p basis function is specified by the 1p basis itself. Next, `isadmissible` is defined as `isadmissible = degree <= maxdeg`. And `maxorder` is simply a user-defined parameter. 
+
+But arbitrarily complex basis selectors could be implemented as long as they specify downsets in the lattice of all possible basis functions. 
+
+A very useful implementation is the [`SparseBasis`](@ref) which allows giving different weights to the different basis indices, e.g., one might want to give `l` a higher weight than `n` if one believes that fewer angular basis functions than radial basis functions are required. Another idea is to use difference degrees for different correlation orders, or rather than a total degree one could use different kinds of norms in the basis function lattice.
+
+
 
 
 ## Properties and symmetries

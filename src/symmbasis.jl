@@ -12,20 +12,23 @@ using LinearAlgebra: rank, svd, Diagonal
 
 ### Constructors
 
+Option 1: pass a `OneParticleBasis`
+```julia
+SymmetricBasis(φ, symgrp, basis1p, Bsel)
+SymmetricBasis(φ, basis1p, Bsel)   # uses default symgrp = O3()
+```
+will first construct a `PIBasis` from these inputs and then call the second
+constructor.
+
+
 Option 1: pass a `PIBasis`
 ```julia
-SymmetricBasis(pibasis, φ)
+SymmetricBasis(φ, symgrp, pibasis)
+SymmetricBasis(φ, pibasis)
 ```
-All possible permutation-invariant basis functions will be symmetrised and
-then reduced to a basis (rather than spanning set)
-
-Option 2: pass a `OneParticleBasis`
-```julia
-SymmetricBasis(φ, basis1p, maxν, maxdeg;
-               Deg = NaiveTotalDegree())
-```
-will first construct a `PIBasis` from these inputs and then call the first
-constructor.
+If the PIbasis is already available, this directly constructs a 
+resulting SymmetricBasis; all possible permutation-invariant basis functions 
+will be symmetrised and then reduced to a basis (rather than spanning set)
 """
 struct SymmetricBasis{BOP, PROP, SYM, REAL, VPROP} <: ACEBasis
    pibasis::PIBasis{BOP}
@@ -82,12 +85,21 @@ read_dict(::Val{:ACE_SymmetricBasis}, D::Dict) =
 
 SymmetricBasis(φ::AbstractProperty, 
                basis1p::OneParticleBasis, 
+               Bsel::AbstractBasisSelector; 
+               kwargs...) =
+      SymmetricBasis(φ, basis1p, O3(), Bsel; kwargs...)
+
+SymmetricBasis(φ::AbstractProperty, pibasis; kwargs...) = 
+      SymmetricBasis(φ, O3(), pibasis; kwargs...)
+
+
+SymmetricBasis(φ::AbstractProperty, 
+               basis1p::OneParticleBasis, 
                symgrp::SymmetryGroup, 
-               maxν::Integer, 
-               maxdeg::Real; 
+               Bsel::AbstractBasisSelector; 
                isreal=false, kwargs...) =
       SymmetricBasis(φ, symgrp, 
-                     PIBasis(basis1p, symgrp, maxν, maxdeg; 
+                     PIBasis(basis1p, symgrp, Bsel; 
                              kwargs..., property = φ); 
                      isreal=isreal)
 

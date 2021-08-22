@@ -30,6 +30,7 @@ LinearACEModel
 Rn1pBasis
 Ylm1pBasis 
 Scal1pBasis
+init1pspec!
 ```
 
 ### Symmetry groups 
@@ -43,7 +44,14 @@ O3
 O3O3 
 ```
 
-## Functions 
+### Basis Selectors 
+
+```@docs
+MaxBasis
+SimpleSparseBasis
+SparseBasis
+```
+
 
 ## Deeper Internals
 

@@ -6,16 +6,16 @@
 
 using ACE, StaticArrays
 using Random, Printf, Test, LinearAlgebra, ACE.Testing
-using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
+using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest
 
 # construct the 1p-basis
-D = NaiveTotalDegree()
 maxdeg = 6
 ord = 3
+Bsel = SimpleSparseBasis(ord, maxdeg)
 
-B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
 nX = 10
@@ -28,9 +28,9 @@ cfg = ACEConfig(Xs)
 
 
 φ = ACE.EuclideanVector(Complex{Float64})
-pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ, isreal=false)
-basis = SymmetricBasis(φ, O3(), pibasis; isreal=true)
-@time SymmetricBasis(φ, O3(), pibasis; isreal=true)
+pibasis = PIBasis(B1p, Bsel; property = φ, isreal=false)
+basis = SymmetricBasis(φ, pibasis; isreal=true)
+@time SymmetricBasis(φ, pibasis; isreal=true)
 
 BB = evaluate(basis, cfg)
 
@@ -69,7 +69,7 @@ println()
 
 @info("Test equivariance properties for complex version")
 
-basis = SymmetricBasis(φ, O3(), pibasis; isreal=false)
+basis = SymmetricBasis(φ, pibasis; isreal=false)
 # a stupid but necessary test
 BB = evaluate(basis, cfg)
 BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
