@@ -103,6 +103,12 @@ isadmissible(bb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
 maxorder(Bsel::SimpleSparseBasis) = Bsel.maxorder 
 
 
+"""
+`SparseBasis`: probably the standard basis selector enabling weighted degree
+functions and varying degree for different correlation orders. 
+Need to add documentation; for now look at the code for `degree` to see how 
+the weight and degree dictionaries affect the definition of degree.  
+"""
 struct SparseBasis <: DownsetBasisSelector
    maxorder::Int
    weight::Dict{Symbol, Float64}
@@ -110,24 +116,29 @@ struct SparseBasis <: DownsetBasisSelector
    p::Float64
 end
 
+maxorder(Bsel::SparseBasis) = Bsel.maxorder 
+
+isadmissible(b::NamedTuple, Bsel::SparseBasis, basis::OneParticleBasis) = 
+      (degree(b, Bsel, basis) <= _maxdeg(Bsel, 0))
+
+function isadmissible(bb, Bsel::SparseBasis, basis::OneParticleBasis) 
+   ord = length(bb) 
+   return (degree(bb, Bsel, basis) <= _maxdeg(Bsel, ord)) && ord <= Bsel.maxorder
+end
+
+_maxdeg(Bsel::SparseBasis, ord::Integer) = 
+      haskey(Bsel.degree, ord) ? Bsel.degree[ord] : Bsel.degree["default"]
+
 # for a one-particle basis function
 degree(b::NamedTuple, Deg::SparseBasis, basis::OneParticleBasis) =
       degree(b, basis, Deg.weight)
 
 # for an ν-correlation basis function
 # in this case `bb` should be a Vector of NamedTuples
-function degree(bb, Deg::SparseBasis, basis::OneParticleBasis) 
-   if length(bb) == 0; return 0; end 
-   len = length(bb)
-   if haskey(Deg.degree, len)
-      degfact = Deg.degree[len]
-   elseif haskey(Deg.degree, "default")
-      degfact = Deg.degree["default"]
-   else 
-      degfact = 1.0
-   end
-   return sum( degree(b, Deg, basis)  for b in bb ) * degfact
-end
+degree(bb, Bsel::SparseBasis, basis::OneParticleBasis)  =  (
+      length(bb) == 0 ? 0.0 
+                      : norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
+
 
 
 
