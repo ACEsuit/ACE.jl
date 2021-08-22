@@ -5,8 +5,8 @@ module Utils
 import ACE
 
 import ACE: PolyTransform, transformed_jacobi, Rn1pBasis,
-            NaiveTotalDegree, init1pspec!, Ylm1pBasis,
-            Product1pBasis
+            init1pspec!, Ylm1pBasis,
+            Product1pBasis, SimpleSparseBasis
 
 # import ACE.PairPotentials: PolyPairBasis
 
@@ -32,7 +32,6 @@ function Rn_basis(;
       r0 = 1.0,
       trans = PolyTransform(2, r0),
       # degree parameters
-      D = NaiveTotalDegree(),
       maxdeg = 6,
       # radial basis parameters
       rcut = 2.5,
@@ -51,26 +50,27 @@ end
 Construct a ``R_n * Y_l^m`` 1-particle basis.
 All arguments are keyword arguments; see documentation of `ACE.Utils.Rn_basis`.
 """
-function RnYlm_1pbasis(; init = true, Deg = NaiveTotalDegree(), maxdeg=6, 
-               varsym = :rr, idxsyms = (:n, :l, :m), kwargs...)
+function RnYlm_1pbasis(; maxdeg=6, maxL = maxdeg, varsym = :rr, idxsyms = (:n, :l, :m), 
+                         Bsel = nothing, kwargs...)
    Rn = Rn_basis(; maxdeg = maxdeg, varsym = varsym, nsym = idxsyms[1],
                    kwargs...)
-   Ylm = Ylm1pBasis(maxdeg, varsym = varsym, lsym = idxsyms[2], msym = idxsyms[3])
+   Ylm = Ylm1pBasis(maxL, varsym = varsym, lsym = idxsyms[2], msym = idxsyms[3])
    B1p = ACE.Product1pBasis((Rn, Ylm))
-   if init 
-      init1pspec!(B1p, Deg = Deg, maxdeg = maxdeg)
+   if Bsel != nothing 
+      init1pspec!(B1p, Bsel)
    end
    return B1p
 end
 
-invariant_basis(; kwargs...) =
-      symm_basis(ACE.Invariant(); kwargs...)
 
-symm_basis(φ; maxν = 3, maxdeg = 6, kwargs...) =
-      ACE.SymmetricBasis(φ,
-                         RnYlm_1pbasis(; maxdeg=maxdeg, kwargs...),
-                         maxν,
-                         maxdeg)
+# invariant_basis(; kwargs...) =
+#       symm_basis(ACE.Invariant(); kwargs...)
+
+# symm_basis(φ; maxν = 3, maxdeg = 6, kwargs...) =
+#       ACE.SymmetricBasis(φ,
+#                          RnYlm_1pbasis(; maxdeg=maxdeg, kwargs...),
+#                          maxν,
+#                          maxdeg)
 
 # function rpi_basis(; species = :X, N = 3,
 #       # transform parameters

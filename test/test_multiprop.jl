@@ -1,6 +1,6 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
-using ACE: evaluate, SymmetricBasis, NaiveTotalDegree, PIBasis, O3 
+using ACE: evaluate, SymmetricBasis, PIBasis, O3 
 using StaticArrays
 
 
@@ -9,11 +9,11 @@ using StaticArrays
 @info(" Testset for Multiple Properties in a Linear ACEModel")
 
 # construct the 1p-basis
-D = NaiveTotalDegree()
 maxdeg = 6
 ord = 3
+Bsel = SimpleSparseBasis(ord, maxdeg)
 
-B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
 nX = 54
@@ -21,8 +21,7 @@ Xs = () -> ACE.State(rr = rand(SVector{3, Float64}), u = rand())
 cfg = ACEConfig([Xs() for i in 1:nX])
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
-basis = SymmetricBasis(φ, O3(), pibasis)
+basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 
 ##
 

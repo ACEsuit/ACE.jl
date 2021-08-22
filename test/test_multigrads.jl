@@ -15,12 +15,15 @@ using ACEbase.Testing: fdtest, print_tf
 maxdeg = 5
 r0 = 1.0 
 rcut = 3.0 
+maxorder = 3
+Bsel = SimpleSparseBasis(maxorder, maxdeg)
+
 trans = trans = PolyTransform(1, r0)
 Pk = ACE.scal1pbasis(:x, :k, maxdeg, trans, rcut)
 RnYlm = ACE.Utils.RnYlm_1pbasis()
 
 B1p = RnYlm * Pk
-ACE.init1pspec!(B1p, maxdeg = maxdeg, Deg = ACE.NaiveTotalDegree())
+ACE.init1pspec!(B1p, Bsel) 
 length(B1p)
 
 ##

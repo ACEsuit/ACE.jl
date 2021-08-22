@@ -29,16 +29,22 @@ function _get_pibfcn(Aspec, vv)
    return Aspec[vvnz]
 end
 
+# TODO: maybe instead of property == nothing, there should be a 
+#       generic property with no symmetry attached to it. 
 
 function PIBasisSpec( basis1p::OneParticleBasis,
-                      symgrp::SymmetryGroup,
-                      maxν::Integer,
-                      maxdeg::Real;
-                      Deg = NaiveTotalDegree(),
+                      symgrp::SymmetryGroup, 
+                      Bsel::DownsetBasisSelector;
                       property = nothing,
                       filterfun = _->true,
-                      constant = false )
-   # would make sense to construct the basis1p spec here?
+                      constant = false, 
+                      init1pbasis = true )
+   
+   # we initialize the 1p-basis here; to prevent this it must be manually 
+   # avoided by passing in init1pbasis = false 
+   if init1pbasis
+      init1pspec!(basis1p, Bsel)
+   end
 
    # get the basis spec of the one-particle basis
    #  Aspec[i] described the basis function that will get written into A[i]
@@ -47,7 +53,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    # we assume that `Aspec` is sorted by degree, but best to double-check this
    # since the notion of degree used to construct `Aspec` might be different
    # from the one used to construct AAspec.
-   if !issorted(Aspec; by = b -> degree(b, Deg, basis1p))
+   if !issorted(Aspec; by = b -> degree(b, Bsel, basis1p))
       error("""PIBasisSpec : AAspec construction failed because Aspec is not
                sorted by degree. This could e.g. happen if an incompatible
                notion of degree was used to construct the 1-p basis spec.""")
@@ -59,7 +65,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    tup2b = vv -> _get_pibfcn(Aspec, vv)
 
    #  degree of a basis function ↦ is it admissible?
-   admissible = b -> (degree(b, Deg, basis1p) <= maxdeg)
+   admissible = b -> isadmissible(b, Bsel, basis1p)
 
    if property != nothing
       filter1 = b -> filterfun(b) && filter(property, b)
@@ -70,11 +76,12 @@ function PIBasisSpec( basis1p::OneParticleBasis,
 
    # we can now construct the basis specification; the `ordered = true`
    # keyword signifies that this is a permutation-invariant basis
-   AAspec = gensparse(; NU = maxν,
+   maxord = maxorder(Bsel)
+   AAspec = gensparse(; NU = maxorder(Bsel),
                         tup2b = tup2b,
                         admissible = admissible,
                         ordered = true,
-                        maxvv = [length(Aspec) for _=1:maxν],
+                        maxvv = [length(Aspec) for _=1:maxord],
                         filter = filter1,
                         constant = constant )
 
@@ -119,37 +126,41 @@ mutable struct PIBasis{BOP, REAL, TB, TA} <: ACEBasis
    basis1p::BOP             # a one-particle basis
    spec::PIBasisSpec
    real::REAL     # could be `real` or `identity` to keep AA complex
-   # evaluator    # classic vs graph
+   # evaluator    # classic vs graph   
    B_pool::VectorPool{TB}
    dAA_pool::VectorPool{TA}
 end
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
-==(B1::PIBasis, B2::PIBasis) =
-      ( (B1.basis1p == B2.basis1p) &&
-        (B1.spec == B2.spec) &&
+==(B1::PIBasis, B2::PIBasis) = 
+      ( (B1.basis1p == B2.basis1p) && 
+        (B1.spec == B2.spec) && 
         (B1.real == B2.real) )
 
 valtype(basis::PIBasis) = basis.real( valtype(basis.basis1p) )
 
-valtype(basis::PIBasis, cfg::AbstractConfiguration) =
+valtype(basis::PIBasis, cfg::AbstractConfiguration) = 
       basis.real( valtype(basis.basis1p, cfg) )
 
-gradtype(basis::PIBasis, cfgorX) =
+gradtype(basis::PIBasis, cfgorX) = 
       basis.real( gradtype(basis.basis1p, cfgorX) )
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
-PIBasis(basis1p, symgrp, maxν, maxdeg;
+# default symmetry group 
+PIBasis(basis1p, Bsel::AbstractBasisSelector; kwargs...) = 
+   PIBasis(basis1p, O3(), Bsel; kwargs...)
+
+PIBasis(basis1p, symgrp, Bsel::AbstractBasisSelector; 
         isreal = true, kwargs...) =
-   PIBasis(basis1p,
-           PIBasisSpec(basis1p, symgrp, maxν, maxdeg; kwargs...),
+   PIBasis(basis1p, 
+           PIBasisSpec(basis1p, symgrp, Bsel; kwargs...),
            isreal ? Base.real : Base.identity )
 
 function PIBasis(basis1p::OneParticleBasis, spec::PIBasisSpec, real)
    VT1 = valtype(basis1p)
-   VT = real(VT1)  # default valtype
+   VT = real(VT1)  # default valtype 
    B_pool = VectorPool{VT}()
    dAA_pool = VectorPool{VT1}()
    return PIBasis(basis1p, spec, real, B_pool, dAA_pool)
@@ -166,14 +177,12 @@ setreal(basis::PIBasis, isreal::Bool) =
 
 maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
 
-getval(A2Bmap) =  [norm(A2Bmap[i,j].val) for i = 1:size(A2Bmap)[1], j = 1:size(A2Bmap)[2]]
-
 function scaling(pibasis::PIBasis, p)
    ww = zeros(Float64, length(pibasis))
    bspec = get_spec(pibasis)
    for i = 1:length(pibasis)
       for b in bspec[i]
-         ww[i] += b.n^p + b.l^p + abs(b.m)^p
+         ww[i] += sum( abs.(values(b)).^p )
       end
    end
    return ww
@@ -228,7 +237,7 @@ read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
 # Evaluation codes
 
 function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
-   A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!!
+   A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
    evaluate!(A, basis.basis1p, config)
    fill!(AA, 1)
    for iAA = 1:length(basis)
@@ -254,7 +263,7 @@ function evaluate_ed!(AA, dAA, basis::PIBasis,
    evaluate_ed!(AA, dAA, basis, A, dA)
    release_dB!(basis.basis1p, dA)
    release_B!(basis.basis1p, A)
-   return AA, dAA
+   return AA, dAA 
 end
 
 function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
@@ -275,7 +284,7 @@ function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
       AAbwd *= A[iAA2iA[iAA, a]]
    end
 
-   return aa
+   return aa 
 end
 
 _acquire_dAAdA!(basis::PIBasis) = acquire!(basis.dAA_pool, maxcorrorder(basis))
@@ -300,5 +309,5 @@ function evaluate_ed!(AA, dAA, basis::PIBasis,
       end
    end
 
-   return AA, dAA
+   return AA, dAA 
 end

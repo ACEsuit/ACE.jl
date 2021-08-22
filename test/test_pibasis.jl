@@ -9,20 +9,21 @@ using ACE, Random
 using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      PositionState, Product1pBasis, NaiveTotalDegree, O3
+      PositionState, Product1pBasis, O3
 
 ##
 
 @info("Basic test of PIBasis construction and evaluation")
 
-D = NaiveTotalDegree()
 maxdeg = 6
 ord = 3
+Bsel = SimpleSparseBasis(ord, maxdeg) 
+
 φ = ACE.Invariant()
 
-B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
-pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
+pibasis = PIBasis(B1p, O3(), Bsel; property = φ)
 
 # generate a configuration
 nX = 10
