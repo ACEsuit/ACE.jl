@@ -188,6 +188,8 @@ function scaling(pibasis::PIBasis, p)
    return ww
 end
 
+# TODO: revisit how this should be implemented for a general basis
+
 # function scaling(pibasis::PIBasis, p)
 #    ww = zeros(Float64, length(pibasis))
 #    for iz0 = 1:numz(pibasis)
