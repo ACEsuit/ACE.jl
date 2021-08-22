@@ -17,13 +17,15 @@ using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 maxdeg = 5
 r0 = 1.0
 rcut = 3.0
+maxorder = 3
+Bsel = SimpleSparseBasis(maxorder, maxdeg)
 
 trans = PolyTransform(1, r0)   # r -> x = 1/r^2
 J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)   #  J_n(x) * (x - xcut)^pcut
 Rn = Rn1pBasis(J)
 Ylm = Ylm1pBasis(maxdeg)
 B1p = Product1pBasis( (Rn, Ylm) )
-ACE.init1pspec!(B1p, Deg = ACE.NaiveTotalDegree())
+ACE.init1pspec!(B1p, Bsel)
 
 nX = 10
 Xs = rand(PositionState{Float64}, Rn, nX)
