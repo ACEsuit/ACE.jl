@@ -177,6 +177,19 @@ setreal(basis::PIBasis, isreal::Bool) =
 
 maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
 
+function scaling(pibasis::PIBasis, p)
+   ww = zeros(Float64, length(pibasis))
+   bspec = get_spec(pibasis)
+   for i = 1:length(pibasis)
+      for b in bspec[i]
+         # TODO: revisit how this should be implemented for a general basis
+         ww[i] += sum( abs.(values(b)).^p )
+      end
+   end
+   return ww
+end
+
+
 # function scaling(pibasis::PIBasis, p)
 #    ww = zeros(Float64, length(pibasis))
 #    for iz0 = 1:numz(pibasis)

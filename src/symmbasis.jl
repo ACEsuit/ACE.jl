@@ -308,3 +308,8 @@ function evaluate_d!(dB, basis::SymmetricBasis,
            (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
 end
 
+function scaling(basis::SymmetricBasis, p)
+   wwpi = scaling(basis.pibasis, p)
+   wwrpi = abs2.(norm.(basis.A2Bmap)) * abs2.(wwpi)
+   return sqrt.(wwrpi)
+end
