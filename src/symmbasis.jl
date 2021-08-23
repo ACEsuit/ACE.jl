@@ -62,6 +62,7 @@ end
 _myreal1234(a, ::typeof(Base.identity)) = a
 _myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)
 
+
 # -------- FIO
 
 ==(B1::SymmetricBasis, B2::SymmetricBasis) = 
