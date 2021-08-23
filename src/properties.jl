@@ -60,6 +60,10 @@ end
 
 Base.show(io::IO, φ::Invariant) = print(io, "i($(φ.val))")
 
+isrealB(::Invariant{<: Real}) = true 
+isrealB(::Invariant{<: Complex}) = false 
+isrealAA(::Invariant{<: Real}) = true 
+isrealAA(::Invariant{<: Complex}) = false 
 
 Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))
 
@@ -144,6 +148,10 @@ real(φ::EuclideanVector) = EuclideanVector(real(φ.val))
 complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
 complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 
+# TODO MATTHIAS - IS THIS RIGHT, OR SHOULD IT DEPEND ON T? 
+isrealB(::EuclideanVector) = true 
+isrealAA(::EuclideanVector) = false 
+
 
 #fltype(::EuclideanVector{T}) where {T} = T
 
@@ -209,6 +217,10 @@ end
 
 # # differentiation - cf #27
 # *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
+
+isrealB(::SphericalVector) = false 
+isrealAA(::SphericalVector) = false 
+
 
 real(φ::SphericalVector) = SphericalVector(real(φ.val), φ._valL)
 
@@ -305,6 +317,10 @@ end
 #       reshape(φ.val[:] * dAA', Size(LEN1, LEN2, N))
 
 getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = L1, L2
+
+isrealB(::SphericalMatrix) = false 
+isrealAA(::SphericalMatrix) = false 
+
 
 # L = 0 -> (0,0)
 # L = 1 -> (0,0), (1,-1), (1,0), (1,1)  -> 4

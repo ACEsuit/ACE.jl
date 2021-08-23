@@ -108,9 +108,8 @@ for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalVector(L; T = ComplexF64)
-   pibasis = PIBasis(B1p, Bsel; property = φ, isreal = false)
-   basis = SymmetricBasis(φ, pibasis)
-   @time SymmetricBasis(φ, pibasis);
+   basis = SymmetricBasis(φ, B1p, Bsel)
+   @time SymmetricBasis(φ, B1p, Bsel)
    BB = evaluate(basis, cfg)
 
    Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
@@ -162,9 +161,8 @@ for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
-   pibasis = PIBasis(B1p, Bsel; property = φ, isreal = false)
-   basis = SymmetricBasis(φ, pibasis)
-   @time basis = SymmetricBasis(φ, pibasis)
+   basis = SymmetricBasis(φ, B1p, Bsel)
+   @time basis = SymmetricBasis(φ, B1p, Bsel)
    BB = evaluate(basis, cfg)
 
    for ntest = 1:30
@@ -199,12 +197,10 @@ for L = 0:3
    @info "L = $L"
    local Xs, cfg 
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
-   pibasis1 = PIBasis(B1p, Bsel; property = φ1, isreal = false)
-   basis1 = SymmetricBasis(φ1, pibasis1)
+   basis1 = SymmetricBasis(φ1, B1p, Bsel)
 
    φ2 = ACE.SphericalMatrix(L, 0; T = ComplexF64)
-   pibasis2 = PIBasis(B1p, Bsel; property = φ2, isreal = false)
-   basis2 = SymmetricBasis(φ2, pibasis2)
+   basis2 = SymmetricBasis(φ2, B1p, Bsel)
 
    for ntest = 1:30
       Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
@@ -222,11 +218,9 @@ end
 @info("Consistency between Invariant Scalar & SphericalMatrix")
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, Bsel; property = φ)
-basis = SymmetricBasis(φ, pibasis)
+basis = SymmetricBasis(φ, B1p, Bsel)
 φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
-pibasis2 = PIBasis(B1p, Bsel; property = φ2, isreal = false)
-basis2 = SymmetricBasis(φ2, pibasis2)
+basis2 = SymmetricBasis(φ2, B1p, Bsel; isreal = true)   # overwrite isreal behaviour 
 
 for ntest = 1:30
    local Xs, cfg, BB 

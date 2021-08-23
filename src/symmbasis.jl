@@ -97,10 +97,10 @@ SymmetricBasis(φ::AbstractProperty,
                basis1p::OneParticleBasis, 
                symgrp::SymmetryGroup, 
                Bsel::AbstractBasisSelector; 
-               isreal=false, kwargs...) =
+               isreal=isrealB(φ), kwargs...) =
       SymmetricBasis(φ, symgrp, 
                      PIBasis(basis1p, symgrp, Bsel; 
-                             kwargs..., property = φ); 
+                             isreal = isrealAA(φ), kwargs..., property = φ); 
                      isreal=isreal)
 
 function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis; 
