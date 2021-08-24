@@ -60,10 +60,10 @@ end
 
 Base.show(io::IO, φ::Invariant) = print(io, "i($(φ.val))")
 
-isrealB(::Invariant{<: Real}) = true
-isrealB(::Invariant{<: Complex}) = false
-isrealAA(::Invariant{<: Real}) = true
-isrealAA(::Invariant{<: Complex}) = false
+isrealB(::Invariant{<: Real}) = true 
+isrealB(::Invariant{<: Complex}) = false 
+isrealAA(::Invariant{<: Real}) = true 
+isrealAA(::Invariant{<: Complex}) = false 
 
 Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))
 
@@ -90,21 +90,21 @@ _is_l(sym::Symbol) = (string(sym)[1] == 'l')
 _is_m(sym::Symbol) = (string(sym)[1] == 'm')
 
 
-function filter(φ::Invariant, b::Array)
+function filter(φ::Invariant, b::Array) 
    if length(b) <= 1
-      return true
-   end
-   suml = 0
-   summ = 0
-   for bi in b
+      return true 
+   end 
+   suml = 0 
+   summ = 0 
+   for bi in b 
       for (sym, val) in pairs(bi)
          if _is_l(sym)
-            suml += val
-         elseif _is_m(sym)
-            summ += val
-         end
+            suml += val 
+         elseif _is_m(sym) 
+            summ += val 
+         end 
       end
-   end
+   end 
    return iseven(suml) && iszero(summ)
 end
 
@@ -217,8 +217,8 @@ end
 # # differentiation - cf #27
 # *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
 
-isrealB(::SphericalVector) = false
-isrealAA(::SphericalVector) = false
+isrealB(::SphericalVector) = false 
+isrealAA(::SphericalVector) = false 
 
 
 real(φ::SphericalVector) = SphericalVector(real(φ.val), φ._valL)
@@ -317,8 +317,8 @@ end
 
 getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = L1, L2
 
-isrealB(::SphericalMatrix) = false
-isrealAA(::SphericalMatrix) = false
+isrealB(::SphericalMatrix) = false 
+isrealAA(::SphericalMatrix) = false 
 
 
 # L = 0 -> (0,0)
