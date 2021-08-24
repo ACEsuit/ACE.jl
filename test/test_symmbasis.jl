@@ -90,18 +90,6 @@ println(@test rank(A) == length(basis))
 
 
 
-##
-
-# _rrval(x::ACE.XState) = x.rr
-# Us = randn(SVector{3, Float64}, length(Xs))
-# c = randn(length(basis))
-# F = t -> sum(c .* ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))).val
-# dF = t -> [ Us' * _rrval.(sum(c .* ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us)), dims=1)[:]) ]
-# fdtest(F, dF, [0.0], verbose=true)
-
-# F(0.0)
-# dF(0.0)
-
 
 ## Testing derivatives
 
@@ -235,7 +223,7 @@ end
 φ = ACE.Invariant()
 basis = SymmetricBasis(φ, B1p, Bsel)
 φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
-basis2 = SymmetricBasis(φ2, B1p, Bsel; isreal = true)   # overwrite isreal behaviour 
+basis2 = SymmetricBasis(φ2, B1p, Bsel)   
 
 for ntest = 1:30
    local Xs, cfg, BB 

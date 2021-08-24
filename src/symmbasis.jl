@@ -52,15 +52,10 @@ gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
 function gradtype(basis::SymmetricBasis, cfgorX)
    φ = zero(eltype(basis.A2Bmap))
    dAA = zero(gradtype(basis.pibasis, cfgorX))
-   return typeof(_myreal1234( coco_o_daa(φ, dAA), basis.real))
+   # note up to 0.12.4, basis.real used to be replaced with _real1234 
+   # a weird hacky thing. not sure why it now works with basis.real
+   return typeof( basis.real( coco_o_daa(φ, dAA) ))
 end
-
-# weird hacky name to avoid clashes 
-# TODO: there must be a more elegant way to do this 
-#       come to think of it, why did we do this in the first place???3    
-#       .... I still don't remember, need to start documenting better ... 
-_myreal1234(a, ::typeof(Base.identity)) = a
-_myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)
 
 
 # -------- FIO
@@ -305,8 +300,10 @@ end
 
 function evaluate_d!(dB, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
+   # note up to 0.12.4, basis.real used to be replaced with _real1234 
+   # a weird hacky thing. not sure why it now works with basis.real
    genmul!(dB, basis.A2Bmap, dAA, 
-           (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
+           (a, b) -> basis.real( ACE.coco_o_daa(a, b) ) )
 end
 
 function scaling(basis::SymmetricBasis, p)
