@@ -148,7 +148,6 @@ real(φ::EuclideanVector) = EuclideanVector(φ.val)
 complex(φ::EuclideanVector) = EuclideanVector(φ.val)
 complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 
-# TODO MATTHIAS - IS THIS RIGHT, OR SHOULD IT DEPEND ON T?
 isrealB(::EuclideanVector) = true
 isrealAA(::EuclideanVector) = false
 
