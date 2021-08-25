@@ -178,12 +178,12 @@ end
 # this is a preliminary implementation; eventually we may want a more 
 # general description composition of arbitrary isometry combinations 
 
-"""
+@doc raw"""
 `struct O3O3 <: SymmetryGroup` : This type implements the ``O(3) \otimes O(3)`` symmetry 
 group. This is useful when a particle has two euclidean vector attributes, say 
-``{\\bm r}`` and ``{\\bm s}`` and the action of the group on the pair is 
+``{\bm r}`` and ``{\bm s}`` and the action of the group on the pair is 
 ```math 
-   (Q_r, Q_s)[ (\\boldsymbol{r}, \\boldsymbol{s}) ] = (Q_r \\boldsymbol{r}, Q_s \\boldsymbol{s})
+   (Q_r, Q_s)[ (\boldsymbol{r}, \boldsymbol{s}) ] = (Q_r \boldsymbol{r}, Q_s \boldsymbol{s})
 ```
 A canA canonical application is magnetism: it is known that spin-orbit coupling 
 is a very weak effect. By ignoring it, i.e., letting positions and spins rotate 
