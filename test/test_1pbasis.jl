@@ -62,7 +62,7 @@ end
 @info("Ylm1pBasis gradients")
 Y = ACE.acquire_B!(Ylm, Xs[1])
 dY = ACE.acquire_dB!(Ylm, Xs[1])
-println(@test (typeof(dY) == eltype(Ylm.dB_pool.arrays)))
+println(@test (typeof(dY) == eltype(Ylm.dB_pool.arrays[Base.Threads.threadid()])))
 ACE.evaluate!(Y, Ylm, Xs[1])
 ACE.evaluate_d!(dY, Ylm, Xs[1])
 Y1 = ACE.acquire_B!(Ylm, Xs[1])
