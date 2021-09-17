@@ -140,7 +140,9 @@ end
 
          Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
                release_B!(bas_i, B_i)
-               release_dB!(bas_i, dB_i)
+               if !(basis.bases[i] isa Discrete1pBasis)
+                  release_dB!(bas_i, dB_i)
+               end
             end ))
       end
       return nothing

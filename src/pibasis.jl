@@ -29,16 +29,22 @@ function _get_pibfcn(Aspec, vv)
    return Aspec[vvnz]
 end
 
+# TODO: maybe instead of property == nothing, there should be a 
+#       generic property with no symmetry attached to it. 
 
 function PIBasisSpec( basis1p::OneParticleBasis,
                       symgrp::SymmetryGroup, 
-                      maxν::Integer, 
-                      maxdeg::Real;
-                      Deg = NaiveTotalDegree(),
+                      Bsel::DownsetBasisSelector;
                       property = nothing,
                       filterfun = _->true,
-                      constant = false )
-   # would make sense to construct the basis1p spec here?
+                      constant = false, 
+                      init1pbasis = true )
+   
+   # we initialize the 1p-basis here; to prevent this it must be manually 
+   # avoided by passing in init1pbasis = false 
+   if init1pbasis
+      init1pspec!(basis1p, Bsel)
+   end
 
    # get the basis spec of the one-particle basis
    #  Aspec[i] described the basis function that will get written into A[i]
@@ -47,7 +53,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    # we assume that `Aspec` is sorted by degree, but best to double-check this
    # since the notion of degree used to construct `Aspec` might be different
    # from the one used to construct AAspec.
-   if !issorted(Aspec; by = b -> degree(b, Deg, basis1p))
+   if !issorted(Aspec; by = b -> degree(b, Bsel, basis1p))
       error("""PIBasisSpec : AAspec construction failed because Aspec is not
                sorted by degree. This could e.g. happen if an incompatible
                notion of degree was used to construct the 1-p basis spec.""")
@@ -59,7 +65,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    tup2b = vv -> _get_pibfcn(Aspec, vv)
 
    #  degree of a basis function ↦ is it admissible?
-   admissible = b -> (degree(b, Deg, basis1p) <= maxdeg)
+   admissible = b -> isadmissible(b, Bsel, basis1p)
 
    if property != nothing
       filter1 = b -> filterfun(b) && filter(property, b)
@@ -70,11 +76,12 @@ function PIBasisSpec( basis1p::OneParticleBasis,
 
    # we can now construct the basis specification; the `ordered = true`
    # keyword signifies that this is a permutation-invariant basis
-   AAspec = gensparse(; NU = maxν,
+   maxord = maxorder(Bsel)
+   AAspec = gensparse(; NU = maxorder(Bsel),
                         tup2b = tup2b,
                         admissible = admissible,
                         ordered = true,
-                        maxvv = [length(Aspec) for _=1:maxν],
+                        maxvv = [length(Aspec) for _=1:maxord],
                         filter = filter1,
                         constant = constant )
 
@@ -141,10 +148,14 @@ gradtype(basis::PIBasis, cfgorX) =
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
-PIBasis(basis1p, symgrp, maxν, maxdeg; 
-        isreal = true, kwargs...) =
+# default symmetry group 
+PIBasis(basis1p, Bsel::AbstractBasisSelector; kwargs...) = 
+   PIBasis(basis1p, O3(), Bsel; kwargs...)
+
+PIBasis(basis1p, symgrp, Bsel::AbstractBasisSelector; 
+        isreal = false, kwargs...) =
    PIBasis(basis1p, 
-           PIBasisSpec(basis1p, symgrp, maxν, maxdeg; kwargs...),
+           PIBasisSpec(basis1p, symgrp, Bsel; kwargs...),
            isreal ? Base.real : Base.identity )
 
 function PIBasis(basis1p::OneParticleBasis, spec::PIBasisSpec, real)
@@ -165,6 +176,19 @@ setreal(basis::PIBasis, isreal::Bool) =
    PIBasis(basis.basis1p, basis.spec, isreal)
 
 maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
+
+function scaling(pibasis::PIBasis, p)
+   ww = zeros(Float64, length(pibasis))
+   bspec = get_spec(pibasis)
+   for i = 1:length(pibasis)
+      for b in bspec[i]
+         # TODO: revisit how this should be implemented for a general basis
+         ww[i] += sum( abs.(values(b)).^p )
+      end
+   end
+   return ww
+end
+
 
 # function scaling(pibasis::PIBasis, p)
 #    ww = zeros(Float64, length(pibasis))

@@ -9,20 +9,22 @@ using ACE, Random
 using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      PositionState, Product1pBasis, NaiveTotalDegree, O3
+      PositionState, Product1pBasis, O3
 
 ##
 
 @info("Basic test of PIBasis construction and evaluation")
 
-D = NaiveTotalDegree()
 maxdeg = 6
 ord = 3
+Bsel = SimpleSparseBasis(ord, maxdeg) 
+
 φ = ACE.Invariant()
 
-B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
-pibasis = PIBasis(B1p, O3(), ord, maxdeg; property = φ)
+pibasis = PIBasis(B1p, O3(), Bsel; property = φ)
+pibasis_r = PIBasis(B1p, O3(), Bsel; property = φ, isreal=true)
 
 # generate a configuration
 nX = 10
@@ -30,6 +32,7 @@ Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 AA = evaluate(pibasis, cfg)
+AA_r = evaluate(pibasis_r, cfg)
 
 println(@test(length(pibasis) == length(AA)))
 
@@ -52,32 +55,36 @@ end
 
 ## a really naive implementation of PIBasis to check correctness
 A = evaluate(B1p, cfg)
-AA_naive =  [
-      real(prod( A[ inv_spec1[ b1 ] ] for b1 in b )) for b in spec ]
+AA_naive =  [ prod( A[ inv_spec1[ b1 ] ] for b1 in b ) for b in spec ]
 println(@test( AA_naive ≈ AA ))
+
+AA_r_naive = real.(AA_naive)
+println(@test( AA_r_naive ≈ AA_r ))
+
 
 ## FIO tests 
 
 @info("FIO Test")
 println(@test( all(test_fio(pibasis)) ))
+println(@test( all(test_fio(pibasis_r)) ))
 
 ## Testing derivatives
 
 @info("Derivatives of PIbasis")
-AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
-println(@test AA1 ≈ AA)
+for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
+  AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
+  println(@test AA1 ≈ AA)
 
-##
-
-for ntest = 1:30
-  _rrval(x::ACE.XState) = x.rr
-  Us = randn(SVector{3, Float64}, length(Xs))
-  c = randn(length(pibasis))
-  F = t -> sum(c .* ACE.evaluate(pibasis, ACEConfig(Xs + t[1] * Us)))
-  dF = t -> [ Us' * _rrval.(sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:]) ]
-  print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+  for ntest = 1:30
+    _rrval(x::ACE.XState) = x.rr
+    Us = randn(SVector{3, Float64}, length(Xs))
+    c = randn(length(pibasis))
+    F = t -> sum(c .* ACE.evaluate(pibasis, ACEConfig(Xs + t[1] * Us)))
+    dF = t -> [ Us' * _rrval.(sum(c .* ACE.evaluate_ed(pibasis, ACEConfig(Xs + t[1] * Us))[2], dims=1)[:]) ]
+    print_tf(@test fdtest(F, dF, [0.0], verbose=false))
+  end
+  println()
 end
-println()
 ##
 
 

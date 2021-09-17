@@ -12,20 +12,23 @@ using LinearAlgebra: rank, svd, Diagonal
 
 ### Constructors
 
+Option 1: pass a `OneParticleBasis`
+```julia
+SymmetricBasis(φ, symgrp, basis1p, Bsel)
+SymmetricBasis(φ, basis1p, Bsel)   # uses default symgrp = O3()
+```
+will first construct a `PIBasis` from these inputs and then call the second
+constructor.
+
+
 Option 1: pass a `PIBasis`
 ```julia
-SymmetricBasis(pibasis, φ)
+SymmetricBasis(φ, symgrp, pibasis)
+SymmetricBasis(φ, pibasis)
 ```
-All possible permutation-invariant basis functions will be symmetrised and
-then reduced to a basis (rather than spanning set)
-
-Option 2: pass a `OneParticleBasis`
-```julia
-SymmetricBasis(φ, basis1p, maxν, maxdeg;
-               Deg = NaiveTotalDegree())
-```
-will first construct a `PIBasis` from these inputs and then call the first
-constructor.
+If the PIbasis is already available, this directly constructs a 
+resulting SymmetricBasis; all possible permutation-invariant basis functions 
+will be symmetrised and then reduced to a basis (rather than spanning set)
 """
 struct SymmetricBasis{BOP, PROP, SYM, REAL, VPROP} <: ACEBasis
    pibasis::PIBasis{BOP}
@@ -49,15 +52,11 @@ gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
 function gradtype(basis::SymmetricBasis, cfgorX)
    φ = zero(eltype(basis.A2Bmap))
    dAA = zero(gradtype(basis.pibasis, cfgorX))
-   return typeof(_myreal1234( coco_o_daa(φ, dAA), basis.real))
+   # note up to 0.12.4, basis.real used to be replaced with _real1234 
+   # a weird hacky thing. not sure why it now works with basis.real
+   return typeof( basis.real( coco_o_daa(φ, dAA) ))
 end
 
-# weird hacky name to avoid clashes 
-# TODO: there must be a more elegant way to do this 
-#       come to think of it, why did we do this in the first place???3    
-#       .... I still don't remember, need to start documenting better ... 
-_myreal1234(a, ::typeof(Base.identity)) = a
-_myreal1234(a::StaticArray, ::typeof(Base.real)) = real.(a)
 
 # -------- FIO
 
@@ -82,13 +81,22 @@ read_dict(::Val{:ACE_SymmetricBasis}, D::Dict) =
 
 SymmetricBasis(φ::AbstractProperty, 
                basis1p::OneParticleBasis, 
+               Bsel::AbstractBasisSelector; 
+               kwargs...) =
+      SymmetricBasis(φ, basis1p, O3(), Bsel; kwargs...)
+
+SymmetricBasis(φ::AbstractProperty, pibasis; kwargs...) = 
+      SymmetricBasis(φ, O3(), pibasis; kwargs...)
+
+
+SymmetricBasis(φ::AbstractProperty, 
+               basis1p::OneParticleBasis, 
                symgrp::SymmetryGroup, 
-               maxν::Integer, 
-               maxdeg::Real; 
-               isreal=false, kwargs...) =
+               Bsel::AbstractBasisSelector; 
+               isreal=isrealB(φ), kwargs...) =
       SymmetricBasis(φ, symgrp, 
-                     PIBasis(basis1p, symgrp, maxν, maxdeg; 
-                             kwargs..., property = φ); 
+                     PIBasis(basis1p, symgrp, Bsel; 
+                             isreal = isrealAA(φ), kwargs..., property = φ); 
                      isreal=isreal)
 
 function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis; 
@@ -292,7 +300,14 @@ end
 
 function evaluate_d!(dB, basis::SymmetricBasis,
                      AA::AbstractVector{<: Number}, dAA)
+   # note up to 0.12.4, basis.real used to be replaced with _real1234 
+   # a weird hacky thing. not sure why it now works with basis.real
    genmul!(dB, basis.A2Bmap, dAA, 
-           (a, b) -> _myreal1234(ACE.coco_o_daa(a, b), basis.real))
+           (a, b) -> basis.real( ACE.coco_o_daa(a, b) ) )
 end
 
+function scaling(basis::SymmetricBasis, p)
+   wwpi = scaling(basis.pibasis, p)
+   wwrpi = abs2.(norm.(basis.A2Bmap)) * abs2.(wwpi)
+   return sqrt.(wwrpi)
+end
