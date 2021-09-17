@@ -155,20 +155,20 @@ end
 
 function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w) 
    basis1p = V.pibasis.basis1p
-   tmpd_1p = alloc_temp_d(basis1p)
    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
    A = zeros(ComplexF64, length(basis1p))
-   dA = zeros(SVector{3, ComplexF64}, length(A), length(cfg))
+   TDX = gradtype(m.basis, cfg)
+   dA = zeros(complex(TDX) , length(A), length(cfg))
    _real = V.pibasis.real
-   dAAw = alloc_B(V.pibasis)
+   dAAw = acquire_B!(V.pibasis, cfg)
    dAw = similar(A)
    dB = similar(m.c)
 
    # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
-   evaluate_ed!(A, dA, tmpd_1p, basis1p, cfg)
+   evaluate_ed!(A, dA, basis1p, cfg)
    fill!(dAw, 0)
    for k = 1:length(basis1p), j = 1:length(w)
-      dAw[k] += sum(dA[k, j] .* w[j])
+      dAw[k] += _contract(w[j], dA[k, j])
    end
 
    # [2] dAA_k 
@@ -183,6 +183,8 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    end
 
    genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+
+   release_B!(V.pibasis, dAAw)
 
    # [3] dB_k
    return dB

@@ -88,3 +88,8 @@ println()
 #     print_tf(@test(singl ≈ multi))
 # end
 # println()
+
+# TDX = ACE.gradtype(singlProp[1].basis, cfg)
+# w = zeros(complex(TDX) , 54)
+
+# ACE.adjoint_EVAL_D(singlProp[1], cfg, w)
