@@ -70,6 +70,7 @@ include("oneparticlebasis.jl")
 include("Ylm1pbasis.jl")
 include("Rn1pbasis.jl")
 include("scal1pbasis.jl")
+include("discrete1pbasis.jl")
 
 include("product_1pbasis.jl")
 

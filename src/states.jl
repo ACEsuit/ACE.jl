@@ -160,7 +160,7 @@ _showsym(X::State) = ""
 _showsym(X::DState) = "′"
 
 show(io::IO, X::XState{SYMS}) where {SYMS} = 
-      print(io, "{" * prod( "$(sym)$(_2str(getproperty(_x(X), sym))), " 
+      print(io, "{" * prod( "$(sym):$(_2str(getproperty(_x(X), sym))), " 
                             for sym in SYMS) * "}" * _showsym(X))
 
 for f in (:+, :-)
