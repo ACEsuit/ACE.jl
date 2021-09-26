@@ -61,7 +61,7 @@ _varsym(::Onehot1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = VSYM
 _isym(::Onehot1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = ISYM
 
 _val(X, B::Onehot1pBasis) = getproperty(X, _varsym(B))
-_idx(b, B::Onehot1pBasis) = getproperty(b, _isym(basis))
+_idx(b, B::Onehot1pBasis) = getproperty(b, _isym(B))
 
 Base.length(B::Onehot1pBasis) = length(B.categories)
 
