@@ -50,8 +50,25 @@ end
 
 # -------------------------
 
-"""
-`Onehot1pBasis` : todo write docs 
+@doc raw"""
+`Onehot1pBasis` : defines the discrete 1p basis 
+```math 
+   \phi_q(u) = \delta(u - U_q),
+```
+where ``U_q, q = 1, \dots, Q`` are finitely many possible values that the 
+variable ``u`` may take. Suppose, e.g., we allow the values `[:a, :b, :c]`, 
+then 
+```julia 
+P = Onehot1pBasis([:a, :b, :c]; varsym = :u, idxsym = :q)
+evaluate(P, State(u = :a))     # Bool[1, 0, 0]
+evaluate(P, State(u = :b))     # Bool[0, 1, 0]
+evaluate(P, State(u = :c))     # Bool[0, 0, 1]
+```
+If we evaluate it with an unknown state we get an error: 
+```julia 
+evaluate(P, State(u = :x))   
+# Error : val = x not found in this list
+```
 """
 struct Onehot1pBasis{VSYM, ISYM, LEN, T} <: Discrete1pBasis{LEN}
    categories::SList{LEN, T}
@@ -64,6 +81,10 @@ _val(X, B::Onehot1pBasis) = getproperty(X, _varsym(B))
 _idx(b, B::Onehot1pBasis) = getproperty(b, _isym(B))
 
 Base.length(B::Onehot1pBasis) = length(B.categories)
+
+Onehot1pBasis(categories::AbstractArray; 
+              varsym::Symbol = nothing, idxsym::Symbol = nothing) = 
+      Onehot1pBasis(categories, varsym, idxsym)
 
 Onehot1pBasis(categories::AbstractArray, varsym::Symbol, isym::Symbol) = 
       Onehot1pBasis(SList(categories), varsym, isym)
