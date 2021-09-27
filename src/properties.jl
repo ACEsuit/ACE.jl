@@ -60,6 +60,10 @@ end
 
 Base.show(io::IO, φ::Invariant) = print(io, "i($(φ.val))")
 
+isrealB(::Invariant{<: Real}) = true 
+isrealB(::Invariant{<: Complex}) = false 
+isrealAA(::Invariant{<: Real}) = true 
+isrealAA(::Invariant{<: Complex}) = false 
 
 Invariant{T}() where {T <: Number} = Invariant{T}(zero(T))
 
@@ -135,19 +139,22 @@ $O(3)$ as
 ```
 where $\cdot$ denotes the standard matrix-vector product.
 """
-struct EuclideanVector{T} <: AbstractProperty
-   val::SVector{3, T}
+struct EuclideanVector{T} <: AbstractProperty where T<:Real
+   val::SVector{3, Complex{T}}
 end
 
 
-real(φ::EuclideanVector) = EuclideanVector(real(φ.val))
-complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
+real(φ::EuclideanVector) = EuclideanVector(φ.val)
+complex(φ::EuclideanVector) = EuclideanVector(φ.val)
 complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
+
+isrealB(::EuclideanVector) = true
+isrealAA(::EuclideanVector) = false
 
 
 #fltype(::EuclideanVector{T}) where {T} = T
 
-EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}))
+EuclideanVector{T}() where {T <: Real} = EuclideanVector{T}(zero(SVector{3, Complex{T}}))
 
 EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
@@ -164,13 +171,13 @@ write_dict(φ::EuclideanVector{T}) where {T} =
 
 function read_dict(::Val{:ACE_EuclideanVector}, D::Dict)
    T = read_dict(D["T"])
-   return EuclideanVector{T}(SVector{3, T}(read_dict(D["val"])))
+   return EuclideanVector{T}(SVector{3, Complex{T}}(read_dict(D["val"])))
 end
 
 # differentiation - cf #27
 # *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
 
-coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT} = (
+coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
          ? [EuclideanVector{CT}(rmatrices[m,μ][:,k]) for k=1:3]
          : coco_zeros(phi, l, m, μ, T, A)  )
@@ -209,6 +216,10 @@ end
 
 # # differentiation - cf #27
 # *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
+
+isrealB(::SphericalVector) = false 
+isrealAA(::SphericalVector) = false 
+
 
 real(φ::SphericalVector) = SphericalVector(real(φ.val), φ._valL)
 
@@ -305,6 +316,10 @@ end
 #       reshape(φ.val[:] * dAA', Size(LEN1, LEN2, N))
 
 getL(φ::SphericalMatrix{L1,L2}) where {L1,L2} = L1, L2
+
+isrealB(::SphericalMatrix) = false 
+isrealAA(::SphericalMatrix) = false 
+
 
 # L = 0 -> (0,0)
 # L = 1 -> (0,0), (1,-1), (1,0), (1,1)  -> 4

@@ -153,7 +153,7 @@ PIBasis(basis1p, Bsel::AbstractBasisSelector; kwargs...) =
    PIBasis(basis1p, O3(), Bsel; kwargs...)
 
 PIBasis(basis1p, symgrp, Bsel::AbstractBasisSelector; 
-        isreal = true, kwargs...) =
+        isreal = false, kwargs...) =
    PIBasis(basis1p, 
            PIBasisSpec(basis1p, symgrp, Bsel; kwargs...),
            isreal ? Base.real : Base.identity )
