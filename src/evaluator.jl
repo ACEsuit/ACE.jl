@@ -153,7 +153,7 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
 end
 
 
-function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w) 
+function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    basis1p = V.pibasis.basis1p
    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
    A = zeros(ComplexF64, length(basis1p))
@@ -185,6 +185,58 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
 
    release_B!(V.pibasis, dAAw)
+
+   # [3] dB_k
+   return dB
+end
+
+#for multiple properties. dispatch on the pullback input being a matrix. 
+#Basically the same code, except for some parts where we loop over all properties. 
+#We generate a list of size "nprop" and keep the same objects as for a single property 
+#inside the list.
+function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, wt::Matrix)
+   basis1p = V.pibasis.basis1p
+   dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
+   A = zeros(ComplexF64, length(basis1p))
+   TDX = gradtype(m.basis, cfg)
+   dA = zeros(complex(TDX) , length(A), length(cfg))
+   _real = V.pibasis.real
+   dAAw = [acquire_B!(V.pibasis, cfg) for _ in 1:length(m.c[1])]
+   dAw = [similar(A) for _ in 1:length(m.c[1])]
+   dB = similar(m.c)
+
+   # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
+   evaluate_ed!(A, dA, basis1p, cfg)
+   for i in 1:length(m.c[1])
+      fill!(dAw[i], 0)
+   end
+   for prop in 1:length(m.c[1])
+      w = wt[:,prop]
+      for k = 1:length(basis1p), j = 1:length(w)
+         dAw[prop][k] += _contract(w[j], dA[k, j])
+      end
+   end
+
+   # [2] dAA_k 
+   spec = V.pibasis.spec
+   for i in 1:length(m.c[1])
+      fill!(dAAw[i], 0)
+   end
+   for prop in 1:length(m.c[1])
+      @inbounds for iAA = 1:length(spec)
+         _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+         @fastmath for t = 1:spec.orders[iAA]
+            vt = spec.iAA2iA[iAA, t]
+            dAAw[prop][iAA] += _real(dAw[prop][vt] * dAAdA[t])
+         end
+      end
+   end
+
+   adjointgenmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+
+   for i in 1:length(m.c[1])
+      release_B!(V.pibasis, dAAw[i]) #TODO check that this indeed releases
+   end
 
    # [3] dB_k
    return dB

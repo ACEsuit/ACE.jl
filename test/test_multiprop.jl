@@ -16,6 +16,7 @@ Bsel = SimpleSparseBasis(ord, maxdeg)
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
+#TODO check if this tests account/test u, and will it work with more things?
 nX = 54
 Xs = () -> ACE.State(rr = rand(SVector{3, Float64}), u = rand())
 cfg = ACEConfig([Xs() for i in 1:nX])
@@ -111,15 +112,26 @@ println()
 
 #now we check that multiple properties work. For this, like before, we simply
 #compare the single property result to each of the multiple properties. 
-for i in 1:length(c_m[1])
-    Jac = ACE.grad_params_config(singlProp[i],cfg) #only for the length of w
-    w = rand(SVector{3, Float64}, length(Jac[1,:]))
-    u = zeros(1)
-    w = [ACE.DState(rr = w[j], u = u) for j in 1:length(w)]
 
-    singl = ACE.adjoint_EVAL_D(singlProp[i], cfg, w)
-    multiEval = ACE.adjoint_EVAL_D(multiProp, cfg, w)
+uo = zeros(1)
+function wMaker()
+    wtmp = rand(SVector{3, Float64}, length(cfg))
+    wtmp = [ACE.DState(rr = wtmp[j], u = uo) for j in 1:length(wtmp)]
+    return wtmp
+end
+wo = Matrix{ACE.DState{(:rr, :u), Tuple{SVector{3, Float64}, Vector{Float64}}}}(undef, (54,7))
+wt  = [wMaker() for i in 1:length(c_m[1])]
+
+for i in 1:length(wt)
+    for j in 1:length(wt[i])
+        wo[j,i] = wt[i][j]
+    end
+end
+
+multiEval = ACE.adjoint_EVAL_D(multiProp, cfg, wo)
+
+for i in 1:length(c_m[1])
+    singl = ACE.adjoint_EVAL_D(singlProp[i], cfg, wo[:,i])
     multi = [multiEval[j][i] for j in 1:length(c_m)]
     print_tf(@test(singl ≈ multi))
-
 end
