@@ -3,7 +3,7 @@ using ACE, Test, ACEbase, ACEbase.Testing
 
 ##
 
-@info("Testing Onehot1pBasis")
+@info("Testing Categorical1pBasis")
 
 @info "Test SList"
 
@@ -24,7 +24,7 @@ for categories in (  [:a,],
     ##
 
     # @info("check evaluation")
-    B1p = ACE.Onehot1pBasis(categories; varsym = :mu, idxsym = :q)
+    B1p = ACE.Categorical1pBasis(categories; varsym = :mu, idxsym = :q)
     print_tf(@test ACE._varsym(B1p) == :mu)
     print_tf(@test ACE._isym(B1p) == :q)
     print_tf(@test ACE.symbols(B1p) == [:q,])

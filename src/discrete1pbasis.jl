@@ -2,7 +2,7 @@
 
 import ACEbase: Discrete1pBasis
 
-export Onehot1pBasis
+export Categorical1pBasis
 
 
 # -------------------------
@@ -51,7 +51,7 @@ end
 # -------------------------
 
 @doc raw"""
-`Onehot1pBasis` : defines the discrete 1p basis 
+`Categorical1pBasis` : defines the discrete 1p basis 
 ```math 
    \phi_q(u) = \delta(u - U_q),
 ```
@@ -59,7 +59,7 @@ where ``U_q, q = 1, \dots, Q`` are finitely many possible values that the
 variable ``u`` may take. Suppose, e.g., we allow the values `[:a, :b, :c]`, 
 then 
 ```julia 
-P = Onehot1pBasis([:a, :b, :c]; varsym = :u, idxsym = :q)
+P = Categorical1pBasis([:a, :b, :c]; varsym = :u, idxsym = :q)
 evaluate(P, State(u = :a))     # Bool[1, 0, 0]
 evaluate(P, State(u = :b))     # Bool[0, 1, 0]
 evaluate(P, State(u = :c))     # Bool[0, 0, 1]
@@ -70,53 +70,53 @@ evaluate(P, State(u = :x))
 # Error : val = x not found in this list
 ```
 """
-struct Onehot1pBasis{VSYM, ISYM, LEN, T} <: Discrete1pBasis{LEN}
+struct Categorical1pBasis{VSYM, ISYM, LEN, T} <: Discrete1pBasis{LEN}
    categories::SList{LEN, T}
 end
 
-_varsym(::Onehot1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = VSYM
-_isym(::Onehot1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = ISYM
+_varsym(::Categorical1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = VSYM
+_isym(::Categorical1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = ISYM
 
-_val(X, B::Onehot1pBasis) = getproperty(X, _varsym(B))
-_idx(b, B::Onehot1pBasis) = getproperty(b, _isym(B))
+_val(X, B::Categorical1pBasis) = getproperty(X, _varsym(B))
+_idx(b, B::Categorical1pBasis) = getproperty(b, _isym(B))
 
-Base.length(B::Onehot1pBasis) = length(B.categories)
+Base.length(B::Categorical1pBasis) = length(B.categories)
 
-Onehot1pBasis(categories::AbstractArray; 
+Categorical1pBasis(categories::AbstractArray; 
               varsym::Symbol = nothing, idxsym::Symbol = nothing) = 
-      Onehot1pBasis(categories, varsym, idxsym)
+      Categorical1pBasis(categories, varsym, idxsym)
 
-Onehot1pBasis(categories::AbstractArray, varsym::Symbol, isym::Symbol) = 
-      Onehot1pBasis(SList(categories), varsym, isym)
+Categorical1pBasis(categories::AbstractArray, varsym::Symbol, isym::Symbol) = 
+      Categorical1pBasis(SList(categories), varsym, isym)
 
-Onehot1pBasis(categories::SList{LEN, T}, varsym::Symbol, isym::Symbol) where {LEN, T} = 
-      Onehot1pBasis{varsym, isym, LEN, T}(categories)
+Categorical1pBasis(categories::SList{LEN, T}, varsym::Symbol, isym::Symbol) where {LEN, T} = 
+      Categorical1pBasis{varsym, isym, LEN, T}(categories)
 
-function ACE.evaluate!(A, basis::Onehot1pBasis, X::AbstractState)
+function ACE.evaluate!(A, basis::Categorical1pBasis, X::AbstractState)
    fill!(A, false)
    A[val2i(basis.categories, _val(X, basis))] = true
    return A
 end
 
-ACE.valtype(::Onehot1pBasis, args...) = Bool
+ACE.valtype(::Categorical1pBasis, args...) = Bool
 
-symbols(basis::Onehot1pBasis) = [ _isym(basis), ]
+symbols(basis::Categorical1pBasis) = [ _isym(basis), ]
 
-indexrange(basis::Onehot1pBasis) = Dict( _isym(basis) => basis.categories.list )
+indexrange(basis::Categorical1pBasis) = Dict( _isym(basis) => basis.categories.list )
 
-isadmissible(b, basis::Onehot1pBasis) = (_idx(b, basis) in basis.categories)
+isadmissible(b, basis::Categorical1pBasis) = (_idx(b, basis) in basis.categories)
 
-degree(b, basis::Onehot1pBasis, args...) = 0
+degree(b, basis::Categorical1pBasis, args...) = 0
 
-Base.rand(basis::Onehot1pBasis) = rand(basis.list)
+Base.rand(basis::Categorical1pBasis) = rand(basis.list)
 
 
-write_dict(B::Onehot1pBasis) = 
-      Dict( "__id__" => "ACE_Onehot1pBasis", 
+write_dict(B::Categorical1pBasis) = 
+      Dict( "__id__" => "ACE_Categorical1pBasis", 
             "categories" => write_dict(B.categories), 
             "VSYM" => String(_varsym(B)), 
             "ISYM" => String(_isym(B)))
 
-read_dict(::Val{:ACE_Onehot1pBasis}, D::Dict)  = 
-   Onehot1pBasis( read_dict(D["categories"]), 
+read_dict(::Val{:ACE_Categorical1pBasis}, D::Dict)  = 
+   Categorical1pBasis( read_dict(D["categories"]), 
                   Symbol(D["VSYM"]), Symbol(D["ISYM"]) )
