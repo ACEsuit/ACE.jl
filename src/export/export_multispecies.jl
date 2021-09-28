@@ -13,7 +13,7 @@ function export_ACE(fname, IP)
     V2 = IP.components[2]
     V3 = IP.components[3]
 
-    species = string.(collect(keys(IP.components[1].E0)))
+    species = collect(string.(chemical_symbol.(V2.basis.zlist.list.data)))
 
     species_dict = Dict(zip(collect(0:length(species)-1), species))
     reversed_species_dict = Dict(zip(species, collect(0:length(species)-1)))
