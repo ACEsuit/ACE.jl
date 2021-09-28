@@ -15,6 +15,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # core permutation-invariant functionality
     @testset "1-Particle Basis"  begin include("test_1pbasis.jl") end 
     @testset "MultipleFeatures" begin  include("test_multigrads.jl") end 
+    @testset "Categorical1pBasis" begin include("test_discrete.jl") end 
     @testset "PIBasis" begin include("test_pibasis.jl") end
 
     # ------------------------
