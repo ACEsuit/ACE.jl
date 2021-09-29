@@ -142,3 +142,6 @@ degree(bb, Bsel::SparseBasis, basis::OneParticleBasis)  =  (
 
 
 
+
+
+abstract type B1pMultiplier{T} <: OneParticleBasis{T} end 
