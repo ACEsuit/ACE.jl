@@ -48,12 +48,8 @@ end
 function adj(dp, θ, cfg)
    ACE.set_params!(model, θ)
    gp = f.(ACE.grad_params(model, cfg))
-   for i in 1:length(gp)
-      tmpv = []
-      for j in 1:length(dp)
-         push!(tmpv, gp[i][j] * dp[j])
-      end
-      gp[i] = tmpv
+   for i = 1:length(gp) 
+      gp[i] = gp[i] .* dp
    end
 
    g_cfg = ACE.grad_config(model, cfg) #TODO multiply by dp
