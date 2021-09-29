@@ -53,6 +53,9 @@ function adj(dp, θ, cfg)
    end
 
    g_cfg = ACE.grad_config(model, cfg) #TODO multiply by dp
+   # for j = 1:length(dp)
+   #    g_cfg[j] *= dp[j] 
+   # end
 
    return (NoTangent(), gp, g_cfg) #d(dp), d(θ), d(cfg)
 end
@@ -72,8 +75,10 @@ end
 
 #simple loss function with sum over properties and over forces
 function loss(θ)
-   Ftemp = Zygote.gradient(x -> sum(energyModel(θ, x)), cfg)[1]
-   return(abs2(sum(energyModel(θ, cfg))) + sum([sum(Ftemp[i].rr) for i in 1:length(Ftemp)]))
+   props = energyModel(θ, cfg)
+   FS = props -> sum( [ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+   Ftemp = Zygote.gradient(x -> FS( energyModel(θ, x) ), cfg)[1]
+   return(abs2(FS(props)) + sum([sum(Ftemp[i].rr) for i in 1:length(Ftemp)]))
 end
 
 # g = Zygote.gradient(loss, c_m)[1] sample on how to get the gradient
@@ -96,46 +101,11 @@ function matrix2svector(M)
    return sv
 end
 
-#same function just doesn't enforce x to be an AbstractArray
-function fdtestMatrix(F, dF, x; h0 = 1.0, verbose=true)
-   errors = Float64[]
-   E = F(x)
-   dE = dF(x)
-   # loop through finite-difference step-lengths
-   verbose && @printf("---------|----------- \n")
-   verbose && @printf("    h    | error \n")
-   verbose && @printf("---------|----------- \n")
-   for p = 2:11
-      h = 0.1^p
-      dEh = copy(dE)
-      for n = 1:length(dE)
-         x[n] += h
-         dEh[n] = (F(x) - E) / h
-         x[n] -= h
-      end
-      push!(errors, norm(dE - dEh, Inf))
-      verbose && @printf(" %1.1e | %4.2e  \n", h, errors[end])
-   end
-   verbose && @printf("---------|----------- \n")
-   if minimum(errors) <= 1e-3 * maximum(errors)
-      verbose && println("passed")
-      return true
-   else
-      @warn("""It seems the finite-difference test has failed, which indicates
-      that there is an inconsistency between the function and gradient
-      evaluation. Please double-check this manually / visually. (It is
-      also possible that the function being tested is poorly scaled.)""")
-      return false
-   end
-end
 
 ##
-#the actual testing
 
-for ntest = 1:30
-    c = randn(np, length(basis))
-    F = t ->  loss(matrix2svector(c + t))
-    dF = t -> svector2matrix(Zygote.gradient(loss, matrix2svector(c))[1])
-    print_tf(@test fdtestMatrix(F, dF, zeros(np, length(basis)), verbose=false))
-end
-println()
+c = randn(np * length(basis))
+F = c -> loss(matrix2svector(reshape(c, np, length(basis))))
+dF = c -> svector2matrix(Zygote.gradient(loss, matrix2svector(reshape(c, np, length(basis))))[1])[:]
+
+print_tf(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
