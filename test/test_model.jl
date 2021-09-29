@@ -20,7 +20,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 
 # # generate a random configuration
-nX = 54
+nX = 10
 cfg = ACEConfig([State(rr = rand(SVector{3, Float64})) for _ in 1:length(nX)])
 
 #initialize the model
@@ -53,6 +53,9 @@ function adj(dp, θ, cfg)
    end
 
    g_cfg = ACE.grad_config(model, cfg) #TODO multiply by dp
+   # @show typeof(g_cfg)
+   # @show size(g_cfg) 
+
    # for j = 1:length(dp)
    #    g_cfg[j] *= dp[j] 
    # end
@@ -76,9 +79,11 @@ end
 #simple loss function with sum over properties and over forces
 function loss(θ)
    props = energyModel(θ, cfg)
-   FS = props -> sum( [ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+   # FS = props -> sum( [ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+   FS = props -> sum( [0.77^n for n = 1:length(props)] .* props )
    Ftemp = Zygote.gradient(x -> FS( energyModel(θ, x) ), cfg)[1]
-   return(abs2(FS(props)) + sum([sum(Ftemp[i].rr) for i in 1:length(Ftemp)]))
+   floss = f -> sum(abs2, f.rr)
+   return(abs2(FS(props)) + sum(floss, Ftemp))
 end
 
 # g = Zygote.gradient(loss, c_m)[1] sample on how to get the gradient
@@ -108,4 +113,4 @@ c = randn(np * length(basis))
 F = c -> loss(matrix2svector(reshape(c, np, length(basis))))
 dF = c -> svector2matrix(Zygote.gradient(loss, matrix2svector(reshape(c, np, length(basis))))[1])[:]
 
-print_tf(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
+println(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
