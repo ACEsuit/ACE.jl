@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>- · ACE.jl Documentation</title><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">ACE.jl Documentation</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../gettingstarted/">Getting Started</a></li><li><a class="tocitem" href="../math/">Math</a></li><li><a class="tocitem" href="../devel/">Developer Docs</a></li><li><a class="tocitem" href="../docs/">Types &amp; Functions</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>-</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>-</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/ACEsuit/ACE.jl/blob/master/docs/src/purerecursion.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h3 id="Pure-Basis-Recursion"><a class="docs-heading-anchor" href="#Pure-Basis-Recursion">Pure Basis Recursion</a><a id="Pure-Basis-Recursion-1"></a><a class="docs-heading-anchor-permalink" href="#Pure-Basis-Recursion" title="Permalink"></a></h3><p>The idea is to exploit the DAG representation of the pi-ACE basis <span>$A_{\bf k}$</span> to recursively construct the pure basis <span>$\mathcal{A}_{\bm k}$</span>.</p><h4 id="correlations-(2-body)"><a class="docs-heading-anchor" href="#correlations-(2-body)">1-correlations (2-body)</a><a id="correlations-(2-body)-1"></a><a class="docs-heading-anchor-permalink" href="#correlations-(2-body)" title="Permalink"></a></h4><p>For the 1-correlations, there is nothing to do since</p><p class="math-container">\[
+   A_k = \mathcal{A}_k \qquad \forall k\]</p><h4 id="correlations-(3-body)"><a class="docs-heading-anchor" href="#correlations-(3-body)">2-correlations (3-body)</a><a id="correlations-(3-body)-1"></a><a class="docs-heading-anchor-permalink" href="#correlations-(3-body)" title="Permalink"></a></h4><p>If <span>${\bm k} = (k_1, k_2)$</span> then the connection <span>${\bm k} = (k_1,) \cup (k_2,)$</span> is already the DAG. We can now write</p><p class="math-container">\[\begin{aligned}
+   {A}_{k_1 k_2}
+   &amp;=
+   \sum_{j_1, j_2} \phi_{k_1}({\bm r}_{j_1}) \phi_{k_2}({\bm r}_{j_2}) \\
+   &amp;=
+   \sum_{j_1 \neq j_2} \phi_{k_1}({\bm r}_{j_1}) \phi_{k_2}({\bm r}_{j_2})
+   + \sum_{j_1} \phi_{k_1}({\bm r}_{j_1}) \phi_{k_2}({\bm r}_{j_1}),
+\end{aligned}\]</p><p>or, conversely,</p><p class="math-container">\[   \mathcal{A}_{k_1 k_2}
+   =
+   {A}_{k_1 k_2} - \sum_{j_1} \phi_{k_1}({\bm r}_{j_1}) \phi_{k_2}({\bm r}_{j_1}).\]</p><p>Next we observe that the product of polynomials <span>$\phi_{k_1} \phi_{k_2}$</span> is again a polynomial, i.e.,</p><p class="math-container">\[   \phi_{k_1} \phi_{k_2}
+   = \sum_K P_{k_1 k_2}^K \phi_K\]</p><p>hence, we can write</p><p class="math-container">\[   \mathcal{A}_{k_1 k_2}
+   =
+   {A}_{k_1 k_2} - \sum_{K} P_{k_1 k_2}^K A_K\]</p><p>The computation of the product coefficients <span>$P_{k_1 k_2}^K$</span> will be discussed  <a href="../polyproducts/#Products-of-Polynomials">Products of Polynomials</a>.</p><h4 id="General-correlations"><a class="docs-heading-anchor" href="#General-correlations">General correlations</a><a id="General-correlations-1"></a><a class="docs-heading-anchor-permalink" href="#General-correlations" title="Permalink"></a></h4><p>For general <span>${\bm k} = (k_1, \dots, k_\nu)$</span>, the DAG provides a recursion</p><p class="math-container">\[   {\bm k} = {\bm k}&#39; \cup {\bm k}&#39;&#39;\]</p><p>where</p><p class="math-container">\[   {\bm k}&#39; = (k_1, \dots, k_{\nu&#39;}), \qquad
+   {\bm k}&#39;&#39; = (k_{\nu&#39;+1}, \dots, k_\nu),\]</p><p>with <span>$\nu&#39;&#39; = \nu - \nu&#39;$</span>.</p><p>Since we already have access to <span>$\mathcal{A}_{\bm k&#39;}, \mathcal{A}_{\bm k&#39;&#39;}$</span> we can start from those objects,</p><p class="math-container">\[   \mathcal{A}_{\bm k&#39;}, \mathcal{A}_{\bm k&#39;&#39;}
+   =
+   \sum_{j_1 \neq \dots \neq j_{\nu&#39;}}
+   \sum_{j_{\nu&#39;} \neq \cdots \neq j_{\nu}}
+   \prod_{\alpha = 1}^\nu \phi_{k_\alpha}(\bm r_{j_\alpha})\]</p><p>The challenge now is to convert this into a <span>$\sum_{j_1 \neq \cdots \neq j_\nu}$</span>. For a general recursion  <span>${\bm k} = {\bm k}&#39; \cup {\bm k}&#39;&#39;$</span> this looks quite difficult.</p><p>Let us assume that <span>$\nu&#39; \leq \nu&#39;&#39;$</span> then we can write</p><p class="math-container">\[   \sum_{j_1 \neq \dots \neq j_{\nu&#39;}}
+   \sum_{j_{\nu&#39;} \neq \cdots \neq j_{\nu}}
+   =
+   \sum_{0 \text{~matches}} +
+   \sum_{1 \text{~matches}}
+   + \cdots +
+   \sum_{\nu \text{~matches}}\]</p><p>where</p><p class="math-container">\[   \sum_{p \text{~matches}}
+   =
+   \sum_{\substack{
+         j_1 \neq \cdots \neq j_{\nu&#39;} \\
+         j_{\nu&#39;+1} \neq \cdots \neq j_{\nu} \\
+         \# \{ j_1, \dots, j_{\nu&#39;} \} \cap \{j_{\nu&#39;+1}, \dots, j_\nu\} = p}}\]</p><p>Clearly,</p><p class="math-container">\[   \sum_{0 \text{~matches}}
+   =
+   \sum_{j_1 \neq \cdots \neq j_\nu}\]</p><p>i.e. this is the term we want to keep. It remains to express <span>$\sum_{p \text{matches}}$</span> in terms of <span>$A_{\bm k}$</span> with <span>$\mathcal{A}_{\bm k}$</span> with <span>${\rm len}({\bm k}) &lt; \nu$</span>. It appears that for <span>$p$</span> there are</p><p class="math-container">\[   \binom{\nu&#39;}{p}
+      \cdot
+   \binom{\nu&#39;&#39;}{p}\]</p><p>sums to evaluate. This cost clearly explodes rapidly with increasing body-order.</p><h4 id="Simplified-recursion"><a class="docs-heading-anchor" href="#Simplified-recursion">Simplified recursion</a><a id="Simplified-recursion-1"></a><a class="docs-heading-anchor-permalink" href="#Simplified-recursion" title="Permalink"></a></h4><p>To control this cost we can replace an optimized DAG with a much simpler DAG that contains only decompositions <span>${\bm k&#39;} = {\bm k} \cup (k_{\nu+1},)$</span> (note the modified notation to avoid clutter below). In this case, the term we need to manipulate is</p><p class="math-container">\[\begin{aligned}
+   \mathcal{A}_{\bm k} A_{k_{\nu+1}}
+   &amp;=
+   \sum_{j_1 \neq \cdots \neq j_\nu} \sum_{j_{\nu+1}} \prod_{\alpha = 1}^{\nu+1} \phi_{k_\alpha}(r_{j_\alpha}) \\
+   &amp;=
+   \sum_{j_1 \neq \cdots \neq j_\nu \neq j_{\nu+1}} \prod_{\alpha = 1}^{\nu+1} \phi_{k_\alpha}(r_{j_\alpha})
+   +
+   \sum_{\beta = 1}^{\nu} \sum_{j_1 \neq \cdots \neq j_\nu}
+      \phi_{k_{\nu+1}}(r_{j_\beta}) \prod_{\alpha = 1}^{\nu} \phi_{k_\alpha}(r_{j_\alpha}).
+\end{aligned}\]</p><p>We can now insert the expression for <a href="../polyproducts/#Products-of-Polynomials">Products of Polynomials</a> to write</p><p class="math-container">\[   \phi_{k_\beta}(r_{j_\beta}) \phi_{k_{\nu+1}}(r_{j_\beta})
+   =
+   \sum_{K} P_{k_\beta k_{\nu+1}}^K
+   \phi_K(r_{j_\beta})\]</p><p>and obtain</p><p class="math-container">\[   \mathcal{A}_{\bm k} A_{k_{\nu+1}}
+   =
+   \mathcal{A}_{({\bm k}, k_{\nu+1})}
+   +
+   \sum_{\beta = 1}^\nu
+   \sum_{K} P_{k_\beta k_{\nu+1}}^K
+   \mathcal{A}_{{\bm k}[\beta]}\]</p><p>where</p><p class="math-container">\[   {\bm k}[\beta] := (k_1, \dots, k_{\beta-1}, K, k_{\beta+1}, \dots, k_\nu).\]</p><p>With this definition we have obtained a recursive expression the ``pure&#39;&#39; <span>$\mathcal{A}$</span>  basis,</p><p class="math-container">\[   \mathcal{A}_{({\bm k}, k_{\nu+1})}
+   =
+   \mathcal{A}_{\bm k} A_{k_{\nu+1}}
+   -
+   \sum_{\beta = 1}^\nu
+   \sum_{K} P_{k_\beta k_{\nu+1}}^K
+   \mathcal{A}_{{\bm k}[\beta]}\]</p></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.7 on <span class="colophon-date" title="Wednesday 29 September 2021 18:32">Wednesday 29 September 2021</span>. Using Julia version 1.6.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
