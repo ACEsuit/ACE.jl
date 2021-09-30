@@ -45,6 +45,5 @@ function _evaluate_env(env::CylindricalBondEnvelope, X::AbstractState)
    z = dot(X.rr - r_centre, X.rr0)/norm(X.rr0)
    r = norm( (norm(X.rro)/2 + z)*X.rr0/norm(X.rr0) - X.rr )
    # then return the correct cutoff 
-   return ( (z/( env.zcut + norm(X.rr0)/2 ))^2 - 1 )^(env.pz) * (abs(z) <= env.zcut + norm(X.rr0)/2) 
-            * ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
+   return ( (z/( env.zcut + norm(X.rr0)/2 ))^2 - 1 )^(env.pz) * (abs(z) <= env.zcut + norm(X.rr0)/2) * ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
 end
