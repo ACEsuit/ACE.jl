@@ -28,20 +28,21 @@ function _inner_evaluate(env::BondEnvelope, X::AbstractState)
    end
 end
 
-function filter(env::CylindricalBondEnvelope, X)
+function filter(env::CylindricalBondEnvelope, X::AbstractState)
    # return true or false 
 end
 
-function _evaluate_bond(env::CylindricalBondEnvelope)
+function _evaluate_bond(env::CylindricalBondEnvelope, X::AbstractState)
    r = norm(X.rr0)
    return (r - env.r0cut)^(env.p0)
 end
 
 
-function _evaluate_env(env::CylindricalBondEnvelope)
+function _evaluate_env(env::CylindricalBondEnvelope, X::AbstractState)
    # convert to cylindrical coordinates
-
+   r_centre = X.rr0/2
+   z = dot(X.rr - r_centre, X.rr0)/norm(X.rr0)
+   r = norm( (norm(X.rro)/2 + z)*X.rr0/norm(X.rr0) - X.rr )
    # then return the correct cutoff 
-
+   return (z^2 - env.zcut^2)^env.pz, (r^2 - env.rcut^2)^env.pr
 end
-
