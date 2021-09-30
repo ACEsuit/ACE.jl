@@ -30,11 +30,12 @@ end
 
 function filter(env::CylindricalBondEnvelope, X::AbstractState)
    # return true or false 
+   return (_inner_evaluate(env,X) > 1e-2)
 end
 
 function _evaluate_bond(env::CylindricalBondEnvelope, X::AbstractState)
    r = norm(X.rr0)
-   return (r - env.r0cut)^(env.p0)
+   return ((r/env.r0cut)^2 - 1)^(env.p0) * (r <= env.r0cut)
 end
 
 
@@ -44,5 +45,6 @@ function _evaluate_env(env::CylindricalBondEnvelope, X::AbstractState)
    z = dot(X.rr - r_centre, X.rr0)/norm(X.rr0)
    r = norm( (norm(X.rro)/2 + z)*X.rr0/norm(X.rr0) - X.rr )
    # then return the correct cutoff 
-   return (z^2 - env.zcut^2)^env.pz, (r^2 - env.rcut^2)^env.pr
+   return ( (z/( env.zcut + norm(X.rr0)/2 ))^2 - 1 )^(env.pz) * (abs(z) <= env.zcut + norm(X.rr0)/2) 
+            * ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
 end
