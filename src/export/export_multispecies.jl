@@ -224,7 +224,6 @@ function _basis_groups(inner, coeffs)
           push!(C, coeffs[ inner.b2iAA[b] ])
        end
     end
-    @show length(NLZ)
     ords = length.(M)
     perm = sortperm(ords)
     NL = NLZ[perm]
