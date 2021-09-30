@@ -140,8 +140,3 @@ degree(bb, Bsel::SparseBasis, basis::OneParticleBasis)  =  (
                       : norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
 
 
-
-
-
-
-abstract type B1pMultiplier{T} <: OneParticleBasis{T} end 

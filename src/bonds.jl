@@ -16,7 +16,9 @@ end
 CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2) = 
       CylindricalBondEnvelope(r0cut, rcut, zcut, p0, pr, pz)
 
-function evaluate(env::BondEnvelope, X::AbstractState)
+# we can't call this `evaluate` since that would return a Vector 
+# whereas _inner_evaluate(...) should just give us a value. 
+function _inner_evaluate(env::BondEnvelope, X::AbstractState)
    if X.be == :env 
       return _evaluate_bond(env, X)
    elseif X.be == :bond 
