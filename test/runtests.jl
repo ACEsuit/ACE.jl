@@ -28,6 +28,9 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # Model tests 
     @testset "LinearACEModel"  begin include("test_linearmodel.jl") end 
     @testset "MultipleProperties"  begin include("test_multiprop.jl") end 
+
+    # Experimental material 
+    @testset "Multipliers" begin include("test_multiplier.jl") end 
 end
 
 
