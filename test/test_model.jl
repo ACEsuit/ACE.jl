@@ -9,7 +9,7 @@ using Printf, LinearAlgebra #for the fdtestMatrix
 
 ##
 
-@info("loss function test")
+@info("differentiable model test")
 
 # construct the basis
 maxdeg = 6
@@ -21,7 +21,7 @@ basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 
 # # generate a random configuration
 nX = 10
-cfg = ACEConfig([State(rr = rand(SVector{3, Float64})) for _ in 1:length(nX)])
+cfg = ACEConfig([State(rr = rand(SVector{3, Float64})) for _ in 1:nX])
 
 #initialize the model
 np = 2
@@ -36,30 +36,31 @@ model = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 #However, for the full implementation it should be there. 
 
 #a hack to implement .. meaning iterating twice over something
-f(x) = getproperty.(x, :val)
+getprops(x) = getproperty.(x, :val)
 
 #calculates the site energy
 function energyModel(θ, cfg)
    ACE.set_params!(model, θ)
-   return getproperty.(evaluate(model, cfg), :val)
+   return getprops(evaluate(model, cfg))
 end
 
 #calculates the adjoing/pullback 
 function adj(dp, θ, cfg)
+   
    ACE.set_params!(model, θ)
-   gp = f.(ACE.grad_params(model, cfg))
+   gp = getprops.(ACE.grad_params(model, cfg))
    for i = 1:length(gp) 
       gp[i] = gp[i] .* dp
    end
 
    g_cfg = ACE.grad_config(model, cfg) #TODO multiply by dp
-   # @show typeof(g_cfg)
-   # @show size(g_cfg) 
-
-   # for j = 1:length(dp)
-   #    g_cfg[j] *= dp[j] 
-   # end
-
+ 
+   for i = 1:size(g_cfg,1) #loops over number of configs
+      for j = 1:length(dp) #loops over properties
+         g_cfg[i,j] *= dp[j] 
+      end
+   end
+   
    return (NoTangent(), gp, g_cfg) #d(dp), d(θ), d(cfg)
 end
 
@@ -70,6 +71,14 @@ end
 #chainrule for derivative of forces according to parameters
 function ChainRules.rrule(::typeof(adj), dp, θ, cfg)
    function secondAdj(dq)
+      
+      #dq comes from the nonlinearities wrapping the forces
+      #dp comes from the nonlinearities wrapping the Energy
+      for i in 1:size(dq[3],1)
+         dq[3][i,:] = dq[3][i,:] .* dp
+      end
+
+      ACE.set_params!(model, θ)
       grad = ACE.adjoint_EVAL_D(model, cfg, dq[3])
       return (NoTangent(), NoTangent(), grad, NoTangent()) #only keep dF^2/dθd(cfg)
    end
@@ -79,7 +88,7 @@ end
 #simple loss function with sum over properties and over forces
 function loss(θ)
    props = energyModel(θ, cfg)
-   # FS = props -> sum( [ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+   #FS = props -> sum( [ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
    FS = props -> sum( [0.77^n for n = 1:length(props)] .* props )
    Ftemp = Zygote.gradient(x -> FS( energyModel(θ, x) ), cfg)[1]
    floss = f -> sum(abs2, f.rr)
@@ -106,11 +115,58 @@ function matrix2svector(M)
    return sv
 end
 
-
 ##
+@info("FD test forces")
 
-c = randn(np * length(basis))
-F = c -> loss(matrix2svector(reshape(c, np, length(basis))))
-dF = c -> svector2matrix(Zygote.gradient(loss, matrix2svector(reshape(c, np, length(basis))))[1])[:]
+for _ in 1:5
+   Us = randn(SVector{3, Float64}, length(cfg))
+   FS = props -> sum([ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+   F = t -> FS(energyModel(c_m, ACEConfig(cfg.Xs + t .* Us)))
 
-println(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
+   function dF(t)
+      forces = Zygote.gradient(x->FS(energyModel(c_m, x)), cfg)[1]
+      tmp = zeros(size(forces,1))
+      for i in 1:size(forces,1)
+         tmp[i] = sum([dot(forces[:,j][i].rr, Us[i]) for j in 1:size(forces,2)])
+      end
+      return tmp
+   end
+
+   print_tf(@test ACEbase.Testing.fdtest(F, dF, zeros(length(cfg)), verbose=false))
+end
+println()
+
+
+@info("FD test d(forces)")
+
+#using the sin causes an error. Likewise for any function that requires to evaluate
+#the value, for ex x^2. However, it works for constant multipliers. 
+#for the pullback we evaluate from the outside to the inside, 
+
+#nonlin(x) = sum(2 .* x)
+nonlin(x) = sum(sin.(x))
+
+floss = f -> sum(f.rr)
+Ftmp = c -> sum(floss, Zygote.gradient(x -> nonlin(energyModel(c, x)), cfg)[1])
+dFtmp = c -> Zygote.gradient(Ftmp, c)
+
+for _ in 1:5
+   c = randn(np * length(basis))
+   F = c -> Ftmp(matrix2svector(reshape(c, np, length(basis))))
+   dF = c -> svector2matrix(dFtmp(matrix2svector(reshape(c, np, length(basis))))[1])
+   println(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
+end
+println()
+
+
+@info("loss function test")
+
+for _ in 1:5
+   c = randn(np * length(basis))
+   F = c -> loss(matrix2svector(reshape(c, np, length(basis))))
+   dF = c -> svector2matrix(Zygote.gradient(loss, matrix2svector(reshape(c, np, length(basis))))[1])[:]
+
+   println(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
+end
+println()
+
