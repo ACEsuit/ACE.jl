@@ -53,20 +53,64 @@ function adj(dp, θ, cfg)
       gp[i] = gp[i] .* dp
    end
 
-   g_cfg = ACE.grad_config(model, cfg) #TODO multiply by dp
- 
-   for i = 1:size(g_cfg,1) #loops over number of configs
-      for j = 1:length(dp) #loops over properties
-         g_cfg[i,j] *= dp[j] 
-      end
-   end
-   
-   return (NoTangent(), gp, g_cfg) #d(dp), d(θ), d(cfg)
+   g_cfg = ACE.grad_config(model, cfg)
+    
+   return (NoTangent(), gp, g_cfg * dp) #d(dp), d(θ), d(cfg)
 end
 
 function ChainRules.rrule(::typeof(energyModel), θ, cfg)
    return energyModel(θ, cfg), dp -> adj(dp, θ, cfg) 
 end
+
+
+##
+
+
+θ = randn(np * length(basis)) ./ (1:(np*length(basis))).^2
+c = reinterpret(SVector{2, Float64}, θ)
+
+energyModel(c, cfg)
+
+FS = props -> sum([ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+fsmodel = cfg -> FS(energyModel(c, cfg))
+fsmodel(cfg)
+
+g = Zygote.gradient(fsmodel, cfg)[1]
+
+##
+
+@info("Check the AD Forces for an FS-like model")
+Us = randn(SVector{3, Float64}, length(cfg))
+F = t -> fsmodel(ACEConfig(cfg.Xs + t * Us))
+dF = t -> sum( dot(u, g.rr) for (u,g) in zip(Us, Zygote.gradient(fsmodel, cfg)[1]) )
+dF(0.0)
+
+ACEbase.Testing.fdtest(F, dF, 0.0, verbose=true)
+
+##
+
+matrix2svectors(M) = [SVector{size(M)[1]}(M[:,i]) for i in 1:size(M)[2]]
+vec2svecs(M) = matrix2svectors(reshape(M, np, (length(M) ÷ np)))
+svecs2vec(M) = collect(reinterpret(Float64, M))
+
+function matrix2svector(M)
+   sv = [SVector{size(M)[1]}(M[:,i]) for i in 1:size(M)[2]]
+   return sv
+end
+
+@info("Check grad w.r.t. Params of FS-like model")
+
+fsmodelp = θ -> FS(energyModel( vec2svecs(θ), cfg))
+grad_fsmodelp = θ -> Zygote.gradient(c -> FS(energyModel(c, cfg)), 
+                                      vec2svecs(θ))[1] |> svecs2vec
+grad_fsmodelp(θ)
+
+ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
+
+
+##
+
+
 
 #chainrule for derivative of forces according to parameters
 function ChainRules.rrule(::typeof(adj), dp, θ, cfg)
