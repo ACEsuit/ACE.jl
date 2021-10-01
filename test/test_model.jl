@@ -49,6 +49,7 @@ function adj(dp, θ, cfg)
    
    ACE.set_params!(model, θ)
    gp = getprops.(ACE.grad_params(model, cfg))
+   # gp1 = [ gp[i] .* dp for i = 1:length(gp) ]
    for i = 1:length(gp) 
       gp[i] = gp[i] .* dp
    end
@@ -89,8 +90,8 @@ ACEbase.Testing.fdtest(F, dF, 0.0, verbose=true)
 
 ##
 
-matrix2svectors(M) = [SVector{size(M)[1]}(M[:,i]) for i in 1:size(M)[2]]
-vec2svecs(M) = matrix2svectors(reshape(M, np, (length(M) ÷ np)))
+matrix2svectors(M) = [SVector{size(M, 1)}(M[:,i]) for i in 1:size(M, 2)]
+vec2svecs(M) = matrix2svectors(reshape(M, np, :))
 svecs2vec(M) = collect(reinterpret(Float64, M))
 
 function matrix2svector(M)
@@ -110,12 +111,9 @@ ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
 
 ##
 
-
-
 #chainrule for derivative of forces according to parameters
 function ChainRules.rrule(::typeof(adj), dp, θ, cfg)
    function secondAdj(dq)
-      
       #dq comes from the nonlinearities wrapping the forces
       #dp comes from the nonlinearities wrapping the Energy
       for i in 1:size(dq[3],1)
@@ -128,6 +126,21 @@ function ChainRules.rrule(::typeof(adj), dp, θ, cfg)
    end
    return(adj(dp, θ, cfg), secondAdj)
 end
+
+
+##
+
+fsmodel1 = FS ∘ energyModel
+grad_fsmodel1 = (c, cfg) -> Zygote.gradient(x -> fsmodel1(c, x), cfg)[1]
+
+y = randn(SVector{3, Float64}, length(cfg))
+loss1 = c -> sum(sum(abs2, g.rr - y) for (g, y) in zip(grad_fsmodel1(c, cfg), y))
+
+Zygote.gradient(loss1, c)
+
+
+
+##
 
 #simple loss function with sum over properties and over forces
 function loss(θ)
