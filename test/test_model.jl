@@ -113,18 +113,20 @@ ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
 
 #chainrule for derivative of forces according to parameters
 function ChainRules.rrule(::typeof(adj), dp, θ, cfg)
+
    function secondAdj(dq)
       #dq comes from the nonlinearities wrapping the forces
       #dp comes from the nonlinearities wrapping the Energy
-      for i in 1:size(dq[3],1)
-         dq[3][i,:] = dq[3][i,:] .* dp
-      end
+      dqgrad = dq[3]    # Vector of DStates
 
       ACE.set_params!(model, θ)
-      grad = ACE.adjoint_EVAL_D(model, cfg, dq[3])
-      return (NoTangent(), NoTangent(), grad, NoTangent()) #only keep dF^2/dθd(cfg)
+      grad = ACE.adjoint_EVAL_D1(model, model.evaluator, cfg, dqgrad)
+      sdp = SVector(dp...)
+
+      return (NoTangent(), NoTangent(), [ g * sdp for g in grad ], NoTangent()) #only keep dF^2/dθd(cfg)
    end
-   return(adj(dp, θ, cfg), secondAdj)
+
+   return adj(dp, θ, cfg), secondAdj
 end
 
 
@@ -136,9 +138,14 @@ grad_fsmodel1 = (c, cfg) -> Zygote.gradient(x -> fsmodel1(c, x), cfg)[1]
 y = randn(SVector{3, Float64}, length(cfg))
 loss1 = c -> sum(sum(abs2, g.rr - y) for (g, y) in zip(grad_fsmodel1(c, cfg), y))
 
-Zygote.gradient(loss1, c)
+g = Zygote.gradient(loss1, c)[1]
 
+F = θ -> loss1( vec2svecs(θ) )
+dF = θ -> Zygote.gradient(loss1, vec2svecs(θ))[1] |> svecs2vec
 
+dF(θ)
+
+ACEbase.Testing.fdtest(F, dF, θ; verbose=true)
 
 ##
 
