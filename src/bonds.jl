@@ -20,9 +20,9 @@ CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2) =
 # whereas _inner_evaluate(...) should just give us a value. 
 function _inner_evaluate(env::BondEnvelope, X::AbstractState)
    if X.be == :env 
-      return _evaluate_bond(env, X)
-   elseif X.be == :bond 
       return _evaluate_env(env, X)
+   elseif X.be == :bond 
+      return _evaluate_bond(env, X)
    else
       error("invalid X.be value")
    end
@@ -43,7 +43,7 @@ function _evaluate_env(env::CylindricalBondEnvelope, X::AbstractState)
    # convert to cylindrical coordinates
    r_centre = X.rr0/2
    z = dot(X.rr - r_centre, X.rr0)/norm(X.rr0)
-   r = norm( (norm(X.rro)/2 + z)*X.rr0/norm(X.rr0) - X.rr )
+   r = norm( (norm(X.rr0)/2 + z)*X.rr0/norm(X.rr0) - X.rr )
    # then return the correct cutoff 
    return ( (z/( env.zcut + norm(X.rr0)/2 ))^2 - 1 )^(env.pz) * (abs(z) <= env.zcut + norm(X.rr0)/2) * ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
 end
