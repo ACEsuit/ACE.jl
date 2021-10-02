@@ -133,10 +133,15 @@ release_grad_params!(m::LinearACEModel, g) =
 function ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: SVector})
    return SVector{length(c[1]), valtype(basis, zero(eltype(cfg)))}
 end
+
 #calls the regular valtype
 ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
       valtype(basis, cfg)
 
+ACEbase.valtype(model::LinearACEModel, cfg) = 
+      ACEbase.valtype(model.basis, cfg, model.c)
+
+# ACE.gradtype(model, cfg)      
 
 # ------------------- dispatching on the evaluators 
 

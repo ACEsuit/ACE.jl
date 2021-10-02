@@ -117,7 +117,7 @@ grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfigurati
       grad_config!(g, V, cfg)
 
 
-# compute one site energy
+# compute one site energy gradient 
 function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
    _real = V.pibasis.real
@@ -151,6 +151,53 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
 
    return g
 end
+
+function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
+   g = acquire_grad_config!(model, cfg, zeros(eltype(model.c[1]), 3) )
+   return _rrule_evaluate!(g, dp, model.evaluator, cfg)
+end
+
+# compute one site energy gradient 
+function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration)
+
+   _contract(x::AbstractVector, y::AbstractVector) = 
+         sum( _contract(xi, yi) for (xi, yi) in zip(x, y) )
+
+   _contract(x::Invariant, y::Number) = x * y
+
+   basis1p = V.pibasis.basis1p
+   _real = V.pibasis.real
+   A = acquire_B!(V.pibasis.basis1p, cfg)
+   dA = acquire_dB!(V.pibasis.basis1p, cfg)
+   dAAdA = _acquire_dAAdA!(V.pibasis)
+   
+   # stage 1: precompute all the A values
+   evaluate_ed!(A, dA, basis1p, cfg)
+
+   # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+   c̃ = V.coeffs
+   dAco =  _alloc_dAco(dAAdA, A, zeros(eltype(c̃[1]), 3)) # tmpd.dAco  # TODO: ALLOCATION 
+   spec = V.pibasis.spec
+
+   fill!(dAco, zero(eltype(dAco)))
+   @inbounds for iAA = 1:length(spec)
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      @fastmath for t = 1:spec.orders[iAA]
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex( _contract(c̃[iAA], dp) )
+      end
+   end
+
+   # stage 3: get the gradients
+   fill!(g, zero(eltype(g)))
+   for iX = 1:length(cfg)
+      for iA = 1:length(basis1p)
+         g[iX] += _real(dAco[iA] * dA[iA, iX])
+      end
+   end
+
+   return g
+end
+
 
 
 function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
