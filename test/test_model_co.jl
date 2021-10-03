@@ -45,8 +45,6 @@ function eval_model(θ, cfg)
 end
 
 
-
-
 #calculates the adjoing/pullback 
 function adj_eval_model(dp, θ, cfg)
    ACE.set_params!(model, θ)
@@ -69,7 +67,8 @@ c = reinterpret(SVector{2, Float64}, θ)
 
 eval_model(c, cfg)
 
-FS = props -> sum([ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+# FS = props -> sum([ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
+FS = props -> sum( (1 .+ props.^2).^0.5 )
 fsmodel = cfg -> FS(eval_model(c, cfg))
 fsmodel(cfg)
 
@@ -104,11 +103,23 @@ ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
 
 #chainrule for derivative of forces according to parameters
 function ChainRules.rrule(::typeof(adj_eval_model), dp, θ, cfg)
+   
+   # dp should be a vector of the same length as the number of properties
 
    function secondAdj(dq_)
-      # ∑_j ∂B_k / ∂r_j ⋅ dq_j
+      # adj = (NoTangent(), gp1, g_cfg) 
+      # here we assume that only g_cfg was used, which means that 
+      # dq_[3] = force-like vector and dq_[2] == NoTangent() 
+      @assert dq_[1] == dq_[2] == Zygote.ZeroTangent()
+      @assert dq_[3] isa AbstractVector{<: ACE.DState}
+      @assert length(dq_[3]) == length(cfg)
+      
+      # adj_n = ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk
+      # dp ⋅ adj = ∑_n ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk * dp_n 
+
       dq = dq_[3]  # Vector of DStates
       ACE.set_params!(model, θ)
+      # grad[k] = ∑_j dq_j ⋅ ∂B_k / ∂r_j
       grad = ACE.adjoint_EVAL_D1(model, model.evaluator, cfg, dq)
 
       # gradient w.r.t θ: 
@@ -116,7 +127,7 @@ function ChainRules.rrule(::typeof(adj_eval_model), dp, θ, cfg)
       grad_θ = grad .* Ref(sdp)
 
       # gradient w.r.t. dp 
-      grad_dp = sum( θ[k] * grad[k] for k = 1:length(grad) )
+      grad_dp = sum( θ[k] * grad[k] for k = 1:length(grad) )  |> Vector 
 
       return NoTangent(), grad_dp, grad_θ, NoTangent()
    end
@@ -135,98 +146,12 @@ loss1 = c -> sum(sum(abs2, g.rr - y) for (g, y) in zip(grad_fsmodel1(c, cfg), y)
 loss1(c)
 g = Zygote.gradient(loss1, c)[1]
 
-# F = θ -> loss1( vec2svecs(θ) )
-# dF = θ -> Zygote.gradient(loss1, vec2svecs(θ))[1] |> svecs2vec
+F = θ -> loss1( mat2svecs(θ) )
+dF = θ -> Zygote.gradient(loss1, mat2svecs(θ))[1] |> svecs2vec
 
-# dF(θ)
+dF(θ)
 
-# ACEbase.Testing.fdtest(F, dF, θ; verbose=true)
-;
+ACEbase.Testing.fdtest(F, dF, θ; verbose=true)
+
 
 ##
-
-#simple loss function with sum over properties and over forces
-function loss(θ)
-   props = energyModel(θ, cfg)
-   #FS = props -> sum( [ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
-   FS = props -> sum( [0.77^n for n = 1:length(props)] .* props )
-   Ftemp = Zygote.gradient(x -> FS( energyModel(θ, x) ), cfg)[1]
-   floss = f -> sum(abs2, f.rr)
-   return(abs2(FS(props)) + sum(floss, Ftemp))
-end
-
-# g = Zygote.gradient(loss, c_m)[1] sample on how to get the gradient
-
-##
-
-#functions for testing. basically handling SVectors and testing multiple
-#properties
-
-function svector2matrix(sv)
-   M = zeros(length(sv[1]), length(sv))
-   for i in 1:length(sv)
-      M[:,i] = sv[i]
-   end
-   return M
-end
-
-function matrix2svector(M)
-   sv = [SVector{size(M)[1]}(M[:,i]) for i in 1:size(M)[2]]
-   return sv
-end
-
-##
-@info("FD test forces")
-
-for _ in 1:5
-   Us = randn(SVector{3, Float64}, length(cfg))
-   FS = props -> sum([ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
-   F = t -> FS(energyModel(c_m, ACEConfig(cfg.Xs + t .* Us)))
-
-   function dF(t)
-      forces = Zygote.gradient(x->FS(energyModel(c_m, x)), cfg)[1]
-      tmp = zeros(size(forces,1))
-      for i in 1:size(forces,1)
-         tmp[i] = sum([dot(forces[:,j][i].rr, Us[i]) for j in 1:size(forces,2)])
-      end
-      return tmp
-   end
-
-   print_tf(@test ACEbase.Testing.fdtest(F, dF, zeros(length(cfg)), verbose=false))
-end
-println()
-
-
-@info("FD test d(forces)")
-
-#using the sin causes an error. Likewise for any function that requires to evaluate
-#the value, for ex x^2. However, it works for constant multipliers. 
-#for the pullback we evaluate from the outside to the inside, 
-
-#nonlin(x) = sum(2 .* x)
-nonlin(x) = sum(sin.(x))
-
-floss = f -> sum(f.rr)
-Ftmp = c -> sum(floss, Zygote.gradient(x -> nonlin(energyModel(c, x)), cfg)[1])
-dFtmp = c -> Zygote.gradient(Ftmp, c)
-
-for _ in 1:5
-   c = randn(np * length(basis))
-   F = c -> Ftmp(matrix2svector(reshape(c, np, length(basis))))
-   dF = c -> svector2matrix(dFtmp(matrix2svector(reshape(c, np, length(basis))))[1])
-   println(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
-end
-println()
-
-
-@info("loss function test")
-
-for _ in 1:5
-   c = randn(np * length(basis))
-   F = c -> loss(matrix2svector(reshape(c, np, length(basis))))
-   dF = c -> svector2matrix(Zygote.gradient(loss, matrix2svector(reshape(c, np, length(basis))))[1])[:]
-
-   println(@test ACEbase.Testing.fdtest(F, dF, c, verbose=true))
-end
-println()
-
