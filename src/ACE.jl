@@ -74,8 +74,6 @@ include("discrete1pbasis.jl")
 
 include("product_1pbasis.jl")
 
-include("multiplier.jl")
-
 include("sparsegrids.jl")
 
 # the permutation-invariant, and symmerized bases
