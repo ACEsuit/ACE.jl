@@ -74,6 +74,8 @@ include("discrete1pbasis.jl")
 
 include("product_1pbasis.jl")
 
+include("multiplier.jl")
+
 include("sparsegrids.jl")
 
 # the permutation-invariant, and symmerized bases
@@ -81,6 +83,9 @@ include("symmetrygroups.jl")
 include("pibasis.jl")
 include("symmbasis.jl")
 
+# some experimental stuff
+include("multiplier.jl")
+include("bonds.jl")
 
 # models and model evaluators 
 
