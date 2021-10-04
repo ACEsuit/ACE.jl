@@ -1,20 +1,29 @@
-using ACE, Test
+using ACE, Test, LinearAlgebra
 using ACE: State, CylindricalBondEnvelope
 
 ## Use a specific example to test the Cylindrical cutoff
 
 @info("Testing Cylindrical Bond Envelope")
 
-Xs1 = State(rr = [6,0,0], rr0 = [6,0,0], be=:bond)
-Xs2 = State(rr = [9,0,0], rr0 = [9,0,0], be=:bond)
-Xs3 = State(rr = [7,0,2], rr0 = [6,0,0], be=:env)
-Xs4 = State(rr = [9,0,2], rr0 = [6,0,0], be=:env)
+r0cut = 8.0
+rcut = 4.0
+zcut = 2.0
+env = CylindricalBondEnvelope(r0cut,rcut,zcut)
 
-env = CylindricalBondEnvelope(8.0,4.0,2.0)
+@info("Test :bond")
 
-# TODO: using random states (w.r.t. `env`) to replace these specific ones
+for i = 1:30
+    r = rand(Float64,3)*2*r0cut/sqrt(3)
+    Xs = State(rr = r, rr0 = r, be=:bond)
+    println(@test( filter(env,Xs) == (norm(r)<=8) ))
+end
 
-println(@test( filter(env,Xs1) == true ))
-println(@test( filter(env,Xs2) == false ))
-println(@test( filter(env,Xs3) == true ))
-println(@test( filter(env,Xs4) == false ))
+@info ("Test :env")
+
+r0 = [r0cut/2,0.0,0.0]
+r_centre = r0/2
+for i = 1:30
+    r = rand(Float64,3)*env.rcut + r_centre
+    Xs = State(rr = r, rr0 = r0, be=:env)
+    println(@test( filter(env,Xs) == ((abs(r[1]-r_centre[1])≤env.zcut+r_centre[1]) && (r[2]^2+r[3]^2≤env.rcut^2)) ))
+end
