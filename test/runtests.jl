@@ -31,7 +31,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
 
     # Experimental material
     @testset "Multipliers" begin include("test_multiplier.jl") end
-    @testset "Bonds" begin include("testing/test_bonds.jl") end
+    @testset "Bonds" begin include("test_bonds.jl") end
 end
 
 
