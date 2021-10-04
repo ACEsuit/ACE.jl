@@ -35,7 +35,7 @@ function add_into_A_dA! end
 
 
 """
-`function degree(D::AbstractDegree, arg)` : compute some notion of degree of
+`function degree` : compute some notion of degree of
 the `arg` argument.
 """
 function degree end

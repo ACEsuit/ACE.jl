@@ -133,10 +133,15 @@ release_grad_params!(m::LinearACEModel, g) =
 function ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: SVector})
    return SVector{length(c[1]), valtype(basis, zero(eltype(cfg)))}
 end
+
 #calls the regular valtype
 ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
       valtype(basis, cfg)
 
+ACEbase.valtype(model::LinearACEModel, cfg) = 
+      ACEbase.valtype(model.basis, cfg, model.c)
+
+# ACE.gradtype(model, cfg)      
 
 # ------------------- dispatching on the evaluators 
 
@@ -210,13 +215,69 @@ function adjoint_EVAL_D(m::LinearACEModel, ::NaiveEvaluator,
 end
 
 
-# ------------------- dispatching the rrule 
+# ------------------- an rrule for evaluating a linear model
 
 import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 
-function rrule(::typeof(evaluate), m::LinearACEModel, env::AbstractConfiguration)
-   val = evaluate(m, env)
-   pullback = dv -> (NoTangent(), @thunk(grad_params(m, env)), 
-                                @thunk(grad_config(m, env)))
-   return val, pullback
+# NOTE: there are lots of rrule implementations in `evaluate.jl`, which seem
+#       to be doing the same thing and are clashing with this. So for now we 
+#       just get something up and running but we must return to this and 
+#       clean up all those different versions of the same thing. 
+
+# adj_evaluate is defined as a separate function so we can rrule it again (see below)
+# should be called _rrule_evaluate, but that would clash with the 
+# crap that's in evaluator.jl -> needs some cleanup 
+function adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
+   # dp = getproperty.(dp_, :val)
+   gp_ = ACE.grad_params(model, cfg)
+   gp = [ val.(a .* dp) for a in gp_ ]
+   g_cfg = ACE._rrule_evaluate(dp, model, cfg) # rrule for cfg only...
+   return NoTangent(), gp, g_cfg
+end
+
+# this is monkey-patching the rotten rrule inside of ACE
+# ... and should replace that rrule. ALso introduce thunks to prevent 
+#     evaluating more than we need.
+function ChainRules.rrule(::typeof(evaluate), model::ACE.LinearACEModel, cfg::AbstractConfiguration)
+   return evaluate(model, cfg), 
+          dp -> adj_evaluate(dp, model, cfg)
+end
+
+# rrule for the rrule ... this enables mixed second derivatives of the form 
+#   D^2 * / D p Dcfg. 
+# the code double-checks that indeed only those derivatives are needed! 
+function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel, cfg)
+   # adj = (_, g_params, g_cfg) 
+   #   D(dq[1] * _ + dq[2] * g_params + dq[3] * g_cfg) / D(dp, model, cfg)
+   #       0 = ^^^    ^^^ = 0
+   #   D( dq[3] * g_cfg ) / D( dq, model, cfg )
+   #  but for simplicity ignore Dcfg for now (not yet implemented)
+   # recall also that g_cfg = D (dp * eval(model, cfg)) / D cfg
+   # dp should be a vector of the same length as the number of properties
+
+   function _second_adj(dq_)
+      # adj = (NoTangent(), gp1, g_cfg) 
+      # here we assume that only g_cfg was used, which means that 
+      # dq_[3] = force-like vector and dq_[2] == NoTangent() 
+      @assert dq_[1] == dq_[2] == ZeroTangent()
+      @assert dq_[3] isa AbstractVector{<: ACE.DState}
+      @assert length(dq_[3]) == length(cfg)
+      dq = dq_[3]  # Vector of DStates
+      
+      # adj_n = ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk
+      # dp ⋅ adj = ∑_n ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk * dp_n 
+      # grad[k] = ∑_j dq_j ⋅ ∂B_k / ∂r_j
+      grad = ACE.adjoint_EVAL_D1(model, model.evaluator, cfg, dq)
+
+      # gradient w.r.t parameters: 
+      sdp = SVector(dp...)
+      grad_params = grad .* Ref(sdp)
+
+      # gradient w.r.t. dp    # TODO: remove the |> Vector? 
+      grad_dp = sum( model.c[k] * grad[k] for k = 1:length(grad) )  |> Vector 
+
+      return NoTangent(), grad_dp, grad_params, NoTangent()
+   end
+
+   return adj_evaluate(dp, model, cfg), _second_adj
 end

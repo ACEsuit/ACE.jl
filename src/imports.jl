@@ -7,7 +7,7 @@ using ACEbase: @def
 
    import ACE:   PIBasis,
                  get_spec,
-                 AbstractDegree, degree,
+                 degree,
                  gensparse,
                  add_into_A!, add_into_A_dA!,
                  scaling, 
