@@ -25,6 +25,8 @@ Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
 Base.convert(T::Type, φ::AbstractProperty) = convert(T, φ.val)
 Base.convert(T::Type{Any}, φ::AbstractProperty) = φ
 
+
+
 # some type piracy ...
 # TODO: hack like this make #27 important!!!
 # *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
@@ -419,3 +421,45 @@ coco_filter(φ::SphericalMatrix{L1,L2}, ll, mm, kk) where {L1,L2} =
 
 coco_dot(u1::SphericalMatrix, u2::SphericalMatrix) =
 		dot(u1.val, u2.val)
+
+
+# --------------------------- AD related codes 
+
+# an x -> x.val implementation with custom adjoints to sort out the 
+# mess created by the AbstractProperties
+# maybe this feels a bit wrong, definitely a hack. What might be nicer 
+# is to introduce a "Dual Property" similar to the "DState"; Then we 
+# could have something along the lines of  DProp * Prop = scalar or 
+# _contract(DProp, Prop) = scalar; That would be the "systematic" and 
+# "disciplined" way of implementing this. 
+
+"""
+`val(x) = x.val`, normally to be used if x is a property. This should be used 
+instead of x.val when the operation is part of a bigger expression that is 
+to be ADed. I.e. `val` has rrules implemented that should allow taking up 
+to two derivatives. 
+
+TODO: at the moment this is a bit hacky, and needs to be adjusted over time
+as we learn more about how to best implement AD.
+"""
+val(x) = x.val 
+
+function _rrule_val(dp, x)     # D/Dx (dp[1] * dx)
+   @assert dp isa Number 
+   return NoTangent(), dp
+end
+
+rrule(::typeof(val), x) = 
+         val(x), 
+         dp -> _rrule_val(dp, x)
+
+function rrule(::typeof(_rrule_val), dp, x)   # D/D... (0 + dp * dq[2])
+      @assert dp isa Number 
+      function second_adj(dq)
+         @assert dq[1] == ZeroTangent() 
+         @assert dq[2] isa Number 
+         return NoTangent(), dq[2], ZeroTangent()
+      end
+      return _rrule_val(dp, x), second_adj
+end 
+
