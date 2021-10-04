@@ -9,6 +9,7 @@ makedocs(sitename="ACE.jl Documentation",
         "Getting Started" => "gettingstarted.md",
         "Math" => "math.md",
         "Developer Docs" => "devel.md",
+        "AD" => "ad.md", 
         "Types & Functions" => "docs.md"
          ])
 
