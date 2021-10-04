@@ -247,7 +247,12 @@ end
 #   D^2 * / D p Dcfg. 
 # the code double-checks that indeed only those derivatives are needed! 
 function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel, cfg)
-
+   # adj = (_, g_params, g_cfg) 
+   #   D(dq[1] * _ + dq[2] * g_params + dq[3] * g_cfg) / D(dp, model, cfg)
+   #       0 = ^^^    ^^^ = 0
+   #   D( dq[3] * g_cfg ) / D( dq, model, cfg )
+   #  but for simplicity ignore Dcfg for now (not yet implemented)
+   # recall also that g_cfg = D (dp * eval(model, cfg)) / D cfg
    # dp should be a vector of the same length as the number of properties
 
    function _second_adj(dq_)
@@ -264,14 +269,14 @@ function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel,
       # grad[k] = ∑_j dq_j ⋅ ∂B_k / ∂r_j
       grad = ACE.adjoint_EVAL_D1(model, model.evaluator, cfg, dq)
 
-      # gradient w.r.t θ: 
+      # gradient w.r.t parameters: 
       sdp = SVector(dp...)
-      grad_θ = grad .* Ref(sdp)
+      grad_params = grad .* Ref(sdp)
 
       # gradient w.r.t. dp    # TODO: remove the |> Vector? 
       grad_dp = sum( model.c[k] * grad[k] for k = 1:length(grad) )  |> Vector 
 
-      return NoTangent(), grad_dp, grad_θ, NoTangent()
+      return NoTangent(), grad_dp, grad_params, NoTangent()
    end
 
    return adj_evaluate(dp, model, cfg), _second_adj
