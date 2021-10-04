@@ -3,7 +3,7 @@ using ACE, ACEbase, Test, ACE.Testing
 using ACE: evaluate, SymmetricBasis, PIBasis, O3, State
 using StaticArrays
 using ChainRules
-import ChainRulesCore: rrule, NoTangent
+import ChainRulesCore: rrule, NoTangent, ZeroTangent
 using Zygote
 using Zygote: @thunk 
 using Printf, LinearAlgebra #for the fdtestMatrix
@@ -33,16 +33,49 @@ evaluate(model, cfg)
 
 ##
 
+# an x -> x.val implementation with custom adjoints to sort out the 
+# mess created by the AbstractProperties
+# maybe this feels a bit wrong, definitely a hack. What might be nicer 
+# is to introduce a "Dual Property" similar to the "DState"; Then we 
+# could have something along the lines of  DProp * Prop = scalar or 
+# _contract(DProp, Prop) = scalar; That would be the "systematic" and 
+# "disciplined" way of implementing this. 
+
+val(x) = x.val 
+
+function _rrule_val(dp, x)     # D/Dx (dp[1] * dx)
+   @assert dp isa Number 
+   return NoTangent(), dp
+end
+
+rrule(::typeof(val), x) = 
+         val(x), 
+         dp -> _rrule_val(dp, x)
+
+function rrule(::typeof(_rrule_val), dp, x)   # D/D... (0 + dp * dq[2])
+      @assert dp isa Number 
+      function second_adj(dq)
+         @assert dq[1] == ZeroTangent() 
+         @assert dq[2] isa Number 
+         return NoTangent(), dq[2], ZeroTangent()
+      end
+      return _rrule_val(dp, x), second_adj
+end 
+
+## 
+
 #calculates the adjoing/pullback 
-function adj_evaluate(dp_, model::ACE.LinearACEModel, cfg)
-   dp = getproperty.(dp_, :val)
+function adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
+   # dp = getproperty.(dp_, :val)
    gp_ = ACE.grad_params(model, cfg)
-   gp = [ a .* dp for a in gp_ ]
+   gp = [ val.(a .* dp) for a in gp_ ]
    g_cfg = ACE._rrule_evaluate(dp, model, cfg) # rrule for cfg only...
    return NoTangent(), gp, g_cfg
 end
 
 # this is monkey-patching the rotten rrule inside of ACE
+# ... and should replace that rrule. ALso introduce thunks to prevent 
+#     evaluating more than we need.
 function ChainRules.rrule(::typeof(evaluate), model::ACE.LinearACEModel, cfg::ACEConfig)
    return evaluate(model, cfg), 
           dp -> adj_evaluate(dp, model, cfg)
@@ -59,7 +92,7 @@ ACE.set_params!(model, c)
 evaluate(model, cfg)
 
 # FS = props -> sum([ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
-FS = props -> sum( (1 .+ getproperty.(props, :val).^2).^0.5 )
+FS = props -> sum( (1 .+ val.(props).^2).^0.5 )
 fsmodel = cfg -> FS(evaluate(model, cfg))
 fsmodel(cfg)
 
@@ -77,8 +110,10 @@ ACEbase.Testing.fdtest(F, dF, 0.0, verbose=true)
 
 ##
 
-mat2svecs(M) = collect(reinterpret(SVector{np, Float64}, M))
-svecs2vec(M) = collect(reinterpret(Float64, M))
+mat2svecs(M::AbstractArray{T}) where {T} =   
+      collect(reinterpret(SVector{np, T}, M))
+svecs2vec(M::AbstractVector{<: SVector{N, T}}) where {N, T} = 
+      collect(reinterpret(T, M))
 
 @info("Check grad w.r.t. Params of FS-like model")
 
@@ -95,12 +130,12 @@ ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
 ##
 
 #chainrule for derivative of forces according to parameters
-function ChainRules.rrule(::typeof(adj_evaluate), dp_, model::ACE.LinearACEModel, cfg)
+function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel, cfg)
 
    # dp should be a vector of the same length as the number of properties
-   dp = getproperty.(dp_, :val)
+   # dp = getproperty.(dp_, :val)
 
-   function secondAdj(dq_)
+   function _second_adj(dq_)
       # adj = (NoTangent(), gp1, g_cfg) 
       # here we assume that only g_cfg was used, which means that 
       # dq_[3] = force-like vector and dq_[2] == NoTangent() 
@@ -125,35 +160,32 @@ function ChainRules.rrule(::typeof(adj_evaluate), dp_, model::ACE.LinearACEModel
       return NoTangent(), grad_dp, grad_θ, NoTangent()
    end
 
-   return adj_evaluate(dp_, model, cfg), secondAdj
-end
-
-const NTval = NamedTuple{(:val,), Tuple{Float64}}
-
-function ChainRules.rrule(::Type{NTval}, val) 
-   return NTval(val), dp -> (NoTangent(), (val[1] * dp,))
+   return adj_evaluate(dp, model, cfg), _second_adj
 end
 
 
 ##
 
-fsmodel1_(model, cfg) = FS(evaluate(model, cfg))
 fsmodel1 = (model, cfg) -> FS(evaluate(model, cfg))
 grad_fsmodel1 = (model, cfg) -> Zygote.gradient(x -> fsmodel1(model, x), cfg)[1]
 
 y = randn(SVector{3, Float64}, length(cfg))
-loss1 = model -> sum(sum(abs2, g.rr - y) for (g, y) in zip(grad_fsmodel1(model, cfg), y))
+loss1 = model -> sum(sum(abs2, g.rr - y) 
+                     for (g, y) in zip(grad_fsmodel1(model, cfg), y))
 
 loss1(model)
 g = Zygote.gradient(loss1, model)[1]
 
 
-# F = θ -> loss1( mat2svecs(θ) )
-# dF = θ -> Zygote.gradient(loss1, mat2svecs(θ))[1] |> svecs2vec
+F1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
+            loss1(model) )
 
-# dF(θ)
+dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
+            Zygote.gradient(loss1, model)[1] |> svecs2vec  )
 
-# ACEbase.Testing.fdtest(F, dF, θ; verbose=true)
+F1(θ)
+dF1(θ)
+ACEbase.Testing.fdtest(F1, dF1, θ; verbose=true)    # TODO: why does this now fail? 
 
-# 
+
 ##
