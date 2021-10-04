@@ -17,7 +17,8 @@ The original implemention was based on the Atomic Cluster Expansion (ACE) descri
 Pages = ["gettingstarted.md",
          "math.md", 
          "devel.md",
-         "docs.md"]
+         "ad.md", 
+         "docs.md", ]
 Depth = 2
 ```
 
