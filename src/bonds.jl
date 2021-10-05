@@ -54,31 +54,6 @@ function _evaluate_env(env::CylindricalBondEnvelope, X::AbstractState)
             ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
 end
 
-
-struct DiskBondEnvelope{T} <: BondEnvelope{T}
-   r0cut::T # max bond length
-   rcut::T  # Disck environment cut off radius
-   p0::Int
-   pr::Int
-end
-
-
-function _evaluate_bond(env::DiskBondEnvelope, X::AbstractState)
-   r = norm(X.rr0)
-   return ((r/env.r0cut)^2 - 1)^(env.p0) * (r <= env.r0cut)
-end
-
-
-function _evaluate_env(env::DiskBondEnvelope, X::AbstractState)
-   # convert to cylindrical coordinates
-   r_centre = X.rr0/2
-   r = norm( X.rr - r_centre )
-   # then return the correct cutoff
-   return ((r/env.rcut)^2 - 1.0)^(env.pr) * (r <= env.rcut)
-end
-
-
-
 struct ElipsoidBondEnvelope{T} <: BondEnvelope{T}
    r0cut::T
    rcut::T
@@ -86,10 +61,12 @@ struct ElipsoidBondEnvelope{T} <: BondEnvelope{T}
    p0::Int
    pr::Int
    floppy::Bool
+   λ::T
 end
 
-ElipsoidBondEnvelope(r0cut, zcut, rcut; p0=2, pr=2, floppy=false) = ElipsoidBondEnvelope(r0cut, zcut, rcut, p0, pr, floppy)
-ElipsoidBondEnvelope(r0cut, cut; p0=2, pr=2, floppy=false) = ElipsoidBondEnvelope(r0cut, cut, cut, p0, pr, floppy)
+ElipsoidBondEnvelope(r0cut, zcut, rcut; p0=2, pr=2, floppy=false, λ=.5) = ElipsoidBondEnvelope(r0cut, zcut, rcut, p0, pr, floppy, λ)
+ElipsoidBondEnvelope(r0cut, cut; p0=2, pr=2, floppy=false, λ=.5) = ElipsoidBondEnvelope(r0cut, cut, cut, p0, pr, floppy, λ)
+
 function _evaluate_bond(env::ElipsoidBondEnvelope, X::AbstractState)
    r = norm(X.rr0)
    return ((r/env.r0cut)^2 - 1)^(env.p0) * (r <= env.r0cut)
@@ -97,7 +74,7 @@ end
 
 function _evaluate_env(env::ElipsoidBondEnvelope, X::AbstractState)
    # convert to cylindrical coordinates
-   x_centre = X.rr0/2
+   x_centre = env.λ * X.rr0
    x̃ = X.rr - x_centre
    if norm(X.rr0) > 0
       x_centre_0  = X.rr0/norm(X.rr0)

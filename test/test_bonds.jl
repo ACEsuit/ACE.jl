@@ -1,5 +1,5 @@
 using ACE, Test, LinearAlgebra
-using ACE: State, CylindricalBondEnvelope
+using ACE: State, CylindricalBondEnvelope, ElipsoidBondEnvelope
 using StaticArrays
 using ACEbase.Testing: print_tf
 
@@ -50,36 +50,45 @@ end
 r0cut = 2.0
 rcut = 1.0
 zcut = 2.0
-for floppy = [false, true]
-    env = ElipsoidBondEnvelope(r0cut, rcut, zcut;floppy=floppy)
+for lambda = [0,.5,.6,1]
+    for floppy = [false, true]
+        env = ElipsoidBondEnvelope(r0cut, rcut, zcut;floppy=floppy, λ= lambda)
 
-    @info("Test :bond", floppy)
+        @info("Test :bond", floppy, lambda)
 
-    for i = 1:30
-        rr = rand(SVector{3, Float64}) * 2 * r0cut / sqrt(3)
-        r = norm(rr)
-        X = State(rr = rr, rr0 = rr, be=:bond)
-        print_tf(@test( filter(env, X) == (r <= r0cut) ))
-    end
+        for i = 1:30
+            rr = rand(SVector{3, Float64}) * 2 * r0cut / sqrt(3)
+            r = norm(rr)
+            X = State(rr = rr, rr0 = rr, be=:bond)
+            print_tf(@test( filter(env, X) == (r <= r0cut) ))
+        end
 
-    ##
+        ##
 
 
-    @info ("Test :env")
+        @info ("Test :env")
 
-    r0 = @SVector [r0cut/2, 0.0, 0.0]
-    r_centre = r0 / 2
-    for i = 1:30
-        rr = rand(SVector{3, Float64}) * env.rcut + r_centre
-        X = State(rr = rr, rr0 = r0, be=:env)
-        z = rr[1] - r_centre[1]
-        r = sqrt(rr[2]^2 + rr[3]^2)
-        zeff = env.zcut + env.floppy*norm(r_centre)
+        r0 = @SVector [r0cut/2, 0.0, 0.0]
+        r_centre = r0 * env.λ
+        for i = 1:30
+            rr = rand(SVector{3, Float64}) * env.rcut + r_centre
+            X = State(rr = rr, rr0 = r0, be=:env)
+            z = rr[1] - r_centre[1]
+            r = sqrt(rr[2]^2 + rr[3]^2)
+            zeff = env.zcut + env.floppy*norm(r_centre)
 
-        filt = (((z/ zeff)^2 + (r/env.rcut)^2) <=1)
-        print_tf(@test( filter(env, X) == (filt != 0) ))
+            filt = (((z/ zeff)^2 + (r/env.rcut)^2) <=1)
 
-        val = ( (z/zeff)^2 +  (r/env.rcut)^2 - 1.0)^env.pr * filt
-        print_tf(@test( ACE._inner_evaluate(env, X) ≈ val ))
+            #@show filt
+            #@show filter(env, X)
+            #print("------------------- \n")
+            print_tf(@test( filter(env, X) == (filt != 0) ))
+
+            val = ( (z/zeff)^2 +  (r/env.rcut)^2 - 1.0)^env.pr * filt
+            #@show val
+            #@show ACE._inner_evaluate(env, X)
+            #print("------------------- \n")
+            print_tf(@test( ACE._inner_evaluate(env, X) ≈ val ))
+        end
     end
 end
