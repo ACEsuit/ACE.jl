@@ -180,31 +180,32 @@ function export_ACE_functions(V3, species, reversed_species_dict)
     functions = Dict()
     lmax = 0
 
-    for species in values(species)
+    for i in 1:length(V3.pibasis.inner)
         sel_bgroups = []
-        for i in 1:length(V3.pibasis.inner)
-            inner = V3.pibasis.inner[i]
-            coeffs = V3.coeffs[i]
-            groups = _basis_groups(inner, coeffs)
-            for group in groups
-                if group["z0"] == ZList(Symbol(species)).list[1]
-                    push!(sel_bgroups, Dict("rank" => group["ord"],
-                                "mu0" => reversed_species_dict[string(chemical_symbol(group["z0"]))],
-                                "ndensity" => 1,
-                                "ns" => group["n"],
-                                "ls" => group["l"],
-                                "mus" => [reversed_species_dict[i] for i in string.(chemical_symbol.(group["zs"]))],
-                                "ctildes" => group["C"],
-                                "ms_combs" => vcat(group["M"]...),
-                                "num_ms_combs" => length(vcat(group["M"]))
-                                ))
-                    if maximum(group["l"]) > lmax
-                        lmax = maximum(group["l"])
-                    end
+        inner = V3.pibasis.inner[i]
+        z0 = V3.pibasis.inner[i].z0
+        coeffs = V3.coeffs[i]
+        groups = _basis_groups(inner, coeffs)
+        for group in groups
+            for (m, c) in zip(group["M"], group["C"])
+                c_ace = c / (4*π)^(group["ord"]/2)
+                #@show length(c_ace)
+                ndensity = 1
+                push!(sel_bgroups, Dict("rank" => group["ord"],
+                            "mu0" => reversed_species_dict[string(chemical_symbol(group["z0"]))],
+                            "ndensity" => ndensity,
+                            "ns" => group["n"],
+                            "ls" => group["l"],
+                            "mus" => [reversed_species_dict[i] for i in string.(chemical_symbol.(group["zs"]))],
+                            "ctildes" => [c_ace],
+                            "ms_combs" => m,
+                            "num_ms_combs" => length([c_ace])))
+                if maximum(group["l"]) > lmax
+                    lmax = maximum(group["l"])
                 end
             end
         end
-        functions[reversed_species_dict[species]] = sel_bgroups
+        functions[reversed_species_dict[string(chemical_symbol(z0))]] = sel_bgroups
     end
 
     return functions, lmax
@@ -246,10 +247,15 @@ function _basis_groups(inner, coeffs)
        Cnl = Cnl[pnl]
        order = length(nl[1])
        push!(bgrps, Dict("n" => nl[1], "l" => nl[2], "z0" => z0, "zs" => nl[3],
-                         "M" => Mnl, "C" => Cnl ./ (4*π)^(order/2) , "ord" => order)) #correct?
+                         "M" => Mnl, "C" => Cnl, "ord" => order)) #correct?
     end
     return bgrps
 end
+
+end
+
+
+
 
 #end
 
@@ -262,29 +268,82 @@ end
 
 #export_ACE("test.yace", IP)
 
-function export_ace_tests(fname::AbstractString, V, ntests = 1;
-                          nrepeat = 1, pert=0.0)
-   at = IPFitting.Data.read_xyz("/Users/Cas/gits/ACE.jl/src/export/bulk.xyz", energy_key="", force_key="", virial_key="")[1].at * nrepeat
-   JuLIP.set_pbc!(at, false)
-   #r0 = JuLIP.rnn(s)
-   for n = 1:ntests
-      #JuLIP.rattle!(at, pert)
-      E = energy(V, at)
-      @show E
-      _write_test(fname * "_$n.dat", JuLIP.positions(at), E)
-   end
-   return at
-end
+# function export_ace_tests(fname::AbstractString, V, ntests = 1;
+#                           nrepeat = 1, pert=0.0)
+#    at = IPFitting.Data.read_xyz(@__DIR__() * "/bulk_TiAl.xyz", energy_key="", force_key="", virial_key="")[1].at
+#    JuLIP.set_psbc!(at, false)
+#    #r0 = JuLIP.rnn(s)
+#    for n = 1:ntests
+#       #JuLIP.rattle!(at, pert)
+#       E = energy(V, at)
+#       @show E
+#       _write_test(fname * "_$n.dat", JuLIP.positions(at), E)
+#    end
+#    return at
+# end
 
-function _write_test(fname, X, E)
-   fptr = open(fname; write=true)
-   println(fptr, "E = $E")
-   println(fptr, "natoms = $(length(X))")
-   println(fptr, "# type x y z")
-   for n = 1:length(X)
-      println(fptr, "0 $(X[n][1]) $(X[n][2]) $(X[n][3])")
-   end
-   close(fptr)
-end
+# function _write_test(fname, X, E)
+#    fptr = open(fname; write=true)
+#    println(fptr, "E = $E")
+#    println(fptr, "natoms = $(length(X))")
+#    println(fptr, "# type x y z")
+#    for n = 1:length(X)
+#       println(fptr, "0 $(X[n][1]) $(X[n][2]) $(X[n][3])")
+#    end
+#    close(fptr)
+# end
 
-end
+#end
+
+
+########
+
+# using IPFitting
+
+# IP = read_dict(load_dict("./src/export/Ti3Al_basic_N2.json")["IP"])
+
+# at = IPFitting.Data.read_xyz(@__DIR__() * "/bulk_TiAl.xyz", energy_key="", force_key="", virial_key="")[1].at
+# JuLIP.set_pbc!(at, false)
+# energy(IP, at)
+
+# forces(IP,at)
+
+# export_ACE("./src/export/Ti3Al_basic_N2.yace", IP)
+
+# export_ace_tests("./src/export/TiAl_med_N3_10", IP)
+
+# V1 = IP.components[1]
+# V2 = IP.components[2]
+# V3 = IP.components[3]
+
+# energy(V1, at)
+# energy(V2, at)
+# energy(V3, at)
+
+
+
+# groups = _basis_groups(V3.pibasis.inner[1], V3.coeffs[1])
+
+# length(vcat(groups[3]["M"]))
+
+# length(vcat(groups[2]["M"]))/
+
+# reversed_species_dict
+
+
+# V3.pibasis.inner[1]
+
+# V1 = IP.components[1]
+# V2 = IP.components[2]
+# V3 = IP.components[3]
+
+# species = collect(string.(chemical_symbol.(V2.basis.zlist.list.data)))
+
+# species_dict = Dict(zip(collect(0:length(species)-1), species))
+# reversed_species_dict = Dict(zip(species, collect(0:length(species)-1)))
+
+# group = groups[1]
+
+# for (m, c) in zip(group["M"], group["C"])
+#     @show m, c
+# end
