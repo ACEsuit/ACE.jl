@@ -136,3 +136,24 @@ end
 
 
 basis = Bond_basis(; init = true, Bsel = nothing, maxorder = 2)
+
+
+using ACE
+
+# CategoricalBasis
+categories = [:e, :b]
+len = length(categories)
+list = ACE.SList(categories)
+B1p_be = ACE.Categorical1pBasis(categories; varsym = :be, idxsym=:be)
+
+# RnYlmBasis
+maxdeg = 6
+ord = 2
+Bsel = SimpleSparseBasis(ord, maxdeg)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, Bsel=Bsel)
+
+# Combined
+B1p_test = B1p_be * B1p
+basis =  ACE.init1pspec!(B1p_test,Bsel)
+
+ACE.SymmetricBasis(ACE.Invariant(), basis, Bsel)
