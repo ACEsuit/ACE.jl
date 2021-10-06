@@ -1,5 +1,6 @@
 
-using ACE, Test, ACEbase, ACEbase.Testing
+using ACE, Test, ACEbase, ACEbase.Testing, 
+      StaticArrays
 
 using ACE.Random: rand_rot, rand_refl
 using Random: shuffle 
@@ -9,7 +10,7 @@ using LinearAlgebra: norm
 
 @info("Testing Categorical1pBasis")
 
-@info "Test SList"
+@info("Running some basic evaluation checks")
 
 for categories in (  [:a,], 
                      [:a, :b, :c], 

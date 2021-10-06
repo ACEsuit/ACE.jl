@@ -50,14 +50,23 @@ _lm(b, basis::Ylm1pBasis) = _l(b, basis), _m(b, basis)
 # Base.rand(basis::Ylm1pBasis) =
 #       AtomState(rand(basis.zlist.list), ACE.Random.rand_vec(basis.J))
 
-function get_spec(basis::Ylm1pBasis{T, VS, L, M}) where {T, VS, L, M}
-   @assert length(basis) == (basis.SH.maxL + 1)^2
-   spec = Vector{NamedTuple{(L, M), Tuple{Int, Int}}}(undef, length(basis))
-   for l = 0:basis.SH.maxL, m = -l:l
-      spec[index_y(l, m)] = NamedTuple{(L, M), Tuple{Int, Int}}( (l, m) )
-   end
-   return spec
+function get_spec(basis::Ylm1pBasis, i::Integer) 
+   l, m = ACE.SphericalHarmonics.idx2lm(i)
+   L, M = _lsym(basis), _msym(basis)
+   return NamedTuple{(L, M)}((l, m))
 end
+
+get_spec(basis::Ylm1pBasis) = get_spec.(Ref(basis), 1:length(basis))
+
+
+# function get_spec(basis::Ylm1pBasis{T, VS, L, M}) where {T, VS, L, M}
+#    @assert length(basis) == (_maxL(basis) + 1)^2
+#    spec = Vector{NamedTuple{(L, M), Tuple{Int, Int}}}(undef, length(basis))
+#    for l = 0:_maxL(basis), m = -l:l
+#       spec[index_y(l, m)] = NamedTuple{(L, M), Tuple{Int, Int}}( (l, m) )
+#    end
+#    return spec
+# end
 
 ==(P1::Ylm1pBasis, P2::Ylm1pBasis) =  
       ( (P1.SH == P2.SH) && (typeof(P1) == typeof(P2)) )
