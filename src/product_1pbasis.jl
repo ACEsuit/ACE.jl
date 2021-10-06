@@ -1,23 +1,18 @@
-using NamedTupleTools: namedtuple
+using NamedTupleTools: namedtuple, merge
 
 # -------------- Implementation of Product Basis
 
-struct Product1pBasis{NB, TB <: Tuple, NSYM, SYMS} <: OneParticleBasis{Any}
+struct Product1pBasis{NB, TB <: Tuple} <: OneParticleBasis{Any}
    bases::TB
-   spec::Vector{NamedTuple{SYMS, NTuple{NSYM, Int}}}
    indices::Vector{NTuple{NB, Int}}
 end
 
-function Product1pBasis(bases;
-                        SYMS = _symbols_prod(bases), )
+function Product1pBasis(bases)
    # TODO: discuss whether to construct an optimal ordering, e.g.
    #       should the discrete bases come first once we implement the
    #       "strongzero" method?
-   NSYM = length(SYMS)
    NB = length(bases)
-   Product1pBasis( tuple(bases...),
-                   NamedTuple{SYMS, NTuple{NSYM, Int}}[],
-                   NTuple{NB, Int}[] )
+   Product1pBasis( tuple(bases...), NTuple{NB, Int}[] )
 end
 
 
@@ -34,28 +29,24 @@ import Base.*
 
 _numb(b::Product1pBasis{NB}) where {NB} = NB
 
-Base.length(basis::Product1pBasis) = length(basis.spec)
+Base.length(basis::Product1pBasis) = length(basis.indices)
 
 # ------------------------- FIO CODES
 
 ==(B1::Product1pBasis, B2::Product1pBasis) = 
       ( all(B1.bases .== B2.bases) && 
-        convert.(Dict, B1.spec) == convert.(Dict, B2.spec) && 
         B1.indices == B2.indices )
 
 write_dict(B::Product1pBasis) = 
       Dict("__id__" => "ACE_Product1pBasis", 
             "bases" => write_dict.(B.bases), 
-             "spec" => _write_dict_1pspec(B.spec), 
           "indices" => B.indices )
 
 function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
    bases = tuple( read_dict.(D["bases"])... )
-   spec = _read_dict_1pspec(D["spec"])
    indices = [ tuple(v...) for v in D["indices"] ]
-   return Product1pBasis(bases, spec, indices)
+   return Product1pBasis(bases, indices)   
 end
-
 
 # ------------------------------------
 
@@ -152,8 +143,7 @@ end
 
 _symbols_prod(bases) = tuple(union( symbols.(bases)... )...)
 
-symbols(basis::Product1pBasis{NB, TB, NSYM, SYMS}
-            ) where {NB, TB, NSYM, SYMS} = SYMS
+symbols(basis::Product1pBasis) = _symbols_prod(basis.bases)
 
 function indexrange(basis::Product1pBasis)
    allsyms = tuple(symbols(basis)...)
@@ -181,19 +171,24 @@ end
 isadmissible(b, basis::Product1pBasis) = all(isadmissible.(Ref(b), basis.bases))
 
 function set_spec!(basis::Product1pBasis{NB}, spec) where {NB}
-   empty!(basis.spec)
-   append!(basis.spec, spec)
    empty!(basis.indices)
-   for b in basis.spec
+   for b in spec
       inds = ntuple(i -> get_index(basis.bases[i], b), NB)
       push!(basis.indices, inds)
    end
    return basis
 end
 
-get_spec(basis::Product1pBasis) = basis.spec
+get_spec(basis::Product1pBasis) = [ get_spec(basis, i) for i = 1:length(basis) ]
 
-get_spec(basis::Product1pBasis, i::Integer) = basis.spec[i]
+function get_spec(basis::Product1pBasis, i::Integer) 
+   inds = basis.indices[i] 
+   specs = get_spec.(basis.bases, inds)
+   # TODO: here we should check that we are only merging compatible tuples, 
+   #       e.g. (n = 5, l = 2), (l = 2, m = -1) is ok 
+   #       but  (n = 5, l = 2), (l = 3, m = -1) is forbidden!
+   return merge(specs...)
+end
 
 degree(b, basis::Product1pBasis) = sum( degree(b, B) for B in basis.bases )
 

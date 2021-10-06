@@ -110,6 +110,12 @@ degree(b, basis::Categorical1pBasis, args...) = 0
 
 Base.rand(basis::Categorical1pBasis) = rand(basis.list)
 
+function get_spec(basis::Categorical1pBasis, i)
+   return NamedTuple{(_isym(basis),)}((i2val(basis.categories, i),))
+end
+
+get_spec(basis::Categorical1pBasis) = [ get_spec(basis, i) for i = 1:length(basis) ]
+
 
 write_dict(B::Categorical1pBasis) = 
       Dict( "__id__" => "ACE_Categorical1pBasis", 
