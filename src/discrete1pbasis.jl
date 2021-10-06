@@ -27,6 +27,8 @@ Base.rand(list::SList) = rand(list.list)
 
 i2val(list::SList, i::Integer) = list.list[i]
 
+Base.iterate(list::SList, args...) = iterate(list.list, args...)
+
 function val2i(list::SList, val)
    for j = 1:length(list)
       if list.list[j] == val
@@ -47,6 +49,8 @@ function read_dict(::Val{:ACE_SList}, D::Dict)
    svector = SVector{length(list), T}((T.(list))...)
    return SList(svector)
 end
+
+
 
 # -------------------------
 
@@ -105,6 +109,8 @@ symbols(basis::Categorical1pBasis) = [ _isym(basis), ]
 indexrange(basis::Categorical1pBasis) = Dict( _isym(basis) => basis.categories.list )
 
 isadmissible(b, basis::Categorical1pBasis) = (_idx(b, basis) in basis.categories)
+
+get_index(B::Categorical1pBasis, b) = val2i(B.categories, _idx(b, B) )
 
 degree(b, basis::Categorical1pBasis, args...) = 0
 

@@ -147,7 +147,7 @@ symbols(basis::Product1pBasis) = _symbols_prod(basis.bases)
 
 function indexrange(basis::Product1pBasis)
    allsyms = tuple(symbols(basis)...)
-   rg = Dict{Symbol, Vector{Int}}([ sym => Int[] for sym in allsyms]...)
+   rg = Dict{Symbol, Vector{Any}}([ sym => [] for sym in allsyms]...)
    for b in basis.bases
       rgb = indexrange(b)
       for sym in allsyms

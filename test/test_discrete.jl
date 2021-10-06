@@ -62,8 +62,9 @@ end
 
 ##
 
-# Bsel = SimpleSparseBasis(2, 6)
-# B1p_be = ACE.Categorical1pBasis([:e, :b]; varsym = :be, idxsym=:be)
-# RnYlm = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, Bsel=Bsel)
-# B1p = B1p_be * RnYlm
-# ACE.init1pspec!(B1p, Bsel)
+Bsel = SimpleSparseBasis(2, 6)
+B1p_be = ACE.Categorical1pBasis([:e, :b]; varsym = :be, idxsym=:be)
+RnYlm = ACE.Utils.RnYlm_1pbasis(; Bsel=Bsel)
+B1p = B1p_be * RnYlm
+basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+

@@ -10,7 +10,7 @@ function init1pspec!(B1p::OneParticleBasis, Deg = MaxBasis())
    syms = tuple(symbols(B1p)...)
    rgs = indexrange(B1p)
    lens = [ length(rgs[sym]) for sym in syms ]
-   spec = NamedTuple{syms, NTuple{length(syms), Int}}[]
+   spec = []
    for I in CartesianIndices(ntuple(i -> 1:lens[i], length(syms)))
       J = ntuple(i -> rgs[syms[i]][I.I[i]], length(syms))
       b = NamedTuple{syms}(J)
