@@ -148,8 +148,16 @@ Base.complex(::Type{TDX}) where {TDX <: DState{SYMS}} where {SYMS} =
       typeof( complex( zero(TDX) ) )
  
 
+function zero(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
+   vals = ntuple(i -> _ace_zero(TT.types[i]), length(SYMS))
+   return TX( NamedTuple{SYMS}( vals ) )
+end
 
-for f in (:zero, :rand, :randn) 
+_ace_zero(args...) = zero(args...)
+_ace_zero(::Union{Symbol, Type{Symbol}}) = :O
+
+
+for f in (:rand, :randn) 
    eval( quote 
       function $f(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
          vals = ntuple(i -> $f(TT.types[i]), length(SYMS))

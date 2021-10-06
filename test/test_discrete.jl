@@ -1,11 +1,12 @@
 
-using ACE, Test, ACEbase, ACEbase.Testing
+using ACE, Test, ACEbase, ACEbase.Testing, 
+      StaticArrays
 
 ##
 
 @info("Testing Categorical1pBasis")
 
-@info "Test SList"
+@info("Running some basic evaluation checks")
 
 for categories in (  [:a,], 
                      [:a, :b, :c], 
@@ -58,3 +59,21 @@ for categories in (  [:a,],
     print_tf(@test all(ACEbase.Testing.test_fio(B1p)))
     println()
 end
+
+
+##
+
+Bsel = SimpleSparseBasis(2, 6)
+B1p_be = ACE.Categorical1pBasis([:e, :b]; varsym = :be, idxsym=:be)
+RnYlm = ACE.Utils.RnYlm_1pbasis(; Bsel=Bsel)
+B1p = B1p_be * RnYlm
+basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+
+
+
+cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), 
+                  be = rand([:b,:e]) ) 
+        for _ = 1:10 ] |> ACEConfig
+ACE.evaluate(basis, cfg)
+
+# test symmetries here? 
