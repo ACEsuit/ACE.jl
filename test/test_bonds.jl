@@ -92,3 +92,47 @@ for lambda = [0,.5,.6,1]
         end
     end
 end
+
+
+#%%
+
+@info("Testing a simple bond basis")
+
+
+const bsymbols = (:bond,:env)
+
+#onst ExtendedAtomState{T} = ACE.State{(:rr, :be), Tuple{SVector{3, T}, Symbol}}
+
+#ExtendedAtomState(as::AtomState{T}, s::Symbol) = begin
+#   @assert s in bsymbols
+#   ExtendedAtomState{T}( (:be = s, rr = as.rr) )
+#end
+
+using ACE: State, ElipsoidBondEnvelope, CategoryBasisSelector
+
+function Bond_basis(; init = true,
+                           maxL = 4,
+                           maxdeg = 6,
+                           Bsel = nothing,
+                           maxorder = 2,
+                           kwargs...)
+    if Bsel == nothing
+        maxorder_dict = Dict(:bond => 1)
+        isym = :be
+        weight = Dict(:l =>1, :n => 1)
+        degree = Dict("default" => 10)
+        p = 2
+        Bsel = CategoryBasisSelector(maxorder, maxorder_dict, isym, weight, degree, p)
+    end
+    RnYlm = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, maxL=maxL, kwargs...)
+    Aν = Categorical1pBasis([:env,:bond]; varsym = :be, idxsym = :be)
+    B1p = Aν * RnYlm
+    basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+    if init
+        ACE.init1pspec!(B1p, Bsel)
+    end
+    return basis
+end
+
+
+basis = Bond_basis(; init = true, Bsel = nothing, maxorder = 2)
