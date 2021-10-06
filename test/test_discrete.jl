@@ -2,6 +2,10 @@
 using ACE, Test, ACEbase, ACEbase.Testing, 
       StaticArrays
 
+using ACE.Random: rand_rot, rand_refl
+using Random: shuffle 
+using LinearAlgebra: norm 
+
 ##
 
 @info("Testing Categorical1pBasis")
@@ -53,8 +57,6 @@ for categories in (  [:a,],
         print_tf(@test ACE._idx(b, B1p) == categories[i])
     end
 
-    ##
-
     # @info("check FIO")
     print_tf(@test all(ACEbase.Testing.test_fio(B1p)))
     println()
@@ -63,17 +65,42 @@ end
 
 ##
 
-Bsel = SimpleSparseBasis(2, 6)
+Bsel = SimpleSparseBasis(3, 6)
 B1p_be = ACE.Categorical1pBasis([:e, :b]; varsym = :be, idxsym=:be)
 RnYlm = ACE.Utils.RnYlm_1pbasis(; Bsel=Bsel)
 B1p = B1p_be * RnYlm
 basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+@show length(basis)
 
-
+##
 
 cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), 
                   be = rand([:b,:e]) ) 
         for _ = 1:10 ] |> ACEConfig
-ACE.evaluate(basis, cfg)
+B1 = ACE.evaluate(basis, cfg)
 
-# test symmetries here? 
+for ntest = 1:30
+    Q = rand_refl() * rand_rot()
+    Xs2 = shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
+    B2 = ACE.evaluate(basis, ACEConfig(Xs2))
+    print_tf(@test isapprox(B1, B2, rtol=1e-10))
+end
+
+##
+
+@info("Test spherical covariance")
+
+L1 = L2 = 2 
+basis = ACE.SymmetricBasis(ACE.SphericalMatrix(L1,L2; T = ComplexF64), B1p, Bsel)
+@show length(basis)
+
+B1 = ACE.evaluate(basis, cfg)
+
+for ntest = 1:30
+    Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
+    Xs2 = shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
+    B2 = ACE.evaluate(basis, ACEConfig(Xs2))
+    D1txB1xD2 = Ref(D1') .* B2 .* Ref(D2)
+    print_tf(@test isapprox(D1txB1xD2, B1, rtol=1e-10))
+end
+
