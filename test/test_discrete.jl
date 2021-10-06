@@ -1,5 +1,6 @@
 
-using ACE, Test, ACEbase, ACEbase.Testing
+using ACE, Test, ACEbase, ACEbase.Testing, 
+      StaticArrays
 
 ##
 
@@ -68,3 +69,11 @@ RnYlm = ACE.Utils.RnYlm_1pbasis(; Bsel=Bsel)
 B1p = B1p_be * RnYlm
 basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
 
+
+
+cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), 
+                  be = rand([:b,:e]) ) 
+        for _ = 1:10 ] |> ACEConfig
+ACE.evaluate(basis, cfg)
+
+# test symmetries here? 
