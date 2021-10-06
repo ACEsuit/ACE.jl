@@ -99,6 +99,8 @@ end
 @info("Testing a simple bond basis")
 
 
+
+"""Matthias's MWE"""
 const bsymbols = (:bond,:env)
 
 #onst ExtendedAtomState{T} = ACE.State{(:rr, :be), Tuple{SVector{3, T}, Symbol}}
@@ -137,7 +139,8 @@ end
 
 basis = Bond_basis(; init = true, Bsel = nothing, maxorder = 2)
 
-
+#%%
+"""Liwei's MWE"""
 using ACE
 
 # CategoricalBasis
