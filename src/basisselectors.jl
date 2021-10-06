@@ -7,9 +7,10 @@ the weight and degree dictionaries affect the definition of degree.
 """
 struct CategoryBasisSelector <: DownsetBasisSelector
    maxorder::Int
-   maxorder_dict::Dict{Symbol, Float64}
+   maxorder_dict::Dict{Any, Int}
    isym::Symbol
    weight::Dict{Symbol, Float64}
+   weight_cat::Dict{Any, Float64}
    degree::Dict{Any, Float64}
    p::Float64
 end
@@ -17,24 +18,33 @@ end
 
 
 maxorder(Bsel::CategoryBasisSelector) = Bsel.maxorder
-maxorder(Bsel::CategoryBasisSelector, category::Symbol, basis::Categorical1pBasis) = Bsel.maxorder_dict[category]
-maxorder(Bsel::CategoryBasisSelector, category::Symbol, basis::Categorical1pBasis) = Bsel.maxorder_dict[category]
+
+maxorder(Bsel::CategoryBasisSelector, category, basis::Categorical1pBasis) = 
+         Bsel.maxorder_dict[category]
+
+_maxdeg(Bsel::CategoryBasisSelector, ord::Integer) =
+         haskey(Bsel.degree, ord) ? Bsel.degree[ord] : Bsel.degree["default"]
+   
 
 isadmissible(b::NamedTuple, Bsel::CategoryBasisSelector, basis::OneParticleBasis) =
       (degree(b, Bsel, basis) <= _maxdeg(Bsel, 0))
 
 function isadmissible(bb, Bsel::CategoryBasisSelector, basis::OneParticleBasis)
-   ord = length(bb)
-   return (degree(bb, Bsel, basis) <= _maxdeg(Bsel, ord)) && ord <= maxorder(Bsel)
+   cond_ord = length(bb) <= maxorder(Bsel)
+   cond_ord_cats = [
+         sum([ getproperty(b, Bsel.isym) == s for b in bb ]) <= maxorder(Bsel,basis, s)
+                                 for s in keys(Bsel.maxorder_dict) ]
+      
+   return (  (degree(bb, Bsel, basis) <= _maxdeg(Bsel, ord))
+             && cond_ord 
+             && all(cond_ord_cats)
+         )
 end
 
-_maxdeg(Bsel::CategoryBasisSelector, ord::Integer) =
-      haskey(Bsel.degree, ord) ? Bsel.degree[ord] : Bsel.degree["default"]
 
 # for a one-particle basis function
 degree(b::NamedTuple, Bsel::CategoryBasisSelector, basis::OneParticleBasis) =
-      degree(b, basis, Bsel.weight)
-
+      degree(b, basis, Bsel.weight) * Bsel.weight_cat[getproperty(b, Bsel.isym)]
 
 
 # for an ν-correlation basis function
@@ -42,8 +52,6 @@ degree(b::NamedTuple, Bsel::CategoryBasisSelector, basis::OneParticleBasis) =
 function degree(bb, Bsel::CategoryBasisSelector, basis::OneParticleBasis)
    if length(bb) == 0
       return 0.0
-   elseif length(bb) > maxorder(Bsel) || any([sum([getproperty(b, Bsel.isym) == s for b in bb]) > maxorder(Bsel,basis, s) for s in keys(Bsel.maxorder) ])
-      return Inf
    else
       return norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p )
    end
