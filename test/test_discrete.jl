@@ -1,10 +1,10 @@
 
-using ACE, Test, ACEbase, ACEbase.Testing,
+using ACE, Test, ACEbase, ACEbase.Testing, 
       StaticArrays
 
 using ACE.Random: rand_rot, rand_refl
-using Random: shuffle
-using LinearAlgebra: norm
+using Random: shuffle 
+using LinearAlgebra: norm 
 using ACE: CategoryBasisSelector
 ##
 
@@ -12,16 +12,16 @@ using ACE: CategoryBasisSelector
 
 @info("Running some basic evaluation checks")
 
-for categories in (  [:a,],
-                     [:a, :b, :c],
-                     [1, 2],
+for categories in (  [:a,], 
+                     [:a, :b, :c], 
+                     [1, 2], 
                      [true, false] )
     @info("categories = $categories")
-    len = length(categories)
+    len = length(categories) 
 
     list = ACE.SList(categories)
 
-    for i = 1:len
+    for i = 1:len  
         print_tf(@test ACE.val2i(list, categories[i]) == i)
         print_tf(@test ACE.i2val(list, i) == categories[i])
     end
@@ -39,21 +39,21 @@ for categories in (  [:a,],
 
     EE = [true false false; false true false; false false true]
 
-    for i = 1:len
+    for i = 1:len 
         ee(i) = EE[1:len, i]
         X = ACE.State(mu = categories[i])
         print_tf(@test ACE.evaluate(B1p, X) == ee(i))
     end
 
-    # this throws an error
+    # this throws an error 
     # X = ACE.State(mu = :x)
     # print_tf(@test all(ACE.evaluate(B1p, X) .== false) )
 
     # @info("check reading from basis ")
 
-    for i = 1:len
+    for i = 1:len 
         b = (q = categories[i], )
-        print_tf(@test ACE.degree(b, B1p) == 0)
+        print_tf(@test ACE.degree(b, B1p) == 0) 
         print_tf(@test ACE._idx(b, B1p) == categories[i])
     end
 
@@ -74,8 +74,8 @@ basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
 
 ##
 
-cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)),
-                  be = rand([:b,:e]) )
+cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), 
+                  be = rand([:b,:e]) ) 
         for _ = 1:10 ] |> ACEConfig
 B1 = ACE.evaluate(basis, cfg)
 
@@ -91,7 +91,7 @@ end
 
 @info("Test spherical covariance")
 
-L1 = L2 = 2
+L1 = L2 = 2 
 basis = ACE.SymmetricBasis(ACE.SphericalMatrix(L1,L2; T = ComplexF64), B1p, Bsel)
 @show length(basis)
 
