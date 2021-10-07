@@ -11,21 +11,21 @@ include("imports.jl")
 @extimports
 @baseimports
 
-# TODO 
+# TODO
 # - move to imports
 
 using ACEbase.ObjectPools: acquire!, release!, VectorPool
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
-import ACEbase: evaluate, evaluate_d 
+import ACEbase: evaluate, evaluate_d
 import ACEbase: gradtype, valtype
-import ACEbase: acquire_B!, release_B!, acquire_dB!, release_dB! 
+import ACEbase: acquire_B!, release_B!, acquire_dB!, release_dB!
 
 
-# TODO: gradtype should have a standard fallback 
+# TODO: gradtype should have a standard fallback
 
 
-abstract type AbstractACEModel end 
+abstract type AbstractACEModel end
 
 abstract type AbstractProperty end
 
@@ -34,12 +34,12 @@ function coco_zeros end
 function coco_filter end
 function coco_dot end
 
-# TODO 
+# TODO
 # * decide on rand(basis) interface
 
 # * move these the following definitions to ACEbase
-function _rrule_evaluate end 
-function _rrule_evaluate_d end 
+function _rrule_evaluate end
+function _rrule_evaluate_d end
 
 
 
@@ -76,16 +76,20 @@ include("product_1pbasis.jl")
 
 include("sparsegrids.jl")
 
+# basis selectors used to specify finite subsets of basis functions
+include("basisselectors.jl")
+
 # the permutation-invariant, and symmerized bases
 include("symmetrygroups.jl")
 include("pibasis.jl")
 include("symmbasis.jl")
 
+
 # some experimental stuff
 include("multiplier.jl")
 include("bonds.jl")
 
-# models and model evaluators 
+# models and model evaluators
 
 include("linearmodel.jl")
 
@@ -110,7 +114,7 @@ include("ad.jl")
 end # module
 
 
-# TODO: 
+# TODO:
 # # orthogonal basis
 # include("orth.jl")
 

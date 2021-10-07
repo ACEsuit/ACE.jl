@@ -1,27 +1,27 @@
 
-using ACE, Test, ACEbase, ACEbase.Testing, 
+using ACE, Test, ACEbase, ACEbase.Testing,
       StaticArrays
 
 using ACE.Random: rand_rot, rand_refl
-using Random: shuffle 
-using LinearAlgebra: norm 
-
+using Random: shuffle
+using LinearAlgebra: norm
+using ACE: CategoryBasisSelector
 ##
 
 @info("Testing Categorical1pBasis")
 
 @info("Running some basic evaluation checks")
 
-for categories in (  [:a,], 
-                     [:a, :b, :c], 
-                     [1, 2], 
+for categories in (  [:a,],
+                     [:a, :b, :c],
+                     [1, 2],
                      [true, false] )
     @info("categories = $categories")
-    len = length(categories) 
-    
+    len = length(categories)
+
     list = ACE.SList(categories)
 
-    for i = 1:len  
+    for i = 1:len
         print_tf(@test ACE.val2i(list, categories[i]) == i)
         print_tf(@test ACE.i2val(list, i) == categories[i])
     end
@@ -38,22 +38,22 @@ for categories in (  [:a,],
 
 
     EE = [true false false; false true false; false false true]
-    
-    for i = 1:len 
+
+    for i = 1:len
         ee(i) = EE[1:len, i]
         X = ACE.State(mu = categories[i])
         print_tf(@test ACE.evaluate(B1p, X) == ee(i))
     end
 
-    # this throws an error 
+    # this throws an error
     # X = ACE.State(mu = :x)
     # print_tf(@test all(ACE.evaluate(B1p, X) .== false) )
 
     # @info("check reading from basis ")
 
-    for i = 1:len 
+    for i = 1:len
         b = (q = categories[i], )
-        print_tf(@test ACE.degree(b, B1p) == 0) 
+        print_tf(@test ACE.degree(b, B1p) == 0)
         print_tf(@test ACE._idx(b, B1p) == categories[i])
     end
 
@@ -74,8 +74,8 @@ basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
 
 ##
 
-cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), 
-                  be = rand([:b,:e]) ) 
+cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)),
+                  be = rand([:b,:e]) )
         for _ = 1:10 ] |> ACEConfig
 B1 = ACE.evaluate(basis, cfg)
 
@@ -84,13 +84,14 @@ for ntest = 1:30
     Xs2 = shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
     B2 = ACE.evaluate(basis, ACEConfig(Xs2))
     print_tf(@test isapprox(B1, B2, rtol=1e-10))
+    println()
 end
 
 ##
 
 @info("Test spherical covariance")
 
-L1 = L2 = 2 
+L1 = L2 = 2
 basis = ACE.SymmetricBasis(ACE.SphericalMatrix(L1,L2; T = ComplexF64), B1p, Bsel)
 @show length(basis)
 
@@ -102,5 +103,57 @@ for ntest = 1:30
     B2 = ACE.evaluate(basis, ACEConfig(Xs2))
     D1txB1xD2 = Ref(D1') .* B2 .* Ref(D2)
     print_tf(@test isapprox(D1txB1xD2, B1, rtol=1e-10))
+    println()
 end
 
+
+
+#%%
+
+@info("Test basis construction with `CategoryBasisSelector` ")
+
+categories = [:env,:bond]
+
+maxorder = 6
+maxorder_dict = Dict(:bond => 1)
+isym = :be
+weight = Dict(:l =>1, :n => 1)
+weight_cat = Dict(c => 1 for c in categories)
+degree = Dict("default" => 10)
+p = 2
+Bsel = CategoryBasisSelector(maxorder, maxorder_dict, isym, weight, weight_cat, degree, p)
+
+Bc = Categorical1pBasis(categories; varsym = :be, idxsym = :be)
+RnYlm = ACE.Utils.RnYlm_1pbasis(; )
+B1p = Bc * RnYlm
+
+
+@info("Test invariance")
+
+basis_inv = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+
+cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)),
+                  be = rand([:env,:bond]) )
+        for _ = 1:10 ] |> ACEConfig
+B1_inv = ACE.evaluate(basis_inv, cfg)
+@show length(basis_inv)
+
+for ntest = 1:30
+    Q = rand_refl() * rand_rot()
+    Xs2 = ACE.shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
+    B2_inv = ACE.evaluate(basis_inv, ACEConfig(Xs2))
+    print_tf(@test isapprox(B1_inv, B2_inv, rtol=1e-10))
+end
+println()
+@info("Test eucldian covariance")
+
+basis_cov = ACE.SymmetricBasis(ACE.EuclideanVector(), B1p, Bsel)
+@show length(basis_cov)
+
+B1_cov = ACE.evaluate(basis_cov, cfg)
+for ntest = 1:30
+    Q = rand_refl() * rand_rot()
+    Xs2 = ACE.shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
+    B2_cov = ACE.evaluate(basis_cov, ACEConfig(Xs2))
+    print_tf(@test isapprox( map(x->Q*x, B1_cov), B2_cov, rtol=1e-10))
+end
