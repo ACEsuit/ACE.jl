@@ -38,8 +38,8 @@ function coco_dot end
 # * decide on rand(basis) interface
 
 # * move these the following definitions to ACEbase
-function _rrule_evaluate end
-function _rrule_evaluate_d end
+function _rrule_evaluate end 
+function _rrule_evaluate_d end 
 
 
 
@@ -85,7 +85,7 @@ include("pibasis.jl")
 include("symmbasis.jl")
 
 
-# some experimental stuff
+# some experimental stuff 
 include("multiplier.jl")
 include("bonds.jl")
 
@@ -114,7 +114,7 @@ include("ad.jl")
 end # module
 
 
-# TODO:
+# TODO: 
 # # orthogonal basis
 # include("orth.jl")
 
