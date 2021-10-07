@@ -1,5 +1,5 @@
 
-export SimpleSparseBasis, SparseBasis, MaxBasis
+export SimpleSparseBasis, SparseBasis, MaxBasis 
 
 
 
