@@ -1,7 +1,7 @@
 
 
 
-abstract type BondEnvelope{T} <: B1pMultiplier{T}  end
+abstract type BondEnvelope{T} <: B1pMultiplier{T}  end 
 
 # we can't call this `evaluate` since that would return a Vector
 # whereas _inner_evaluate(...) should just give us a value.
@@ -18,16 +18,16 @@ end
 Base.filter(env::BondEnvelope, X::AbstractState) =
          _inner_evaluate(env,X) != 0
 
-struct CylindricalBondEnvelope{T} <: BondEnvelope{T}
+struct CylindricalBondEnvelope{T} <: BondEnvelope{T} 
    r0cut::T
    rcut::T
-   zcut::T
+   zcut::T 
    p0::Int
    pr::Int
    pz::Int
 end
 
-CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2) =
+CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2) = 
       CylindricalBondEnvelope(r0cut, rcut, zcut, p0, pr, pz)
 
 
@@ -44,9 +44,9 @@ function _evaluate_env(env::CylindricalBondEnvelope, X::AbstractState)
    r̂b = X.rr0/norm(X.rr0)
    z = dot(X.rr - r_centre, r̂b)
    r = norm( (X.rr - r_centre) - z * r̂b )
-   # then return the correct cutoff
+   # then return the correct cutoff 
    zcuteff = env.zcut + norm(X.rr0) / 2
-   return ( (z/zcuteff)^2 - 1 )^(env.pz) * (abs(z) <= zcuteff) *
+   return ( (z/zcuteff)^2 - 1 )^(env.pz) * (abs(z) <= zcuteff) * 
             ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
 end
 
