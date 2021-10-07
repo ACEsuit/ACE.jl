@@ -117,7 +117,7 @@ grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfigurati
       grad_config!(g, V, cfg)
 
 
-# compute one site energy
+# compute one site energy gradient 
 function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
    _real = V.pibasis.real
@@ -152,23 +152,70 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    return g
 end
 
+function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
+   g = acquire_grad_config!(model, cfg, zeros(eltype(model.c[1]), 3) )
+   return _rrule_evaluate!(g, dp, model.evaluator, cfg)
+end
 
-function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w) 
+# compute one site energy gradient 
+function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration)
+
+   _contract(x::AbstractVector, y::AbstractVector) = 
+         sum( _contract(xi, yi) for (xi, yi) in zip(x, y) )
+
+   _contract(x::Invariant, y::Number) = x * y
+
    basis1p = V.pibasis.basis1p
-   tmpd_1p = alloc_temp_d(basis1p)
+   _real = V.pibasis.real
+   A = acquire_B!(V.pibasis.basis1p, cfg)
+   dA = acquire_dB!(V.pibasis.basis1p, cfg)
+   dAAdA = _acquire_dAAdA!(V.pibasis)
+   
+   # stage 1: precompute all the A values
+   evaluate_ed!(A, dA, basis1p, cfg)
+
+   # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+   c̃ = V.coeffs
+   dAco =  _alloc_dAco(dAAdA, A, zeros(eltype(c̃[1]), 3)) # tmpd.dAco  # TODO: ALLOCATION 
+   spec = V.pibasis.spec
+
+   fill!(dAco, zero(eltype(dAco)))
+   @inbounds for iAA = 1:length(spec)
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      @fastmath for t = 1:spec.orders[iAA]
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex( _contract(c̃[iAA], dp) )
+      end
+   end
+
+   # stage 3: get the gradients
+   fill!(g, zero(eltype(g)))
+   for iX = 1:length(cfg)
+      for iA = 1:length(basis1p)
+         g[iX] += _real(dAco[iA] * dA[iA, iX])
+      end
+   end
+
+   return g
+end
+
+
+
+function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
+   basis1p = V.pibasis.basis1p
    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
    A = zeros(ComplexF64, length(basis1p))
-   dA = zeros(SVector{3, ComplexF64}, length(A), length(cfg))
+   TDX = gradtype(m.basis, cfg)
+   dA = zeros(complex(TDX) , length(A), length(cfg))
    _real = V.pibasis.real
-   dAAw = alloc_B(V.pibasis)
+   dAAw = acquire_B!(V.pibasis, cfg)
    dAw = similar(A)
-   dB = similar(m.c)
+   dB = zeros(Float64, length(m.c))   # TODO: fix hard-coded parameters!!!
 
    # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
-   evaluate_ed!(A, dA, tmpd_1p, basis1p, cfg)
+   evaluate_ed!(A, dA, basis1p, cfg)
    fill!(dAw, 0)
    for k = 1:length(basis1p), j = 1:length(w)
-      dAw[k] += sum(dA[k, j] .* w[j])
+      dAw[k] += _contract(w[j], dA[k, j])
    end
 
    # [2] dAA_k 
@@ -183,6 +230,99 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    end
 
    genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+
+   release_B!(V.pibasis, dAAw)
+
+   # [3] dB_k
+   return dB
+end
+
+
+
+function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
+   basis1p = V.pibasis.basis1p
+   dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
+   A = zeros(ComplexF64, length(basis1p))
+   TDX = gradtype(m.basis, cfg)
+   dA = zeros(complex(TDX) , length(A), length(cfg))
+   _real = V.pibasis.real
+   dAAw = acquire_B!(V.pibasis, cfg)
+   dAw = similar(A)
+   dB = similar(m.c)
+
+   # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
+   evaluate_ed!(A, dA, basis1p, cfg)
+   fill!(dAw, 0)
+   for k = 1:length(basis1p), j = 1:length(w)
+      dAw[k] += _contract(w[j], dA[k, j])
+   end
+
+   # [2] dAA_k 
+   spec = V.pibasis.spec
+   fill!(dAAw, 0)
+   @inbounds for iAA = 1:length(spec)
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      @fastmath for t = 1:spec.orders[iAA]
+         vt = spec.iAA2iA[iAA, t]
+         dAAw[iAA] += _real(dAw[vt] * dAAdA[t])
+      end
+   end
+
+   genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+
+   release_B!(V.pibasis, dAAw)
+
+   # [3] dB_k
+   return dB
+end
+
+#for multiple properties. dispatch on the pullback input being a matrix. 
+#Basically the same code, except for some parts where we loop over all properties. 
+#We generate a list of size "nprop" and keep the same objects as for a single property 
+#inside the list.
+function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, wt::Matrix)
+   basis1p = V.pibasis.basis1p
+   dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
+   A = zeros(ComplexF64, length(basis1p))
+   TDX = gradtype(m.basis, cfg)
+   dA = zeros(complex(TDX) , length(A), length(cfg))
+   _real = V.pibasis.real
+   dAAw = [acquire_B!(V.pibasis, cfg) for _ in 1:length(m.c[1])]
+   dAw = [similar(A) for _ in 1:length(m.c[1])]
+   dB = similar(m.c)
+
+   # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
+   evaluate_ed!(A, dA, basis1p, cfg)
+   for i in 1:length(m.c[1])
+      fill!(dAw[i], 0)
+   end
+   for prop in 1:length(m.c[1])
+      w = wt[:,prop]
+      for k = 1:length(basis1p), j = 1:length(w)
+         dAw[prop][k] += _contract(w[j], dA[k, j])
+      end
+   end
+
+   # [2] dAA_k 
+   spec = V.pibasis.spec
+   for i in 1:length(m.c[1])
+      fill!(dAAw[i], 0)
+   end
+   for prop in 1:length(m.c[1])
+      @inbounds for iAA = 1:length(spec)
+         _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+         @fastmath for t = 1:spec.orders[iAA]
+            vt = spec.iAA2iA[iAA, t]
+            dAAw[prop][iAA] += _real(dAw[prop][vt] * dAAdA[t])
+         end
+      end
+   end
+
+   adjointgenmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+
+   for i in 1:length(m.c[1])
+      release_B!(V.pibasis, dAAw[i]) #TODO check that this indeed releases
+   end
 
    # [3] dB_k
    return dB

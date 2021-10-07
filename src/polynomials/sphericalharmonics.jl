@@ -103,6 +103,11 @@ for the given indices `(l,m)`.
 """
 index_y(l::Integer, m::Integer) = m + l + (l*l) + 1
 
+function idx2lm(i::Integer) 
+	l = floor(Int, sqrt(i-1) + 1e-10)
+	m = i - (l + (l*l) + 1)
+	return l, m 
+end 
 
 
 # --------------------------------------------------------

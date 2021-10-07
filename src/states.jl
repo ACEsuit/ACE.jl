@@ -138,9 +138,26 @@ _myim(x::Number) = imag(x)
 _myim(x::SVector) = imag.(x)
 Base.imag(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} = 
       TDX( NamedTuple{SYMS}( ntuple(i -> _myim(getproperty(X, SYMS[i])), length(SYMS)) ) )
-      
+    
+_mycplx(x::Number) = complex(x)
+_mycplx(x::SVector) = complex.(x)
+Base.complex(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} =
+      TDX( NamedTuple{SYMS}( ntuple(i -> _mycplx(getproperty(X, SYMS[i])), length(SYMS)) ) )
 
-for f in (:zero, :rand, :randn) 
+Base.complex(::Type{TDX}) where {TDX <: DState{SYMS}} where {SYMS} =
+      typeof( complex( zero(TDX) ) )
+ 
+
+function zero(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
+   vals = ntuple(i -> _ace_zero(TT.types[i]), length(SYMS))
+   return TX( NamedTuple{SYMS}( vals ) )
+end
+
+_ace_zero(args...) = zero(args...)
+_ace_zero(::Union{Symbol, Type{Symbol}}) = :O
+
+
+for f in (:rand, :randn) 
    eval( quote 
       function $f(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
          vals = ntuple(i -> $f(TT.types[i]), length(SYMS))
@@ -160,7 +177,7 @@ _showsym(X::State) = ""
 _showsym(X::DState) = "′"
 
 show(io::IO, X::XState{SYMS}) where {SYMS} = 
-      print(io, "{" * prod( "$(sym)$(_2str(getproperty(_x(X), sym))), " 
+      print(io, "{" * prod( "$(sym):$(_2str(getproperty(_x(X), sym))), " 
                             for sym in SYMS) * "}" * _showsym(X))
 
 for f in (:+, :-)
@@ -199,6 +216,10 @@ import LinearAlgebra: dot
 dot(X1::DState{SYMS}, X2::DState{SYMS}) where {SYMS} = 
    sum( dot( getproperty(_x(X1), sym), getproperty(_x(X2), sym) )
         for sym in SYMS )
+
+_contract(X1::DState{SYMS1}, X2::DState{SYMS2}) where {SYMS1, SYMS2} = 
+   sum( sum( getproperty(_x(X1), sym) .* getproperty(_x(X2), sym) )
+              for sym in SYMS1 )
 
 isapprox(X1::TX, X2::TX, args...; kwargs...
          ) where {TX <: XState{SYMS}} where {SYMS} = 

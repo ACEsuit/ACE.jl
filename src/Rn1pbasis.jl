@@ -47,10 +47,9 @@ _rr(X, Rn::Rn1pBasis) = getproperty(X, _varsym(Rn))
 # Base.rand(basis::Ylm1pBasis) =
 #       AtomState(rand(basis.zlist.list), ACE.Random.rand_vec(basis.J))
 
-function get_spec(basis::Rn1pBasis) 
-   N = _nsym(basis)
-   return [  NamedTuple{(N,)}((n,)) for n = 1:length(basis) ]
-end
+get_spec(basis::Rn1pBasis, n::Integer) = NamedTuple{(_nsym(basis),)}((n,))
+
+get_spec(basis::Rn1pBasis) = get_spec.(Ref(basis), 1:length(basis))
 
 ==(P1::Rn1pBasis, P2::Rn1pBasis) = 
    ( (P1.R == P2.R) && (typeof(P1) == typeof(P2)) )
