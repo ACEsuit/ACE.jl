@@ -11,21 +11,21 @@ include("imports.jl")
 @extimports
 @baseimports
 
-# TODO
+# TODO 
 # - move to imports
 
 using ACEbase.ObjectPools: acquire!, release!, VectorPool
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
-import ACEbase: evaluate, evaluate_d
+import ACEbase: evaluate, evaluate_d 
 import ACEbase: gradtype, valtype
-import ACEbase: acquire_B!, release_B!, acquire_dB!, release_dB!
+import ACEbase: acquire_B!, release_B!, acquire_dB!, release_dB! 
 
 
-# TODO: gradtype should have a standard fallback
+# TODO: gradtype should have a standard fallback 
 
 
-abstract type AbstractACEModel end
+abstract type AbstractACEModel end 
 
 abstract type AbstractProperty end
 
