@@ -34,7 +34,7 @@ function coco_zeros end
 function coco_filter end
 function coco_dot end
 
-# TODO
+# TODO 
 # * decide on rand(basis) interface
 
 # * move these the following definitions to ACEbase
