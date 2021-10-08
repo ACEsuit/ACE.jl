@@ -25,32 +25,13 @@ struct CylindricalBondEnvelope{T} <: BondEnvelope{T}
    p0::Int
    pr::Int
    pz::Int
+   floppy::Bool
+   λ::T
 end
 
-CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2) = 
-      CylindricalBondEnvelope(r0cut, rcut, zcut, p0, pr, pz)
-
-
-
-function _evaluate_bond(env::CylindricalBondEnvelope, X::AbstractState)
-   r = norm(X.rr0)
-   return ((r/env.r0cut)^2 - 1)^(env.p0) * (r <= env.r0cut)
-end
-
-
-function _evaluate_env(env::CylindricalBondEnvelope, X::AbstractState)
-   # convert to cylindrical coordinates
-   r_centre = X.rr0/2
-   r̂b = X.rr0/norm(X.rr0)
-   z = dot(X.rr - r_centre, r̂b)
-   r = norm( (X.rr - r_centre) - z * r̂b )
-   # then return the correct cutoff 
-   zcuteff = env.zcut + norm(X.rr0) / 2
-   return ( (z/zcuteff)^2 - 1 )^(env.pz) * (abs(z) <= zcuteff) * 
-            ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
-end
-
-
+CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2, floppy = true, λ = .5) = 
+      CylindricalBondEnvelope(r0cut, rcut, zcut, p0, pr, pz, floppy, λ)
+      
 struct ElipsoidBondEnvelope{T} <: BondEnvelope{T}
    r0cut::T
    rcut::T
@@ -64,25 +45,32 @@ end
 ElipsoidBondEnvelope(r0cut, zcut, rcut; p0=2, pr=2, floppy=false, λ=.5) = ElipsoidBondEnvelope(r0cut, zcut, rcut, p0, pr, floppy, λ)
 ElipsoidBondEnvelope(r0cut, cut; p0=2, pr=2, floppy=false, λ=.5) = ElipsoidBondEnvelope(r0cut, cut, cut, p0, pr, floppy, λ)
 
-function _evaluate_bond(env::ElipsoidBondEnvelope, X::AbstractState)
+function _evaluate_bond(env::BondEnvelope, X::AbstractState)
    r = norm(X.rr0)
    return ((r/env.r0cut)^2 - 1)^(env.p0) * (r <= env.r0cut)
 end
 
-function _evaluate_env(env::ElipsoidBondEnvelope, X::AbstractState)
+function _evaluate_env(env::BondEnvelope, X::AbstractState)
    # convert to cylindrical coordinates
+   z, r, zeff = cat2cyl(env, X)
+   # then return the correct cutoff 
+   return envelope(env, z, r, zeff)
+end
+
+function cat2cyl(env::BondEnvelope, X::AbstractState)
    x_centre = env.λ * X.rr0
    x̃ = X.rr - x_centre
-   if norm(X.rr0) > 0
-      x_centre_0  = X.rr0/norm(X.rr0)
-      z̃ = dot(x_centre_0, x̃ )
-      r̃ = norm( x̃ - z̃ * x_centre_0)
+   if norm(X.rr0) >0
+      r̂b = X.rr0/norm(X.rr0)
+      z̃ = dot(x̃, r̂b)
+      r̃ = norm( (x̃ - z̃ * r̂b ))
    else
       z̃ = 0.0
       r̃ = norm(x̃)
    end
-   # then return the correct cutoff
-   zeff = env.zcut + env.floppy * norm(x_centre)
-   g = (z̃/zeff)^2 +(r̃/env.rcut)^2
-   return ( g - 1.0)^(env.pr) * (g <= 1)
+   return z̃, r̃, env.zcut + env.floppy * norm(x_centre)
 end
+
+envelope(env::CylindricalBondEnvelope, z, r, zeff) = ( (z/zeff)^2 - 1 )^(env.pz) * (abs(z) <= zeff) * 
+         ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
+envelope(env::ElipsoidBondEnvelope, z, r, zeff) = ( (z/zeff)^2 +(r/env.rcut)^2 - 1.0)^(env.pr) * ((z/zeff)^2 +(r/env.rcut)^2 <= 1)
