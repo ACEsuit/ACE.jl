@@ -32,7 +32,7 @@ end
 CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2, floppy = true, λ = .5) = 
       CylindricalBondEnvelope(r0cut, rcut, zcut, p0, pr, pz, floppy, λ)
       
-struct ElipsoidBondEnvelope{T} <: BondEnvelope{T}
+struct EllipsoidBondEnvelope{T} <: BondEnvelope{T}
    r0cut::T
    rcut::T
    zcut::T  # must satisfy zcut >= r0cut/2
@@ -42,8 +42,8 @@ struct ElipsoidBondEnvelope{T} <: BondEnvelope{T}
    λ::T
 end
 
-ElipsoidBondEnvelope(r0cut, zcut, rcut; p0=2, pr=2, floppy=false, λ=.5) = ElipsoidBondEnvelope(r0cut, zcut, rcut, p0, pr, floppy, λ)
-ElipsoidBondEnvelope(r0cut, cut; p0=2, pr=2, floppy=false, λ=.5) = ElipsoidBondEnvelope(r0cut, cut, cut, p0, pr, floppy, λ)
+EllipsoidBondEnvelope(r0cut, zcut, rcut; p0=2, pr=2, floppy=false, λ=.5) = EllipsoidBondEnvelope(r0cut, zcut, rcut, p0, pr, floppy, λ)
+EllipsoidBondEnvelope(r0cut, cut; p0=2, pr=2, floppy=false, λ=.5) = EllipsoidBondEnvelope(r0cut, cut, cut, p0, pr, floppy, λ)
 
 function _evaluate_bond(env::BondEnvelope, X::AbstractState)
    r = norm(X.rr0)
@@ -53,11 +53,16 @@ end
 function _evaluate_env(env::BondEnvelope, X::AbstractState)
    # convert to cylindrical coordinates
    z, r = cat2cyl(env, X)
-   zeff = eff_zcut(env, X)
+   zeff = _eff_zcut(env, X)
    # then return the correct cutoff 
-   return envelope(env, z, r, zeff)
+   return _eval_env_inner(env, z, r, zeff)
 end
 
+"""
+`cat2cyl`: Convert cartesian coordinate to cylindrical coordinate
+Given `env` that contains information of the centre and `X` the state
+return Cylindrical coordinate of X as `z, r = cat2cyl(env, X)` 
+"""
 function cat2cyl(env::BondEnvelope, X::AbstractState)
    x_centre = env.λ * X.rr0
    x̃ = X.rr - x_centre
@@ -72,8 +77,10 @@ function cat2cyl(env::BondEnvelope, X::AbstractState)
    return z̃, r̃
 end
 
-eff_zcut(env::BondEnvelope, X::AbstractState) = env.zcut + env.floppy * norm(env.λ * X.rr0)
+# Compute effective zcut when `floppy = true` (to enable the cutoff in z direction to grow with the bond)
+_eff_zcut(env::BondEnvelope, X::AbstractState) = env.zcut + env.floppy * norm(env.λ * X.rr0)
 
-envelope(env::CylindricalBondEnvelope, z, r, zeff) = ( (z/zeff)^2 - 1 )^(env.pz) * (abs(z) <= zeff) * 
+# The envelope for environment bonds
+_eval_env_inner(env::CylindricalBondEnvelope, z, r, zeff) = ( (z/zeff)^2 - 1 )^(env.pz) * (abs(z) <= zeff) * 
          ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
-envelope(env::ElipsoidBondEnvelope, z, r, zeff) = ( (z/zeff)^2 +(r/env.rcut)^2 - 1.0)^(env.pr) * ((z/zeff)^2 +(r/env.rcut)^2 <= 1)
+_eval_env_inner(env::EllipsoidBondEnvelope, z, r, zeff) = ( (z/zeff)^2 +(r/env.rcut)^2 - 1.0)^(env.pr) * ((z/zeff)^2 +(r/env.rcut)^2 <= 1)

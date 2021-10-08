@@ -1,5 +1,5 @@
 using ACE, Test, LinearAlgebra
-using ACE: State, CylindricalBondEnvelope, ElipsoidBondEnvelope
+using ACE: State, CylindricalBondEnvelope, EllipsoidBondEnvelope
 using StaticArrays 
 using ACEbase.Testing: print_tf
 
@@ -44,7 +44,7 @@ end
 
 #%%
 
-@info("Testing Elipsoid Bond Envelope")
+@info("Testing Ellipsoid Bond Envelope")
 
 
 r0cut = 2.0
@@ -52,7 +52,7 @@ rcut = 1.0
 zcut = 2.0
 for lambda = [0,.5,.6,1]
     for floppy = [false, true]
-        env = ElipsoidBondEnvelope(r0cut, rcut, zcut;floppy=floppy, λ= lambda)
+        env = EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=floppy, λ= lambda)
 
         @info("Test :bond", floppy, lambda)
 
