@@ -18,9 +18,6 @@ function export_ACE(fname, IP)
     species_dict = Dict(zip(collect(0:length(species)-1), species))
     reversed_species_dict = Dict(zip(species, collect(0:length(species)-1)))
 
-    @show species_dict
-    @show reversed_species_dict
-
     data = Dict()
 
     data["deltaSplineBins"] = 0.001 #" none
@@ -58,16 +55,6 @@ function export_ACE(fname, IP)
 
     YAML.write_file(fname, data)
 end
-
-# function export_one_body(V1, species_dict)
-#     E0 = []
-#     elements = []
-#     for species_ind in keys(species_dict)
-#         push!(E0, V1(Symbol(species_dict[species_ind])))
-#         push!(elements, species_dict[species_ind])
-#     end
-#     return elements, E0
-# end
 
 function export_reppot(Vrep, reversed_species_dict)
     reppot = Dict("coefficients" => Dict())
@@ -304,10 +291,10 @@ end
 
 # using IPFitting
 
-# IP = read_dict(load_dict("./src/export/CHO_test.json")["IP"])
+# IP = read_dict(load_dict("./src/export/it9_rsc1.5_d0.5.json")["IP"])
 
-# at = IPFitting.Data.read_xyz(@__DIR__() * "/test.xyz", energy_key="", force_key="", virial_key="")[1].at
-# JuLIP.set_pbc!(at, false)
+# at = IPFitting.Data.read_xyz(@__DIR__() * "/init_ro1.1.xyz", energy_key="", force_key="", virial_key="")[1].at
+# #JuLIP.set_pbc!(at, false)
 # energy(IP, at)
 
 # forces(IP,at)
