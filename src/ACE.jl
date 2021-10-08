@@ -76,16 +76,20 @@ include("product_1pbasis.jl")
 
 include("sparsegrids.jl")
 
+# basis selectors used to specify finite subsets of basis functions
+include("basisselectors.jl")
+
 # the permutation-invariant, and symmerized bases
 include("symmetrygroups.jl")
 include("pibasis.jl")
 include("symmbasis.jl")
 
-# some experimental stuff
+
+# some experimental stuff  
 include("multiplier.jl")
 include("bonds.jl")
 
-# models and model evaluators 
+# models and model evaluators
 
 include("linearmodel.jl")
 
