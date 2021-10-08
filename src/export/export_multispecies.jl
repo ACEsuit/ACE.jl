@@ -18,7 +18,24 @@ function export_ACE(fname, IP)
     species_dict = Dict(zip(collect(0:length(species)-1), species))
     reversed_species_dict = Dict(zip(species, collect(0:length(species)-1)))
 
+    @show species_dict
+    @show reversed_species_dict
+
     data = Dict()
+
+    data["deltaSplineBins"] = 0.001 #" none
+
+    elements = Vector(undef, length(species))
+    E0 = zeros(3)
+    
+    for (index, element) in species_dict
+        E0[index+1] = V1(Symbol(element))
+        elements[index+1] = element
+    end
+
+    # grabbing the elements key and E0 key from the onebody (V1)
+    data["elements"] = elements
+    data["E0"] = E0
 
     if hasproperty(V2, :basis)
         polypairpot = export_polypairpot(V2, reversed_species_dict)
@@ -31,15 +48,6 @@ function export_ACE(fname, IP)
     data["polypairpot"] = polypairpot
     #creating "data" dict where we'll store everything
 
-
-    data["deltaSplineBins"] = 0.001 #" none
-    #data["embeddings"] = "none?" ##
-
-    # grabbing the elements key and E0 key from the onebody (V1)
-    elements, E0 = export_one_body(V1, species_dict)
-    data["elements"] = elements
-    data["E0"] = E0
-
     embeddings, bonds = export_radial_basis(V3, species_dict)
     data["embeddings"] = embeddings
     data["bonds"] = bonds
@@ -51,15 +59,15 @@ function export_ACE(fname, IP)
     YAML.write_file(fname, data)
 end
 
-function export_one_body(V1, species_dict)
-    E0 = []
-    elements = []
-    for species_ind in keys(species_dict)
-        push!(E0, V1(Symbol(species_dict[species_ind])))
-        push!(elements, species_dict[species_ind])
-    end
-    return elements, E0
-end
+# function export_one_body(V1, species_dict)
+#     E0 = []
+#     elements = []
+#     for species_ind in keys(species_dict)
+#         push!(E0, V1(Symbol(species_dict[species_ind])))
+#         push!(elements, species_dict[species_ind])
+#     end
+#     return elements, E0
+# end
 
 function export_reppot(Vrep, reversed_species_dict)
     reppot = Dict("coefficients" => Dict())
@@ -213,40 +221,36 @@ end
 
 function _basis_groups(inner, coeffs)
     ## grouping the basis functions
-    NLZ = []
+    NLZZ = []
     M = []
     C = []
-    Z0s = []
     for b in keys(inner.b2iAA)
        if coeffs[ inner.b2iAA[b] ] != 0
-          push!(Z0s, b.z0)
-          push!(NLZ, ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps], [b1.z for b1 in b.oneps]))
+          push!(NLZZ, ( [b1.n for b1 in b.oneps], [b1.l for b1 in b.oneps], [b1.z for b1 in b.oneps], b.z0))
           push!(M, [b1.m for b1 in b.oneps])
           push!(C, coeffs[ inner.b2iAA[b] ])
        end
     end
     ords = length.(M)
     perm = sortperm(ords)
-    NL = NLZ[perm]
+    NLZZ = NLZZ[perm]
     M = M[perm]
     C = C[perm]
     @assert issorted(length.(M))
     bgrps = []
-    #alldone = fill(false, length(NL))
-    #@show alldone
-    for i = 1:length(NLZ)
-       #if alldone[i]; continue; end
-       nl = NLZ[i]
-       z0 = Z0s[i]
-       Inl = findall(NL .== Ref(nl))
-       #alldone[Inl] .= true
+    alldone = fill(false, length(NLZZ))
+    for i = 1:length(NLZZ)
+       if alldone[i]; continue; end
+       nlzz = NLZZ[i]
+       Inl = findall(NLZZ .== Ref(nlzz))
+       alldone[Inl] .= true
        Mnl = M[Inl]
        Cnl = C[Inl]
        pnl = sortperm(Mnl)
        Mnl = Mnl[pnl]
        Cnl = Cnl[pnl]
-       order = length(nl[1])
-       push!(bgrps, Dict("n" => nl[1], "l" => nl[2], "z0" => z0, "zs" => nl[3],
+       order = length(nlzz[1])
+       push!(bgrps, Dict("n" => nlzz[1], "l" => nlzz[2], "z0" => nlzz[4], "zs" => nlzz[3],
                          "M" => Mnl, "C" => Cnl, "ord" => order)) #correct?
     end
     return bgrps
@@ -300,15 +304,15 @@ end
 
 # using IPFitting
 
-# IP = read_dict(load_dict("./src/export/Ti3Al_basic_N2.json")["IP"])
+# IP = read_dict(load_dict("./src/export/CHO_test.json")["IP"])
 
-# at = IPFitting.Data.read_xyz(@__DIR__() * "/bulk_TiAl.xyz", energy_key="", force_key="", virial_key="")[1].at
+# at = IPFitting.Data.read_xyz(@__DIR__() * "/test.xyz", energy_key="", force_key="", virial_key="")[1].at
 # JuLIP.set_pbc!(at, false)
 # energy(IP, at)
 
 # forces(IP,at)
 
-# export_ACE("./src/export/Ti3Al_basic_N2.yace", IP)
+# export_ACE("./src/export/CHO_test.yace", IP)
 
 # export_ace_tests("./src/export/TiAl_med_N3_10", IP)
 
@@ -320,7 +324,32 @@ end
 # energy(V2, at)
 # energy(V3, at)
 
+# V1(:H)
 
+
+# V1 = IP.components[1]
+# V2 = IP.components[2]
+# V3 = IP.components[3]
+
+# species = collect(string.(chemical_symbol.(V2.basis.zlist.list.data)))
+
+# species_dict = Dict(zip(collect(0:length(species)-1), species))
+# reversed_species_dict = Dict(zip(species, collect(0:length(species)-1)))
+
+# @show species_dict
+# @show reversed_species_dict
+
+# elements = Vector(undef, length(species))
+# E0 = zeros(3)
+
+# for (index, element) in species_dict
+#     E0[index+1] = V1(Symbol(element))
+#     elements[index+1] = element
+# end
+
+# E0
+
+# elements
 
 # groups = _basis_groups(V3.pibasis.inner[1], V3.coeffs[1])
 
