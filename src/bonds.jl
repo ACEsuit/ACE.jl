@@ -52,7 +52,8 @@ end
 
 function _evaluate_env(env::BondEnvelope, X::AbstractState)
    # convert to cylindrical coordinates
-   z, r, zeff = cat2cyl(env, X)
+   z, r = cat2cyl(env, X)
+   zeff = eff_zcut(env, X)
    # then return the correct cutoff 
    return envelope(env, z, r, zeff)
 end
@@ -63,13 +64,15 @@ function cat2cyl(env::BondEnvelope, X::AbstractState)
    if norm(X.rr0) >0
       r̂b = X.rr0/norm(X.rr0)
       z̃ = dot(x̃, r̂b)
-      r̃ = norm( (x̃ - z̃ * r̂b ))
+      r̃ = norm( x̃ - z̃ * r̂b )
    else
       z̃ = 0.0
       r̃ = norm(x̃)
    end
-   return z̃, r̃, env.zcut + env.floppy * norm(x_centre)
+   return z̃, r̃
 end
+
+eff_zcut(env::BondEnvelope, X::AbstractState) = env.zcut + env.floppy * norm(env.λ * X.rr0)
 
 envelope(env::CylindricalBondEnvelope, z, r, zeff) = ( (z/zeff)^2 - 1 )^(env.pz) * (abs(z) <= zeff) * 
          ( (r/env.rcut)^2 - 1 )^(env.pr) * (r <= env.rcut)
