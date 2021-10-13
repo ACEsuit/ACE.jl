@@ -92,6 +92,8 @@ gradtype(basis::Ylm1pBasis, X::AbstractState) = dstate_type(valtype(basis, X), X
 
 symbols(basis::Ylm1pBasis) = [_lsym(basis), _msym(basis)]
 
+argsyms(basis::Ylm1pBasis) = (_varsym(basis), )
+
 _maxL(Ylm::Ylm1pBasis) = ACE.SphericalHarmonics.maxL(Ylm.SH)
 
 function indexrange(basis::Ylm1pBasis)

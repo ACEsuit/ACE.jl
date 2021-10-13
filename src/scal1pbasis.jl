@@ -77,6 +77,8 @@ valtype(basis::Scal1pBasis, X::AbstractState) =
 gradtype(basis::Scal1pBasis, X::AbstractState) = 
       dstate_type(valtype(basis, X), X)
 
+argsyms(basis::Scal1pBasis) = ( _varsym(basis), )
+
 symbols(basis::Scal1pBasis) = [ _idxsym(basis) ]
 
 indexrange(basis::Scal1pBasis) = NamedTuple{(_idxsym(basis), )}((1:length(basis),))
@@ -128,6 +130,7 @@ function _scal1pbasis_grad(TDX::Type, basis::Scal1pBasis, gval)
                    gval )
    return TDX( NamedTuple{(_varsym(basis),)}((gval_tdx,)) )
 end
+
 
 function evaluate_d!(dB, basis::Scal1pBasis, X::AbstractState)
    TDX = eltype(dB)

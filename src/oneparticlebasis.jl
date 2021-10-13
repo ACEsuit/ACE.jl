@@ -42,6 +42,23 @@ function evaluate_ed!(A, dA, basis::OneParticleBasis, X::AbstractState)
 end
 
 
+# ------------------- Partial derivatives 
+
+function evaluate_d(basis::OneParticleBasis, X::AbstractState, sym::Symbol) 
+   dB = acquire_dB!(basis, X)
+   return evaluate_d!(dB, basis, X, sym)
+end
+
+function evaluate_d!(dB, basis::OneParticleBasis, X::AbstractState, sym::Symbol)
+   if sym in argsyms(basis) 
+      evaluate_d!(dB, basis, X) 
+   else 
+      fill!(dB, zero(eltype(dB)))
+   end
+   return dB
+end
+
+
 
 
 # -------------------- AD codes 
