@@ -33,5 +33,10 @@ degree(b, ::B1pMultiplier, args...) = 0
 
 get_index(::B1pMultiplier, b) = 1
 
+get_spec(::B1pMultiplier, n::Integer) = NamedTuple()
+
+get_spec(basis::Rn1pBasis) = [ NamedTuple() ]
+
+
 
 

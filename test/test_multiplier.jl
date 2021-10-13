@@ -58,3 +58,24 @@ println(@test A1 ≈ A2)
 
 
 ##
+
+using ACE: CylindricalBondEnvelope
+
+r0cut = 8.0
+rcut = 4.0
+zcut = 2.0
+env = CylindricalBondEnvelope(r0cut, rcut, zcut)
+
+B1p = mult1 * RnYlm
+ACE.init1pspec!(B1p, Bsel)
+
+Xs = rand(PositionState{Float64}, RnYlm.bases[1], nX)
+
+evaluate(B1p, Xs[1])
+
+##
+
+using ACE: Invariant, SymmetricBasis
+Bsym = SymmetricBasis(Invariant(), B1p, Bsel)
+
+evaluate(Bsym, ACEConfig(Xs))
