@@ -62,13 +62,14 @@ println()
 dB = evaluate_d(B1p, X)
 dB_x = evaluate_d(B1p, X, :x)
 dB_rr = evaluate_d(B1p, X, :rr)
+println(@test dB ≈ dB_x + dB_rr)
 
 ##
 
-@show evaluate(Pk, X)[1]
-@show ACE.evaluate_ed(Pk, X)[1][1]
-@show ACE.evaluate_ed(Pk, X, :x)[1][1]
-
-##
-
-basis = SymmetricBasis(Invariant(), B1p, )
+@info("Test partial derivatives for a symmetric basis")
+basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+evaluate(basis, cfg)
+dB = evaluate_d(basis, cfg)
+dB_x = evaluate_d(basis, cfg, :x)
+dB_rr = evaluate_d(basis, cfg, :rr)
+println(@test( dB ≈ dB_x + dB_rr ))

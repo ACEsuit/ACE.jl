@@ -258,10 +258,10 @@ end
 # gradients
 
 function evaluate_ed!(AA, dAA, basis::PIBasis,
-                      cfg::AbstractConfiguration)
+                      cfg::AbstractConfiguration, args...)  
    A = acquire_B!(basis.basis1p, cfg)
    dA = acquire_dB!(basis.basis1p, cfg)   # TODO: THIS WILL ALLOCATE!!!!!
-   evaluate_ed!(A, dA, basis.basis1p, cfg)
+   evaluate_ed!(A, dA, basis.basis1p, cfg, args...)
    evaluate_ed!(AA, dAA, basis, A, dA)
    release_dB!(basis.basis1p, dA)
    release_B!(basis.basis1p, A)

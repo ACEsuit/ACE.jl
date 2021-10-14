@@ -108,7 +108,6 @@ add_into_A_dA!(A, dA, basis::Product1pBasis, X, sym::Symbol) =
             B_i = acquire_B!(bas_i, X)
             dB_i = acquire_dB!(bas_i, X)
             Bt, dBt = evaluate_ed!(B_i, dB_i, bas_i, X, args...)
-            @show Bt[1]
          else
             # we still need the basis values for the discrete basis though
             # TODO: maybe the d part should be a no-op and remove this 

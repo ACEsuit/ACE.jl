@@ -50,8 +50,9 @@ _val(x::Number, basis::Scal1pBasis) = x
 
 Base.length(basis::Scal1pBasis) = length(basis.P)
 
-get_spec(basis::Scal1pBasis) =
-      [  NamedTuple{(_idxsym(basis),)}(n) for n = 1:length(basis) ]
+get_spec(basis::Scal1pBasis, n::Integer) = NamedTuple{(_idxsym(basis),)}(n)
+
+get_spec(basis::Scal1pBasis) = [ get_spec(basis, i) for i = 1:length(basis) ]
 
 ==(P1::Scal1pBasis, P2::Scal1pBasis) = (P1.P == P2.P)
 
