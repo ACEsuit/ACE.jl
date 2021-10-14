@@ -41,17 +41,34 @@ Pk = B1p.bases[3]
 
 ##
 
-for (B, sym, notsym) in ((Pk, Rn, Ylm), 
-                         (:x, :rr, :rr), 
-                         (:rr, :x, :x) )
+@info("Checking correct differentiation w.r.t. known and unknown symbols")
+for (B, sym, notsym) in zip( (Pk, Rn, Ylm), 
+                             (:x, :rr, :rr), 
+                             (:rr, :x, :x) )
    dB1 = evaluate_d(B, X)
    @which evaluate_d(B, X, sym)
    dB2 = evaluate_d(B, X, sym)
    dB3 = evaluate_d(B, X, notsym)
    dB4 = evaluate_d(B, X, :bob)
-   println(@test(dB1 == dB2))
-   all(iszero, norm.(dB3))
-   all(iszero, norm.(dB4))
+   print_tf(@test(dB1 == dB2))
+   print_tf(@test(all(iszero, norm.(dB3))))
+   print_tf(@test(all(iszero, norm.(dB4))))
 end
+println()
 
 ##
+
+@info("Check how the product 1p basis handles a partial derivative")
+dB = evaluate_d(B1p, X)
+dB_x = evaluate_d(B1p, X, :x)
+dB_rr = evaluate_d(B1p, X, :rr)
+
+##
+
+@show evaluate(Pk, X)[1]
+@show ACE.evaluate_ed(Pk, X)[1][1]
+@show ACE.evaluate_ed(Pk, X, :x)[1][1]
+
+##
+
+basis = SymmetricBasis(Invariant(), B1p, )

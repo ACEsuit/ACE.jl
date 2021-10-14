@@ -18,47 +18,74 @@ function evaluate!(A, basis::OneParticleBasis, X::AbstractState)
    return A
 end
 
+_check_args_is_sym() = true
+_check_args_is_sym(::Symbol) = true
+
+# args... may be empty or a symbol  for partial derivatives
 function evaluate_d!(dA, basis::OneParticleBasis, 
-                     X::Union{AbstractState, AbstractConfiguration})
+                     X::Union{AbstractState, AbstractConfiguration}, 
+                     args...)
+   @assert _check_args_is_sym(args...)
    A = acquire_B!(basis, X)
-   evaluate_ed!(A, dA, basis, X)
-   return dA 
+   evaluate_ed!(A, dA, basis, X, args...)
+   release_B!(basis, A)
+   return dA
 end
 
+# args... may be empty or a symbol  for partial derivatives
 function evaluate_ed!(A, dA, basis::OneParticleBasis,
-                      cfg::AbstractConfiguration)
+                      cfg::AbstractConfiguration, args...)
+   @assert _check_args_is_sym(args...)
    fill!(A, 0)
    for (j, X) in enumerate(cfg)
-      add_into_A_dA!(A, (@view dA[:, j]), basis, X)
+      add_into_A_dA!(A, (@view dA[:, j]), basis, X, args...)
    end
    return A, dA
 end
 
-
-function evaluate_ed!(A, dA, basis::OneParticleBasis, X::AbstractState)
+# args... may be empty or a symbol for partial derivatives
+function evaluate_ed!(A, dA, basis::OneParticleBasis, X::AbstractState, args...)
+   @assert _check_args_is_sym(args...)
    fill!(A, 0)
-   add_into_A_dA!(A, dA, basis, X)
+   add_into_A_dA!(A, dA, basis, X, args...)
    return A, dA
 end
 
 
-# ------------------- Partial derivatives 
+# fix evaluate_d and evaluate_ed for partial D, i.e. args = a symbol
 
-function evaluate_d(basis::OneParticleBasis, X::AbstractState, sym::Symbol) 
-   dB = acquire_dB!(basis, X)
-   return evaluate_d!(dB, basis, X, sym)
-end
+evaluate_d(basis::ACEBasis, X::Union{AbstractState, AbstractConfiguration}, sym::Symbol) =  
+      evaluate_d!( acquire_dB!(basis, X), basis, X, sym)
 
-function evaluate_d!(dB, basis::OneParticleBasis, X::AbstractState, sym::Symbol)
-   if sym in argsyms(basis) 
-      evaluate_d!(dB, basis, X) 
+evaluate_ed(basis::ACEBasis, X::Union{AbstractState, AbstractConfiguration}, sym::Symbol) =  
+      evaluate_ed!( acquire_B!(basis, X), acquire_dB!(basis, X), basis, X, sym )
+
+
+function add_into_A_dA!(A, dAj, basis::OneParticleBasis, Xj, sym::Symbol)
+   if sym in argsyms(basis)
+      add_into_A_dA!(A, dAj, basis::OneParticleBasis, Xj)
    else 
-      fill!(dB, zero(eltype(dB)))
+      add_into_A!(A, basis, Xj)
+      fill!(dAj, zero(eltype(dAj)))
    end
-   return dB
 end
 
+# if a basis hasn't implemented this ...
+function add_into_A_dA!(A, dAj, basis::OneParticleBasis, Xj)
+   ϕ = acquire_B!(basis, Xj)
+   evaluate_ed!(ϕ, dAj, basis, Xj)
+   @. A .+= ϕ
+   release_B!(basis, ϕ)
+   return nothing 
+end
 
+function add_into_A!(A, basis::OneParticleBasis, Xj)
+   ϕ = acquire_B!(basis, Xj)
+   evaluate!(ϕ, basis, Xj)
+   @. A += ϕ
+   release_B!(basis, ϕ)
+   return nothing 
+end
 
 
 # -------------------- AD codes 

@@ -87,10 +87,19 @@ import Base.Cartesian: @nexprs
 end
 
 
+# this is a hack to resolve a method ambiguity. 
+add_into_A_dA!(A, dA, basis::Product1pBasis, X) = 
+               _add_into_A_dA!(A, dA, basis, X) 
+add_into_A_dA!(A, dA, basis::Product1pBasis, X, sym::Symbol) = 
+               _add_into_A_dA!(A, dA, basis, X, sym) 
 
-
-@generated function add_into_A_dA!(A, dA, basis::Product1pBasis{NB}, X
-                                   ) where {NB}
+# args... could be a symbol to enable partial derivatives 
+# at the moment this is just passed into evaluate_ed!(...) 
+# to not evaluate 1p basis derivatives that aren't needed, but 
+# in the future a more complex construction could be envisioned that 
+# might considerably reduce the computational cost here... 
+@generated function _add_into_A_dA!(A, dA, basis::Product1pBasis{NB}, X,
+                                   args...) where {NB}
    quote
       Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
          bas_i = basis.bases[i] 
@@ -98,7 +107,8 @@ end
             # only evaluate basis gradients for a continuous basis
             B_i = acquire_B!(bas_i, X)
             dB_i = acquire_dB!(bas_i, X)
-            Bt, dBt = evaluate_ed!(B_i, dB_i, bas_i, X)
+            Bt, dBt = evaluate_ed!(B_i, dB_i, bas_i, X, args...)
+            @show Bt[1]
          else
             # we still need the basis values for the discrete basis though
             # TODO: maybe the d part should be a no-op and remove this 
