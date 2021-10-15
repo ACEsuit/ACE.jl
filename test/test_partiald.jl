@@ -88,7 +88,7 @@ model = LinearACEModel(basis, c)
 # make up some features we can feed into the x variable. 
 function x_features(Rs)
    f(r) = exp(- r)
-   Xi = [ sum(f(norm(Rs[i] - Rs[j])) for j = 1:length(Rs)) - f(0) 
+   Xi = [ sum(f(norm(Rs[i] - Rs[j])) for j = 1:length(Rs)) 
           for i = 1:length(Rs) ]
    Xs = [ ACE.State(rr = rr, x = x) for (rr, x) in zip(Rs, Xi) ]
    return ACEConfig(Xs)
@@ -99,13 +99,14 @@ function rrule(::typeof(x_features), Rs)
    df(r) = - exp(-r)
    function x_features_pullback(dP, Rs)
       N = length(Rs)
-      g = [ dp.rr for dp in dP ]
+      g = [ dP[i].rr for i = 1:N ]
       for i = 1:N, j = 1:N
          dxi = dP[i].x
          if j != i 
             rr_ij = Rs[j] - Rs[i]
             r_ij = norm(rr_ij)
             g[j] += dxi * df(r_ij) * (rr_ij / r_ij)
+            g[i] -= dxi * df(r_ij) * (rr_ij / r_ij)
          end 
       end 
       return NoTangent(), g
@@ -123,3 +124,11 @@ eval_model(Rs)
 
 Zygote.gradient(eval_model, Rs)[1]
 
+# Us = randn(SVector{3, Float64}, length(Rs))
+
+__floats(Rs) = collect(reinterpret(Float64, Rs))
+__vecs(x) = collect(reinterpret(SVector{3, Float64}, x))
+x0 = __floats(Rs)
+F = x -> eval_model(__vecs(x))
+dF = x -> Zygote.gradient(eval_model, __vecs(x))[1] |> __floats
+println(@test all(ACEbase.Testing.fdtest(F, dF, x0)))
