@@ -25,7 +25,8 @@ Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
 Base.convert(T::Type, φ::AbstractProperty) = convert(T, φ.val)
 Base.convert(T::Type{Any}, φ::AbstractProperty) = φ
 
-
+Base.iterate(φ::AbstractProperty) = φ, nothing
+Base.iterate(φ::AbstractProperty, ::Nothing) = nothing
 
 # some type piracy ...
 # TODO: hack like this make #27 important!!!

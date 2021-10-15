@@ -228,9 +228,13 @@ import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 # should be called _rrule_evaluate, but that would clash with the 
 # crap that's in evaluator.jl -> needs some cleanup 
 function adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
-   # dp = getproperty.(dp_, :val)
+   # TODO: not clear this is correct. Shouldn't the derivative of 
+   # a property w.r.t. a parameter be a property again? e.g. 
+   # if φ is an invariant, then ∂_p φ is again an invariant?
+   __val(a::AbstractProperty) = ACE.val(a)
+   __val(a::AbstractVector) = ACE.val.(a)
    gp_ = ACE.grad_params(model, cfg)
-   gp = [ val.(a .* dp) for a in gp_ ]
+   gp = [ __val(a) .* dp for a in gp_ ]
    g_cfg = ACE._rrule_evaluate(dp, model, cfg) # rrule for cfg only...
    return NoTangent(), gp, g_cfg
 end
