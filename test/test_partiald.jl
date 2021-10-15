@@ -73,3 +73,32 @@ dB = evaluate_d(basis, cfg)
 dB_x = evaluate_d(basis, cfg, :x)
 dB_rr = evaluate_d(basis, cfg, :rr)
 println(@test( dB ≈ dB_x + dB_rr ))
+
+
+## 
+
+# try out a chainrule? 
+using Zygote
+using ACE: LinearACEModel, evaluate
+
+c = randn(length(basis)) ./ (1:length(basis)).^2
+model = LinearACEModel(basis, c)
+
+# make up some features we can feed into the x variable. 
+function x_features(Rs)
+   f(r) = exp(- r)
+   Xi = [ sum(f(norm(Rs[i] - Rs[j])) for j = 1:length(Rs)) - f(0) 
+          for i = 1:length(Rs) ]
+   Xs = [ ACE.State(rr = rr, x = x) for (rr, x) in zip(Rs, Xi) ]
+   return ACEConfig(Xs)
+end
+
+eval_model(Rs) = ACE.val(evaluate( model, x_features(Rs) ))
+
+Rs = 2.5 * randn(SVector{3, Float64}, 10)
+eval_model(Rs)
+
+
+##
+
+Zygote.gradient(eval_model, Rs)
