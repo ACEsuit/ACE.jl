@@ -88,26 +88,17 @@ write_dict(φ::Invariant{T})  where {T} =
 read_dict(::Val{:ACE_Invariant}, D::Dict) =
       Invariant{read_dict(D["T"])}(D["val"])
 
-_is_l(sym::Symbol) = (string(sym)[1] == 'l')
-_is_m(sym::Symbol) = (string(sym)[1] == 'm')
 
-
-function filter(φ::Invariant, b::Array) 
+function filter(φ::Invariant, grp::O3, b::Array) 
    if length(b) <= 1
       return true 
    end 
-   suml = 0 
-   summ = 0 
-   for bi in b 
-      for (sym, val) in pairs(bi)
-         if _is_l(sym)
-            suml += val 
-         elseif _is_m(sym) 
-            summ += val 
-         end 
-      end
-   end 
-   return iseven(suml) && iszero(summ)
+   suml = sum( getl(grp, bi) for bi in b )
+   if haskey(b[1], msym(grp))  # depends on context whether m come along?
+      summ = sum( getm(grp, bi) for bi in b )
+      return iseven(suml) && iszero(summ)
+   end
+   return iseven(suml)   
 end
 
 rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)

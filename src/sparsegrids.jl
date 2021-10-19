@@ -80,6 +80,7 @@ function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
    end
 
    while true
+      print(vv, " -> ")
       # check whether the current vv tuple is admissible
       # the first condition is that its max index is small enough
       # we want to increment `curindex`, but if we've reach the maximum degree
@@ -93,16 +94,21 @@ function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
       end
 
       if isadmissible
+         print("adm / ")
          # ... then we add it to the stack  ...
          # (unless some filtering mechanism prevents it)
          if filter(b)
+            println("filt ok")
             push!(spec, SVector(vv))
             push!(orig_spec, copy(SVector(vv)))
          end
+         println("filt not")
          # ... and increment it
          lastidx = NU
          vv[lastidx] += 1
       else
+         println("not adm"); 
+
          if lastidx == 0
             error("""lastidx == 0 should never occur; this means that the
                      smallest basis function is already inadmissible and therefore
