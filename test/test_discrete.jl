@@ -27,7 +27,7 @@ for categories in (  [:a,],
     end
 
     ##
-
+    local B1p
     # @info("check evaluation")
     B1p = ACE.Categorical1pBasis(categories; varsym = :mu, idxsym = :q)
     print_tf(@test ACE._varsym(B1p) == :mu)
@@ -36,10 +36,11 @@ for categories in (  [:a,],
     print_tf(@test ACE.indexrange(B1p) == Dict(:q => categories))
     print_tf(@test length(B1p) == length(categories))
 
-
+    local EE 
     EE = [true false false; false true false; false false true]
 
     for i = 1:len 
+        local X 
         ee(i) = EE[1:len, i]
         X = ACE.State(mu = categories[i])
         print_tf(@test ACE.evaluate(B1p, X) == ee(i))
@@ -84,8 +85,8 @@ for ntest = 1:30
     Xs2 = shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
     B2 = ACE.evaluate(basis, ACEConfig(Xs2))
     print_tf(@test isapprox(B1, B2, rtol=1e-10))
-    println()
 end
+println()
 
 ##
 
@@ -103,9 +104,8 @@ for ntest = 1:30
     B2 = ACE.evaluate(basis, ACEConfig(Xs2))
     D1txB1xD2 = Ref(D1') .* B2 .* Ref(D2)
     print_tf(@test isapprox(D1txB1xD2, B1, rtol=1e-10))
-    println()
 end
-
+println()
 
 
 #%%
@@ -157,3 +157,4 @@ for ntest = 1:30
     B2_cov = ACE.evaluate(basis_cov, ACEConfig(Xs2))
     print_tf(@test isapprox( map(x->Q*x, B1_cov), B2_cov, rtol=1e-10))
 end
+println() 
