@@ -57,6 +57,14 @@ for ntest = 1:30
 end
 println()
 
+## 
+
+@info("Test what happens with an empty configuration")
+
+Xs_empty = Vector{eltype(Xs)}(undef, 0)
+cfg_empty = ACEConfig(Xs_empty)
+println(@test( all(iszero, evaluate(basis, cfg_empty)) ))
+
 ##
 import ACEbase
 @info("Test FIO")

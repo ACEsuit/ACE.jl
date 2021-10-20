@@ -16,11 +16,13 @@ env = CylindricalBondEnvelope(r0cut, rcut, zcut)
 @info("Test :bond")
 
 for i = 1:30
+    local X
     rr = rand(SVector{3, Float64}) * 2 * r0cut / sqrt(3)
     r = norm(rr) 
     X = State(rr = rr, rr0 = rr, be=:bond)
     print_tf(@test( filter(env, X) == (r <= r0cut) ))
 end
+println()
 
 ##
 
@@ -30,6 +32,7 @@ end
 r0 = SA[r0cut/2, 0.0, 0.0]
 r_centre = r0 / 2
 for i = 1:30
+    local X 
     rr = rand(SVector{3, Float64}) * env.rcut + r_centre
     X = State(rr = rr, rr0 = r0, be=:env)
     z = rr[1] - r_centre[1]
@@ -41,6 +44,7 @@ for i = 1:30
     val = ((r/env.rcut)^2 - 1)^env.pr * ( (z/zeff)^2 - 1 )^env.pz * filt
     print_tf(@test( ACE._inner_evaluate(env, X) ≈ val ))
 end
+println()
 
 #%%
 
@@ -52,22 +56,25 @@ rcut = 1.0
 zcut = 2.0
 for lambda = [0,.5,.6,1]
     for floppy = [false, true]
+        local env
         env = EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=floppy, λ= lambda)
 
         @info("Test :bond", floppy, lambda)
 
         for i = 1:30
+            local X 
             rr = rand(SVector{3, Float64}) * 2 * r0cut / sqrt(3)
             r = norm(rr)
             X = State(rr = rr, rr0 = rr, be=:bond)
             print_tf(@test( filter(env, X) == (r <= r0cut) ))
         end
+        println()
 
         ##
 
 
         @info ("Test :env")
-
+        local r0, r_centre, X 
         r0 = @SVector [r0cut/2, 0.0, 0.0]
         r_centre = r0 * env.λ
         for i = 1:30
@@ -90,5 +97,6 @@ for lambda = [0,.5,.6,1]
             #print("------------------- \n")
             print_tf(@test( ACE._inner_evaluate(env, X) ≈ val ))
         end
+        println()
     end
 end

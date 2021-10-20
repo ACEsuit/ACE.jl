@@ -1,4 +1,10 @@
 
+"""
+Given a bond (i, j) it has an environment {k} which could be 
+cylindrical, ellipsoidal, ...  
+The ball B(ri, rcut_env) must be a superset of this environment.
+"""
+function cutoff_env end 
 
 
 abstract type BondEnvelope{T} <: B1pMultiplier{T}  end 
@@ -19,9 +25,9 @@ Base.filter(env::BondEnvelope, X::AbstractState) =
          _inner_evaluate(env,X) != 0
 
 struct CylindricalBondEnvelope{T} <: BondEnvelope{T} 
-   r0cut::T
-   rcut::T
-   zcut::T 
+   r0cut::T   # bond-length cutoff
+   rcut::T    # env cutoff into r-direction
+   zcut::T    # 
    p0::Int
    pr::Int
    pz::Int
@@ -31,6 +37,8 @@ end
 
 CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2, floppy = true, λ = .5) = 
       CylindricalBondEnvelope(r0cut, rcut, zcut, p0, pr, pz, floppy, λ)
+
+cutoff_env(env::CylindricalBondEnvelope) = sqrt(env.rcut^2 + (env.r0cut + env.zcut)^2)
       
 struct EllipsoidBondEnvelope{T} <: BondEnvelope{T}
    r0cut::T
@@ -44,6 +52,8 @@ end
 
 EllipsoidBondEnvelope(r0cut, zcut, rcut; p0=2, pr=2, floppy=false, λ=.5) = EllipsoidBondEnvelope(r0cut, zcut, rcut, p0, pr, floppy, λ)
 EllipsoidBondEnvelope(r0cut, cut; p0=2, pr=2, floppy=false, λ=.5) = EllipsoidBondEnvelope(r0cut, cut, cut, p0, pr, floppy, λ)
+
+cutoff_env(env::EllipsoidBondEnvelope) = env.zcut + env.rcut 
 
 function _evaluate_bond(env::BondEnvelope, X::AbstractState)
    r = norm(X.rr0)
