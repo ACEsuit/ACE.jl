@@ -1,21 +1,22 @@
 """
-`AbstractBasisSelector` : object specifying how a finite basis is selected from
+`AbstractBasisSelector` : object specifying how a (possibly inifite) basis is selected from
 the infinite space of symmetric polynomials.
 """
 abstract type AbstractBasisSelector end
 
-abstract type DownsetBasisSelector <: AbstractBasisSelector end
+maxorder(Bsel::AbstractBasisSelector) = Inf
 
+degree(bb, Bsel::AbstractBasisSelector, basis::OneParticleBasis) = 0
+
+isadmissible(b, bsel::AbstractBasisSelector, basis::OneParticleBasis) = true
 
 """
 No constraints on the basis - this selects that largest possible basis
 subject to additional constraints baked into the one-particle basis.
 In practise this should be equivalent to a naive max-norm basis selection.
 """
-struct MaxBasis <: DownsetBasisSelector
+struct MaxBasis <: AbstractBasisSelector
 end
-
-isadmissible(b, bsel::MaxBasis, basis::OneParticleBasis) = true
 
 
 """
@@ -25,7 +26,7 @@ The most basic form of a sparse basis selection, using the total degree.
 Only the maximum correlation order and maximum degree may be specified.
 This should only be used for testing.
 """
-struct SimpleSparseBasis <: DownsetBasisSelector
+struct SimpleSparseBasis <: AbstractBasisSelector
    maxorder::Int
    maxdeg::Float64
 end
@@ -49,15 +50,29 @@ isadmissible(bb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
 maxorder(Bsel::SimpleSparseBasis) = Bsel.maxorder
 
 """
-Special type of DownsetBasisSelector where basis functionts must be contained in the ball
+Special type of PBallSelector where basis functionts must be contained in the ball
    pnorm(bb) <= maxdeg
 """
-abstract type PBallSelector <: DownsetBasisSelector end
+abstract type PBallSelector <: AbstractBasisSelector end
 
 degree(bb, Bsel::PBallSelector, basis::OneParticleBasis)  =  (
       length(bb) == 0 ? 0.0
                       : norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
 
+degree(b::NamedTuple, Deg::PBallSelector, basis::OneParticleBasis) =
+    degree(b, basis, Deg.weight)
+
+
+isadmissible(b::NamedTuple, Bsel::PBallSelector, basis::OneParticleBasis) =
+      (degree(b, Bsel, basis) <= _maxdeg(Bsel, 0))
+
+function isadmissible(bb, Bsel::PBallSelector, basis::OneParticleBasis)
+   ord = length(bb)
+   return (degree(bb, Bsel, basis) <= _maxdeg(Bsel, ord)) 
+end
+
+_maxdeg(Bsel::PBallSelector, ord::Integer) =
+      haskey(Bsel.degree, ord) ? Bsel.degree[ord] : Bsel.degree["default"]
 
 """
 `SparseBasis`: probably the standard basis selector enabling weighted degree
@@ -72,24 +87,7 @@ struct SparseBasis <: PBallSelector
    p::Float64
 end
 
-maxorder(Bsel::SparseBasis) = Bsel.maxorder
-
-isadmissible(b::NamedTuple, Bsel::SparseBasis, basis::OneParticleBasis) =
-      (degree(b, Bsel, basis) <= _maxdeg(Bsel, 0))
-
-function isadmissible(bb, Bsel::SparseBasis, basis::OneParticleBasis)
-   ord = length(bb)
-   return (degree(bb, Bsel, basis) <= _maxdeg(Bsel, ord)) && ord <= Bsel.maxorder
-end
-
-_maxdeg(Bsel::SparseBasis, ord::Integer) =
-      haskey(Bsel.degree, ord) ? Bsel.degree[ord] : Bsel.degree["default"]
-
-# for a one-particle basis function
-degree(b::NamedTuple, Deg::SparseBasis, basis::OneParticleBasis) =
-      degree(b, basis, Deg.weight)
-
-
+maxorder(Bsel::SimpleSparseBasis) = Bsel.maxorder
 
 """
 `CategoryBasisSelector`: sam as `SparseBasis` but allows in addition to specify
@@ -102,23 +100,16 @@ functions and varying degree for different correlation orders, and additional co
 """
 struct CategoryBasisSelector <: PBallSelector
    maxorder::Int
-   maxorder_dict::Dict{Any, Int}
-   isym::Symbol
    weight::Dict{Symbol, Float64}
-   weight_cat::Dict{Any, Float64}
    degree::Dict{Any, Float64}
    p::Float64
+   isym::Symbol
+   weight_cat::Dict{Any, Float64}
+   maxorder_dict::Dict{Any, Int}
 end
 
-
-
 maxorder(Bsel::CategoryBasisSelector) = Bsel.maxorder
-
 maxorder(Bsel::CategoryBasisSelector, category) = Bsel.maxorder_dict[category]
-
-_maxdeg(Bsel::CategoryBasisSelector, ord::Integer) =
-         haskey(Bsel.degree, ord) ? Bsel.degree[ord] : Bsel.degree["default"]
-
 
 isadmissible(b::NamedTuple, Bsel::CategoryBasisSelector, basis::OneParticleBasis) =
       (degree(b, Bsel, basis) <= _maxdeg(Bsel, 0))
@@ -135,32 +126,50 @@ function isadmissible(bb, Bsel::CategoryBasisSelector, basis::OneParticleBasis)
          )
 end
 
-
 # for a one-particle basis function
 degree(b::NamedTuple, Bsel::CategoryBasisSelector, basis::OneParticleBasis) =
       degree(b, basis, Bsel.weight) * Bsel.weight_cat[getproperty(b, Bsel.isym)]
 
-#
 
-struct BasisSelectorIntersection <: DownsetBasisSelector
-   Bselectors::Vector{DownsetBasisSelector}
+struct CategoryWeightedBasisSelector <: PBallSelector
+   weight::Dict{Symbol, Float64}
+   degree::Dict{Any, Float64}
+   p::Float64
+   isym::Symbol
+   weight_cat::Dict{Any, Float64}
+end
+# for a one-particle basis function
+degree(b::NamedTuple, Bsel::CategoryWeightedBasisSelector, basis::OneParticleBasis) =
+      degree(b, basis, Bsel.weight) * Bsel.weight_cat[getproperty(b, Bsel.isym)]
+
+
+struct CategoryConstraint <: AbstractBasisSelector
+   isym::Symbol
+   maxorder_dict::Dict{Any, Int}
 end
 
-Base.iterate(Intersection::BasisSelectorIntersection, args...) = Base.iterate(Intersection.Bselectors, args...)
+maxorder(Bsel::CategoryConstraint, category) = Bsel.maxorder_dict[category]
 
-function intersect(Intersection::BasisSelectorIntersection, Bsel2::DownsetBasisSelector)
-   return BasisSelectorIntersection(append!(Intersection.Bselectors, Bsel2))
+isadmissible(b::NamedTuple, Bsel::CategoryConstraint, basis::OneParticleBasis) = true
+
+function isadmissible(bb, Bsel::CategoryConstraint, basis::OneParticleBasis)
+   cond_ord_cats = [
+         sum([ getproperty(b, Bsel.isym) == s for b in bb ]) <= maxorder(Bsel, s)
+                                 for s in keys(Bsel.maxorder_dict) ]
+
+   return all(cond_ord_cats)
+      
 end
 
-function intersect(Bsel1::DownsetBasisSelector, Bsel2::DownsetBasisSelector)
-   return BasisSelectorIntersection([Bsel1, Bsel2])
+struct OrderConstraint <: AbstractBasisSelector
+   maxorder::Int
 end
 
-function isadmissible(bb, Intersection::BasisSelectorIntersection, basis::OneParticleBasis)
-   return all([isadmissible(bb, Bsel, basis) for Bsel in Intersection] )
-end
+maxorder(Bsel::OrderConstraint) = Bsel.maxorder
 
-maxorder(Intersection::BasisSelectorIntersection) = minimum([maxorder(Bsel) for Bsel in Intersection])
+function isadmissible(bb, Bsel::OrderConstraint, basis::OneParticleBasis)
+   return length(bb) <= maxorder(Bsel)
+end
 
 """
 `BasisSelectorCombine`: basis selector which allows to combine selection criteria of two basis selectors
@@ -169,47 +178,43 @@ maxorder(Intersection::BasisSelectorIntersection) = minimum([maxorder(Bsel) for 
 *  `p`: value that specifies the p-norm according to which the total degree of basis functions is computed
 If the constructor
 ```
-BasisSelectorCombine(Bselectors::Vector{DownsetBasisSelector})
+BasisSelectorCombine(Bselectors::Vector{AbstractBasisSelector})
 ```
 is used, then the resulting basis selector returns true for all basis functions that satisfy the
-admissibility criteria of each selector in `Bselectors`. (The resulting type of basis selector does not implement the function
-degree and such strictly speaking is not a subtype of `PBallSelector`)
+admissibility criteria of each selector in `Bselectors`. (The resulting type of basis selector may not implement the function
+degree and such strictly speaking is not a subtype of `AbstractBasisSelector`)
 
 If the constructor
 ```
-BasisSelectorCombine(Bselectors::Vector{DownsetBasisSelector}, maxdegree::Int, p::Int)
+BasisSelectorCombine(Bselectors::Vector{AbstractBasisSelector}, maxdegree::Int, p::Int)
 ```
 is used, then the resulting basis selector returns true for all basis functions that satisfy the
 admissibility criteria of each selector in `Bselectors` and whose totall degree is smaller than the correponding entry in degree
 """
 
 
-struct BasisSelectorCombine <: PBallSelector
-   Bselectors::Vector{DownsetBasisSelector}
+struct BasisSelectorCombine <: AbstractBasisSelector
+   Bselectors::Vector{AbstractBasisSelector}
    degree::Dict{Any, Float64}
    p::Int
 end
 
 
-BasisSelectorCombine(Bselectors::Vector{DownsetBasisSelector}) = BasisSelectorCombine(Bselectors, nothing, 1)
-BasisSelectorCombine(Bselectors::Vector{DownsetBasisSelector}, maxdegree::Int, p::Int) = BasisSelectorCombine(Bselectors, Dict("default" => maxdegree), p)
+BasisSelectorCombine(Bselectors::Vector{AbstractBasisSelector}) = BasisSelectorCombine(Bselectors, nothing, 1)
+
+BasisSelectorCombine(Bselectors::Vector{AbstractBasisSelector}, maxdegree::Int, p::Int) = BasisSelectorCombine(Bselectors, Dict("default" => maxdegree), p)
 
 
+intersect(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector) = BasisSelectorCombine([Bsel1, Bsel2])
 
+∩(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector) = intersect(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector)
 
-Base.iterate(Intersection::BasisSelectorCombine, args...) = Base.iterate(BasisSelectorCombine, args...)
+Base.iterate(Intersection::BasisSelectorCombine, args...) = Base.iterate(Intersection.Bselectors, args...)
 
 degree(b::NamedTuple, Intersection::BasisSelectorCombine, basis::OneParticleBasis) =
-   prod([degree(b, Bsel, basis) for Bsel in Intersection])
+   sum([degree(b, Bsel, basis) for Bsel in Intersection])
 
 
-function intersect(Intersection::BasisSelectorCombine, Bsel2::PBallSelector)
-   return BasisSelectorCombine(append!(Intersection.Bselectors, Bsel2))
-end
-
-function intersect(Bsel1::PBallSelector, Bsel2::PBallSelector)
-   return BasisSelectorCombine([Bsel1, Bsel2])
-end
 
 function isadmissible(bb, Intersection::BasisSelectorCombine, basis::OneParticleBasis)
    return all([isadmissible(bb, Bsel, basis) for Bsel in Intersection] ) && Intersection.degree != nothing &&
