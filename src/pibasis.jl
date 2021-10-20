@@ -34,7 +34,7 @@ end
 
 function PIBasisSpec( basis1p::OneParticleBasis,
                       symgrp::SymmetryGroup, 
-                      Bsel::DownsetBasisSelector;
+                      Bsel::AbstractBasisSelector;
                       property = nothing,
                       filterfun = _->true,
                       constant = false, 

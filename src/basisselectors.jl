@@ -1,3 +1,4 @@
+using ACE: OneParticleBasis
 """
 `AbstractBasisSelector` : object specifying how a (possibly inifite) basis is selected from
 the infinite space of symmetric polynomials.
@@ -39,7 +40,7 @@ degree(b::NamedTuple, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
 # for an ν-correlation basis function
 # in this case `bb` should be a Vector of NamedTuples
 degree(bb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
-      length(bb) == 0 ? 0 : sum( degree(b, basis) for b in bb )
+      length(bb) == 0 ? 0 : sum(degree(b, basis) for b in bb)
 
 isadmissible(b::NamedTuple, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
       (degree(b, Bsel, basis) <= Bsel.maxdeg)
@@ -56,8 +57,8 @@ Special type of PBallSelector where basis functionts must be contained in the ba
 abstract type PBallSelector <: AbstractBasisSelector end
 
 degree(bb, Bsel::PBallSelector, basis::OneParticleBasis)  =  (
-      length(bb) == 0 ? 0.0
-                      : norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
+length(bb) == 0 ? 0.0
+                      : norm(degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p) )
 
 degree(b::NamedTuple, Deg::PBallSelector, basis::OneParticleBasis) =
     degree(b, basis, Deg.weight)
@@ -82,12 +83,12 @@ the weight and degree dictionaries affect the definition of degree.
 """
 struct SparseBasis <: PBallSelector
    maxorder::Int
-   weight::Dict{Symbol, Float64}
-   degree::Dict{Any, Float64}
+   weight::Dict{Symbol,Float64}
+   degree::Dict{Any,Float64}
    p::Float64
 end
 
-maxorder(Bsel::SimpleSparseBasis) = Bsel.maxorder
+maxorder(Bsel::SparseBasis) = Bsel.maxorder
 
 """
 `CategoryBasisSelector`: sam as `SparseBasis` but allows in addition to specify
@@ -100,12 +101,12 @@ functions and varying degree for different correlation orders, and additional co
 """
 struct CategoryBasisSelector <: PBallSelector
    maxorder::Int
-   weight::Dict{Symbol, Float64}
-   degree::Dict{Any, Float64}
+   weight::Dict{Symbol,Float64}
+   degree::Dict{Any,Float64}
    p::Float64
    isym::Symbol
-   weight_cat::Dict{Any, Float64}
-   maxorder_dict::Dict{Any, Int}
+   weight_cat::Dict{Any,Float64}
+   maxorder_dict::Dict{Any,Int}
 end
 
 maxorder(Bsel::CategoryBasisSelector) = Bsel.maxorder
@@ -114,7 +115,7 @@ maxorder(Bsel::CategoryBasisSelector, category) = Bsel.maxorder_dict[category]
 isadmissible(b::NamedTuple, Bsel::CategoryBasisSelector, basis::OneParticleBasis) =
       (degree(b, Bsel, basis) <= _maxdeg(Bsel, 0))
 
-function isadmissible(bb, Bsel::CategoryBasisSelector, basis::OneParticleBasis)
+    function isadmissible(bb, Bsel::CategoryBasisSelector, basis::OneParticleBasis)
    cond_ord = length(bb) <= maxorder(Bsel)
    cond_ord_cats = [
          sum([ getproperty(b, Bsel.isym) == s for b in bb ]) <= maxorder(Bsel, s)
@@ -132,11 +133,11 @@ degree(b::NamedTuple, Bsel::CategoryBasisSelector, basis::OneParticleBasis) =
 
 
 struct CategoryWeightedBasisSelector <: PBallSelector
-   weight::Dict{Symbol, Float64}
-   degree::Dict{Any, Float64}
+   weight::Dict{Symbol,Float64}
+   degree::Dict{Any,Float64}
    p::Float64
    isym::Symbol
-   weight_cat::Dict{Any, Float64}
+   weight_cat::Dict{Any,Float64}
 end
 # for a one-particle basis function
 degree(b::NamedTuple, Bsel::CategoryWeightedBasisSelector, basis::OneParticleBasis) =
@@ -145,7 +146,7 @@ degree(b::NamedTuple, Bsel::CategoryWeightedBasisSelector, basis::OneParticleBas
 
 struct CategoryConstraint <: AbstractBasisSelector
    isym::Symbol
-   maxorder_dict::Dict{Any, Int}
+   maxorder_dict::Dict{Any,Int}
 end
 
 maxorder(Bsel::CategoryConstraint, category) = Bsel.maxorder_dict[category]
@@ -193,35 +194,37 @@ admissibility criteria of each selector in `Bselectors` and whose totall degree 
 """
 
 
-struct BasisSelectorCombine <: AbstractBasisSelector
+struct Intersection <: AbstractBasisSelector
    Bselectors::Vector{AbstractBasisSelector}
-   degree::Dict{Any, Float64}
-   p::Int
 end
 
 
-BasisSelectorCombine(Bselectors::Vector{AbstractBasisSelector}) = BasisSelectorCombine(Bselectors, nothing, 1)
+#Intersection(Bselectors::Vector{AbstractBasisSelector}) = Intersection(Bselectors)
 
-BasisSelectorCombine(Bselectors::Vector{AbstractBasisSelector}, maxdegree::Int, p::Int) = BasisSelectorCombine(Bselectors, Dict("default" => maxdegree), p)
+#Intersection(Bselectors::Vector{AbstractBasisSelector}, maxdegree::Int, p::Int) = Intersection(Bselectors, Dict("default" => maxdegree), p)
 
 
-intersect(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector) = BasisSelectorCombine([Bsel1, Bsel2])
+intersect(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector) = Intersection([Bsel1, Bsel2])
+intersect(Bsel1::Intersection, Bsel2::AbstractBasisSelector) = Intersection(push!(Bsel1.Bselectors, Bsel2))
+intersect(Bsel1::Intersection, Bsel2::Intersection) = Intersection(cat(Bsel1.Bselectors,Bsel2.Bselectors))
 
-∩(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector) = intersect(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector)
 
-Base.iterate(Intersection::BasisSelectorCombine, args...) = Base.iterate(Intersection.Bselectors, args...)
+#∩(Bsel1::AbstractBasisSelector, Bsel2::AbstractBasisSelector) = intersect(Bsel1, Bsel2)
 
-degree(b::NamedTuple, Intersection::BasisSelectorCombine, basis::OneParticleBasis) =
+Base.iterate(Bsel::Intersection, args...) = Base.iterate(Bsel.Bselectors, args...)
+Base.length(Bsel::Intersection) = 1 #Base.length(Bsel.Bselectors)
+
+degree(b::NamedTuple, Intersection::Intersection, basis::OneParticleBasis) =
    sum([degree(b, Bsel, basis) for Bsel in Intersection])
 
 
-
-function isadmissible(bb, Intersection::BasisSelectorCombine, basis::OneParticleBasis)
-   return all([isadmissible(bb, Bsel, basis) for Bsel in Intersection] ) && Intersection.degree != nothing &&
-      degree(bb, Bsel, basis) <= _maxdeg(Bsel, length(bb))
+isadmissible(b::NamedTuple, Bsel::Intersection, basis::OneParticleBasis) = all([isadmissible(b, bsel, basis) for bsel in Bsel]) 
+function isadmissible(bb, Bsel::Intersection, basis::OneParticleBasis)
+   return all([isadmissible(bb, bsel, basis) for bsel in Bsel]) 
+   #&& degree(bb, Bsel, basis) <= _maxdeg(Bsel, length(bb))
 end
 
-maxorder(Intersection::BasisSelectorCombine) = minimum([maxorder(Bsel) for Bsel in Intersection])
+maxorder(Bsel::Intersection) = Int(minimum([maxorder(bsel) for bsel in Bsel.Bselectors]))
 
-_maxdeg(Bsel::BasisSelectorCombine, ord::Integer) =
+_maxdeg(Bsel::Intersection, ord::Integer) =
          haskey(Bsel.degree, ord) ? Bsel.degree[ord] : Bsel.degree["default"]
