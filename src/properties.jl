@@ -100,6 +100,10 @@ function filter(φ::Invariant, grp::O3, b::Array)
    return iseven(suml)   
 end
 
+filter(φ::Invariant, grp::O3O3, b::Array) = 
+      filter(φ, grp.G1, b) && filter(φ, grp.G2, b)
+      
+
 rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 
 # TODO: this is a naive implementation of differentiation.
