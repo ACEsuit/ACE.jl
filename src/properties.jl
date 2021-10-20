@@ -248,10 +248,6 @@ end
 SphericalVector{L, LEN, T}()  where {L, LEN, T} =
       SphericalVector( zero(SVector{LEN, T}), Val{L}() )
 
-# filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :
-#         ( ( iseven(sum(bi.l for bi in b)) == iseven(getL(φ)) ) &&
-#          ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
-
 function filter(φ::SphericalVector, grp::O3, b::Array)
 	if length(b) <= 1
 		return true
@@ -361,10 +357,6 @@ SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}()  where {L1, L2, LEN1, LEN2, T, LL} 
 
 SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T, LL} =
 		SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
-
-# filter(φ::SphericalMatrix, b::Array) = ( length(b) < 1 ? true :
-#         ( ( iseven(sum(bi.l for bi in b)) == iseven(sum(getL(φ))) ) &&
-#          ( abs(sum(bi.m for bi in b)) <= sum(getL(φ)) )  ) )
 
 function filter(φ::SphericalMatrix, grp::O3, b::Array)
 	if length(b) < 1
