@@ -56,8 +56,13 @@ valtype(basis::Product1pBasis) =
 valtype(basis::Product1pBasis, X::AbstractState) = 
       promote_type(valtype.(basis.bases, Ref(X))...)
 
-valtype(basis::Product1pBasis, cfg::AbstractConfiguration) = 
-      promote_type( valtype.(basis.bases, Ref(first(cfg)))... )
+# valtype(basis::Product1pBasis, cfg::AbstractConfiguration) = 
+#       promote_type( valtype.(basis.bases, Ref(first(cfg)))... )
+
+function valtype(basis::Product1pBasis, cfg::AbstractConfiguration) 
+   X = zero(eltype(cfg))
+   return promote_type( valtype.(basis.bases, Ref(X))... )
+end
 
 gradtype(basis::Product1pBasis, cfg::Union{AbstractConfiguration, AbstractVector}) = 
       gradtype(basis, zero(eltype(cfg)))
