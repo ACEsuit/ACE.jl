@@ -3,7 +3,6 @@ import Base: -, +, *, filter, real, complex
 import LinearAlgebra: norm, promote_leaf_eltypes
 
 
-
 @inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
 @inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
 @inline -(φ::T) where {T <: AbstractProperty} = T( -φ.val)
@@ -88,27 +87,22 @@ write_dict(φ::Invariant{T})  where {T} =
 read_dict(::Val{:ACE_Invariant}, D::Dict) =
       Invariant{read_dict(D["T"])}(D["val"])
 
-_is_l(sym::Symbol) = (string(sym)[1] == 'l')
-_is_m(sym::Symbol) = (string(sym)[1] == 'm')
 
-
-function filter(φ::Invariant, b::Array) 
+function filter(φ::Invariant, grp::O3, b::Array) 
    if length(b) <= 1
       return true 
    end 
-   suml = 0 
-   summ = 0 
-   for bi in b 
-      for (sym, val) in pairs(bi)
-         if _is_l(sym)
-            suml += val 
-         elseif _is_m(sym) 
-            summ += val 
-         end 
-      end
-   end 
-   return iseven(suml) && iszero(summ)
+   suml = sum( getl(grp, bi) for bi in b )
+   if haskey(b[1], msym(grp))  # depends on context whether m come along?
+      summ = sum( getm(grp, bi) for bi in b )
+      return iseven(suml) && iszero(summ)
+   end
+   return iseven(suml)   
 end
+
+filter(φ::Invariant, grp::O3O3, b::Array) = 
+      filter(φ, grp.G1, b) && filter(φ, grp.G2, b)
+      
 
 rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 
@@ -160,9 +154,18 @@ EuclideanVector{T}() where {T <: Real} = EuclideanVector{T}(zero(SVector{3, Comp
 
 EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
-filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
-             isodd( sum(bi.l for bi in b)) &&
-            (abs(sum(bi.m for bi in b)) <= 1) )
+
+function filter(φ::EuclideanVector, grp::O3, b::Array)
+   if length(b) <= 1 #MS: Not sure if this should be here
+      return true
+   end
+   suml = sum( getl(grp, bi) for bi in b )
+   if haskey(b[1], msym(grp))  # depends on context whether m come along?
+      summ = sum( getm(grp, bi) for bi in b )
+      return isodd(suml) && abs(summ) <= 1
+   end
+   return isodd(suml)
+end
 
 rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
@@ -245,9 +248,17 @@ end
 SphericalVector{L, LEN, T}()  where {L, LEN, T} =
       SphericalVector( zero(SVector{LEN, T}), Val{L}() )
 
-filter(φ::SphericalVector, b::Array) = ( length(b) <= 1 ? true :
-        ( ( iseven(sum(bi.l for bi in b)) == iseven(getL(φ)) ) &&
-         ( abs(sum(bi.m for bi in b)) <= getL(φ) )  ) )
+function filter(φ::SphericalVector, grp::O3, b::Array)
+	if length(b) <= 1
+		return true
+	end
+	suml = sum( getl(grp, bi) for bi in b )
+   if haskey(b[1], msym(grp))
+      summ = sum( getm(grp, bi) for bi in b )
+      return iseven(suml) == iseven(getL(φ)) && abs(summ) <= getL(φ)
+   end
+   return iseven(suml) == iseven(getL(φ))
+end
 
 rot3Dcoeffs(::SphericalVector, T::DataType=Float64) = Rot3DCoeffs(T)
 
@@ -347,9 +358,17 @@ SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}()  where {L1, L2, LEN1, LEN2, T, LL} 
 SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T, LL} =
 		SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 
-filter(φ::SphericalMatrix, b::Array) = ( length(b) < 1 ? true :
-        ( ( iseven(sum(bi.l for bi in b)) == iseven(sum(getL(φ))) ) &&
-         ( abs(sum(bi.m for bi in b)) <= sum(getL(φ)) )  ) )
+function filter(φ::SphericalMatrix, grp::O3, b::Array)
+	if length(b) < 1
+		return true
+	end
+	suml = sum( getl(grp, bi) for bi in b )
+   if haskey(b[1], msym(grp))
+      summ = sum( getm(grp, bi) for bi in b )
+      return iseven(suml) == iseven( sum(getL(φ)) ) && abs(summ) <= sum(getL(φ))
+   end
+   return iseven(suml) == iseven( sum(getL(φ)) )
+end
 
 rot3Dcoeffs(::SphericalMatrix, T::DataType=Float64) = Rot3DCoeffs(T)
 
