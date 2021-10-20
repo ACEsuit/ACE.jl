@@ -151,9 +151,18 @@ EuclideanVector{T}() where {T <: Real} = EuclideanVector{T}(zero(SVector{3, Comp
 
 EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
-filter(φ::EuclideanVector, b::Array) = ( length(b) <= 1 ? true :
-             isodd( sum(bi.l for bi in b)) &&
-            (abs(sum(bi.m for bi in b)) <= 1) )
+
+function filter(φ::EuclideanVector, grp::O3, b::Array)
+   if length(b) <= 1 #MS: Not sure if this should be here
+      return true
+   end
+   suml = sum( getl(grp, bi) for bi in b )
+   if haskey(b[1], msym(grp))  # depends on context whether m come along?
+      summ = sum( getm(grp, bi) for bi in b )
+      return isodd(suml) && abs(summ) <= 1
+   end
+   return isodd(suml)
+end
 
 rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
