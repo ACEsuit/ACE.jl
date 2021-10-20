@@ -52,6 +52,7 @@ using ACE.Rotations3D
 include("polynomials/wigner.jl")
 
 include("states.jl")
+include("symmetrygroups.jl")
 include("properties.jl")
 
 
@@ -80,7 +81,6 @@ include("sparsegrids.jl")
 include("basisselectors.jl")
 
 # the permutation-invariant, and symmerized bases
-include("symmetrygroups.jl")
 include("pibasis.jl")
 include("symmbasis.jl")
 
