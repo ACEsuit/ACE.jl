@@ -68,7 +68,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    admissible = b -> isadmissible(b, Bsel, basis1p)
 
    if property != nothing
-      filter1 = b -> filterfun(b) && filter(property, b)
+      filter1 = b -> filterfun(b) && filter(property, symgrp, b)
    else
       filter1 = filterfun
    end

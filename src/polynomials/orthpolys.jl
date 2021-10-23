@@ -156,7 +156,7 @@ function OrthPolyBasis(N::Integer,
                        ww::AbstractVector{T} = ones(T, length(tdf))
                        ) where {T <: AbstractFloat}
    @assert pcut >= 0  && pin >= 0
-   @assert N > 2
+   @assert N > 0
 
    if tcut < tin
       tl, tr = tcut, tin
@@ -185,17 +185,19 @@ function OrthPolyBasis(N::Integer,
    A[1] = 1/a
    J1 = A[1] * _J1
 
-   # a J2 = (t - b) J1
-   b = dotw(tdf .* J1, J1)
-   _J2 = (tdf .- b) .* J1
-   a = sqrt( dotw(_J2, _J2) )
-   A[2] = 1/a
-   B[2] = -b / a
-   J2 = (A[2] * tdf .+ B[2]) .* J1
+   if N > 1
+      # a J2 = (t - b) J1
+      b = dotw(tdf .* J1, J1)
+      _J2 = (tdf .- b) .* J1
+      a = sqrt( dotw(_J2, _J2) )
+      A[2] = 1/a
+      B[2] = -b / a
+      J2 = (A[2] * tdf .+ B[2]) .* J1
 
-   # keep the last two for the 3-term recursion
-   Jprev = J2
-   Jpprev = J1
+      # keep the last two for the 3-term recursion
+      Jprev = J2
+      Jpprev = J1
+   end 
 
    for n = 3:N
       # a Jn = (t - b) J_{n-1} - c J_{n-2}
