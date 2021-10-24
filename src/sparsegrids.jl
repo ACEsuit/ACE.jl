@@ -73,7 +73,7 @@ function _gensparse(::Val{NU}, tup2b, admissible, filter, INT, ordered,
    orig_spec = SVector{NU, INT}[]
 
    if NU == 0
-      if all(minvv .== 0) && isadmissible(vv) && filter(vv)
+      if all(minvv .== 0) && admissible(vv) && filter(vv)
          push!(spec, SVector(vv))
       end
       return spec
