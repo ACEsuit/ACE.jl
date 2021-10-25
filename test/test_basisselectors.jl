@@ -1,4 +1,3 @@
-using ACE
 using ACE, Test, ACEbase, ACEbase.Testing, StaticArrays
 using ACE.Random: rand_rot, rand_refl
 using Random: shuffle
@@ -9,7 +8,7 @@ zcut = 2.0
 env = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= .5)
 
 maxorder = 3
-Bsel = ACE.PNormSparseBasis(maxorder; p = 2, default_maxlevel = 5) 
+Bsel = ACE.PNormSparseBasis(maxorder; p = 2, default_maxdeg = 5) 
 
 
 @info("Test invariance")

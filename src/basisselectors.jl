@@ -5,11 +5,15 @@ the infinite space of symmetric polynomials.
 """
 abstract type AbstractBasisSelector end
 
+"""
+`DownsetBasisSelector` : must implemented a positive valued degree 
+function `degree` that is monotonically increasing with respect to 
+the lexiographic ordering of the basis functions.  
+"""
 abstract type DownsetBasisSelector <: AbstractBasisSelector end
 
-isadmissible(b, bsel::DownsetBasisSelector, basis::OneParticleBasis) = true
 
-filter(b, bsel::DownsetBasisSelector, basis::OneParticleBasis) = true
+filter(b, Bsel::DownsetBasisSelector, basis::OneParticleBasis) = true
 
 
 """
@@ -20,6 +24,7 @@ In practise this should be equivalent to a naive max-norm basis selection.
 struct MaxBasis <: DownsetBasisSelector
 end
 
+isadmissible(b::NamedTuple, Bsel::MaxBasis, basis::OneParticleBasis) = true
 """
 `struct SimpleSparseBasis`:
 
@@ -29,7 +34,7 @@ This should only be used for testing.
 """
 struct SimpleSparseBasis <: DownsetBasisSelector
    maxorder::Int
-   maxlevel::Float64
+   maxdeg::Float64
 end
 
 
@@ -43,37 +48,28 @@ degree(bb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
       length(bb) == 0 ? 0 : sum( degree(b, basis) for b in bb )
 
 isadmissible(b::NamedTuple, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
-      (degree(b, Bsel, basis) <= Bsel.maxlevel)
+      (degree(b, Bsel, basis) <= Bsel.maxdeg)
 
 isadmissible(bb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
-      (degree(bb, Bsel, basis) <= Bsel.maxlevel) && length(bb) <= Bsel.maxorder
+      (degree(bb, Bsel, basis) <= Bsel.maxdeg) && length(bb) <= Bsel.maxorder
 
 maxorder(Bsel::SimpleSparseBasis) = Bsel.maxorder
 
 
 
 """
-`SparseBasis`: Super-type for sparse basis selection as sub-levelsets specified `levelset_fun` and corresponding (possibly order-dependent) 
-levels provided in the dictionary `levels::Dict{Any, Float64}`. The function `levelset_fun` must be bounded from below by the degree function `degree` (i.e., `degree <= levelset_fun`).
-Basis functions are selected in two steps. First, "admissible" basis specifications are generated as a sublevelset of the `degree` function using the implementation of the function `gensparse`. 
-After that, basis functions that are not contained in the corresponding sub-levelset of `levelset_fun` are filtered out. 
+`SparseBasis`: Super-type for sparse basis selection as sub-levelsets of the levelset function `level` and corresponding (possibly order-dependent) 
+levels provided in the dictionary `max_degrees::Dict{Any, Float64}`. In the default implementation the levelset function and the degree function are identical.
+
+Basis functions are selected in two steps. First, "admissible" basis specifications are generated as a sub-levelset of the leveset function using the implementation of the function `gensparse`. 
+After that, basis functions that do not satisfy the conditons implemented in the function `filter` are removed from the basis set.
 """
 
 abstract type SparseBasis <: DownsetBasisSelector end
 
 maxorder(Bsel::SparseBasis) = Bsel.maxorder
 
-isadmissible(b::NamedTuple, Bsel::SparseBasis, basis::OneParticleBasis) =
-      (degree(b, Bsel, basis) <= _maxlevel(Bsel, 0))
-
-function isadmissible(bb, Bsel::SparseBasis, basis::OneParticleBasis)
-   ord = length(bb)
-   return ( degree(bb, Bsel, basis) <= _maxlevel(Bsel, ord)) && ord <= Bsel.maxorder
-end
-
-_maxlevel(Bsel::SparseBasis, ord::Integer) =
-      haskey(Bsel.levels, ord) ? Bsel.levels[ord] : Bsel.levels["default"]
-
+# Default implementation of the degree function:
 # for a one-particle basis function
 degree(b::NamedTuple, Deg::SparseBasis, basis::OneParticleBasis) =
       degree(b, basis, Deg.weight)
@@ -84,22 +80,26 @@ degree(bb, Bsel::SparseBasis, basis::OneParticleBasis)  =  (
       length(bb) == 0 ? 0.0
                       : norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
 
-# default implementation of `levelset_fun` assumes is `leveset_fun = degree`
-levelset_fun(b::NamedTuple, Bsel::SparseBasis, basis::OneParticleBasis)  = degree(b, Bsel, basis) 
-
-function levelset_fun(bb, Bsel::SparseBasis, basis::OneParticleBasis)
-   return (length(bb) == 0 ? 0.0
-                      : norm( levelset_fun.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
-end
+# In the default implementation the levelset function and the degree function are identical 
+level(b::NamedTuple, Bsel::SparseBasis, basis::OneParticleBasis)  = degree(b, Bsel, basis) 
+level(bb, Bsel::SparseBasis, basis::OneParticleBasis) =  (length(bb) == 0 ? 0.0
+                      : norm( level.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
 
 
-filter(b::NamedTuple, bsel::DownsetBasisSelector, basis::OneParticleBasis) = isadmissible(b, Bsel, basis)
+# admissible specification are given as a sub-levelset of the levelset function 
+isadmissible(b::NamedTuple, Bsel::SparseBasis, basis::OneParticleBasis) =
+      (level(b, Bsel, basis) <= _maxdeg(Bsel, 0))
 
-function filter(bb, Bsel::SparseBasis, basis::OneParticleBasis) 
+function isadmissible(bb, Bsel::SparseBasis, basis::OneParticleBasis)
    ord = length(bb)
-   level_set_constr = (levelset_fun(bb, Bsel, basis) <= _maxlevel(Bsel, ord)) && ord <= Bsel.maxorder
-   return level_set_constr
+   return ( level(bb, Bsel, basis) <= _maxdeg(Bsel, ord)) && ord <= Bsel.maxorder
 end
+
+_maxdeg(Bsel::SparseBasis, ord::Integer) =
+      haskey(Bsel.maxdegs, ord) ? Bsel.maxdegs[ord] : Bsel.maxdegs["default"]
+
+
+
 
 """
 `PNormSparseBasis`: simplest implementation of a `SparseBasis`.
@@ -107,36 +107,22 @@ end
 struct PNormSparseBasis <: SparseBasis
    maxorder::Int
    weight::Dict{Symbol, Float64}
-   levels::Dict{Any, Float64}
+   maxdegs::Dict{Any, Float64}
    p::Float64
 end
 
-PNormSparseBasis(maxorder::Int;  p = 1, 
-                                 weight = Dict(:l => 1.0, :n => 1.0), 
-                                 default_maxlevel = nothing, 
-                                 levels = Dict{Any, Float64}(),
-                                 ) =   begin 
-                                          if default_maxlevel != nothing  levels == Dict{Any, Float64}()
-                                             PNormSparseBasis(maxorder, weight, Dict{Any, Float64}("default" => default_maxlevel), p)
-                                          elseif default_maxlevel == nothing && levels != Dict{Any, Float64}()
-                                             PNormSparseBasis(maxorder, weight, levels, p)
-                                          else
-                                             @error "Either both or neither optional arguments `levels` and `default_maxlevel` were provided. To avoid ambiguity ensure that exactly one of these arguments is provided."
-                                          end
-                                       end
-"""
-`ConstrainedSparseBasis`: similar to `SparseBasis` but allows in addition to specify
-constraints via the function `constraint_is_satisfied`.
-"""
-
-abstract type ConstrainedSparseBasis <: SparseBasis end
-
-constraint_is_satisfied(bb, Bsel::ConstrainedSparseBasis, basis::OneParticleBasis) = true
-
-function filter(bb, Bsel::ConstrainedSparseBasis, basis::OneParticleBasis) 
-   ord = length(bb)
-   level_set_constr = (levelset_fun(bb, Bsel, basis) <= _maxlevel(Bsel, ord)) && ord <= Bsel.maxorder
-   return level_set_constr && constraint_is_satisfied(bb, Bsel, basis)
+function PNormSparseBasis(maxorder::Int;  p = 1, 
+                                          weight = Dict(:l => 1.0, :n => 1.0), 
+                                          default_maxdeg = nothing, 
+                                          maxdegs = Dict{Any, Float64}()
+                                          ) 
+   if default_maxdeg !== nothing  maxdegs == Dict{Any, Float64}()
+      PNormSparseBasis(maxorder, weight, Dict{Any, Float64}("default" => default_maxdeg), p)
+   elseif default_maxdeg === nothing && maxdegs != Dict{Any, Float64}()
+      PNormSparseBasis(maxorder, weight, maxdegs, p)
+   else
+      @error "Either both or neither optional arguments `maxdegs` and `default_maxdeg` were provided. To avoid ambiguity ensure that exactly one of these arguments is provided."
+   end
 end
 
 """
@@ -147,10 +133,10 @@ the correlation orders for within-category correlations, i.e., for each category
    minorder_dict[cat] <= corr[cat] <= maxorder_dict[cat].
    ```
 """
-struct CategorySparseBasis <: ConstrainedSparseBasis
+struct CategorySparseBasis <: SparseBasis
    maxorder::Int
    weight::Dict{Symbol, Float64}
-   levels::Dict{Any, Float64}
+   maxdegs::Dict{Any, Float64}
    p::Float64
    isym::Symbol
    minorder_dict::Dict{Any, Int}
@@ -159,42 +145,53 @@ struct CategorySparseBasis <: ConstrainedSparseBasis
 end
 
 
-
- #= 
- Ms: we should get rid of the arguments `categories` in the following constructor. 
- For that we must be able to access the basis element associated with `isym` in the product basis `basis`. 
- =#
-CategorySparseBasis(maxorder::Int, isym::Symbol, categories::AbstractArray;
-            p = 1, 
-            weight = Dict{Symbol, Float64}(), 
-            default_maxlevel = 10,
-            levels = Dict{Any, Float64}(),
-            minorder_dict = Dict{Any, Float64}(),
-            maxorder_dict = Dict{Any, Float64}(),
-            weight_cat = Dict(c => 1.0 for c in categories), 
-            ) =   begin 
-                     if default_maxlevel != nothing  levels == Dict{Any, Float64}() 
-                        CategorySparseBasis(maxorder, weight, Dict{Any, Float64}("default" => default_maxlevel), p, isym, minorder_dict, maxorder_dict, weight_cat)
-                     elseif default_maxlevel == nothing && levels != Dict{Any, Float64}()
-                        CategorySparseBasis(maxorder, weight, levels, p, isym, minorder_dict, maxorder_dict, weight_cat)
-                     else
-                        @error "Either both or neither optional arguments `levels` and `default_maxlevel` were provided. To avoid ambiguity ensure that exactly one of these arguments is provided."
-                     end
-                  end
-# for a one-particle basis function
-levelset_fun(b::NamedTuple, Bsel::CategorySparseBasis, basis::OneParticleBasis) =
-      degree(b, basis, Bsel.weight) * Bsel.weight_cat[getproperty(b, Bsel.isym)]
+function CategorySparseBasis(maxorder::Int,isym::Symbol,categories::AbstractArray;  p = 1, 
+                                                                                    weight = Dict{Symbol, Float64}(), 
+                                                                                    default_maxdeg = 10,
+                                                                                    maxdegs = Dict{Any, Float64}(),
+                                                                                    minorder_dict = Dict{Any, Float64}(),
+                                                                                    maxorder_dict = Dict{Any, Float64}(),
+                                                                                    weight_cat = Dict(c => 1.0 for c in categories), 
+                                                                                    ) 
+   if default_maxdeg !== nothing  maxdegs == Dict{Any, Float64}() 
+      CategorySparseBasis(maxorder, weight, Dict{Any, Float64}("default" => default_maxdeg), p, isym, minorder_dict, maxorder_dict, weight_cat)
+   elseif default_maxdeg === nothing && maxdegs != Dict{Any, Float64}()
+      CategorySparseBasis(maxorder, weight, maxdegs, p, isym, minorder_dict, maxorder_dict, weight_cat)
+   else
+      @error "Either both or neither optional arguments `maxdegs` and `default_maxdeg` were provided. To avoid ambiguity ensure that exactly one of these arguments is provided."
+   end
+end
 
 maxorder(Bsel::CategorySparseBasis, category) = Bsel.maxorder_dict[category]
 minorder(Bsel::CategorySparseBasis, category) = Bsel.minorder_dict[category]
 
-function constraint_is_satisfied(bb, Bsel::CategorySparseBasis, basis::OneParticleBasis) 
-   cond_ord_cats_max = all([
-      sum([ getproperty(b, Bsel.isym) == s for b in bb ]) <= maxorder(Bsel, s)
-                              for s in keys(Bsel.maxorder_dict) ]  )
+function filter(bb, Bsel::ConstrainedSparseBasis, basis::OneParticleBasis) 
+   ord = length(bb)
+   # General order constrain that must be satisfied:
+   ord_constr = ord <= Bsel.maxorder
+   # Category-weighted degree constraint:
+   level_set_constr = (cat_weighted_degree(bb, Bsel, basis) <= _maxdeg(Bsel, ord)) 
+   # Within category min correlation order constaint:
    cond_ord_cats_min = all([
       sum([ getproperty(b, Bsel.isym) == s for b in bb ]) >= minorder(Bsel, s)
-                              for s in keys(Bsel.maxorder_dict) ]  )
-   return cond_ord_cats_max && cond_ord_cats_min
+                              for s in keys(Bsel.minorder_dict) ]  )
+   # Within category max correlation order constaint:   
+   cond_ord_cats_max = all([
+      sum([ getproperty(b, Bsel.isym) == s for b in bb ]) <= maxorder(Bsel, s)
+                              for s in keys(Bsel.maxorder_dict) ]  )                     
+
+   return ord_constr && level_set_constr && cond_ord_cats_min && cond_ord_cats_max
 end
+
+# Category-weighted degree function
+cat_weighted_degree(b::NamedTuple, Bsel::CategorySparseBasis, basis::OneParticleBasis) =
+      degree(b, basis, Bsel.weight) * Bsel.weight_cat[getproperty(b, Bsel.isym)]
+
+function cat_weighted_degree(bb, Bsel::SparseBasis, basis::OneParticleBasis)
+   return (length(bb) == 0 ? 0.0
+                        : norm( cat_weighted_degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
+end
+      
+
+
 
