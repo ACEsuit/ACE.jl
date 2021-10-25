@@ -50,8 +50,9 @@ _val(x::Number, basis::Scal1pBasis) = x
 
 Base.length(basis::Scal1pBasis) = length(basis.P)
 
-get_spec(basis::Scal1pBasis) =
-      [  NamedTuple{(_idxsym(basis),)}(n) for n = 1:length(basis) ]
+get_spec(basis::Scal1pBasis, n::Integer) = NamedTuple{(_idxsym(basis),)}(n)
+
+get_spec(basis::Scal1pBasis) = [ get_spec(basis, i) for i = 1:length(basis) ]
 
 ==(P1::Scal1pBasis, P2::Scal1pBasis) = (P1.P == P2.P)
 
@@ -76,6 +77,8 @@ valtype(basis::Scal1pBasis, X::AbstractState) =
 
 gradtype(basis::Scal1pBasis, X::AbstractState) = 
       dstate_type(valtype(basis, X), X)
+
+argsyms(basis::Scal1pBasis) = ( _varsym(basis), )
 
 symbols(basis::Scal1pBasis) = [ _idxsym(basis) ]
 
@@ -128,6 +131,7 @@ function _scal1pbasis_grad(TDX::Type, basis::Scal1pBasis, gval)
                    gval )
    return TDX( NamedTuple{(_varsym(basis),)}((gval_tdx,)) )
 end
+
 
 function evaluate_d!(dB, basis::Scal1pBasis, X::AbstractState)
    TDX = eltype(dB)

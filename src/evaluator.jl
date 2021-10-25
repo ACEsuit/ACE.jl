@@ -176,7 +176,11 @@ function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration
 
    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
    c̃ = V.coeffs
-   dAco =  _alloc_dAco(dAAdA, A, zeros(eltype(c̃[1]), 3)) # tmpd.dAco  # TODO: ALLOCATION 
+   
+   _rec_eltype(x::AbstractVector) = _rec_eltype(x[1])
+   _rec_eltype(x::AbstractProperty) = typeof(x)
+
+   dAco =  _alloc_dAco(dAAdA, A, zeros(_rec_eltype(c̃), 3)) # tmpd.dAco  # TODO: ALLOCATION 
    spec = V.pibasis.spec
 
    fill!(dAco, zero(eltype(dAco)))
