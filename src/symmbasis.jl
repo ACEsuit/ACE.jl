@@ -318,11 +318,12 @@ end
 
 # ---------------- gradients
 
-function evaluate_d!(dB, basis::SymmetricBasis, cfg::AbstractConfiguration)
+function evaluate_d!(dB, basis::SymmetricBasis, cfg::AbstractConfiguration, 
+                     args...)   # args... could be nothing or sym
    # compute AA
    AA = acquire_B!(basis.pibasis, cfg)
    dAA = acquire_dB!(basis.pibasis, cfg)
-   evaluate_ed!(AA, dAA, basis.pibasis, cfg)
+   evaluate_ed!(AA, dAA, basis.pibasis, cfg, args...)
    evaluate_d!(dB, basis, AA, dAA)
    return dB
 end
