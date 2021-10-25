@@ -53,6 +53,14 @@ Base.length(basis::Scal1pBasis) = length(basis.P)
 get_spec(basis::Scal1pBasis) =
       [  NamedTuple{(_idxsym(basis),)}(n) for n = 1:length(basis) ]
 
+function set_spec!(basis::Scal1pBasis, spec::Vector)      
+   # we don't want to set anything, just check that its compatible with the spec 
+   # we produce on the fly 
+   old_spec = get_spec(basis)
+   @assert old_spec == spec 
+   return basis 
+end
+
 ==(P1::Scal1pBasis, P2::Scal1pBasis) = (P1.P == P2.P)
 
 write_dict(basis::Scal1pBasis{T}) where {T} = Dict(
