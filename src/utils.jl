@@ -63,16 +63,14 @@ function RnYlm_1pbasis(; maxdeg=6, maxL = maxdeg, varsym = :rr, idxsyms = (:n, :
 end
 
 function BondBasisSelector(Bsel::ACE.SparseBasis; isym=:be, bond_weight = 1.0, env_weight = 1.0)
-   weight_cat = Dict(:bond => 1.0, :env=> 1.0) 
-   BondSelector = ACE.CategorySparseBasis(Bsel.maxorder, isym, [:bond, :env];
-   p = Bsel.p, 
-   weight = Bsel.weight, 
-   maxdegs = Bsel.maxdegs,
-   minorder_dict = Dict( :bond => 1),
-   maxorder_dict = Dict( :bond => 1),
-   weight_cat = Dict(:bond => bond_weight, :env=> env_weight) 
-   )
-   return BondSelector
+   return ACE.CategorySparseBasis(Bsel.maxorder, isym, [:bond, :env];
+            p = Bsel.p, 
+            weight = Bsel.weight, 
+            maxdegs = Bsel.maxdegs,
+            minorder_dict = Dict( :bond => 1),
+            maxorder_dict = Dict( :bond => 1),
+            weight_cat = Dict(:bond => bond_weight, :env=> env_weight) 
+         )
 end
 
 function SymmetricBond_basis(ϕ::ACE.AbstractProperty, env::ACE.BondEnvelope, Bsel::ACE.SparseBasis; RnYlm = nothing, kwargs...)
