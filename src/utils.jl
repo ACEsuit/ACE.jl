@@ -75,7 +75,7 @@ function BondBasisSelector(Bsel::ACE.SparseBasis; isym=:be, bond_weight = 1.0, e
    return BondSelector
 end
 
-function BondSpecies_basis(ϕ::ACE.AbstractProperty, env::ACE.BondEnvelope, Bsel::ACE.SparseBasis; RnYlm = nothing, kwargs...)
+function SymmetricBond_basis(ϕ::ACE.AbstractProperty, env::ACE.BondEnvelope, Bsel::ACE.SparseBasis; RnYlm = nothing, kwargs...)
    BondSelector =  BondBasisSelector(Bsel; kwargs...)
    if RnYlm == nothing
        RnYlm = RnYlm_1pbasis(;   r0 = ACE.cutoff_radialbasis(env), 
