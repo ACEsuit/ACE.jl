@@ -59,7 +59,7 @@ maxorder(Bsel::SimpleSparseBasis) = Bsel.maxorder
 
 """
 `SparseBasis`: Super-type for sparse basis selection as sub-levelsets of the levelset function `level` and corresponding (possibly order-dependent) 
-levels provided in the dictionary `max_degrees::Dict{Any, Float64}`. In the default implementation the levelset function and the degree function are identical.
+levels provided in the dictionary `maxdegs::Dict{Any, Float64}`. In the default implementation the levelset function and the degree function are identical.
 
 Basis functions are selected in two steps. First, "admissible" basis specifications are generated as a sub-levelset of the leveset function using the implementation of the function `gensparse`. 
 After that, basis functions that do not satisfy the conditons implemented in the function `filter` are removed from the basis set.
@@ -165,7 +165,7 @@ end
 maxorder(Bsel::CategorySparseBasis, category) = Bsel.maxorder_dict[category]
 minorder(Bsel::CategorySparseBasis, category) = Bsel.minorder_dict[category]
 
-function filter(bb, Bsel::ConstrainedSparseBasis, basis::OneParticleBasis) 
+function filter(bb, Bsel::CategorySparseBasis, basis::OneParticleBasis) 
    ord = length(bb)
    # General order constrain that must be satisfied:
    ord_constr = ord <= Bsel.maxorder

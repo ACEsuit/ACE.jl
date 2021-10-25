@@ -1,0 +1,9 @@
+# Query: max_degrees
+# ContextLines: 1
+
+1 result - 1 file
+
+src/basisselectors.jl:
+  61  `SparseBasis`: Super-type for sparse basis selection as sub-levelsets of the levelset function `level` and corresponding (possibly order-dependent) 
+  62: levels provided in the dictionary `maxdegs::Dict{Any, Float64}`. In the default implementation the levelset function and the degree function are identical.
+  63  

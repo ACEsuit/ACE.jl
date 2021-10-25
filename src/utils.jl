@@ -67,7 +67,7 @@ function BondBasisSelector(Bsel::ACE.SparseBasis; isym=:be, bond_weight = 1.0, e
    BondSelector = ACE.CategorySparseBasis(Bsel.maxorder, isym, [:bond, :env];
    p = Bsel.p, 
    weight = Bsel.weight, 
-   levels = Bsel.levels,
+   maxdegs = Bsel.maxdegs,
    minorder_dict = Dict( :bond => 1),
    maxorder_dict = Dict( :bond => 1),
    weight_cat = Dict(:bond => bond_weight, :env=> env_weight) 
