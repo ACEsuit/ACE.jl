@@ -26,6 +26,25 @@ to provide a more streamlined experience for the user.
 struct NoSym <: SymmetryGroup 
 end 
 
+# write_dict(G::O3) = 
+#       Dict("__id__" => "ACE_O3", 
+#            "lsym" => lsym(G), 
+#            "msym" => msym(G) )
+
+# read_dict(::Val{:ACE_O3}, D::Dict) = 
+#       O3(Symbol(D["lsym"]), Symbol(D["msym"]))
+
+
+is_refbasisfcn(G::NoSym, AA) = true 
+
+get_sym_spec(G::NoSym, bb) = bb
+
+
+function coupling_coeffs(symgrp::NoSym, bb, rotc::Rot3DCoeffs)
+   return [1.0], [bb]
+end
+
+
 # -----------------------  O3 SYMMETRY 
 
 # this is a prototype implemenation; eventually (asap!) we need to allow 

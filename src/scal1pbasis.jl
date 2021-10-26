@@ -54,6 +54,8 @@ get_spec(basis::Scal1pBasis, n::Integer) = NamedTuple{(_idxsym(basis),)}(n)
 
 get_spec(basis::Scal1pBasis) = [ get_spec(basis, i) for i = 1:length(basis) ]
 
+get_spec(basis::Scal1pBasis, i::Integer) = NamedTuple{(_idxsym(basis),)}(i)
+
 function set_spec!(basis::Scal1pBasis, spec::Vector)      
    # we don't want to set anything, just check that its compatible with the spec 
    # we produce on the fly 
