@@ -14,7 +14,7 @@ Bsel = ACE.PNormSparseBasis(maxorder; p = 2, default_maxdeg = 4)
 @info("Test invariance")
 
 
-basis_inv = ACE.Utils.BondSpecies_basis(ACE.Invariant(), env, Bsel; )
+basis_inv = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env, Bsel; )
 @show length(basis_inv)
 
 rr0 = SVector{3}(rand(Float64,3))
@@ -33,7 +33,7 @@ end
 
 @info("Test Euclidian covariance")
 
-basis_cov = ACE.Utils.BondSpecies_basis(ACE.EuclideanVector(), env, Bsel; )
+basis_cov = ACE.Utils.SymmetricBond_basis(ACE.EuclideanVector(), env, Bsel; )
 @show length(basis_cov)
 
 rr0 = SVector{3}(rand(Float64,3))
