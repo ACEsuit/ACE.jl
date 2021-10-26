@@ -86,6 +86,9 @@ valtype(basis::Scal1pBasis, X::AbstractState) =
 gradtype(basis::Scal1pBasis, X::AbstractState) = 
       dstate_type(valtype(basis, X), X)
 
+gradtype(basis::Scal1pBasis, X::ACEConfig) = 
+      gradtype(basis, X.Xs[1])
+
 argsyms(basis::Scal1pBasis) = ( _varsym(basis), )
 
 symbols(basis::Scal1pBasis) = [ _idxsym(basis) ]
