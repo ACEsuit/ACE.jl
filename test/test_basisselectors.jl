@@ -22,7 +22,6 @@ cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), rr0 = rr0,
                   be = rand([:bond,:env])) 
         for _ = 1:10 ] |> ACEConfig
 B1_inv = ACE.evaluate(basis_inv, cfg)
-println()
 
 for ntest = 1:30
     Q = rand_refl() * rand_rot()
@@ -30,7 +29,7 @@ for ntest = 1:30
     B2_inv = ACE.evaluate(basis_inv, ACEConfig(Xs2))
     print_tf(@test isapprox(B1_inv, B2_inv, rtol=1e-10))
 end
-
+println()
 @info("Test Euclidian covariance")
 
 basis_cov = ACE.Utils.SymmetricBond_basis(ACE.EuclideanVector(), env, Bsel; )

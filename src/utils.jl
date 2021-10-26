@@ -62,9 +62,10 @@ function RnYlm_1pbasis(; maxdeg=6, maxL = maxdeg, varsym = :rr, idxsyms = (:n, :
    return B1p
 end
 
-function BondBasisSelector(Bsel::ACE.SparseBasis; isym=:be, bond_weight = 1.0, env_weight = 1.0)
+function BondBasisSelector(Bsel::ACE.SparseBasis; isym=:be, bond_weight = 1.0, env_weight = 1.0, default_maxdeg = 6)
    return ACE.CategorySparseBasis(Bsel.maxorder, isym, [:bond, :env];
             p = Bsel.p, 
+            default_maxdeg = default_maxdeg,
             weight = Bsel.weight, 
             maxdegs = Bsel.maxdegs,
             minorder_dict = Dict( :bond => 1),

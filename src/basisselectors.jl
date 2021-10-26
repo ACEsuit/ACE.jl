@@ -114,11 +114,11 @@ end
 function PNormSparseBasis(maxorder::Int;  p = 1, 
                                           weight = Dict(:l => 1.0, :n => 1.0), 
                                           default_maxdeg = nothing, 
-                                          maxdegs = Dict{Any, Float64}()
+                                          maxdegs = nothing
                                           ) 
-   if default_maxdeg !== nothing  maxdegs == Dict{Any, Float64}()
+   if default_maxdeg !== nothing  maxdegs === nothing 
       PNormSparseBasis(maxorder, weight, Dict{Any, Float64}("default" => default_maxdeg), p)
-   elseif default_maxdeg === nothing && maxdegs != Dict{Any, Float64}()
+   elseif default_maxdeg === nothing && maxdegs !== nothing
       PNormSparseBasis(maxorder, weight, maxdegs, p)
    else
       @error "Either both or neither optional arguments `maxdegs` and `default_maxdeg` were provided. To avoid ambiguity ensure that exactly one of these arguments is provided."
@@ -147,15 +147,15 @@ end
 
 function CategorySparseBasis(maxorder::Int,isym::Symbol,categories::AbstractArray;  p = 1, 
                                                                                     weight = Dict{Symbol, Float64}(), 
-                                                                                    default_maxdeg = 10,
-                                                                                    maxdegs = Dict{Any, Float64}(),
+                                                                                    default_maxdeg = nothing,
+                                                                                    maxdegs = nothing,
                                                                                     minorder_dict = Dict{Any, Float64}(),
                                                                                     maxorder_dict = Dict{Any, Float64}(),
                                                                                     weight_cat = Dict(c => 1.0 for c in categories), 
                                                                                     ) 
-   if default_maxdeg !== nothing  maxdegs == Dict{Any, Float64}() 
+   if default_maxdeg !== nothing  maxdegs === nothing 
       CategorySparseBasis(maxorder, weight, Dict{Any, Float64}("default" => default_maxdeg), p, isym, minorder_dict, maxorder_dict, weight_cat)
-   elseif default_maxdeg === nothing && maxdegs != Dict{Any, Float64}()
+   elseif default_maxdeg === nothing && maxdegs !== nothing
       CategorySparseBasis(maxorder, weight, maxdegs, p, isym, minorder_dict, maxorder_dict, weight_cat)
    else
       @error "Either both or neither optional arguments `maxdegs` and `default_maxdeg` were provided. To avoid ambiguity ensure that exactly one of these arguments is provided."
