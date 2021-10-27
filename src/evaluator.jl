@@ -96,7 +96,7 @@ evaluate(::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) =
 # compute one "site energy"
 function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
    A = acquire_B!(V.pibasis.basis1p, cfg)
-   A = evaluate!(A, V.pibasis.basis1p, cfg)
+   evaluate!(A, V.pibasis.basis1p, cfg)
    spec = V.pibasis.spec
    _real = V.pibasis.real
    # initialize output with a sensible type 
@@ -108,7 +108,7 @@ function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
       end
       val += _real(aa) * V.coeffs[iAA]
    end
-   release_B!(V.pibasis.basis1p, cfg)
+   release_B!(V.pibasis.basis1p, A)
    return val
 end
 

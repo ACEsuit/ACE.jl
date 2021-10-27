@@ -40,8 +40,8 @@ is_refbasisfcn(G::NoSym, AA) = true
 get_sym_spec(G::NoSym, bb) = bb
 
 
-function coupling_coeffs(symgrp::NoSym, bb, rotc::Rot3DCoeffs)
-   return [1.0], [bb]
+function coupling_coeffs(symgrp::NoSym, bb, rotc::Rot3DCoeffs{T, TP}) where {T, TP}
+   return [ TP(1.0) ], [bb]
 end
 
 
