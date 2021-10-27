@@ -38,9 +38,11 @@ ru = basis.pibasis.basis1p.bases[1].R.ru
 rl = basis.pibasis.basis1p.bases[1].R.rl 
 
 for ntest = 1:30 
+   local cfg 
    cfg = ACEConfig( [ State(rr = rands3(rl, ru)) for _=1:10 ] )
    print_tf(@test evaluate(basis, cfg) ≈ evaluate(basis_r, cfg))
 end 
+println()
 
 ## 
 
@@ -127,6 +129,6 @@ for ntest = 1:30
    B_rs = evaluate(basis, cfg_rs)
    print_tf(@test(B ≈ B_rs))
 end
-
+println()
 
 ##
