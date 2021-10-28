@@ -100,7 +100,7 @@ SymmetricBasis(φ::AbstractProperty,
                      isreal=isreal)
 
 function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis; 
-                        isreal=false) where {TP}
+                        isreal=isrealB(φ)) where {TP}
 
    # AA index -> AA spec
    AAspec = get_spec(pibasis)
