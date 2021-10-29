@@ -6,9 +6,10 @@
 through a PIBasis and its coefficients. The n-correlations are evaluated directly 
 via a naive product of the atomic base.
 """
-mutable struct ProductEvaluator{T, TPI <: PIBasis} 
+mutable struct ProductEvaluator{T, TPI <: PIBasis, REAL}
    pibasis::TPI        # AA basis from ACE papers
    coeffs::Vector{T}   # c̃ coefficients from ACE papers 
+   real::REAL          # the real operation stored in the SymmetricBasis
 end
 
 
@@ -27,7 +28,7 @@ read_dict(::Val{:ACE_ProductEvaluator}, D::Dict, basis, c) = ProductEvaluator(ba
 # ------------------------------------------------------------
 
 ProductEvaluator(basis::SymmetricBasis, c::AbstractVector) = 
-      ProductEvaluator(basis.pibasis, _get_eff_coeffs(basis, c))
+      ProductEvaluator(basis.pibasis, _get_eff_coeffs(basis, c), basis.real)
 
 
 # basic setter interface without any checks 
@@ -82,7 +83,8 @@ _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) =
 _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
    zeros(eltype(dAAdA), length(A))
 
-
+_alloc_dAco(dAAdA, A, c̃::AbstractVector{ACE.EuclideanVector{T}}) where {T} = 
+   zeros(ACE.EuclideanVector{promote_type(real(eltype(dAAdA)), T)}, length(A))
 
 # ------------------------------------------------------------
 #   Standard Evaluation code
@@ -98,15 +100,16 @@ function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
    A = acquire_B!(V.pibasis.basis1p, cfg)
    evaluate!(A, V.pibasis.basis1p, cfg)
    spec = V.pibasis.spec
-   _real = V.pibasis.real
+   pireal = V.pibasis.real 
+   symreal = V.real
    # initialize output with a sensible type 
-   val = zero(eltype(V.coeffs)) * _real(zero(eltype(A)))  
+   val = symreal(zero(eltype(V.coeffs)) * pireal(zero(eltype(A))))
    @inbounds for iAA = 1:length(spec)
       aa = A[spec.iAA2iA[iAA, 1]]
       for t = 2:spec.orders[iAA]
          aa *= A[spec.iAA2iA[iAA, t]]
       end
-      val += _real(aa) * V.coeffs[iAA]
+      val += symreal(pireal(aa) * V.coeffs[iAA])
    end
    release_B!(V.pibasis.basis1p, A)
    return val
@@ -120,7 +123,8 @@ grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfigurati
 # compute one site energy gradient 
 function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
-   _real = V.pibasis.real
+   pireal = V.pibasis.real 
+   symreal = V.real
    A = acquire_B!(V.pibasis.basis1p, cfg)
    dA = acquire_dB!(V.pibasis.basis1p, cfg)
    dAAdA = _acquire_dAAdA!(V.pibasis)
@@ -135,12 +139,12 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
 
    fill!(dAco, zero(eltype(dAco)))
    @inbounds for iAA = 1:length(spec)
-      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
          dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA]) #trying to avoid using .* and complex.()
       end
    end
-
+   
    # stage 3: get the gradients
    fill!(g, zero(eltype(g)))
    for iP = 1:length(c̃[1]), iX = 1:length(cfg)
@@ -166,7 +170,7 @@ function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration
    _contract(x::Invariant, y::Number) = x * y
 
    basis1p = V.pibasis.basis1p
-   _real = V.pibasis.real
+   _real = V.real
    A = acquire_B!(V.pibasis.basis1p, cfg)
    dA = acquire_dB!(V.pibasis.basis1p, cfg)
    dAAdA = _acquire_dAAdA!(V.pibasis)
@@ -210,7 +214,7 @@ function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    A = zeros(ComplexF64, length(basis1p))
    TDX = gradtype(m.basis, cfg)
    dA = zeros(complex(TDX) , length(A), length(cfg))
-   _real = V.pibasis.real
+   _real = V.real
    dAAw = acquire_B!(V.pibasis, cfg)
    dAw = similar(A)
    dB = zeros(Float64, length(m.c))   # TODO: fix hard-coded parameters!!!
@@ -249,7 +253,7 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    A = zeros(ComplexF64, length(basis1p))
    TDX = gradtype(m.basis, cfg)
    dA = zeros(complex(TDX) , length(A), length(cfg))
-   _real = V.pibasis.real
+   _real = V.real
    dAAw = acquire_B!(V.pibasis, cfg)
    dAw = similar(A)
    dB = similar(m.c)
@@ -290,7 +294,7 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, wt::Matrix)
    A = zeros(ComplexF64, length(basis1p))
    TDX = gradtype(m.basis, cfg)
    dA = zeros(complex(TDX) , length(A), length(cfg))
-   _real = V.pibasis.real
+   _real = V.real
    dAAw = [acquire_B!(V.pibasis, cfg) for _ in 1:length(m.c[1])]
    dAw = [similar(A) for _ in 1:length(m.c[1])]
    dB = similar(m.c)
