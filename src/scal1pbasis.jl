@@ -3,6 +3,7 @@
 import ACE: OneParticleBasis, AbstractState
 import ACE.OrthPolys: TransformedPolys
 
+import ForwardDiff
 import NamedTupleTools
 using NamedTupleTools: namedtuple
 
@@ -54,6 +55,14 @@ get_spec(basis::Scal1pBasis, n::Integer) = NamedTuple{(_idxsym(basis),)}(n)
 
 get_spec(basis::Scal1pBasis) = [ get_spec(basis, i) for i = 1:length(basis) ]
 
+function set_spec!(basis::Scal1pBasis, spec::Vector)      
+   # we don't want to set anything, just check that its compatible with the spec 
+   # we produce on the fly 
+   old_spec = get_spec(basis)
+   @assert old_spec == spec 
+   return basis 
+end
+
 ==(P1::Scal1pBasis, P2::Scal1pBasis) = (P1.P == P2.P)
 
 write_dict(basis::Scal1pBasis{T}) where {T} = Dict(
@@ -77,6 +86,9 @@ valtype(basis::Scal1pBasis, X::AbstractState) =
 
 gradtype(basis::Scal1pBasis, X::AbstractState) = 
       dstate_type(valtype(basis, X), X)
+
+gradtype(basis::Scal1pBasis, cfg::AbstractConfiguration) = 
+      gradtype(basis, zero(eltype(cfg)))
 
 argsyms(basis::Scal1pBasis) = ( _varsym(basis), )
 

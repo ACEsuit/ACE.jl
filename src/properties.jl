@@ -152,6 +152,7 @@ complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 isrealB(::EuclideanVector) = true
 isrealAA(::EuclideanVector) = false
 
+Base.getindex(φ::EuclideanVector, i::Integer) = φ.val[i] 
 
 #fltype(::EuclideanVector{T}) where {T} = T
 

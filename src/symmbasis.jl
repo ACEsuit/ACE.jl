@@ -120,6 +120,7 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis;
    # TODO: should this be stored with the basis?
    #       or maybe written to a file on disk? and then flushed every time
    #       we finish with a basis construction???
+   # TODO: for sure this needs to become a function of the symmetry group?
    rotc = Rot3DCoeffs(φ, real(valtype(pibasis)))
    # allocate triplet format
    Irow, Jcol, vals = Int[], Int[], TP[]
