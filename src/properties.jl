@@ -212,6 +212,74 @@ rmatrices = Dict(
   (1,1) => SMatrix{3, 3, ComplexF64, 9}(1/6, -1im/6, 0, 1im/6, 1/6, 0, 0, 0, 0)
   )
 
+#---------------------- Equivariant matrices
+
+struct EquivariantMatrix{T} <: AbstractProperty where T<:Real
+   val::SMatrix{3, 3, Complex{T}, 9}
+end
+
+
+real(φ::EquivariantMatrix) = EquivariantMatrix(φ.val)
+complex(φ::EquivariantMatrix) = EquivariantMatrix(φ.val)
+complex(::Type{EquivariantMatrix{T}}) where {T} = EquivariantMatrix{complex(T)}
+
+isrealB(::EquivariantMatrix) = true
+isrealAA(::EquivariantMatrix) = false
+
+
+#fltype(::EquivariantMatrix{T}) where {T} = T
+
+EquivariantMatrix{T}() where {T <: Real} = EquivariantMatrix{T}(zero(SMatrix{3, 3, ComplexF64, 9}))
+
+EquivariantMatrix(T::DataType=Float64) = EquivariantMatrix{T}()
+
+
+function filter(φ::EquivariantMatrix, grp::O3, b::Array)
+   if length(b) <= 1 #MS: Not sure if this should be here
+      return true
+   end
+   suml = sum( getl(grp, bi) for bi in b )
+   if haskey(b[1], msym(grp))  # depends on context whether m come along?
+      summ = sum( getm(grp, bi) for bi in b )
+      return iseven(suml) && abs(summ) <= 2
+   end
+   return iseven(suml)
+end
+
+rot3Dcoeffs(::EquivariantMatrix,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
+
+write_dict(φ::EquivariantMatrix{T}) where {T} =
+      Dict("__id__" => "ACE_EquivariantMatrix",
+              "val" => write_dict(Matrix(φ.val)),
+                "T" => write_dict(T) )
+
+function read_dict(::Val{:ACE_EquivariantMatrix}, D::Dict)
+   T = read_dict(D["T"])
+   return EquivariantMatrix{T}(SMatrix{3, 3, Complex{T}, 9}(read_dict(D["val"])))
+end
+
+# differentiation - cf #27
+# *(φ::EquivariantMatrix, dAA::SVector) = φ.val * dAA'
+
+coco_init(phi::EquivariantMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
+      (l == 2 && abs(m) <= 2 && abs(μ) <= 2)
+         ? vec([EquivariantMatrix{CT}(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
+         : coco_zeros(phi, l, m, μ, T, A)  )
+
+coco_zeros(φ::EquivariantMatrix, ll, mm, kk, T, A) =  EquivariantMatrix.(zeros(SMatrix{3, 3, Complex{T}, 9},9))
+
+coco_filter(::EquivariantMatrix, ll, mm) =
+            iseven(sum(ll)) && (abs(sum(mm)) <= 2)
+
+coco_filter(::EquivariantMatrix, ll, mm, kk) =
+      abs(sum(mm)) <= 2 &&
+      abs(sum(kk)) <= 2 &&
+      iseven(sum(ll))
+
+coco_dot(u1::EquivariantMatrix, u2::EquivariantMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
+#dot(u1.val, u2.val)
+
+include("equi_coeffs_dict.jl")
 
 # --------------------- SphericalVector
 
