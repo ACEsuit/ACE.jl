@@ -152,6 +152,28 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    return g
 end
 
+
+# _numP(x::SVector) = length(x)
+# _numP(x::AbstractProperty) = 1 
+# numP = _numP(c̃[1])
+# @assert numP == size(g, 2)
+
+# function _update_g!(iA, iX, ::Type{<: Invariant})
+#    g[iX] += symreal(pireal(dAco[iA]) * dA[iA, iX])
+# end
+# function _update_g!(iA, iX, ::Type{<: EuclideanVector})
+#    g[iX] += symreal(dA[iA, iX] * transpose(dAco[iA].val))
+# end
+# function _update_g!(iA, iX, ::Type{<: SVector})
+#    for iP = 1:numP 
+#       g[iX, iP] += symreal(pireal(dAco[iA][iP]) * dA[iA, iX])
+#    end
+# end
+
+# for iX = 1:length(cfg), iA = 1:length(basis1p)
+#    _update_g!(iA, iX, eltype(c̃))
+
+
 function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
    g = acquire_grad_config!(model, cfg, zeros(eltype(model.c[1]), 3) )
    return _rrule_evaluate!(g, dp, model.evaluator, cfg)
