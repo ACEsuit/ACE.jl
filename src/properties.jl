@@ -27,13 +27,10 @@ Base.convert(T::Type{Any}, φ::AbstractProperty) = φ
 Base.iterate(φ::AbstractProperty) = φ, nothing
 Base.iterate(φ::AbstractProperty, ::Nothing) = nothing
 
-# some type piracy ...
-# TODO: hack like this make #27 important!!!
-# *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
-#       reshape( reshape(a, L1*L2, L3) * b, L1, L2)
 
+# TODO: is this needed or can it be removed? 
+#       maybe it should also be allowed for a DState?
 *(φ::AbstractProperty, b::AbstractState) = coco_o_daa(φ, b)
-      # promote_type(φ.val, b)(φ.val * _val(b))
 
 """
 `coco_o_daa` : implements a tensor product between a coupling coefficient 

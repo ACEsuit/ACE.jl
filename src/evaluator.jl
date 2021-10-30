@@ -81,7 +81,7 @@ _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) =
    zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
    
 _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
-   zeros(eltype(dAAdA), length(A))
+   zeros(ACE.Invariant{eltype(dAAdA)}, length(A))
 
 _alloc_dAco(dAAdA, A, c̃::AbstractVector{ACE.EuclideanVector{T}}) where {T} = 
    zeros(ACE.EuclideanVector{promote_type(real(eltype(dAAdA)), T)}, length(A))
@@ -141,25 +141,31 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    @inbounds for iAA = 1:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA]) #trying to avoid using .* and complex.()
+         dAco[spec.iAA2iA[iAA, t]] += pireal(dAAdA[t]) * complex(c̃[iAA]) #trying to avoid using .* and complex.()
       end
    end
    
    # stage 3: get the gradients
-   fill!(g, zero(eltype(g)))
-   for iP = 1:length(c̃[1]), iX = 1:length(cfg)
-      for iA = 1:length(basis1p)
-         g[iX, iP] += _real(dAco[iA][iP] * dA[iA, iX])
+
+   function _update_g!(iA, iX, ::AbstractProperty)
+      g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
+   end
+
+   function _update_g!(iA, iX, c̃i::SVector)
+      for iP = 1:length(c̃i)
+         g[iX, iP] += symreal( coco_o_daa(dAco[iA][iP], dA[iA, iX]) )
       end
+   end 
+
+   fill!(g, zero(eltype(g)))
+   for iX = 1:length(cfg), iA = 1:length(basis1p)
+      _update_g!(iA, iX, c̃[1])
    end
 
    return g
 end
 
 
-# _numP(x::SVector) = length(x)
-# _numP(x::AbstractProperty) = 1 
-# numP = _numP(c̃[1])
 # @assert numP == size(g, 2)
 
 # function _update_g!(iA, iX, ::Type{<: Invariant})
