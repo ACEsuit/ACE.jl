@@ -132,7 +132,8 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    # stage 1: precompute all the A values
    evaluate_ed!(A, dA, basis1p, cfg)
 
-   # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+   # stage 2: compute the coefficients for the ∇A_{nlm} = ∇ϕ_{nlm}
+   # dAco[nlm] = coefficient of ∇A_{nlm} (via adjoints)
    c̃ = V.coeffs
    dAco =  _alloc_dAco(dAAdA, A, c̃) # tmpd.dAco  # TODO: ALLOCATION 
    spec = V.pibasis.spec
@@ -141,7 +142,7 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    @inbounds for iAA = 1:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += pireal(dAAdA[t]) * complex(c̃[iAA]) #trying to avoid using .* and complex.()
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA]) #trying to avoid using .* and complex.()
       end
    end
    
@@ -164,24 +165,6 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
 
    return g
 end
-
-
-# @assert numP == size(g, 2)
-
-# function _update_g!(iA, iX, ::Type{<: Invariant})
-#    g[iX] += symreal(pireal(dAco[iA]) * dA[iA, iX])
-# end
-# function _update_g!(iA, iX, ::Type{<: EuclideanVector})
-#    g[iX] += symreal(dA[iA, iX] * transpose(dAco[iA].val))
-# end
-# function _update_g!(iA, iX, ::Type{<: SVector})
-#    for iP = 1:numP 
-#       g[iX, iP] += symreal(pireal(dAco[iA][iP]) * dA[iA, iX])
-#    end
-# end
-
-# for iX = 1:length(cfg), iA = 1:length(basis1p)
-#    _update_g!(iA, iX, eltype(c̃))
 
 
 function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)

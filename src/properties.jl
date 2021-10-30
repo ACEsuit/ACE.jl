@@ -142,7 +142,7 @@ struct EuclideanVector{T} <: AbstractProperty where T<:Real
 end
 
 
-real(φ::EuclideanVector) = EuclideanVector(φ.val)
+real(φ::EuclideanVector) = EuclideanVector(real.(φ.val) .+ im * 0)
 complex(φ::EuclideanVector) = EuclideanVector(φ.val)
 complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 
