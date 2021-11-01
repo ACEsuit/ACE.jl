@@ -71,20 +71,38 @@ _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) =
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
    acquire!(basis.B_pool, len_AA)
 
+
 _alloc_ctilde(basis::SymmetricBasis,c::AbstractVector{<: SVector}) = 
    zeros(SVector{length(c[1]),eltype(basis.A2Bmap)}, size(basis.A2Bmap, 2))
    
 _alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
    zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
-_alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
-   zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
-   
-_alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
-   zeros(ACE.Invariant{eltype(dAAdA)}, length(A))
 
-_alloc_dAco(dAAdA, A, c̃::AbstractVector{ACE.EuclideanVector{T}}) where {T} = 
-   zeros(ACE.EuclideanVector{promote_type(real(eltype(dAAdA)), T)}, length(A))
+# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
+#    zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
+   
+# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
+#    zeros(ACE.Invariant{eltype(dAAdA)}, length(A))
+
+# _alloc_dAco(dAAdA, A, c̃::AbstractVector{ACE.EuclideanVector{T}}) where {T} = 
+#    zeros(ACE.EuclideanVector{promote_type(real(eltype(dAAdA)), T)}, length(A))
+
+# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
+#    zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) )
+   
+# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
+#    zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) ) 
+
+# _alloc_dAco(dAAdA, A, c̃::AbstractVector{ACE.EuclideanVector{T}}) where {T} = ( 
+#    @show eltype(dAAdA); 
+#    @show eltype(c̃); 
+#    @show promote_type(eltype(dAAdA), eltype(c̃)); 
+#    zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) ) )
+
+_alloc_dAco(dAAdA::AbstractVector, A::AbstractVector, c̃) =
+         zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) )
+
 
 # ------------------------------------------------------------
 #   Standard Evaluation code
@@ -142,7 +160,7 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    @inbounds for iAA = 1:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex(c̃[iAA]) #trying to avoid using .* and complex.()
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * c̃[iAA] #trying to avoid using .* and complex.()
       end
    end
    

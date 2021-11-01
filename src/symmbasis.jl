@@ -99,8 +99,13 @@ SymmetricBasis(φ::AbstractProperty,
                              isreal = isrealAA(φ), kwargs..., property = φ); 
                      isreal=isreal)
 
-function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis; 
-                        isreal=false) where {TP}
+SymmetricBasis(φ::AbstractProperty, symgrp::SymmetryGroup, pibasis::PIBasis; 
+               isreal=false) = 
+      SymmetricBasis(φ, symgrp, pibasis, isreal ? Base.real : Base.identity)
+
+
+function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis, 
+                        _real) where {TP <: AbstractProperty}
 
    # AA index -> AA spec
    AAspec = get_spec(pibasis)
@@ -157,14 +162,14 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis;
             idxAA = invAAspec[bcol_ordered]
             push!(Irow, idxB)
             push!(Jcol, idxAA)
-            push!(vals, U[irow, icol])
+            push!(vals, _real(U[irow, icol]))
          end
       end
    end
    # TODO: filter and throw out everything that hasn't been used!!
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
-   return SymmetricBasis(pibasis, A2Bmap, symgrp, isreal ? Base.real : Base.identity)
+   return SymmetricBasis(pibasis, A2Bmap, symgrp, _real)
 end
 
 function SymmetricBasis(pibasis, A2Bmap, symgrp, _real) 

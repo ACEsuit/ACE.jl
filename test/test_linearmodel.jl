@@ -102,10 +102,10 @@ for ntest = 1:30
 end
 
 ##
-@info("test gradients of LinearACEModel")
+@info("test gradients of LinearACEModel of equivariant vector")
 
-c = randn(length(BB)) ./ (1:length(BB)).^2
 BB = evaluate(basis, cfg)
+c = randn(length(BB)) ./ (1:length(BB)).^2
 model = ACE.LinearACEModel(basis, c, evaluator = :standard)
 
 cfg = randconfig(B1p, 10)
