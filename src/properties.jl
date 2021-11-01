@@ -159,6 +159,9 @@ real(φ::EuclideanVector) = EuclideanVector(real.(φ.val))
 complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
 complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 
++(x::SVector{3}, y::EuclideanVector) = EuclideanVector(x + y.val)
+Base.convert(::Type{SVector{3, T}}, φ::EuclideanVector) where {T} = convert(SVector{3, T}, φ.val)
+
 isrealB(::EuclideanVector{T}) where {T} = (T == real(T))
 isrealAA(::EuclideanVector) = false
 

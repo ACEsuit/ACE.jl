@@ -48,7 +48,7 @@ end
 function set_params!(ev::ProductEvaluator, basis::SymmetricBasis, c::AbstractVector)
    len_AA = length(ev.pibasis)
    @assert len_AA == size(basis.A2Bmap, 2)
-   c̃ = _acquire_ctilde(basis,len_AA, c)
+   c̃ = _acquire_ctilde(basis, len_AA, c)
    _get_eff_coeffs!(c̃, basis, c)
    set_params!(ev, basis.pibasis, c̃)
    release!(basis.B_pool, c̃)
@@ -57,7 +57,8 @@ end
 
 
 _get_eff_coeffs!(c̃, basis::SymmetricBasis, c::AbstractVector) = 
-      genmul!(c̃, transpose(basis.A2Bmap), c, *)
+   genmul!(c̃, transpose(basis.A2Bmap), c, *)
+
 
 function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector)
    # c̃ = acquire_B!(basis, size(basis.A2Bmap, 2))
@@ -65,18 +66,28 @@ function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector)
    return _get_eff_coeffs!(c̃, basis, c) 
 end
 
-_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) = 
-   acquire!(basis.B_pool, len_AA, SVector{length(c[1]),eltype(basis.A2Bmap)})
+
+# TODO: we may need a second pool to allocate ctilde vectors...
+
+# _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) = 
+#    acquire!(basis.B_pool, len_AA, SVector{length(c[1]),eltype(basis.A2Bmap)})
+
+# _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
+#    acquire!(basis.B_pool, len_AA)
 
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
-   acquire!(basis.B_pool, len_AA)
+      zeros(promote_type(eltype(basis.A2Bmap), eltype(c)), len_AA)
 
+_acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) = 
+      zeros(SVector{length(c[1]), 
+                    promote_type(eltype(basis.A2Bmap), eltype(c[1]))
+                   } , len_AA )
 
-_alloc_ctilde(basis::SymmetricBasis,c::AbstractVector{<: SVector}) = 
-   zeros(SVector{length(c[1]),eltype(basis.A2Bmap)}, size(basis.A2Bmap, 2))
+_alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: SVector}) = 
+      zeros(SVector{length(c[1]),eltype(basis.A2Bmap)}, size(basis.A2Bmap, 2))
    
 _alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
-   zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
+      zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
 
 # _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
