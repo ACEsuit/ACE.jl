@@ -33,6 +33,7 @@ function coco_init end
 function coco_zeros end
 function coco_filter end
 function coco_dot end
+function coco_type end 
 
 # TODO 
 # * decide on rand(basis) interface

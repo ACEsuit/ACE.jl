@@ -130,7 +130,7 @@ _x(X::XState) = getfield(X, :x)
 getproperty(X::XState, sym::Symbol) = getproperty(_x(X), sym)
 
 _myrl(x::Number) = real(x)
-_myrl(x::SVector) = real.(x)
+_myrl(x::StaticArrays.StaticArray) = real.(x)
 Base.real(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} = 
       TDX( NamedTuple{SYMS}( ntuple(i -> _myrl(getproperty(X, SYMS[i])), length(SYMS)) ) )
 

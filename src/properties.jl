@@ -2,39 +2,43 @@
 import Base: -, +, *, filter, real, complex
 import LinearAlgebra: norm, promote_leaf_eltypes
 
+_basetype(φ::AbstractProperty) = Base.typename(typeof(φ)).wrapper
 
-@inline +(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val + φ2.val )
-@inline -(φ1::T, φ2::T) where {T <: AbstractProperty} = T( φ1.val - φ2.val )
-@inline -(φ::T) where {T <: AbstractProperty} = T( -φ.val)
-@inline *(a::Union{Number, AbstractMatrix}, φ::T) where {T <: AbstractProperty} =
-      T(a * φ.val)
-@inline *(φ::T, a::Union{Number, AbstractMatrix}) where {T <: AbstractProperty} =
-      T(φ.val * a)
+# TODO: rewrite all this with meta-programming 
+
+@inline +(φ1::AbstractProperty, φ2::AbstractProperty) = (_basetype(φ1))( φ1.val + φ2.val )
+@inline -(φ1::AbstractProperty, φ2::AbstractProperty) = (_basetype(φ1))( φ1.val - φ2.val )
+@inline -(φ1::AbstractProperty) = (_basetype(φ1))( -φ1.val )
+@inline *(φ1::AbstractProperty, φ2::AbstractProperty) = (_basetype(φ1))( φ1.val * φ2.val )
+
+@inline *(a::Union{Number, AbstractMatrix}, φ::AbstractProperty) = (_basetype(φ))(a * φ.val)
+@inline *(φ::AbstractProperty, a::Union{Number, AbstractMatrix})  = (_basetype(φ))(φ.val * a)
+
+Base.isapprox(φ1::AbstractProperty, φ2::AbstractProperty) = isapprox(φ1.val, φ2.val)
 
 @inline norm(φ::AbstractProperty) = norm(φ.val)
 @inline Base.length(φ::AbstractProperty) = length(φ.val)
 @inline Base.size(φ::AbstractProperty) = size(φ.val)
-@inline Base.zero(φ::T) where {T <: AbstractProperty} = T(zero(φ.val))
+@inline Base.zero(φ::AbstractProperty) = (_basetype(φ))(zero(φ.val))
 @inline Base.zero(::Type{T}) where {T <: AbstractProperty} = zero(T())
 
-promote_leaf_eltypes(φ::T) where {T <: AbstractProperty} =
-      promote_leaf_eltypes(φ.val)
+promote_leaf_eltypes(φ::T) where {T <: AbstractProperty} = promote_leaf_eltypes(φ.val)
 
 Base.convert(T::Type{TP}, φ::TP) where {TP <: AbstractProperty} = φ
 Base.convert(T::Type, φ::AbstractProperty) = convert(T, φ.val)
 Base.convert(T::Type{Any}, φ::AbstractProperty) = φ
 
+# TODO: this was a hack; not clear this is a good idea ... 
+#       remove during next cleanup and see what happens? 
 Base.iterate(φ::AbstractProperty) = φ, nothing
 Base.iterate(φ::AbstractProperty, ::Nothing) = nothing
 
-# some type piracy ...
-# TODO: hack like this make #27 important!!!
-# *(a::SArray{Tuple{L1,L2,L3}}, b::SVector{L3}) where {L1, L2, L3} =
-#       reshape( reshape(a, L1*L2, L3) * b, L1, L2)
 
-*(φ::AbstractProperty, b::AbstractState) = coco_o_daa(φ, b)
-      # promote_type(φ.val, b)(φ.val * _val(b))
 
+"""
+`coco_o_daa` : implements a tensor product between a coupling coefficient 
+(usually an `AbstractProperty`) and a gradient (usually a `DState`). 
+"""
 function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState{SYMS}} where {SYMS}
    vals = ntuple( i -> coco_o_daa(φ.val, _x(b)[SYMS[i]]), length(SYMS) )
    return TX( NamedTuple{SYMS}(vals) )
@@ -48,8 +52,15 @@ coco_o_daa(cc::SMatrix{N1,N2}, b::SVector{N3}) where {N1,N2,N3} =
 coco_o_daa(cc::SArray{Tuple{N1,N2,N3}}, b::SVector{N4}) where {N1,N2,N3,N4} =
 		reshape(cc[:] * transpose(b), Size(N1, N2, N3, N4))
 
-Base.isapprox(φ1::T, φ2::T) where {T <: AbstractProperty} =
-      isapprox(φ1.val, φ2.val)
+# TODO: is this needed or can it be removed? 
+#       maybe it should also be allowed for a DState?
+#       it is also more of an ⊗ ... revisit during next cleanup 
+*(φ::AbstractProperty, b::AbstractState) = coco_o_daa(φ, b)
+
+
+# default behaviour - overwritten e.g. for EuclideanVector where 
+# cocos are always complex independently of whether phi is real.
+coco_type(T::Type{<: AbstractProperty}) = T
 
 
 """
@@ -77,6 +88,9 @@ complex(::Type{Invariant{T}}) where {T} = Invariant{complex(T)}
 complex(φ::AbstractVector{<: Invariant}) = complex.(φ)
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
+
+# TODO: could generalize this if we have a valtype(::Type{<: AbstractProperty})
+Base.convert(::Type{Invariant{T}}, x::Number) where {T} = Invariant(convert(T, x))
 
 *(φ1::Invariant, φ2::Invariant) = Invariant(φ1.val * φ2.val)
 
@@ -136,23 +150,25 @@ $O(3)$ as
 ```
 where $\cdot$ denotes the standard matrix-vector product.
 """
-struct EuclideanVector{T} <: AbstractProperty where T<:Real
-   val::SVector{3, Complex{T}}
+struct EuclideanVector{T} <: AbstractProperty
+   val::SVector{3, T}
 end
 
 
-real(φ::EuclideanVector) = EuclideanVector(φ.val)
-complex(φ::EuclideanVector) = EuclideanVector(φ.val)
+real(φ::EuclideanVector) = EuclideanVector(real.(φ.val))
+complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
 complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 
-isrealB(::EuclideanVector) = true
++(x::SVector{3}, y::EuclideanVector) = EuclideanVector(x + y.val)
+Base.convert(::Type{SVector{3, T}}, φ::EuclideanVector) where {T} = convert(SVector{3, T}, φ.val)
+
+isrealB(::EuclideanVector{T}) where {T} = (T == real(T))
 isrealAA(::EuclideanVector) = false
 
+# CO: removed this, is it needed? 
+# Base.getindex(φ::EuclideanVector, i::Integer) = φ.val[i] 
 
-#fltype(::EuclideanVector{T}) where {T} = T
-
-EuclideanVector{T}() where {T <: Real} = EuclideanVector{T}(zero(SVector{3, Complex{T}}))
-
+EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}))
 EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
 
@@ -172,12 +188,10 @@ rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], Clebsch
 
 write_dict(φ::EuclideanVector{T}) where {T} =
       Dict("__id__" => "ACE_EuclideanVector",
-              "val" => write_dict(Vector(φ.val)),
-                "T" => write_dict(T) )
+             "val" => write_dict(Vector(φ.val)) )
 
 function read_dict(::Val{:ACE_EuclideanVector}, D::Dict)
-   T = read_dict(D["T"])
-   return EuclideanVector{T}(SVector{3, Complex{T}}(read_dict(D["val"])))
+   return EuclideanVector(SVector{3}(read_dict(D["val"])))
 end
 
 # differentiation - cf #27
@@ -185,10 +199,13 @@ end
 
 coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
-         ? [EuclideanVector{CT}(rmatrices[m,μ][:,k]) for k=1:3]
+         ? [EuclideanVector(rmatrices[m,μ][:,k]) for k=1:3]
          : coco_zeros(phi, l, m, μ, T, A)  )
 
-coco_zeros(φ::EuclideanVector, ll, mm, kk, T, A) = zeros(typeof(φ), 3)
+coco_type(φ::EuclideanVector) = typeof(complex(φ))
+coco_type(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
+
+coco_zeros(φ::EuclideanVector, ll, mm, kk, T, A) = zeros(typeof(complex(φ)), 3)
 
 coco_filter(::EuclideanVector, ll, mm) =
             isodd(sum(ll)) && (abs(sum(mm)) <= 1)
@@ -213,12 +230,29 @@ rmatrices = Dict(
   )
 
 
+# --------------------- 
+# some codes to help convert from svector, smatrix to spherical ... 
+
+@generated function __getL(::Val{N}) where {N} 
+   @assert isodd(N)
+   quote
+      $( div(N-1, 2) )
+   end
+end
+
+__getL(::SVector{N}) where {N} = __getL(Val{N}())
+
+__getL1L2(::SMatrix{N1, N2}) where {N1, N2} = __getL(Val{N1}()), __getL(Val{N2}())
+
 # --------------------- SphericalVector
 
+# TODO: remove the Val{L} - not needed (next cleanup)
 struct SphericalVector{L, LEN, T} <: AbstractProperty
    val::SVector{LEN, T}
    _valL::Val{L}
 end
+
+SphericalVector(val::SVector) = SphericalVector(val, Val(__getL(val)))
 
 # # differentiation - cf #27
 # *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
@@ -321,6 +355,8 @@ struct SphericalMatrix{L1, L2, LEN1, LEN2, T, LL} <: AbstractProperty
    _valL1::Val{L1}
    _valL2::Val{L2}
 end
+
+SphericalMatrix(val::SMatrix) = SphericalMatrix(val, Val.(__getL1L2(val))...)
 
 # differentiation - cf #27
 # actually this here appears to be the generic form how to do the
@@ -443,6 +479,20 @@ coco_dot(u1::SphericalMatrix, u2::SphericalMatrix) =
 		dot(u1.val, u2.val)
 
 
+#  Some promotion rules 
+
+Base.promote_rule(::Type{T1}, ::Type{Invariant{T2}}
+                  ) where {T1 <: Number, T2 <: Number} = 
+      Invariant{promote_type(T1, T2)}
+
+Base.promote_rule(::Type{T1}, ::Type{EuclideanVector{T2}}
+                  ) where {T1 <: Number, T2 <: Number} = 
+      EuclideanVector{promote_type(T1, T2)}
+
+Base.promote_rule(t1::Type{T1}, t2::Type{SVector{N, T2}}
+                  ) where {N, T1 <: Number, T2 <: AbstractProperty} = 
+      SVector{N, promote_rule(t1, T2)}
+
 # --------------------------- AD related codes 
 
 # an x -> x.val implementation with custom adjoints to sort out the 
@@ -482,4 +532,6 @@ function rrule(::typeof(_rrule_val), dp, x)   # D/D... (0 + dp * dq[2])
       end
       return _rrule_val(dp, x), second_adj
 end 
+
+
 

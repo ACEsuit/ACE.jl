@@ -4,11 +4,13 @@
 ##
 
 
-using ACE, ACEbase
+using ACE, ACEbase, StaticArrays
 using Printf, Test, LinearAlgebra, ACE.Testing, Random
 using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, 
            grad_config, grad_params, O3
 using ACEbase.Testing: fdtest
+
+randconfig(B1p, nX) = ACEConfig( rand(PositionState{Float64}, B1p.bases[1], nX) )
 
 ##
 
@@ -22,9 +24,7 @@ Bsel = SimpleSparseBasis(ord, maxdeg)
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
-nX = 10
-Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
-cfg = ACEConfig(Xs)
+cfg = randconfig(B1p, 10)
 
 φ = ACE.Invariant()
 basis = SymmetricBasis(φ, B1p, O3(), Bsel)
@@ -33,7 +33,6 @@ BB = evaluate(basis, cfg)
 c = rand(length(BB)) .- 0.5
 naive = ACE.LinearACEModel(basis, c, evaluator = :naive)
 standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
-
 
 ## FIO 
 
@@ -67,7 +66,7 @@ for (fun, funref, str) in [
    @info("Testing `$str` for different model evaluators")
    for ntest = 1:30
       local c, cfg
-      cfg = rand(PositionState{Float64}, B1p.bases[1], nX) |> ACEConfig
+      cfg = randconfig(B1p, 10)
       c = rand(length(basis)) .- 0.5 
       ACE.set_params!(naive, c)
       ACE.set_params!(standard, c)
@@ -80,3 +79,56 @@ for (fun, funref, str) in [
 end
 
 ##
+
+@info("Test a Linear Model with EuclideanVector output")
+maxdeg = 6; ord = 3
+Bsel = SimpleSparseBasis(ord, maxdeg) 
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
+φ = ACE.EuclideanVector{Float64}()
+basis = SymmetricBasis(φ, B1p, O3(), Bsel; isreal=true)
+
+##
+@info(" test evaluation of basis vs model ")
+
+for ntest = 1:30 
+   local cfg, c  
+   cfg = randconfig(B1p, 10)
+   BB = evaluate(basis, cfg)
+   c = randn(length(BB)) ./ (1:length(BB)).^2
+   model = ACE.LinearACEModel(basis, c, evaluator = :standard)
+   val1 = sum(c .* BB) 
+   val2 = evaluate(model, cfg)
+   print_tf(@test( val1 ≈ val2 ))
+end
+
+##
+@info("test gradients of LinearACEModel of equivariant vector")
+
+BB = evaluate(basis, cfg)
+c = randn(length(BB)) ./ (1:length(BB)).^2
+model = ACE.LinearACEModel(basis, c, evaluator = :standard)
+
+cfg = randconfig(B1p, 10)
+evaluate(model, cfg)
+
+dBB = evaluate_d(basis, cfg)
+val1 = sum(c[i] * dBB[i,:] for i = 1:length(basis))
+val2 = grad_config(model, cfg)
+println( @test( val1 ≈ val2 ))
+
+##
+
+@info("And a finite-difference test for good measure")
+
+for ntest = 1:30 
+   w = randn(3)
+   Us = randn(SVector{3, Float64}, length(cfg))
+   cfg.Xs + 0.01 * Us
+   F = t -> real(w' * evaluate(model, ACEConfig(cfg.Xs + t * Us)).val)
+   F(0.01)
+   dF = t -> sum( real(w' * gi.rr * Ui) for (Ui, gi) in zip(Us, 
+                           grad_config(model, ACEConfig(cfg.Xs + t * Us))) )
+   dF(0.01)
+   print_tf(@test all(ACEbase.Testing.fdtest(F, dF, 0.0, verbose=false)))
+end
+println() 
