@@ -150,7 +150,7 @@ $O(3)$ as
 ```
 where $\cdot$ denotes the standard matrix-vector product.
 """
-struct EuclideanVector{T} <: AbstractProperty where T <: Real
+struct EuclideanVector{T} <: AbstractProperty
    val::SVector{3, T}
 end
 
