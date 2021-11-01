@@ -128,7 +128,8 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis,
    # TODO: for sure this needs to become a function of the symmetry group?
    rotc = Rot3DCoeffs(φ, real(valtype(pibasis)))
    # allocate triplet format
-   Irow, Jcol, vals = Int[], Int[], TP[]
+   TCC = coco_type(TP)
+   Irow, Jcol, vals = Int[], Int[], TCC[]
    # count the number of PI basis functions = number of rows
    idxB = 0
 

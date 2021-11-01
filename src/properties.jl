@@ -58,6 +58,11 @@ coco_o_daa(cc::SArray{Tuple{N1,N2,N3}}, b::SVector{N4}) where {N1,N2,N3,N4} =
 *(φ::AbstractProperty, b::AbstractState) = coco_o_daa(φ, b)
 
 
+# default behaviour - overwritten e.g. for EuclideanVector where 
+# cocos are always complex independently of whether phi is real.
+coco_type(T::Type{<: AbstractProperty}) = T
+
+
 """
 `struct Invariant{D}` : specifies that the output of an ACE is
 an invariant scalar.
@@ -145,24 +150,22 @@ $O(3)$ as
 ```
 where $\cdot$ denotes the standard matrix-vector product.
 """
-struct EuclideanVector{T} <: AbstractProperty where T<:Real
-   val::SVector{3, Complex{T}}
+struct EuclideanVector{T} <: AbstractProperty where T <: Real
+   val::SVector{3, T}
 end
 
 
-real(φ::EuclideanVector) = EuclideanVector(real.(φ.val) .+ im * 0)
-complex(φ::EuclideanVector) = EuclideanVector(φ.val)
+real(φ::EuclideanVector) = EuclideanVector(real.(φ.val))
+complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
 complex(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 
-isrealB(::EuclideanVector) = true
+isrealB(::EuclideanVector{T}) where {T} = (T == real(T))
 isrealAA(::EuclideanVector) = false
 
-Base.getindex(φ::EuclideanVector, i::Integer) = φ.val[i] 
+# CO: removed this, is it needed? 
+# Base.getindex(φ::EuclideanVector, i::Integer) = φ.val[i] 
 
-#fltype(::EuclideanVector{T}) where {T} = T
-
-EuclideanVector{T}() where {T <: Real} = EuclideanVector{T}(zero(SVector{3, Complex{T}}))
-
+EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}))
 EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
 
@@ -182,12 +185,10 @@ rot3Dcoeffs(::EuclideanVector,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], Clebsch
 
 write_dict(φ::EuclideanVector{T}) where {T} =
       Dict("__id__" => "ACE_EuclideanVector",
-              "val" => write_dict(Vector(φ.val)),
-                "T" => write_dict(T) )
+             "val" => write_dict(Vector(φ.val)) )
 
 function read_dict(::Val{:ACE_EuclideanVector}, D::Dict)
-   T = read_dict(D["T"])
-   return EuclideanVector{T}(SVector{3, Complex{T}}(read_dict(D["val"])))
+   return EuclideanVector(SVector{3}(read_dict(D["val"])))
 end
 
 # differentiation - cf #27
@@ -195,10 +196,13 @@ end
 
 coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
-         ? [EuclideanVector{CT}(rmatrices[m,μ][:,k]) for k=1:3]
+         ? [EuclideanVector(rmatrices[m,μ][:,k]) for k=1:3]
          : coco_zeros(phi, l, m, μ, T, A)  )
 
-coco_zeros(φ::EuclideanVector, ll, mm, kk, T, A) = zeros(typeof(φ), 3)
+coco_type(φ::EuclideanVector) = typeof(complex(φ))
+coco_type(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
+
+coco_zeros(φ::EuclideanVector, ll, mm, kk, T, A) = zeros(typeof(complex(φ)), 3)
 
 coco_filter(::EuclideanVector, ll, mm) =
             isodd(sum(ll)) && (abs(sum(mm)) <= 1)
@@ -480,7 +484,7 @@ Base.promote_rule(::Type{T1}, ::Type{Invariant{T2}}
 
 Base.promote_rule(::Type{T1}, ::Type{EuclideanVector{T2}}
                   ) where {T1 <: Number, T2 <: Number} = 
-      EuclideanVector{real(promote_type(T1, Complex{T2}))}
+      EuclideanVector{promote_type(T1, T2)}
 
 Base.promote_rule(t1::Type{T1}, t2::Type{SVector{N, T2}}
                   ) where {N, T1 <: Number, T2 <: AbstractProperty} = 
