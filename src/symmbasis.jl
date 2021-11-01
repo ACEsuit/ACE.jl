@@ -162,7 +162,7 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis,
             idxAA = invAAspec[bcol_ordered]
             push!(Irow, idxB)
             push!(Jcol, idxAA)
-            push!(vals, _real(U[irow, icol]))
+            push!(vals, U[irow, icol])
          end
       end
    end

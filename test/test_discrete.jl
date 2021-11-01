@@ -108,7 +108,7 @@ end
 println()
 
 
-#%%
+##
 
 @info("Test basis construction with `CategoryBasisSelector` ")
 
@@ -127,6 +127,7 @@ Bc = Categorical1pBasis(categories; varsym = :be, idxsym = :be)
 RnYlm = ACE.Utils.RnYlm_1pbasis(; )
 B1p = Bc * RnYlm
 
+##
 
 @info("Test invariance")
 
@@ -145,7 +146,10 @@ for ntest = 1:30
     print_tf(@test isapprox(B1_inv, B2_inv, rtol=1e-10))
 end
 println()
-@info("Test eucldian covariance")
+
+##
+
+@info("Test Euclidean covariance")
 
 basis_cov = ACE.SymmetricBasis(ACE.EuclideanVector(), B1p, Bsel)
 @show length(basis_cov)
@@ -158,3 +162,4 @@ for ntest = 1:30
     print_tf(@test isapprox( map(x->Q*x, B1_cov), B2_cov, rtol=1e-10))
 end
 println() 
+
