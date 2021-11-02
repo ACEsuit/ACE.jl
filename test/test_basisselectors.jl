@@ -2,6 +2,26 @@ using ACE, Test, ACEbase, ACEbase.Testing, StaticArrays
 using ACE.Random: rand_rot, rand_refl
 using Random: shuffle
 
+
+#=
+@info("Rudimentary tests for sparse basis selectors and intersections of such")
+r0cut = 2.0
+rcut = 1.0
+zcut = 2.0
+env = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= .5)
+
+maxorder = 3
+dmaxdeg = 4
+Bsel_p2 = ACE.PNormSparseBasis(maxorder; p = 2, default_maxdeg = dmaxdeg) 
+Bsel_p1 = ACE.PNormSparseBasis(maxorder; p = 1, default_maxdeg = dmaxdeg) 
+
+Bsel_intesect = ACE.intersect(Bsel_p1,Bsel_p2)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=dmaxdeg)
+basis_intersect_inv = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel_intesect)
+=#
+
+@info("Test bond basis selectors")
+
 r0cut = 2.0
 rcut = 1.0
 zcut = 2.0

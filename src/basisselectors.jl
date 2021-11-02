@@ -88,7 +88,7 @@ level(bb, Bsel::SparseBasis, basis::OneParticleBasis) =  (length(bb) == 0 ? 0.0
 
 # admissible specification are given as a sub-levelset of the levelset function 
 isadmissible(b::NamedTuple, Bsel::SparseBasis, basis::OneParticleBasis) =
-      (level(b, Bsel, basis) <= _maxdeg(Bsel, 0))
+      (level(b, Bsel, basis) <= _maxdeg(Bsel, 1))
 
 function isadmissible(bb, Bsel::SparseBasis, basis::OneParticleBasis)
    ord = length(bb)
@@ -102,7 +102,7 @@ _maxdeg(Bsel::SparseBasis, ord::Integer) =
 
 
 """
-`PNormSparseBasis`: simplest implementation of a `SparseBasis`.
+`PNormSparseBasis`: simplest/minimal implementation of a `SparseBasis`.
 """
 struct PNormSparseBasis <: SparseBasis
    maxorder::Int
@@ -191,7 +191,41 @@ function cat_weighted_degree(bb, Bsel::SparseBasis, basis::OneParticleBasis)
    return (length(bb) == 0 ? 0.0
                         : norm( cat_weighted_degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
 end
-      
+
+# In order for the following code to work we need to change `degree` to `level` in `gensparse`
+#=    
+"""
+`SparseBasisIntersection`: Basis selector whose set of admissible specifications is the intersection 
+of the sets of admissible specifications of the sparse basis selectors contained in the list `Bsels`.
+"""
+struct SparseBasisIntersection <: SparseBasis
+   Bsels::Vector{SparseBasis}
+   maxorder::Int
+end
+
+Base.intersect(Bsel1::SparseBasis, Bsel2::SparseBasis) = SparseBasisIntersection([Bsel1,Bsel2], minimum([Bsel1.maxorder,Bsel2.maxorder]))
+function Base.intersect(Bsel1::SparseBasisIntersection,Bsel2::SparseBasis)
+   return SparseBasisIntersection(push!(Bsel1.Bsels,Bsel2), minimum([Bsel1.maxorder,Bsel2.maxorder]))
+end
+Base.intersect(Bsel1::SparseBasis, Bsel2::SparseBasisIntersection) = intersect(Bsel2,Bsel1)
 
 
+function level(b::NamedTuple, Bsel::SparseBasisIntersection, basis::OneParticleBasis)
+   return maximum([ level(b, bsel, basis)/_maxdeg(bsel, 1) for bsel in Bsel.Bsels])
+end
 
+function level(bb, Bsel::SparseBasisIntersection, basis::OneParticleBasis) 
+   return maximum([ level(bb, bsel, basis)/_maxdeg(bsel, length(bb)) for bsel in Bsel.Bsels])
+end
+
+isadmissible(b::NamedTuple, Bsel::SparseBasisIntersection, basis::OneParticleBasis) = (level(b, Bsel, basis) <= 1.0)
+
+function isadmissible(bb, Bsel::SparseBasisIntersection, basis::OneParticleBasis)
+   ord = length(bb)
+   return ( level(bb, Bsel, basis) <= 1.0) && ord <= Bsel.maxorder
+end
+
+function filter(bb, Bsel::SparseBasisIntersection, basis::OneParticleBasis) 
+   return all([filter(bb, bsel, basis) for bsel in Bsel.Bsels])
+end
+=#
