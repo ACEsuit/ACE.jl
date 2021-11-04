@@ -99,8 +99,13 @@ SymmetricBasis(φ::AbstractProperty,
                              isreal = isrealAA(φ), kwargs..., property = φ); 
                      isreal=isreal)
 
-function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis; 
-                        isreal=false) where {TP}
+SymmetricBasis(φ::AbstractProperty, symgrp::SymmetryGroup, pibasis::PIBasis; 
+               isreal=false) = 
+      SymmetricBasis(φ, symgrp, pibasis, isreal ? Base.real : Base.identity)
+
+
+function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis, 
+                        _real) where {TP <: AbstractProperty}
 
    # AA index -> AA spec
    AAspec = get_spec(pibasis)
@@ -120,9 +125,11 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis;
    # TODO: should this be stored with the basis?
    #       or maybe written to a file on disk? and then flushed every time
    #       we finish with a basis construction???
+   # TODO: for sure this needs to become a function of the symmetry group?
    rotc = Rot3DCoeffs(φ, real(valtype(pibasis)))
    # allocate triplet format
-   Irow, Jcol, vals = Int[], Int[], TP[]
+   TCC = coco_type(TP)
+   Irow, Jcol, vals = Int[], Int[], TCC[]
    # count the number of PI basis functions = number of rows
    idxB = 0
 
@@ -163,7 +170,7 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis;
    # TODO: filter and throw out everything that hasn't been used!!
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
-   return SymmetricBasis(pibasis, A2Bmap, symgrp, isreal ? Base.real : Base.identity)
+   return SymmetricBasis(pibasis, A2Bmap, symgrp, _real)
 end
 
 function SymmetricBasis(pibasis, A2Bmap, symgrp, _real) 
@@ -318,11 +325,12 @@ end
 
 # ---------------- gradients
 
-function evaluate_d!(dB, basis::SymmetricBasis, cfg::AbstractConfiguration)
+function evaluate_d!(dB, basis::SymmetricBasis, cfg::AbstractConfiguration, 
+                     args...)   # args... could be nothing or sym
    # compute AA
    AA = acquire_B!(basis.pibasis, cfg)
    dAA = acquire_dB!(basis.pibasis, cfg)
-   evaluate_ed!(AA, dAA, basis.pibasis, cfg)
+   evaluate_ed!(AA, dAA, basis.pibasis, cfg, args...)
    evaluate_d!(dB, basis, AA, dAA)
    return dB
 end

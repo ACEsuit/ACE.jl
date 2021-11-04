@@ -74,6 +74,8 @@ gradtype(B::Rn1pBasis, X::AbstractState) = dstate_type(valtype(B, X), X)
 
 symbols(Rn::Rn1pBasis) = [ _nsym(Rn) ]
 
+argsyms(Rn::Rn1pBasis) = ( _varsym(Rn), )
+
 indexrange(Rn::Rn1pBasis) = NamedTuple{(_nsym(Rn),)}((1:length(Rn),))
 
 isadmissible(b, basis::Rn1pBasis) = (1 <= _n(b, basis) <= length(basis))

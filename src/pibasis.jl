@@ -177,13 +177,16 @@ setreal(basis::PIBasis, isreal::Bool) =
 
 maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
 
+# TODO: this is a hack; cf. #68
 function scaling(pibasis::PIBasis, p)
+   _absvaluep(x::Number) = abs(x)^p
+   _absvaluep(x::Symbol) = 0
    ww = zeros(Float64, length(pibasis))
    bspec = get_spec(pibasis)
    for i = 1:length(pibasis)
       for b in bspec[i]
          # TODO: revisit how this should be implemented for a general basis
-         ww[i] += sum( abs.(values(b)).^p )
+         ww[i] += sum(_absvaluep, b)  #  abs.(values(b)).^p
       end
    end
    return ww
@@ -258,10 +261,10 @@ end
 # gradients
 
 function evaluate_ed!(AA, dAA, basis::PIBasis,
-                      cfg::AbstractConfiguration)
+                      cfg::AbstractConfiguration, args...)  
    A = acquire_B!(basis.basis1p, cfg)
    dA = acquire_dB!(basis.basis1p, cfg)   # TODO: THIS WILL ALLOCATE!!!!!
-   evaluate_ed!(A, dA, basis.basis1p, cfg)
+   evaluate_ed!(A, dA, basis.basis1p, cfg, args...)
    evaluate_ed!(AA, dAA, basis, A, dA)
    release_dB!(basis.basis1p, dA)
    release_B!(basis.basis1p, A)
