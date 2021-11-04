@@ -12,8 +12,8 @@ env = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= .5)
 
 maxorder = 3
 dmaxdeg = 4
-Bsel_p2 = ACE.PNormSparseBasis(maxorder; p = 2, default_maxdeg = dmaxdeg) 
-Bsel_p1 = ACE.PNormSparseBasis(maxorder; p = 1, default_maxdeg = dmaxdeg) 
+Bsel_p2 = ACE.SparseBasis(maxorder; p = 2, default_maxdeg = dmaxdeg) 
+Bsel_p1 = ACE.SparseBasis(maxorder; p = 1, default_maxdeg = dmaxdeg) 
 
 Bsel_intesect = ACE.intersect(Bsel_p1,Bsel_p2)
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=dmaxdeg)
@@ -28,7 +28,7 @@ zcut = 2.0
 env = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= .5)
 
 maxorder = 3
-Bsel = ACE.PNormSparseBasis(maxorder; p = 2, default_maxdeg = 4) 
+Bsel = ACE.SparseBasis(maxorder; p = 2, default_maxdeg = 4) 
 
 
 @info("Test invariance")
