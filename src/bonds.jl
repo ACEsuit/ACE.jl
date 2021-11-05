@@ -39,7 +39,8 @@ CylindricalBondEnvelope(r0cut, rcut, zcut; p0 = 2, pr = 2, pz = 2, floppy = true
       CylindricalBondEnvelope(r0cut, rcut, zcut, p0, pr, pz, floppy, λ)
 
 cutoff_env(env::CylindricalBondEnvelope) = sqrt(env.rcut^2 + (env.r0cut + env.zcut)^2)
-      
+cutoff_radialbasis(env::CylindricalBondEnvelope) = sqrt(env.rcut^2 + (env.zcut + env.floppy * env.λ * env.r0cut)^2)
+
 struct EllipsoidBondEnvelope{T} <: BondEnvelope{T}
    r0cut::T
    rcut::T
@@ -54,6 +55,7 @@ EllipsoidBondEnvelope(r0cut, zcut, rcut; p0=2, pr=2, floppy=false, λ=.5) = Elli
 EllipsoidBondEnvelope(r0cut, cut; p0=2, pr=2, floppy=false, λ=.5) = EllipsoidBondEnvelope(r0cut, cut, cut, p0, pr, floppy, λ)
 
 cutoff_env(env::EllipsoidBondEnvelope) = env.zcut + env.rcut 
+cutoff_radialbasis(env::EllipsoidBondEnvelope) = env.zcut + env.floppy * env.λ * env.r0cut
 
 function _evaluate_bond(env::BondEnvelope, X::AbstractState)
    r = norm(X.rr0)

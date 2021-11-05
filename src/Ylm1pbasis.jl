@@ -147,7 +147,7 @@ end
 
 degree(b, Ylm::Ylm1pBasis) = _l(b, Ylm)
 
-degree(b, Ylm::Ylm1pBasis, weight::Dict) = weight[_lsym(Ylm)] * degree(b, Ylm)
+degree(b, Ylm::Ylm1pBasis, weight::Dict) = haskey(weight,_lsym(Ylm)) ? weight[_lsym(Ylm)] * degree(b, Ylm) : degree(b, Ylm)
 
 get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 

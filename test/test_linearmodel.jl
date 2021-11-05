@@ -100,6 +100,7 @@ for ntest = 1:30
    val2 = evaluate(model, cfg)
    print_tf(@test( val1 ≈ val2 ))
 end
+println() 
 
 ##
 @info("test gradients of LinearACEModel of equivariant vector")
