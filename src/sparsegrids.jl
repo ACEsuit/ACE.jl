@@ -6,22 +6,23 @@
 `function init1pspec!` : initialize the specification of the 1-particle basis,
 generates all possible 1-p basis functions, sorted by degree.
 """
-function init1pspec!(B1p::OneParticleBasis, Deg = MaxBasis())
+function init1pspec!(B1p::OneParticleBasis, Bsel = MaxBasis())
    syms = tuple(symbols(B1p)...)
    rgs = indexrange(B1p)
    lens = [ length(rgs[sym]) for sym in syms ]
    spec = []
+   maxlevel1 = maxlevel1(Bsel)
    for I in CartesianIndices(ntuple(i -> 1:lens[i], length(syms)))
       J = ntuple(i -> rgs[syms[i]][I.I[i]], length(syms))
       b = NamedTuple{syms}(J)
       # check whether valid
       if isadmissible(b, B1p)
-         if isadmissible(b, Deg, B1p)
+         if isadmissible(b, Bsel, B1p)
             push!(spec, b)
          end
       end
    end
-   sort!(spec, by = b -> degree(b, Deg, B1p))
+   sort!(spec, by = b -> degree(b, Bsel, B1p))
    return set_spec!(B1p, spec)
 end
 

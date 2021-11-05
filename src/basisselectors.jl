@@ -1,30 +1,85 @@
 
+
+# Interface 
+
+const Onepb = NamedTuple 
+const Prodb = AbstractVector{<: NamedTuple}
+
 """
 `AbstractBasisSelector` : object specifying how a finite basis is selected from
-the infinite space of symmetric polynomials.
+the infinite space of symmetric polynomials. This type is pretty superfluous 
+for now since all basis selector and basis selection algorithms we admit so 
+far require Downsets. 
 """
 abstract type AbstractBasisSelector end
 
 """
-`DownsetBasisSelector` : must implemented a positive valued degree 
-function `degree` that is monotonically increasing with respect to 
-the lexiographic ordering of the basis functions.  
+`DownsetBasisSelector` : must implemented a positive valued `level` function 
+that is monotonically increasing with respect to the lexiographic ordering of 
+the basis functions.
 """
 abstract type DownsetBasisSelector <: AbstractBasisSelector end
 
+function maxorder
 
-filter(b, Bsel::DownsetBasisSelector, basis::OneParticleBasis) = true
+"""
+* `level(b::Onepb, Bsel::DownsetBasisSelector, basis::OneParticleBasis)`
+* `level(bb::Prodb, Bsel::DownsetBasisSelector, basis::OneParticleBasis)`
+
+The first version specifies the level function for 
+"""
+function level end 
+
+function maxlevel end 
+
+
+"""
+`level1(b::Onepb, Bsel::DownsetBasisSelector, basis::OneParticleBasis)`
+
+A specialized version of `level` to construct the 1-particle basis (cf. 
+`init1pspec!`). Fallback is to just call the `level` function, but this gives 
+some additional flexibility to ensure that the conditions of the `level` 
+framework are all justified, see docs for more detail. 
+"""
+level1(b::Onepb, Bsel::DownsetBasisSelector, basis::OneParticleBasis) = 
+      level(b, Bsel, basis)
+
+
+maxlevel1(Bsel::DownsetBasisSelector, basis::OneParticleBasis) = 
+      maxlevel1(Bsel, basis)
+
+
+
+"""
+`filter(b_or_bb, Bsel::AbstractBasisSelector, basis::OneParticleBasis)`
+
+After a down-set basis has been constructed, it can still be filtered, which 
+allows us to construct basis sets that aren't downsets but not too far away from 
+downsets. The main application is to enfore the constraints on m and l channels 
+arising from the symmetries. 
+
+Fallback implementation always returns `true`. 
+"""
+filter(b_or_bb, Bsel::AbstractBasisSelector, basis::OneParticleBasis) = true
 
 
 """
 No constraints on the basis - this selects that largest possible basis
 subject to additional constraints baked into the one-particle basis.
-In practise this should be equivalent to a naive max-norm basis selection.
+In practise this should be equivalent to a naive max-norm basis selection, 
+and likely never used in practise. 
 """
 struct MaxBasis <: DownsetBasisSelector
 end
 
-isadmissible(b::NamedTuple, Bsel::MaxBasis, basis::OneParticleBasis) = true
+level(b::Onepb, Bsel::MaxBasis, basis::OneParticleBasis) = 
+      degree(b, basis) 
+
+level(bb::Prodb, Bsel::MaxBasis, basis::OneParticleBasis) = 
+      length(bb) == 0 ? 0 : sum(b -> level(b, Bsel, basis), bb)
+
+maxlevel(Bsel::MaxBasis, basis::OneParticleBasis) = Inf
+
 
 
 """
@@ -32,30 +87,24 @@ isadmissible(b::NamedTuple, Bsel::MaxBasis, basis::OneParticleBasis) = true
 
 The most basic form of a sparse basis selection, using the total degree.
 Only the maximum correlation order and maximum degree may be specified.
-This should only be used for testing.
+This should primarily be used for testing.
 """
 struct SimpleSparseBasis <: DownsetBasisSelector
    maxorder::Int
    maxdeg::Float64
 end
 
-
-# for a one-particle basis function
-degree(b::NamedTuple, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
+level(b::Onepb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
       degree(b, basis)
 
-# for an ν-correlation basis function
-# in this case `bb` should be a Vector of NamedTuples
-degree(bb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
+level(bb::Prodb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
       length(bb) == 0 ? 0 : sum( degree(b, basis) for b in bb )
 
-isadmissible(b::NamedTuple, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
-      (degree(b, Bsel, basis) <= Bsel.maxdeg)
+maxlevel(Bsel::SimpleSparseBasis, args...) = 
+      Bsel.maxdeg
 
-isadmissible(bb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
-      (degree(bb, Bsel, basis) <= Bsel.maxdeg) && length(bb) <= Bsel.maxorder
-
-maxorder(Bsel::SimpleSparseBasis) = Bsel.maxorder
+maxorder(Bsel::SimpleSparseBasis, args...) = 
+      Bsel.maxorder
 
 
 
