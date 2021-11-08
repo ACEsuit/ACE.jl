@@ -63,6 +63,9 @@ Fallback implementation always returns `true`.
 filter(b_or_bb, Bsel::AbstractBasisSelector, basis::OneParticleBasis) = true
 
 
+filter(b, Bsel::DownsetBasisSelector, basis::OneParticleBasis) = true
+
+
 """
 No constraints on the basis - this selects that largest possible basis
 subject to additional constraints baked into the one-particle basis.
@@ -105,6 +108,7 @@ maxlevel(Bsel::SimpleSparseBasis, args...) =
 
 maxorder(Bsel::SimpleSparseBasis, args...) = 
       Bsel.maxorder
+
 
 
 
