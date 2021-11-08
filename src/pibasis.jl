@@ -53,7 +53,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    # we assume that `Aspec` is sorted by degree, but best to double-check this
    # since the notion of degree used to construct `Aspec` might be different
    # from the one used to construct AAspec.
-   if !issorted(Aspec; by = b -> degree(b, Bsel, basis1p))
+   if !issorted(Aspec; by = b -> level(b, Bsel, basis1p))
       error("""PIBasisSpec : AAspec construction failed because Aspec is not
                sorted by degree. This could e.g. happen if an incompatible
                notion of degree was used to construct the 1-p basis spec.""")

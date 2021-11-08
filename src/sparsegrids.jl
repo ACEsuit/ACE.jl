@@ -7,12 +7,12 @@
 generates all possible 1-p basis functions, sorted by degree.
 """
 function init1pspec!(B1p::OneParticleBasis, 
-                     Bsel::DownsetBasisSelector = MaxBasis())
+                     Bsel::DownsetBasisSelector = MaxBasis(1))
    syms = tuple(symbols(B1p)...)
    rgs = indexrange(B1p)
    lens = [ length(rgs[sym]) for sym in syms ]
    spec = []
-   maxlev = maxlevel1(Bsel)
+   maxlev = maxlevel1(Bsel, B1p)
    for I in CartesianIndices(ntuple(i -> 1:lens[i], length(syms)))
       J = ntuple(i -> rgs[syms[i]][I.I[i]], length(syms))
       b = NamedTuple{syms}(J)
