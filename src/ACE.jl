@@ -76,10 +76,11 @@ include("discrete1pbasis.jl")
 
 include("product_1pbasis.jl")
 
-include("sparsegrids.jl")
-
 # basis selectors used to specify finite subsets of basis functions
 include("basisselectors.jl")
+# ... amongst other things used to initialize sparse basis sets 
+include("sparsegrids.jl")
+
 
 # the permutation-invariant, and symmerized bases
 include("pibasis.jl")

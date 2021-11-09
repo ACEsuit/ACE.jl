@@ -6,29 +6,32 @@
 `function init1pspec!` : initialize the specification of the 1-particle basis,
 generates all possible 1-p basis functions, sorted by degree.
 """
-function init1pspec!(B1p::OneParticleBasis, Deg = MaxBasis())
+function init1pspec!(B1p::OneParticleBasis, 
+                     Bsel::DownsetBasisSelector = MaxBasis(1))
    syms = tuple(symbols(B1p)...)
    rgs = indexrange(B1p)
    lens = [ length(rgs[sym]) for sym in syms ]
    spec = []
+   maxlev = maxlevel1(Bsel, B1p)
    for I in CartesianIndices(ntuple(i -> 1:lens[i], length(syms)))
       J = ntuple(i -> rgs[syms[i]][I.I[i]], length(syms))
       b = NamedTuple{syms}(J)
       # check whether valid
-      if isadmissible(b, B1p)
-         if isadmissible(b, Deg, B1p)
+      if isadmissible(b, B1p) 
+         if level1(b, Bsel, B1p) <= maxlev 
             push!(spec, b)
          end
       end
    end
-   sort!(spec, by = b -> degree(b, Deg, B1p))
+   sort!(spec, by = b -> level(b, Bsel, B1p))
    return set_spec!(B1p, spec)
 end
 
 
 gensparse(N::Integer, deg::Real; degfun = ν -> sum(ν), kwargs...) =
-   gensparse(; NU=N, admissible = ν -> (degfun(ν) <= deg), kwargs...)
+      gensparse(; NU=N, admissible = ν -> (degfun(ν) <= deg), kwargs...)
 
+      
 """
 `gensparse(...)` : utility function to generate high-dimensional sparse grids
 which are downsets.
