@@ -14,7 +14,7 @@ far require Downsets.
 abstract type AbstractBasisSelector end
 
 """
-`DownsetBasisSelector` : must implemented a positive valued `level` function 
+`DownsetBasisSelector` : must implemented a non-negative valued `level` function 
 that is monotonically increasing with respect to the lexiographic ordering of 
 the basis functions.
 """
