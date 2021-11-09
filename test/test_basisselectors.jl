@@ -2,7 +2,7 @@ using ACE, Test, ACEbase, ACEbase.Testing, StaticArrays
 using ACE.Random: rand_rot, rand_refl
 using Random: shuffle
 
-
+##
 #=
 @info("Rudimentary tests for sparse basis selectors and intersections of such")
 r0cut = 2.0
@@ -28,8 +28,9 @@ zcut = 2.0
 env = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= .5)
 
 maxorder = 3
-Bsel = ACE.SparseBasis(maxorder; p = 2, default_maxdeg = 4) 
+Bsel = ACE.SparseBasis(; maxorder=maxorder, p = 2, default_maxdeg = 4) 
 
+##
 
 @info("Test invariance")
 

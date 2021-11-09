@@ -145,12 +145,15 @@ level(bb::Prodb, Bsel::AbstractSparseBasis, basis::OneParticleBasis)  =  (
       length(bb) == 0 ? 0.0
                       : norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
 
-function maxlevel(bb::Prodb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) 
-   ord = length(bb)
-   return ( haskey(Bsel.maxlevels, ord) ? Bsel.maxlevels[ord] 
-                                        : Bsel.maxlevels["default"] )
-end 
+maxlevel(bb::Prodb, Bsel::AbstractSparseBasis, basis::OneParticleBasis) = 
+      maxlevel(length(bb), Bsel, basis)
 
+maxlevel(ord::Integer, Bsel::AbstractSparseBasis, basis::OneParticleBasis) = 
+      ( haskey(Bsel.maxlevels, ord) ? Bsel.maxlevels[ord] 
+                                    : Bsel.maxlevels["default"] )
+
+maxlevel(Bsel::AbstractSparseBasis, basis::OneParticleBasis) = 
+      maximum( maxlevel(ord, Bsel, basis) for ord = 1:maxorder(Bsel) )
 
 
 """
@@ -193,80 +196,84 @@ end
 
 
 
-# """
-# `CategorySparseBasis`: extension of `SparseBasis` that implements a 
-# constraint on the correlation orders for within-category correlations, i.e., for
-# each category `cat` contained in OneParticleBasis associated with the symbol 
-# `isym`, it is required that the within-category correlation order `corr[cat]`
-# satisfies
-# ```julia 
-# minorder_dict[cat] <= corr[cat] <= maxorder_dict[cat].
-# ```
-# """
-# struct CategorySparseBasis <: AbstractSparseBasis
-#    maxorder::Int
-#    weight::Dict{Symbol, Float64}
-#    maxdegs::Dict{Any, Float64}
-#    p::Float64
-#    isym::Symbol
-#    minorder_dict::Dict{Any, Int}
-#    maxorder_dict::Dict{Any, Int}
-#    weight_cat::Dict{Any, Float64} 
-# end
+"""
+`CategorySparseBasis`: extension of `SparseBasis` that implements a 
+constraint on the correlation orders for within-category correlations, i.e., for
+each category `cat` contained in OneParticleBasis associated with the symbol 
+`isym`, it is required that the within-category correlation order `corr[cat]`
+satisfies
+```julia 
+minorder_dict[cat] <= corr[cat] <= maxorder_dict[cat].
+```
+"""
+struct CategorySparseBasis <: AbstractSparseBasis
+   maxorder::Int
+   weight::Dict{Symbol, Float64}
+   maxlevels::Dict{Any, Float64}
+   p::Float64
+   isym::Symbol
+   minorder_dict::Dict{Any, Int}
+   maxorder_dict::Dict{Any, Int}
+   weight_cat::Dict{Any, Float64} 
+end
 
 
-# function CategorySparseBasis(maxorder::Integer, isym::Symbol, categories;  
-#                              p = 1, 
-#                              weight = Dict{Symbol, Float64}(), 
-#                              default_maxdeg = nothing,
-#                              maxdegs = nothing,
-#                              minorder_dict = Dict{Any, Float64}(),
-#                              maxorder_dict = Dict{Any, Float64}(),
-#                              weight_cat = Dict(c => 1.0 for c in categories), 
-#                              ) 
-#    if (default_maxdeg != nothing) && (maxdegs == nothing )
-#       CategorySparseBasis(maxorder, weight, 
-#                           Dict{Any, Float64}("default" => default_maxdeg), 
-#                           p, isym, minorder_dict, maxorder_dict, weight_cat)
-#    elseif (default_maxdeg == nothing) && (maxdegs != nothing)
-#       CategorySparseBasis(maxorder, weight, maxdegs, p, isym, minorder_dict, 
-#                           maxorder_dict, weight_cat)
-#    else
-#       @error """Either both or neither optional arguments `maxdegs` and 
-#                 `default_maxdeg` were provided. To avoid ambiguity ensure that 
-#                 exactly one of these arguments is provided."""
-#    end
-# end
+function CategorySparseBasis(isym::Symbol, categories;  
+                             maxorder::Integer = nothing, 
+                             p = 1, 
+                             weight = Dict{Symbol, Float64}(), 
+                             default_maxdeg = nothing,
+                             maxlevels::Dict{Any, Float64} = nothing,
+                             minorder_dict = Dict{Any, Float64}(),
+                             maxorder_dict = Dict{Any, Float64}(),
+                             weight_cat = Dict(c => 1.0 for c in categories), 
+                             ) 
+   if (default_maxdeg != nothing) && (maxlevels == nothing )
+      CategorySparseBasis(maxorder, weight, 
+                          Dict{Any, Float64}("default" => default_maxdeg), 
+                          p, isym, minorder_dict, maxorder_dict, weight_cat)
+   elseif (default_maxdeg == nothing) && (maxlevels != nothing)
+      CategorySparseBasis(maxorder, weight, maxlevels, p, isym, minorder_dict, 
+                          maxorder_dict, weight_cat)
+   else
+      @error """Either both or neither optional arguments `maxlevels` and 
+                `default_maxdeg` were provided. To avoid ambiguity ensure that 
+                exactly one of these arguments is provided."""
+   end
+end
 
-# maxorder(Bsel::CategorySparseBasis, category) = Bsel.maxorder_dict[category]
-# minorder(Bsel::CategorySparseBasis, category) = Bsel.minorder_dict[category]
+maxorder(Bsel::CategorySparseBasis, category) = Bsel.maxorder_dict[category]
 
-# function filter(bb, Bsel::CategorySparseBasis, basis::OneParticleBasis) 
-#    ord = length(bb)
-#    # General order constrain that must be satisfied:
-#    ord_constr = ord <= Bsel.maxorder
-#    # Category-weighted degree constraint:
-#    level_set_constr = (cat_weighted_degree(bb, Bsel, basis) <= _maxdeg(Bsel, ord)) 
+minorder(Bsel::CategorySparseBasis, category) = Bsel.minorder_dict[category]
 
-#    # auxiliary function to count the number of 1pbasis functions in bb 
-#    # for which b.isym == s.
-#    num_b_is_(s) = sum([(getproperty(b, Bsel.isym) == s) for b in bb])
+function filter(bb, Bsel::CategorySparseBasis, basis::OneParticleBasis) 
+   # auxiliary function to count the number of 1pbasis functions in bb 
+   # for which b.isym == s.
+   num_b_is_(s) = sum([(getproperty(b, Bsel.isym) == s) for b in bb])
 
-#    # Within category min correlation order constaint:
-#    cond_ord_cats_min = all( num_b_is_(s) >= minorder(Bsel, s)
-#                             for s in keys(Bsel.minorder_dict) )
-#    # Within category max correlation order constaint:   
-#    cond_ord_cats_max = all( num_b_is_(s) <= maxorder(Bsel, s)
-#                             for s in keys(Bsel.minorder_dict) )
+   # Within category min correlation order constaint:
+   cond_ord_cats_min = all( num_b_is_(s) >= minorder(Bsel, s)
+                            for s in keys(Bsel.minorder_dict) )
+   # Within category max correlation order constaint:   
+   cond_ord_cats_max = all( num_b_is_(s) <= maxorder(Bsel, s)
+                            for s in keys(Bsel.minorder_dict) )
 
-#    return ord_constr && level_set_constr && cond_ord_cats_min && cond_ord_cats_max
-# end
+   return cond_ord_cats_min && cond_ord_cats_max
+end
 
-# # Category-weighted degree function
-# cat_weighted_degree(b::NamedTuple, Bsel::CategorySparseBasis, basis::OneParticleBasis) =
-#       degree(b, basis, Bsel.weight) * Bsel.weight_cat[getproperty(b, Bsel.isym)]
+# maxorder and maxlevel are inherited from the abstract interface 
 
-# cat_weighted_degree(bb, Bsel::AbstractSparseBasis, basis::OneParticleBasis) = (
-#       length(bb) == 0 ? 0.0
-#                       : norm(cat_weighted_degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p)
-#       )
+level(b::Onepb, Bsel::CategorySparseBasis, basis::OneParticleBasis) =
+      cat_weighted_degree(b, Bsel, basis)
+
+level(bb::Prodb, Bsel::CategorySparseBasis, basis::OneParticleBasis)  =  
+      cat_weighted_degree(bb, Bsel, basis)
+
+# Category-weighted degree function
+cat_weighted_degree(b::Onepb, Bsel::CategorySparseBasis, basis::OneParticleBasis) =
+      degree(b, basis, Bsel.weight) * Bsel.weight_cat[getproperty(b, Bsel.isym)]
+
+cat_weighted_degree(bb::Prodb, Bsel::CategorySparseBasis, basis::OneParticleBasis) = (
+      length(bb) == 0 ? 0.0
+                      : norm(cat_weighted_degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p)
+      )
