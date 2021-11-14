@@ -454,7 +454,7 @@ function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
    list = _select_ab(φ, m, μ)
 	@assert length(list) > 0
 	# MAIN CASE
-   if iseven(l + L1 + L2) && abs(m) <= L1+L2 && abs(μ) <= L1+L2
+   if abs(m) <= L1+L2 && abs(μ) <= L1+L2
 		return [ mat_cou_coe(__rotcoeff_inv, l, m, μ, a, b, Val(L1), Val(L2))
 				   for (a,b) in list ]
 	end
