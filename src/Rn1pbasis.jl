@@ -74,13 +74,15 @@ gradtype(B::Rn1pBasis, X::AbstractState) = dstate_type(valtype(B, X), X)
 
 symbols(Rn::Rn1pBasis) = [ _nsym(Rn) ]
 
+argsyms(Rn::Rn1pBasis) = ( _varsym(Rn), )
+
 indexrange(Rn::Rn1pBasis) = NamedTuple{(_nsym(Rn),)}((1:length(Rn),))
 
 isadmissible(b, basis::Rn1pBasis) = (1 <= _n(b, basis) <= length(basis))
 
 degree(b, Rn::Rn1pBasis) = _n(b, Rn) - 1
 
-degree(b, Rn::Rn1pBasis, weight::Dict) = weight[_nsym(Rn)] * degree(b, Rn)
+degree(b, Rn::Rn1pBasis, weight::Dict) = haskey(weight,_nsym(Rn)) ? weight[_nsym(Rn)] * degree(b, Rn) : degree(b, Rn)
 
 get_index(basis::Rn1pBasis, b) = _n(b, basis)
 

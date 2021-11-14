@@ -20,7 +20,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
 
     # ------------------------
     #   O(3) equi-variance
-    @testset "Clebsch-Gordan" begin include("test_cg.jl") end
+    # @testset "Clebsch-Gordan" begin include("test_cg.jl") end
     @testset "SymmetricBasis" begin include("test_symmbasis.jl") end
     @testset "EuclideanVector" begin include("test_euclvec.jl") end
     @testset "Multiple SH Bases" begin include("test_multish.jl") end
@@ -33,6 +33,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # Experimental material
     @testset "Multipliers" begin include("test_multiplier.jl") end
     @testset "Bonds" begin include("test_bonds.jl") end
+    @testset "BasisSelectors" begin include("test_basisselectors.jl") end
 end
 
 

@@ -5,7 +5,8 @@ module Rotations3D
 using StaticArrays
 using LinearAlgebra: norm, rank, svd, Diagonal, tr
 
-using ACE: coco_zeros, coco_init, coco_dot, coco_filter, AbstractProperty
+using ACE: coco_zeros, coco_init, coco_dot, coco_filter, AbstractProperty, 
+			  coco_type 
 
 export ClebschGordan, Rot3DCoeffs, ri_basis, rpi_basis, R3DC, Rot3DCoeffsEquiv
 
@@ -255,6 +256,7 @@ end
 
 function re_basis(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	TP = typeof(A.phi)
+	TCC = coco_type(TP)
 	CC, Mll = compute_Al(A, ll)  # CC::Vector{Vector{...}}
 	G = [ sum( coco_dot(CC[a][i], CC[b][i]) for i = 1:length(Mll) )
 			for a = 1:length(CC), b = 1:length(CC) ]
@@ -263,7 +265,7 @@ function re_basis(A::Rot3DCoeffs{T}, ll::SVector) where {T}
 	# Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]' * CC
 	# construct the new basis
 	Ured = Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]'
-	Ure = Matrix{TP}(undef, rk, length(Mll))
+	Ure = Matrix{TCC}(undef, rk, length(Mll))
 	for i = 1:rk
 		Ure[i, :] = sum(Ured[i, j] * CC[j]  for j = 1:length(CC))
 	end
@@ -283,10 +285,13 @@ function compute_Al(A::Rot3DCoeffs, ll::SVector)
 	return __compute_Al(A, ll, Mll, TP, TA)
 end
 
+# TODO: what was TA for? Can we get rid of it via coco_type? 
+
 function __compute_Al(A::Rot3DCoeffs{T}, ll, Mll, TP, TA) where {T}
 	lenMll = length(Mll)
 	# each element of CC will be one row of the coupling coefficients
-	CC = Vector{TP}[]
+	TCC = coco_type(TP)
+	CC = Vector{TCC}[]
 	# some utility funcions to allow coco_init to return either a property
 	# or a vector of properties
 	function __into_cc!(cc, cc0::AbstractProperty, im)
@@ -305,7 +310,7 @@ function __compute_Al(A::Rot3DCoeffs{T}, ll, Mll, TP, TA) where {T}
 		cc0 = A(ll, Mll[1], kk)::TA
 		numcc = (cc0 isa AbstractProperty ? 1 : length(cc0))
 		# allocate the right number of vectors to store basis function coeffs
-		cc = [ Vector{TP}(undef, lenMll) for _=1:numcc ]
+		cc = [ Vector{TCC}(undef, lenMll) for _=1:numcc ]
 		for (im, mm) in enumerate(Mll) # loop over possible indices
 			if !coco_filter(A.phi, ll, mm, kk)
 				cc00 = zeros(TP, length(cc))::TA

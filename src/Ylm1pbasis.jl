@@ -92,6 +92,8 @@ gradtype(basis::Ylm1pBasis, X::AbstractState) = dstate_type(valtype(basis, X), X
 
 symbols(basis::Ylm1pBasis) = [_lsym(basis), _msym(basis)]
 
+argsyms(basis::Ylm1pBasis) = (_varsym(basis), )
+
 _maxL(Ylm::Ylm1pBasis) = ACE.SphericalHarmonics.maxL(Ylm.SH)
 
 function indexrange(basis::Ylm1pBasis)
@@ -145,7 +147,7 @@ end
 
 degree(b, Ylm::Ylm1pBasis) = _l(b, Ylm)
 
-degree(b, Ylm::Ylm1pBasis, weight::Dict) = weight[_lsym(Ylm)] * degree(b, Ylm)
+degree(b, Ylm::Ylm1pBasis, weight::Dict) = haskey(weight,_lsym(Ylm)) ? weight[_lsym(Ylm)] * degree(b, Ylm) : degree(b, Ylm)
 
 get_index(Ylm::Ylm1pBasis, b) = index_y(_l(b, Ylm), _m(b, Ylm))
 
