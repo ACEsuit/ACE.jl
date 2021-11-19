@@ -10,12 +10,18 @@
 module Transforms
 
 import Base:   ==
-import JuLIP:  cutoff
+import JuLIP:  cutoff, AtomicNumber
 import JuLIP.FIO: read_dict, write_dict
 
 abstract type DistanceTransform end
 
 export PolyTransform, IdTransform, MorseTransform, AgnesiTransform
+
+# fall-backs from species dependent to independent transforms 
+transform(t::DistanceTransform, r::Number, z::AtomicNumber, z0::AtomicNumber) = transform(t, r)
+transform_d(t::DistanceTransform, r::Number, z::AtomicNumber, z0::AtomicNumber) = transform_d(t, r)
+inv_transform(t::DistanceTransform, x::Number, z::AtomicNumber, z0::AtomicNumber) = inv_transform(t, x)
+
 
 
 poly_trans(p, r0, r) = @fastmath(((1+r0)/(1+r))^p)

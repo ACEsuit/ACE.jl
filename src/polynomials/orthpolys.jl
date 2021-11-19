@@ -282,18 +282,20 @@ alloc_B( J::TransformedPolys, args...) = alloc_B(J.J, args...)
 alloc_dB(J::TransformedPolys) = alloc_dB(J.J)
 alloc_dB(J::TransformedPolys, N::Integer) = alloc_dB(J.J)
 
-function evaluate!(P, tmp, J::TransformedPolys, r; maxn=length(J))
+# in evaluate! and evaluate_d!: args... can be nothing or z, z0 
+
+function evaluate!(P, tmp, J::TransformedPolys, r, args...; maxn=length(J))
    # transform coordinates
-   t = transform(J.trans, r)
+   t = transform(J.trans, r, args...)
    # evaluate the actual polynomials
    evaluate!(P, nothing, J.J, t; maxn=maxn)
    return P
 end
 
-function evaluate_d!(P, dP, tmp, J::TransformedPolys, r; maxn=length(J))
+function evaluate_d!(P, dP, tmp, J::TransformedPolys, r, args...; maxn=length(J))
    # transform coordinates
-   t = transform(J.trans, r)
-   dt = transform_d(J.trans, r)
+   t = transform(J.trans, r, args...)
+   dt = transform_d(J.trans, r, args...)
    # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
    evaluate_d!(P, dP, nothing, J.J, t, maxn=maxn)
    @. dP *= dt

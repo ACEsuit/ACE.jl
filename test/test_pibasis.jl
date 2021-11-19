@@ -36,18 +36,18 @@ basis = standardevaluator(dagbasis)
 Nat = 15
 Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, :X)
 AA = evaluate(basis, Rs, Zs, z0)
-println(@test(length(basis) == length(AA)))
+println_slim(@test(length(basis) == length(AA)))
 
 # construct a basis with dag-evaluator, and check they are identical!!!
 AAdag = evaluate(dagbasis, Rs, Zs, z0)
-println(@test(AA ≈ AAdag))
+println_slim(@test(AA ≈ AAdag))
 
 dAA = evaluate_d(basis, Rs, Zs, z0
    )
 dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
-println(@test dAA ≈ dAAdag)
+println_slim(@test dAA ≈ dAAdag)
 
-println(@test all(JuLIP.Testing.test_fio(dagbasis)))
+println_slim(@test all(JuLIP.Testing.test_fio(dagbasis)))
 
 #--- check multi-species
 maxdeg = 5
@@ -65,11 +65,11 @@ println(@test(length(basis) == length(AA)))
 
 # construct a basis with dag-evaluator, and check they are identical!!!
 AAdag = evaluate(dagbasis, Rs, Zs, z0)
-println(@test(AA ≈ AAdag))
+println_slim(@test(AA ≈ AAdag))
 
 dAA = evaluate_d(basis, Rs, Zs, z0)
 dAAdag = evaluate_d(dagbasis, Rs, Zs, z0)
-println(@test dAA ≈ dAAdag)
+println_slim(@test dAA ≈ dAAdag)
 
 println(@test all(JuLIP.Testing.test_fio(dagbasis)))
 #---

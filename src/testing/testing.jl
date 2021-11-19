@@ -15,7 +15,7 @@ import InteractiveUtils
 
 
 using BenchmarkTools: @belapsed
-using LinearAlgebra: eigvals, eigen
+using LinearAlgebra: eigvals, eigen, norm 
 using ProgressMeter: @showprogress
 
 import JuLIP.Potentials: F64fun
@@ -31,6 +31,9 @@ include("../aceimports.jl")
 include("testmodel.jl")
 include("testlsq.jl")
 
+println_slim(val::Test.Pass) = printstyled("Test Passed\n", color=:green, bold=true)
+println_slim(val::Test.Fail) = printstyled("Test Failed\n", color=:red, bold=true)
+export println_slim
 
 # ---------- code for consistency tests
 
@@ -62,7 +65,8 @@ function runtests(V, tests; verbose = true)
    for test in tests
       at = read_dict(test["at"])
       for (t, val) in test["tests"]
-         print_tf( @test( val ≈ _evaltest(Val(Symbol(t)), V, at) ) )
+         # print_tf( (@test val ≈ _evaltest(Val(Symbol(t)), V, at) atol=1e-7) )
+         @show norm(val - _evaltest(Val(Symbol(t)), V, at))
       end
    end
 end
