@@ -151,4 +151,85 @@ inv_transform(t::AgnesiTransform, x::Number) = t.r0 * ( (1/x-1)/t.a )^(1/t.p)
 (t::AgnesiTransform)(x) = transform(t, x)
 
 
+# --------- Utility function - affine transform 
+
+"""
+`AffineT` : wraps another transform and then applies an affine transformation. 
+
+Constructor: 
+```julia
+AffineT(transform, x1, x2, y1, y2)
+```
+then `x = t(r)` and then `x -> y` with `xi -> yi`.
+"""
+struct AffineT{T, TT} <: DistanceTransform
+   t::TT   # the inner transform  : t(r) = x
+   x1::T   # intervals to be transformed x1 -> y1 etc...
+   x2::T 
+   y1::T 
+   y2::T
+end
+
+transform(t::AffineT, r) = t.y1 + (transform(t.t, r) - t.x1) * (t.y2-t.y1)/(t.x2-t.x1)
+transform_d(t::AffineT, r) = ((t.y2-t.y1)/(t.x2-t.x1)) * transform_d(t.t, r)
+transform_inv(t::AffineT, y) = transform_inv(t.t, t.x1 + (y - t.y1) * (t.x2-t.x1)/(t.y2-t.y1))
+
+# --------- Multi-transform: species-dependent transform 
+
+import JuLIP: chemical_symbol
+import JuLIP.Potentials: ZList, SZList, i2z, z2i
+using StaticArrays: SMatrix
+struct MultiTransform{NZ, TT} <: DistanceTransform
+   zlist::SZList{NZ}
+   transforms::SMatrix{NZ, NZ, TT}
+end 
+
+function multitransform(D::Dict; rin=nothing, rcut=nothing)
+   species = Symbol[] 
+   for key in keys(D) 
+      append!(species, [key...])
+   end
+   species = unique(species) 
+   zlist = ZList(species, static=true)
+   NZ = length(zlist) 
+   transforms = Matrix{Any}(undef, NZ, NZ) 
+   for i = 1:NZ, j = 1:NZ 
+      Si = chemical_symbol(i2z(zlist, i))
+      Sj = chemical_symbol(i2z(zlist, j))
+      if haskey(D, (Si, Sj))
+         t = D[(Si, Sj)]
+      else
+         t = D[(Sj, Si)]
+      end
+      # apply an affine transform so all transforms have the same range 
+      if rin != nothing && rcut != nothing 
+         x1 = transform(t, rin)
+         x2 = transform(t, rcut)
+         transforms[i, j] = AffineT(t, x1, x2, -1.0, 1.0)
+      else 
+         transforms[i, j] = t
+      end
+   end
+   transforms = identity.(transforms)  # infer the type 
+   return MultiTransform(zlist, SMatrix{NZ, NZ}(transforms...))
+end
+
+transform(t::MultiTransform, r::Number, z::AtomicNumber, z0::AtomicNumber) = 
+      transform(t.transforms[z2i(t.zlist, z), z2i(t.zlist, z0)], r)
+
+transform_d(t::MultiTransform, r::Number, z::AtomicNumber, z0::AtomicNumber) =
+      transform_d(t.transforms[z2i(t.zlist, z), z2i(t.zlist, z0)], r)
+
+inv_transform(t::MultiTransform, x::Number, z::AtomicNumber, z0::AtomicNumber) =
+      inv_transform(t.transforms[z2i(t.zlist, z), z2i(t.zlist, z0)], r)
+
+# NOTE: This is a bit of a hack, I'm checking whether 
+#       the transforms have been transformed to the domain [-1, 1]
+#       then I'm checking whether r is either rin or rcut and only 
+#       then do I return the value
+function transform(t::MultiTransform{NZ, TT}, r::Number) where {NZ, TT}
+   @assert (TT <: AffineT) "transform(::MultiTransfrom, r) is only defined if rin, rcut are specified during construction"
+   x = sum( transform(_t, r)  for _t in t.transforms ) / NZ^2 
+   @assert (abs(abs(x) - 1) <= 1e-7) "transform(::MultiTransfrom, r) is only defined for r = rin, rcut"
+   return x  
 end
