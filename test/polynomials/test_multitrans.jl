@@ -57,6 +57,7 @@ for ntest = 1:100
    r = rin + rand() * (rcut - rin)
    z, z0 = (rand([zFe, zC, zAl], 2)...,)
    x = transform(trans, r, z, z0)
+   global xmin, xmax 
    xmin = min(x, xmin); xmax = max(x, xmax)
    print_tf(@test (abs(x) <= 1))
 end
@@ -111,3 +112,32 @@ end
 
 
 ## read / write 
+
+@info("Testing FIO")
+println_slim(@test all( JuLIP.Testing.test_fio(trans) ))
+
+
+## Create a symmetric basis with this transform 
+# and just check that it actually evaluates ok. 
+
+@info("Test whether we can evaluate a symmetric basis with this thing")
+maxdeg = 8
+N = 3
+Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
+D = SparsePSHDegree()
+P1 = BasicPSH1pBasis(Pr; species = [:Fe, :Al, :C], D = D)
+pibasis = PIBasis(P1, N, D, maxdeg)
+rpibasis = RPIBasis(P1, N, D, maxdeg)
+
+using StaticArrays
+Nat = 15
+z0 = zFe 
+Zs = rand([zFe, zC, zAl], Nat)
+randr = () -> (r = 2.3 + 2.5 * rand(); x = randn(SVector{3, Float64}); x/r)
+Rs = [ randr() for _=1:Nat ]
+
+B1 = evaluate(rpibasis, Rs, Zs, z0)
+
+# seems to work ok - TODO : implemeant an actual test that checks
+# what really goes on i.e. how the basis changes as the chemical environment 
+# changes? I'm not sure what to test though...

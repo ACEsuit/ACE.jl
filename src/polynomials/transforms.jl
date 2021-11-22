@@ -174,6 +174,16 @@ transform(t::AffineT, r) = t.y1 + (transform(t.t, r) - t.x1) * (t.y2-t.y1)/(t.x2
 transform_d(t::AffineT, r) = ((t.y2-t.y1)/(t.x2-t.x1)) * transform_d(t.t, r)
 transform_inv(t::AffineT, y) = transform_inv(t.t, t.x1 + (y - t.y1) * (t.x2-t.x1)/(t.y2-t.y1))
 
+write_dict(T::AffineT) = 
+      Dict("__id__" => "ACE_AffineT", 
+           "t" => write_dict(T.t), 
+           "xy" => [T.x1, T.x2, T.y1, T.y2] )
+
+read_dict(::Val{:ACE_AffineT}, D::Dict) = AffineT(D) 
+
+AffineT(D::Dict) = AffineT(read_dict(D["t"]), 
+                         D["xy"]... )
+
 # --------- Multi-transform: species-dependent transform 
 
 import JuLIP: chemical_symbol
@@ -183,6 +193,24 @@ struct MultiTransform{NZ, TT} <: DistanceTransform
    zlist::SZList{NZ}
    transforms::SMatrix{NZ, NZ, TT}
 end 
+
+# FIO 
+
+write_dict(T::MultiTransform) =
+      Dict("__id__" => "ACE_MultiTransform", 
+           "zlist" => write_dict(T.zlist), 
+           "transforms" => write_dict.(T.transforms[:]))
+
+read_dict(::Val{:ACE_MultiTransform}, D::Dict) = MultiTransform(D)
+
+function MultiTransform(D::Dict) 
+   zlist = read_dict(D["zlist"])
+   NZ = length(zlist) 
+   transforms = SMatrix{NZ, NZ}( read_dict.(D["transforms"])... )
+   return MultiTransform(zlist, transforms)   
+end
+
+#  Constructor 
 
 function multitransform(D::Dict; rin=nothing, rcut=nothing)
    species = Symbol[] 
@@ -233,3 +261,5 @@ function transform(t::MultiTransform{NZ, TT}, r::Number) where {NZ, TT}
    @assert (abs(abs(x) - 1) <= 1e-7) "transform(::MultiTransfrom, r) is only defined for r = rin, rcut"
    return x  
 end
+
+end 

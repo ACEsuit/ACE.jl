@@ -44,7 +44,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools,
     # include("compat/test_compat.jl")
 
     include("test_any.jl")
-
+    include("polynomials/test_multitrans.jl")
     # ----------------------------------
     #    old tests to be re-introduced
     # include("test_real.jl")
