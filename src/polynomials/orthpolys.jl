@@ -18,7 +18,7 @@ import JuLIP.MLIPs: alloc_B, alloc_dB, IPBasis
 
 import ACE
 using ACE.Transforms: DistanceTransform, transform, transform_d,
-                        inv_transform
+                        inv_transform, MultiTransform
 
 import Base: ==
 
@@ -327,6 +327,26 @@ function transformed_jacobi(maxdeg::Integer,
                                 kwargs...)
    return TransformedPolys(J, trans, rin, rcut)
 end
+
+
+
+function transformed_jacobi(maxdeg::Integer,
+                           trans::MultiTransform; 
+                           pcut = 2, 
+                           kwargs...)
+   # this construction can only work if the transforms are then 
+   # sent to a single unified domain. 
+   @assert eltype(trans.transforms) <: ACE.Transforms.AffineT
+   @assert all( (t.y1 == -1) && (t.y2 == 1) 
+                 for t in trans.transforms )
+   # obtain the maximum outer cutoff and minimum inner cutoff 
+   rin, rcut = ACE.Transforms.cutoff_extrema(trans)
+   # now construct the orthogonal polynomials with the [-1,1] domain. 
+   J =  discrete_jacobi(maxdeg; tcut = 1.0, tin = -1.0, 
+                                pcut = pcut, kwargs...)
+   return TransformedPolys(J, trans, rin, rcut)
+end
+
 
 
 end

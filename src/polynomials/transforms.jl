@@ -12,6 +12,7 @@ module Transforms
 import Base:   ==
 import JuLIP:  cutoff, AtomicNumber
 import JuLIP.FIO: read_dict, write_dict
+import ACE: _allfieldsequal
 
 abstract type DistanceTransform end
 
@@ -172,7 +173,9 @@ end
 
 transform(t::AffineT, r) = t.y1 + (transform(t.t, r) - t.x1) * (t.y2-t.y1)/(t.x2-t.x1)
 transform_d(t::AffineT, r) = ((t.y2-t.y1)/(t.x2-t.x1)) * transform_d(t.t, r)
-transform_inv(t::AffineT, y) = transform_inv(t.t, t.x1 + (y - t.y1) * (t.x2-t.x1)/(t.y2-t.y1))
+inv_transform(t::AffineT, y) = inv_transform(t.t, t.x1 + (y - t.y1) * (t.x2-t.x1)/(t.y2-t.y1))
+
+==(t1::AffineT, t2::AffineT) = _allfieldsequal(t1, t2) 
 
 write_dict(T::AffineT) = 
       Dict("__id__" => "ACE_AffineT", 
@@ -194,7 +197,14 @@ struct MultiTransform{NZ, TT} <: DistanceTransform
    transforms::SMatrix{NZ, NZ, TT}
 end 
 
+
+cutoff_extrema(T::MultiTransform) = 
+   minimum( inv_transform(t, -1.0) for t in T.transforms ), 
+   maximum( inv_transform(t,  1.0) for t in T.transforms )
+
 # FIO 
+
+==(T1::MultiTransform, T2::MultiTransform) =  _allfieldsequal(T1, T2)
 
 write_dict(T::MultiTransform) =
       Dict("__id__" => "ACE_MultiTransform", 
@@ -212,7 +222,13 @@ end
 
 #  Constructor 
 
-function multitransform(D::Dict; rin=nothing, rcut=nothing)
+
+function multitransform(D::Dict; rin=nothing, rcut=nothing, cutoffs = nothing)
+
+   if rin != nothing && rcut != nothing && cutoffs == nothing 
+      cutoffs = Dict( [key => (rin, rcut) for key in keys(D)]... )
+   end 
+
    species = Symbol[] 
    for key in keys(D) 
       append!(species, [key...])
@@ -225,12 +241,15 @@ function multitransform(D::Dict; rin=nothing, rcut=nothing)
       Si = chemical_symbol(i2z(zlist, i))
       Sj = chemical_symbol(i2z(zlist, j))
       if haskey(D, (Si, Sj))
-         t = D[(Si, Sj)]
-      else
-         t = D[(Sj, Si)]
+         key = (Si, Sj)
+      else 
+         key = (Sj, Si)
       end
-      # apply an affine transform so all transforms have the same range 
-      if rin != nothing && rcut != nothing 
+      # get the transform from the dict 
+      t = D[key]
+      # apply another affine transform so all transforms have the same range 
+      if cutoffs != nothing
+         rin, rcut = cutoffs[key]
          x1 = transform(t, rin)
          x2 = transform(t, rcut)
          transforms[i, j] = AffineT(t, x1, x2, -1.0, 1.0)

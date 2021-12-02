@@ -48,8 +48,8 @@ end
 ## now try it again but with the affine transformation added on 
 
 @info("check that with the AffineT the mapping goes to -1,1")
-rin = 0.0 
-rcut = 5.0 
+rin = 0.0
+rcut = 5.0
 trans = multitransform(transforms, rin = rin, rcut = rcut)
 
 xmin = 1e30; xmax = - 1e30 
@@ -64,20 +64,68 @@ end
 println() 
 @show xmin, xmax 
 
+##
+
+@info("same for a flexible cutoff")
+
+
+# define cutoffs as (rin, rcut) pairs. If (S1, S2) and (S2, S1) are both 
+# specified then the cutoff is non-symmetric, If only one is specified, then 
+# it will be symmetric 
+cutoffs = Dict(
+   (:Fe, :C) => (1.5, 5.0), 
+   (:C, :Al) => (0.7, 6.0), 
+   (:Fe, :Al) => (2.2, 4.5), 
+   (:Fe, :Fe) => (2.0, 5.0), 
+   (:Al, :Al) => (2.0, 5.0), 
+   (:C, :C) => (1.5, 5.2), 
+   (:Al, :Fe) => (1.5, 5.0)  )
+
+trans2 = multitransform(transforms, cutoffs=cutoffs)
+
+xmin = 1e30; xmax = - 1e30 
+for ntest = 1:100
+   z, z0 = (rand([zFe, zC, zAl], 2)...,)
+   s, s0 = chemical_symbol.((z, z0))
+   rin, rcut = try 
+      cutoffs[(s, s0)]
+   catch 
+      cutoffs[(s0, s)]
+   end 
+   r = rin + rand() * (rcut - rin)
+   x = transform(trans2, r, z, z0)
+   global xmin, xmax 
+   xmin = min(x, xmin); xmax = max(x, xmax)
+   print_tf(@test (abs(x) <= 1))
+end
+println() 
+@show xmin, xmax 
 
 ##
 
-# @info("      test (de-)dictionisation")
-# println(@test read_dict(write_dict(trans)) == trans)
+@info("check at the boundaries")
+for ((s, s0), (rin, rcut)) in cutoffs 
+   z, z0 = AtomicNumber.((s, s0))
+   print_tf( @test( transform(trans2, rin, z, z0) ≈ -1 ) )
+   print_tf( @test( transform(trans2, rcut, z, z0) ≈ 1 ) )
+end
 
 ##
+
+@info("      test (de-)dictionisation")
+println_slim(@test read_dict(write_dict(trans2)) == trans2)
+println_slim(@test all(JuLIP.Testing.test_fio(trans)))
+println_slim(@test all(JuLIP.Testing.test_fio(trans2)))
+
+##
+
 
 verbose = true
 maxdeg = 10
 
 @info("Testing TransformedPolys")
 
-B = transformed_jacobi(maxdeg, trans, 5.0; pcut = 2)
+B = transformed_jacobi(maxdeg, trans2; pcut = 2)
 
 # this should fail 
 @info("should not evaluate without species info:")
@@ -123,7 +171,7 @@ println_slim(@test all( JuLIP.Testing.test_fio(trans) ))
 @info("Test whether we can evaluate a symmetric basis with this thing")
 maxdeg = 8
 N = 3
-Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
+Pr = transformed_jacobi(maxdeg, trans2; pcut = 2)
 D = SparsePSHDegree()
 P1 = BasicPSH1pBasis(Pr; species = [:Fe, :Al, :C], D = D)
 pibasis = PIBasis(P1, N, D, maxdeg)
@@ -137,6 +185,7 @@ randr = () -> (r = 2.3 + 2.5 * rand(); x = randn(SVector{3, Float64}); x/r)
 Rs = [ randr() for _=1:Nat ]
 
 B1 = evaluate(rpibasis, Rs, Zs, z0)
+dB1 = evaluate_d(rpibasis, Rs, Zs, z0)
 
 # seems to work ok - TODO : implemeant an actual test that checks
 # what really goes on i.e. how the basis changes as the chemical environment 
