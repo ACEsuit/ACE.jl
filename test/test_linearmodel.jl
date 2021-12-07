@@ -10,6 +10,7 @@ using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis,
            grad_config, grad_params, O3
 using ACEbase.Testing: fdtest
 
+
 randconfig(B1p, nX) = ACEConfig( rand(PositionState{Float64}, B1p.bases[1], nX) )
 
 ##
@@ -25,6 +26,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
 cfg = randconfig(B1p, 10)
+Xs = cfg.Xs
 
 φ = ACE.Invariant()
 basis = SymmetricBasis(φ, B1p, O3(), Bsel)
@@ -76,6 +78,16 @@ for (fun, funref, str) in [
       print_tf(@test( val ≈ val_naive ≈ val_standard ))
    end
    println()
+end
+
+##
+
+@info("Evaluate LinearACEModel with vector")
+for _ = 1:20
+   cfg = randconfig(B1p, rand(8:15))
+   print_tf(@test evaluate(standard, cfg) ≈ evaluate(standard, cfg.Xs))
+   print_tf(@test grad_config(standard, cfg) ≈ grad_config(standard, cfg.Xs))
+   print_tf(@test grad_params(standard, cfg) ≈ grad_params(standard, cfg.Xs))
 end
 
 ##

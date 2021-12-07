@@ -44,6 +44,10 @@ AA = evaluate(basis.pibasis, cfg)
 BB1 = basis.A2Bmap * AA
 println(@test isapprox(BB, BB1, rtol=1e-10))
 
+@info("evaluate with vector vs config")
+println(@test BB ≈ evaluate(basis, Xs))
+println(@test evaluate_d(basis, cfg) ≈ evaluate_d(basis, Xs))
+
 # check there are no superfluous columns
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
 if !isempty(Iz)
