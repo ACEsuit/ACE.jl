@@ -270,15 +270,15 @@ transform_d(t::MultiTransform, r::Number, z::AtomicNumber, z0::AtomicNumber) =
 inv_transform(t::MultiTransform, x::Number, z::AtomicNumber, z0::AtomicNumber) =
       inv_transform(t.transforms[z2i(t.zlist, z), z2i(t.zlist, z0)], r)
 
-# NOTE: This is a bit of a hack, I'm checking whether 
-#       the transforms have been transformed to the domain [-1, 1]
-#       then I'm checking whether r is either rin or rcut and only 
-#       then do I return the value
-function transform(t::MultiTransform{NZ, TT}, r::Number) where {NZ, TT}
-   @assert (TT <: AffineT) "transform(::MultiTransfrom, r) is only defined if rin, rcut are specified during construction"
-   x = sum( transform(_t, r)  for _t in t.transforms ) / NZ^2 
-   @assert (abs(abs(x) - 1) <= 1e-7) "transform(::MultiTransfrom, r) is only defined for r = rin, rcut"
-   return x  
-end
+# # NOTE: This is a bit of a hack, I'm checking whether 
+# #       the transforms have been transformed to the domain [-1, 1]
+# #       then I'm checking whether r is either rin or rcut and only 
+# #       then do I return the value
+# function transform(t::MultiTransform{NZ, TT}, r::Number) where {NZ, TT}
+#    @assert (TT <: AffineT) "transform(::MultiTransfrom, r) is only defined if rin, rcut are specified during construction"
+#    x = sum( transform(_t, r)  for _t in t.transforms ) / NZ^2 
+#    @assert (abs(abs(x) - 1) <= 1e-7) "transform(::MultiTransfrom, r) is only defined for r = rin, rcut"
+#    return x  
+# end
 
 end 

@@ -85,6 +85,7 @@ trans2 = multitransform(transforms, cutoffs=cutoffs)
 
 xmin = 1e30; xmax = - 1e30 
 for ntest = 1:100
+   local rin, rcut 
    z, z0 = (rand([zFe, zC, zAl], 2)...,)
    s, s0 = chemical_symbol.((z, z0))
    rin, rcut = try 
