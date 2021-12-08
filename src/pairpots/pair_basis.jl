@@ -96,8 +96,9 @@ function energy(pB::PolyPairBasis, at::Atoms{T}) where {T}
    tmp = alloc_temp(pB)
    for (i, j, R) in pairs(at, cutoff(pB))
       r = norm(R)
-      evaluate!(tmp.J, tmp.tmp_J, pB.J, r)
-      idx0 = _Bidx0(pB, at.Z[i], at.Z[j])
+      Zi, Zj = at.Z[i], at.Z[j]
+      evaluate!(tmp.J, tmp.tmp_J, pB.J, r, Zi, Zj)
+      idx0 = _Bidx0(pB, Zi, Zj)
       for n = 1:length(pB.J)
          E[idx0 + n] += 0.5 * tmp.J[n]
       end
@@ -110,8 +111,9 @@ function forces(pB::PolyPairBasis, at::Atoms{T}) where {T}
    tmp = alloc_temp_d(pB)
    for (i, j, R) in pairs(at, cutoff(pB))
       r = norm(R)
-      evaluate_d!(tmp.J, tmp.dJ, tmp.tmpd_J, pB.J, r)
-      idx0 = _Bidx0(pB, at.Z[i], at.Z[j])
+      Zi, Zj = at.Z[i], at.Z[j]
+      evaluate_d!(tmp.J, tmp.dJ, tmp.tmpd_J, pB.J, r, Zi, Zj)
+      idx0 = _Bidx0(pB, Zi, Zj)
       for n = 1:length(pB.J)
          F[i, idx0 + n] += 0.5 * tmp.dJ[n] * (R/r)
          F[j, idx0 + n] -= 0.5 * tmp.dJ[n] * (R/r)
@@ -125,8 +127,9 @@ function virial(pB::PolyPairBasis, at::Atoms{T}) where {T}
    tmp = alloc_temp_d(pB)
    for (i, j, R) in pairs(at, cutoff(pB))
       r = norm(R)
-      evaluate_d!(tmp.J, tmp.dJ, tmp.tmpd_J, pB.J, r)
-      idx0 = _Bidx0(pB, at.Z[i], at.Z[j])
+      Zi, Zj = at.Z[i], at.Z[j]
+      evaluate_d!(tmp.J, tmp.dJ, tmp.tmpd_J, pB.J, r, Zi, Zj)
+      idx0 = _Bidx0(pB, Zi, Zj)
       for n = 1:length(pB.J)
          V[idx0 + n] -= 0.5 * (tmp.dJ[n]/r) * R * R'
       end

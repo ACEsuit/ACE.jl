@@ -191,3 +191,36 @@ dB1 = evaluate_d(rpibasis, Rs, Zs, z0)
 # seems to work ok - TODO : implemeant an actual test that checks
 # what really goes on i.e. how the basis changes as the chemical environment 
 # changes? I'm not sure what to test though...
+
+##
+
+@info("Testing evaluator with multi-transform")
+
+at = rattle!(bulk(:Al, cubic=true, pbc=false) * 3, 0.1)
+at.Z[3:4:end] .= zC 
+at.Z[4:5:end] .= zFe 
+
+##
+
+c = randn(length(rpibasis))
+V = JuLIP.MLIPs.combine(rpibasis, c)
+println_slim(@test(energy(V, at)  ≈  dot(c, energy(rpibasis, at))))
+println_slim(@test all(JuLIP.Testing.fdtest(V, at)))
+
+## 
+@info("Testing pair basis with multi-transform")
+# seems to work ok - TODO : again need proper tests though ... 
+
+using JuLIP
+Bpair = PolyPairBasis(Pr, [:Fe, :Al, :C])
+
+forces(Bpair, at)
+virial(Bpair, at)
+
+c = randn(length(Bpair))
+Vpair = JuLIP.MLIPs.combine(Bpair, c)
+evaluate(Vpair, 2.34, zFe, zC)
+evaluate_d(Vpair, 2.34, zFe, zC)
+
+println_slim(@test(energy(Vpair, at) ≈ dot(energy(Bpair, at), c)))
+println_slim(@test all(JuLIP.Testing.fdtest(Vpair, at)))
