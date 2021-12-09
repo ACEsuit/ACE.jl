@@ -88,7 +88,7 @@ inv_transform(t::IdTransform, x::Number) = x
 read_dict(::Val{:SHIPs_IdTransform}, D::Dict) =
    read_dict(Val{:ACE_IdTransform}(), D)
 
-
+   
 
 
 @doc raw"""
@@ -151,6 +151,68 @@ transform_d(t::AgnesiTransform, r::Number) = (s1 = (r/t.r0); s2 = s1^(t.p-1);
 inv_transform(t::AgnesiTransform, x::Number) = t.r0 * ( (1/x-1)/t.a )^(1/t.p)
 (t::AgnesiTransform)(x) = transform(t, x)
 
+
+# --------- AnalyticTransform 
+
+import JuLIP
+import JuLIP.Potentials: ScalarFun
+
+"""
+`AnalyticTransform`: implements a distance transform that can be specified
+by an analytic expression. 
+
+Constructor: 
+```julia 
+AnalyticTransform(forwardmap, inversmap)
+```
+For `forwardmap` and `inversemap` must both be of type `AnalyticFunction`.
+(cf. `JuLIP.@analytic`).
+
+Example: 
+```julia
+using ACE: AnalyticTransform
+using JuLIP: @analytic
+trans = AnalyticTransform( :(r -> exp( - 2 * r )), 
+                           :(x -> -0.5 * log(x)) )
+```
+"""
+struct AnalyticTransform{T} <: DistanceTransform
+   f::ScalarFun{T}
+   df::ScalarFun{T}
+   finv::ScalarFun{T}
+   str_f::String
+   str_finv::String
+end
+
+==(T1::AnalyticTransform, T2::AnalyticTransform) = T1.str_f == T2.str_f
+
+Base.show(io::IO, trans::AnalyticTransform) = 
+      print(io, "AnalyticTransform($(trans.str_f))")
+
+function AnalyticTransform(str_f::String, str_finv::String; T=Float64)
+   ex_f = Meta.parse(str_f)
+   ex_df = JuLIP.Potentials.fdiff( ex_f, 1 )
+   ex_finv = Meta.parse(str_finv)
+   f = ScalarFun{T}(Meta.eval(ex_f))
+   df = ScalarFun{T}(Meta.eval(ex_df))
+   finv = ScalarFun{T}(Meta.eval(ex_finv))
+   return AnalyticTransform(f, df, finv, str_f, str_finv)
+end
+
+
+write_dict(T::AnalyticTransform) =
+         Dict("__id__" => "ACE_AnalyticTransform", 
+              "f" => T.str_f, "finv" => T.str_finv)
+AnalyticTransform(D::Dict) = AnalyticTransform(D["f"], D["finv"])
+read_dict(::Val{:ACE_AnalyticTransform}, D::Dict) = AnalyticTransform(D)
+
+transform(t::AnalyticTransform, r::Number) = t.f(r)
+transform_d(t::AnalyticTransform, r::Number) = t.df(r) 
+inv_transform(t::AnalyticTransform, x::Number) = t.finv(x)
+(t::AnalyticTransform)(r) = transform(t, r)
+
+import ForwardDiff
+transform(t::AnalyticTransform, r::ForwardDiff.Dual) = t.f.obj.x(r)
 
 # --------- Utility function - affine transform 
 

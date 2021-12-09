@@ -9,9 +9,10 @@
 
 @testset "Transforms" begin
 
-#---
+##
 using ACE, Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
+import ACE.Testing: println_slim
 
 verbose = false
 maxdeg = 10
@@ -44,7 +45,7 @@ for p in 2:4
    end
 end
 
-#---
+##
 @info("Testing PolyTransforms")
 for p = 2:4
    r0 = 1+rand()
@@ -52,7 +53,7 @@ for p = 2:4
    ACE.Testing.test_transform(trans, [r0/2, 3*r0])
 end
 
-#---
+##
 @info("Testing Morse Transform")
 for lam = 1.0:3.0
    r0 = 1+rand()
@@ -60,7 +61,7 @@ for lam = 1.0:3.0
    ACE.Testing.test_transform(trans, [r0/2, 3*r0])
 end
 
-#---
+##
 
 @info("Testing Agnesi Transform")
 for p = 2:4
@@ -69,7 +70,26 @@ for p = 2:4
    ACE.Testing.test_transform(trans, [r0/2, 3*r0])
 end
 
-# #---
+##
+
+@info("Testing AnalyticTransform")
+trans = ACE.Transforms.AnalyticTransform("r -> exp(-r)", "x -> - log(x)")
+ACE.Testing.test_transform(trans, [0.3, 3.0])
+println()
+println_slim(@test all(JuLIP.Testing.test_fio(trans)))
+
+# log x = - 1.234 * r^2 
+# sqrt(- log x / 1.234) = r 
+trans = ACE.Transforms.AnalyticTransform(
+            "r -> exp(- 1.234 * r^2)", "x -> sqrt(- log(x) / 1.234)")
+ACE.Testing.test_transform(trans, [0.1, 2.345])
+println()
+println_slim(@test all(JuLIP.Testing.test_fio(trans)))
+
+##
+
+
+# ##
 #
 # using Plots
 # r0 = 1.0
@@ -86,7 +106,7 @@ end
 # title!("solid = Agnesi, dashed = Poly")
 # vline!([1.0], lw=2, c=:black, label = "r0")
 # ylims!(0.0, 2.0)
-# #---
+# ##
 #
 # function visualize_transform(T, rrange; nrays = 50, c = 1,
 #                              inverse = false, straightr0 = false)
@@ -137,6 +157,6 @@ end
 #
 
 
-#---
+##
 
 end
