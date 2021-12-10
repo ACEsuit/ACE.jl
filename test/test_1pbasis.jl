@@ -7,7 +7,7 @@ using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis
 using Random: shuffle
-using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
+using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim
 
 ##
 
@@ -35,7 +35,7 @@ A = evaluate(B1p, cfg)
 
 @info("test against manual summation")
 A1 = sum( evaluate(B1p, X) for X in Xs )
-println(@test A1 ≈ A)
+println_slim(@test A1 ≈ A)
 
 @info("test permutation invariance")
 for ntest = 1:30
@@ -45,16 +45,10 @@ println()
 
 ##
 
-# test_fio(Ylm)
-# D = ACE.write_dict(Ylm)
-# Ylm_ = ACE.read_dict(D)
-# Ylm.SH.alp == Ylm_.SH.alp
-# Ylm.SH.alp.B ≈ Ylm_.SH.alp.B
-# @which ( Ylm.SH.alp == Ylm_.SH.alp )
-
 @info("Test FIO")
 for _B in (J, Rn, Ylm, B1p)
-   println((@test(all(test_fio(_B)))))
+   print(string(Base.typename(typeof(_B)))[10:end-1], ": ")
+   println_slim((@test(all(test_fio(_B)))))
 end
 
 ##
@@ -62,16 +56,16 @@ end
 @info("Ylm1pBasis gradients")
 Y = ACE.acquire_B!(Ylm, Xs[1])
 dY = ACE.acquire_dB!(Ylm, Xs[1])
-println(@test (typeof(dY) == eltype(Ylm.dB_pool.arrays[Base.Threads.threadid()])))
+println_slim(@test (typeof(dY) == eltype(Ylm.dB_pool.arrays[Base.Threads.threadid()])))
 ACE.evaluate!(Y, Ylm, Xs[1])
 ACE.evaluate_d!(dY, Ylm, Xs[1])
 Y1 = ACE.acquire_B!(Ylm, Xs[1])
 dY1 = ACE.acquire_dB!(Ylm, Xs[1])
 ACE.evaluate_ed!(Y1, dY1, Ylm, Xs[1])
 
-println(@test (evaluate(Ylm, Xs[1]) ≈ Y))
-println(@test (evaluate_d(Ylm, Xs[1]) ≈ dY))
-println(@test ((Y ≈ Y1) && (dY ≈ dY1)) )
+println_slim(@test (evaluate(Ylm, Xs[1]) ≈ Y))
+println_slim(@test (evaluate_d(Ylm, Xs[1]) ≈ dY))
+println_slim(@test ((Y ≈ Y1) && (dY ≈ dY1)) )
 
 _vec2X(x) = PositionState{Float64}((rr = SVector{3}(x),))
 
@@ -105,9 +99,9 @@ ACE.evaluate!(A1, B1p, cfg)
 A2 = ACE.acquire_B!(B1p, cfg)
 dA = ACE.acquire_dB!(B1p, cfg)
 ACE.evaluate_ed!(A2, dA, B1p, cfg)
-println(@test A1 ≈ A2)
+println_slim(@test A1 ≈ A2)
 
-println(@test( evaluate_d(B1p, cfg) ≈ dA ))
+println_slim(@test( evaluate_d(B1p, cfg) ≈ dA ))
 
 ##
 @info("Product basis gradient test")
