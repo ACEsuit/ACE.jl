@@ -42,11 +42,11 @@ BB = evaluate(basis, cfg)
 # a stupid but necessary test
 AA = evaluate(basis.pibasis, cfg)
 BB1 = basis.A2Bmap * AA
-println(@test isapprox(BB, BB1, rtol=1e-10))
+println_slim(@test isapprox(BB, BB1, rtol=1e-10))
 
 @info("evaluate with vector vs config")
-println(@test BB ≈ evaluate(basis, Xs))
-println(@test evaluate_d(basis, cfg) ≈ evaluate_d(basis, Xs))
+println_slim(@test BB ≈ evaluate(basis, Xs))
+println_slim(@test evaluate_d(basis, cfg) ≈ evaluate_d(basis, Xs))
 
 # check there are no superfluous columns
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
@@ -67,13 +67,15 @@ println()
 
 Xs_empty = Vector{eltype(Xs)}(undef, 0)
 cfg_empty = ACEConfig(Xs_empty)
-println(@test( all(iszero, evaluate(basis, cfg_empty)) ))
+B_empty = evaluate(basis, cfg_empty)
+println(@test( all(iszero, B_empty[2:end]) ))
+println(@test( B_empty[1] == ACE.Invariant(1.0) ) )
 
 ##
 import ACEbase
 @info("Test FIO")
 let basis1 = basis 
-   println(@test(all(ACEbase.Testing.test_fio(basis1; warntype=true))))
+   println_slim(@test(all(ACEbase.Testing.test_fio(basis1; warntype=true))))
 end
 
 
@@ -87,7 +89,7 @@ A = zeros(length(cfgs), length(basis))
 for (i, cfg) in enumerate(cfgs)
    A[i, :] = getproperty.(evaluate(basis, cfg), :val)
 end
-println(@test rank(A) == length(basis))
+println_slim(@test rank(A) == length(basis))
 
 # ## Keep for futher profiling
 # φ = ACE.Invariant()

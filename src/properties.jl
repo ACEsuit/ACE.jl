@@ -126,6 +126,8 @@ rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 #       for further discussion
 *(φ::Invariant, dAA::SVector) = φ.val * dAA
 
+coco_init(::Invariant{T}) where {T} = [ Invariant(complex(T(1)));; ] 
+
 coco_init(::Invariant, l, m, μ, T, A) = (
       l == m == μ == 0 ? Invariant(T(1)) : Invariant(T(0))  )
 
