@@ -154,6 +154,8 @@ struct EuclideanVector{T} <: AbstractProperty
    val::SVector{3, T}
 end
 
+Base.show(io::IO, φ::EuclideanVector) = 
+   print(io, "e[$(φ.val[1]), $(φ.val[2]), $(φ.val[3])]")
 
 real(φ::EuclideanVector) = EuclideanVector(real.(φ.val))
 complex(φ::EuclideanVector) = EuclideanVector(complex(φ.val))
@@ -253,6 +255,7 @@ struct SphericalVector{L, LEN, T} <: AbstractProperty
 end
 
 SphericalVector(val::SVector) = SphericalVector(val, Val(__getL(val)))
+
 
 # # differentiation - cf #27
 # *(φ::SphericalVector, dAA::SVector) = φ.val * dAA'
@@ -354,6 +357,14 @@ struct SphericalMatrix{L1, L2, LEN1, LEN2, T, LL} <: AbstractProperty
    val::SMatrix{LEN1, LEN2, T, LL}
    _valL1::Val{L1}
    _valL2::Val{L2}
+end
+
+function Base.show(io::IO, φ::Union{SphericalVector, SphericalMatrix})
+   buffer = IOBuffer()
+   print(buffer, round.(φ.val, digits=4))
+   str = String(take!(buffer))
+   lenn = findfirst('[', str)
+   print(io, "y" * str[lenn:end])
 end
 
 SphericalMatrix(val::SMatrix) = SphericalMatrix(val, Val.(__getL1L2(val))...)

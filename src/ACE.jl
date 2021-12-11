@@ -113,6 +113,23 @@ include("testing/testing.jl")
 include("ad.jl")
 
 
+# ---------------- some extra experimental dispatching
+
+evaluate(basis::SymmetricBasis, Xs::AbstractVector) = 
+      evaluate(basis, ACEConfig(Xs))
+
+evaluate_d(basis::SymmetricBasis, Xs::AbstractVector) = 
+      evaluate_d(basis, ACEConfig(Xs))
+
+evaluate(model::LinearACEModel, Xs::AbstractVector) = 
+      evaluate(model, ACEConfig(Xs))
+
+grad_config(model::LinearACEModel, Xs::AbstractVector) = 
+      grad_config(model, ACEConfig(Xs))
+
+grad_params(model::LinearACEModel, Xs::AbstractVector) = 
+      grad_params(model, ACEConfig(Xs))
+
 end # module
 
 

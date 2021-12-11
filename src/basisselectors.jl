@@ -143,7 +143,7 @@ level(b::Onepb, Bsel::AbstractSparseBasis, basis::OneParticleBasis) =
 
 level(bb::Prodb, Bsel::AbstractSparseBasis, basis::OneParticleBasis)  =  (
       length(bb) == 0 ? 0.0
-                      : norm( degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
+                      : norm( level.(bb, Ref(Bsel), Ref(basis)), Bsel.p ) )
 
 maxlevel(bb::Prodb, Bsel::AbstractSparseBasis, basis::OneParticleBasis) = 
       maxlevel(length(bb), Bsel, basis)
