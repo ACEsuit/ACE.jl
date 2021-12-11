@@ -92,7 +92,7 @@ println()
 @info("Test spherical covariance")
 
 L1 = L2 = 2 
-basis = ACE.SymmetricBasis(ACE.SphericalMatrix(L1,L2; T = ComplexF64), B1p, Bsel)
+basis = ACE.SymmetricBasis(ACE.SphericalMatrix(L1,L2; T = ComplexF64), B1p, Bsel; filterfun=ACE.NoConstant())
 @show length(basis)
 
 B1 = ACE.evaluate(basis, cfg)

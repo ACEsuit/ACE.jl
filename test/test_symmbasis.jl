@@ -63,6 +63,14 @@ println()
 
 ## 
 
+@info("Test Basis without Constant")
+basis_noc = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+println_slim(@test length(basis_noc) == length(basis) - 1)
+BB_noc = evaluate(basis_noc, cfg)
+println_slim(@test (BB_noc == BB[2:end]))
+
+##
+
 @info("Test what happens with an empty configuration")
 
 Xs_empty = Vector{eltype(Xs)}(undef, 0)
@@ -125,8 +133,8 @@ for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalVector(L; T = ComplexF64)
-   basis = SymmetricBasis(φ, B1p, Bsel)
-   @time SymmetricBasis(φ, B1p, Bsel)
+   basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   @time SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
    BB = evaluate(basis, cfg)
 
    Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
@@ -178,8 +186,8 @@ for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
-   basis = SymmetricBasis(φ, B1p, Bsel)
-   @time basis = SymmetricBasis(φ, B1p, Bsel)
+   basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   @time basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
    BB = evaluate(basis, cfg)
 
    for ntest = 1:30
@@ -214,10 +222,10 @@ for L = 0:3
    @info "L = $L"
    local Xs, cfg 
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
-   basis1 = SymmetricBasis(φ1, B1p, Bsel)
+   basis1 = SymmetricBasis(φ1, B1p, Bsel; filterfun = ACE.NoConstant())
 
    φ2 = ACE.SphericalMatrix(L, 0; T = ComplexF64)
-   basis2 = SymmetricBasis(φ2, B1p, Bsel)
+   basis2 = SymmetricBasis(φ2, B1p, Bsel; filterfun = ACE.NoConstant())
 
    for ntest = 1:30
       Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
@@ -235,9 +243,9 @@ end
 @info("Consistency between Invariant Scalar & SphericalMatrix")
 
 φ = ACE.Invariant()
-basis = SymmetricBasis(φ, B1p, Bsel)
+basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
 φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
-basis2 = SymmetricBasis(φ2, B1p, Bsel)   
+basis2 = SymmetricBasis(φ2, B1p, Bsel; filterfun = ACE.NoConstant())
 
 for ntest = 1:30
    local Xs, cfg, BB 
