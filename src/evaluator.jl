@@ -133,7 +133,16 @@ function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
    symreal = V.real
    # initialize output with a sensible type 
    val = symreal(zero(eltype(V.coeffs)) * pireal(zero(eltype(A))))
-   @inbounds for iAA = 1:length(spec)
+
+   # constant (0-order)
+   if spec.orders[1] == 0 
+      val += V.coeffs[1]
+      iAAinit = 2 
+   else 
+      iAAinit = 1
+   end
+
+   @inbounds for iAA = iAAinit:length(spec)
       aa = A[spec.iAA2iA[iAA, 1]]
       for t = 2:spec.orders[iAA]
          aa *= A[spec.iAA2iA[iAA, t]]
@@ -167,8 +176,10 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    dAco =  _alloc_dAco(dAAdA, A, c̃) # tmpd.dAco  # TODO: ALLOCATION 
    spec = V.pibasis.spec
 
+   if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
+
    fill!(dAco, zero(eltype(dAco)))
-   @inbounds for iAA = 1:length(spec)
+   @inbounds for iAA = iAAinit:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
          dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * c̃[iAA] #trying to avoid using .* and complex.()
@@ -227,8 +238,10 @@ function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration
    dAco =  _alloc_dAco(dAAdA, A, zeros(_rec_eltype(c̃), 3)) # tmpd.dAco  # TODO: ALLOCATION 
    spec = V.pibasis.spec
 
+   if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
+
    fill!(dAco, zero(eltype(dAco)))
-   @inbounds for iAA = 1:length(spec)
+   @inbounds for iAA = iAAinit:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
       @fastmath for t = 1:spec.orders[iAA]
          dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex( _contract(c̃[iAA], dp) )
@@ -269,7 +282,8 @@ function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    # [2] dAA_k 
    spec = V.pibasis.spec
    fill!(dAAw, 0)
-   @inbounds for iAA = 1:length(spec)
+   if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
+   @inbounds for iAA = iAAinit:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
       @fastmath for t = 1:spec.orders[iAA]
          vt = spec.iAA2iA[iAA, t]
@@ -308,7 +322,8 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    # [2] dAA_k 
    spec = V.pibasis.spec
    fill!(dAAw, 0)
-   @inbounds for iAA = 1:length(spec)
+   if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
+   @inbounds for iAA = iAAinit:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
       @fastmath for t = 1:spec.orders[iAA]
          vt = spec.iAA2iA[iAA, t]
@@ -357,7 +372,8 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, wt::Matrix)
       fill!(dAAw[i], 0)
    end
    for prop in 1:length(m.c[1])
-      @inbounds for iAA = 1:length(spec)
+      if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
+      @inbounds for iAA = iAAinit:length(spec)
          _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
          @fastmath for t = 1:spec.orders[iAA]
             vt = spec.iAA2iA[iAA, t]

@@ -21,9 +21,9 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-ACEbase = "0.2.2"
+ACEbase = "0.2.3"
 NamedTupleTools = "0.13"
-julia = "1.5,1.6"
+julia = "1.7"
 
 [extras]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"

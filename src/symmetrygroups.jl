@@ -98,7 +98,6 @@ function coupling_coeffs(symgrp::O3, bb, rotc::Rot3DCoeffs{T, TP}) where {T, TP}
    # bi = (μ = ..., n = ..., l = ..., m = ...)
    #    (μ, n) -> n; only the l and m are used in the angular basis
    if length(bb) == 0
-      @show coco_init(rotc.phi) 
       return coco_init(rotc.phi), [bb,]
    end
    # convert to a format that the Rotations3D implementation can understand
@@ -252,7 +251,7 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
    # bi = (μ = ..., n = ..., l1 = ..., m1 = ..., l2 = ..., m2 = ...)
    #    (μ, n, ...) -> n; only the l and m are used in the angular basis
    if length(bb) == 0
-      error("correlation order 0 is currently not allowed")
+      return coco_init(rotc.phi), [bb,]
    end
 
    # the prototype namedtuple describing a single 1p basis fcn 
