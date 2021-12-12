@@ -19,10 +19,11 @@ should be performed on it. For the latter, we have the DState.
 struct State{SYMS, TT} <: XState{SYMS, TT}
    x::NamedTuple{SYMS, TT}
 
-   State{SYMS, TT}(t::NamedTuple{SYMS1, TT1}) where {SYMS, SYMS1, TT, TT1} = 
-      ( SYMS == SYMS1 ? new{SYMS, TT1}(t) 
-                      : State{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) ) )
+   State{SYMS, TT}(t::NamedTuple{SYMS, TT}) where {SYMS, TT} =  
+         new{SYMS, TT}(t)
 
+   State{SYMS, TT}(t::NamedTuple{SYMS1, TT1}) where {SYMS, SYMS1, TT, TT1} = 
+         State{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) )
 end
 
 """
@@ -43,6 +44,7 @@ end
 
 
 State(t::NamedTuple{SYMS, TT}) where {SYMS, TT} = State{SYMS, TT}(t)
+
 State{SYMS}(t::NamedTuple{SYMS1, TT}) where {SYMS, SYMS1, TT} = State{SYMS, TT}(t)
 
 State(; kwargs...) = State(NamedTuple(kwargs))
