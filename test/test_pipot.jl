@@ -11,7 +11,7 @@
 #---
 
 
-using ACE
+using ACE, ACE.Testing
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing, Random
 using JuLIP: evaluate, evaluate_d, evaluate_ed
 using ACE: combine
@@ -34,13 +34,13 @@ Nat = 15
 Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, :X)
 val_basis = real(sum(c .* evaluate(basis, Rs, Zs, z0)))
 val_V = evaluate(V, Rs, Zs, z0)
-println(@test(val_basis ≈ val_V))
+println_slim(@test(val_basis ≈ val_V))
 println(@test(evaluate(Vdag, Rs, Zs, z0) ≈ val_V))
 J = evaluate_d(basis, Rs, Zs, z0)
 grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
 grad_V = evaluate_d(V, Rs, Zs, z0)
-println(@test(grad_basis ≈ grad_V))
-println(@test(evaluate_d(Vdag, Rs, Zs, z0) ≈ grad_V))
+println_slim(@test(grad_basis ≈ grad_V))
+println_slim(@test(evaluate_d(Vdag, Rs, Zs, z0) ≈ grad_V))
 
 println(@test(all(JuLIP.Testing.test_fio(V))))
 
@@ -59,13 +59,13 @@ Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)
 AA = evaluate(basis, Rs, Zs, z0)
 val_basis = real(sum(c .* evaluate(basis, Rs, Zs, z0)))
 val_V = evaluate(V, Rs, Zs, z0)
-println(@test(val_basis ≈ val_V))
+println_slim(@test(val_basis ≈ val_V))
 println(@test(evaluate(Vdag, Rs, Zs, z0) ≈ val_V))
 J = evaluate_d(basis, Rs, Zs, z0)
 grad_basis = real(sum(c[i] * J[i,:] for i = 1:length(c)))[:]
 grad_V = evaluate_d(V, Rs, Zs, z0)
-println(@test(grad_basis ≈ grad_V))
-println(@test(evaluate_d(Vdag, Rs, Zs, z0) ≈ grad_V))
+println_slim(@test(grad_basis ≈ grad_V))
+println_slim(@test(evaluate_d(Vdag, Rs, Zs, z0) ≈ grad_V))
 
 println(@test(all(JuLIP.Testing.test_fio(V))))
 
@@ -83,7 +83,7 @@ for species in (:X, :Si, [:C, :O, :H]), N = 1:5
    Vdag = combine(basis, c)
    V = standardevaluator(Vdag)
    @info("check (de-)serialisation")
-   println(@test(all(JuLIP.Testing.test_fio(Vdag))))
+   println_slim(@test(all(JuLIP.Testing.test_fio(Vdag))))
    @info("Check basis and potential match")
    for ntest = 1:20
       Rs, Zs, z0 = ACE.rand_nhd(Nat, Pr, species)

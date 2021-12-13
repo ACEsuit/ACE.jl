@@ -64,22 +64,22 @@ function _dot_zij(V, B, z, z0)
 end
 
 evaluate!(tmp, V::PolyPairPot, r::Number, z, z0) =
-      _dot_zij(V, evaluate!(tmp.J, tmp.tmp_J, V.basis.J, r), z, z0)
+      _dot_zij(V, evaluate!(tmp.J, tmp.tmp_J, V.basis.J, r, z, z0), z, z0)
 
 evaluate_d!(tmp, V::PolyPairPot, r::Number, z, z0) =
-      _dot_zij(V, evaluate_d!(tmp.J, tmp.dJ, tmp.tmpd_J, V.basis.J, r), z, z0)
+      _dot_zij(V, evaluate_d!(tmp.J, tmp.dJ, tmp.tmpd_J, V.basis.J, r, z, z0), z, z0)
 
 function evaluate!(tmp, V::PolyPairPot, r::Number)
    @assert numz(V) == 1
    z = i2z(V, 1)
-   return evaluate!(tmp, V::PolyPairPot, r::Number, z, z)
+   return evaluate!(tmp, V, r, z, z)
 end
 
 function evaluate_d!(tmp, V::PolyPairPot, r::Number)
    @assert numz(V) == 1
    z = i2z(V, 1)
-   return evaluate_d!(tmp, V::PolyPairPot, r::Number, z, z)
+   return evaluate_d!(tmp, V, r, z, z)
 end
 
-evaluate(V::PolyPairPot, r::Number) = evaluate!(alloc_temp(V, 1), V, r)
-evaluate_d(V::PolyPairPot, r::Number) = evaluate_d!(alloc_temp_d(V, 1), V, r)
+evaluate(V::PolyPairPot, r::Number, args...) = evaluate!(alloc_temp(V, 1), V, r, args...)
+evaluate_d(V::PolyPairPot, r::Number, args...) = evaluate_d!(alloc_temp_d(V, 1), V, r, args...)

@@ -10,7 +10,7 @@
 
 ##
 
-using ACE
+using ACE, ACE.Testing 
 using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
 using JuLIP: evaluate, evaluate_d
 using JuLIP.Potentials: i2z, numz
@@ -38,7 +38,7 @@ for species in (:X, :Si, [:C, :O, :H])
    Nat = 15
    P1 = ACE.BasicPSH1pBasis(Pr; species = species)
    @info("   test de-serialisation")
-   println(@test(all(JuLIP.Testing.test_fio(P1))))
+   println_slim(@test(all(JuLIP.Testing.test_fio(P1))))
 
    @info("   test evaluation")
    for ntest = 1:10
@@ -54,7 +54,7 @@ for species in (:X, :Si, [:C, :O, :H])
       z0 = i2z(P1, iz0)
       P1_spec = ACE.get_basis_spec(P1, z0)
       P1_spec_2 = [ ACE.get_basis_spec(P1, z0, i) for i = 1:length(P1, z0) ]
-      println(@test P1_spec == P1_spec_2)
+      println_slim(@test(P1_spec == P1_spec_2))
    end
    # Check gradients
    @info("    Check gradients")
