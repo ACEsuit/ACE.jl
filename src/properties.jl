@@ -126,6 +126,8 @@ rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 #       for further discussion
 *(φ::Invariant, dAA::SVector) = φ.val * dAA
 
+coco_init(::Invariant{T}) where {T} = [ Invariant(complex(T(1)));; ] 
+
 coco_init(::Invariant, l, m, μ, T, A) = (
       l == m == μ == 0 ? Invariant(T(1)) : Invariant(T(0))  )
 
@@ -174,13 +176,17 @@ EuclideanVector{T}() where {T <: Number} = EuclideanVector{T}(zero(SVector{3, T}
 EuclideanVector(T::DataType=Float64) = EuclideanVector{T}()
 
 
-function filter(φ::EuclideanVector, grp::O3, b::Array)
-   if length(b) <= 1 #MS: Not sure if this should be here
+function filter(φ::EuclideanVector, grp::O3, bb::Array)
+   if length(bb) == 0  # no zero-correlations allowed 
+      return false 
+   end 
+   if length(bb) == 1 #MS: Not sure if this should be here
+                      # CO: good question - need to investigate 
       return true
    end
-   suml = sum( getl(grp, bi) for bi in b )
-   if haskey(b[1], msym(grp))  # depends on context whether m come along?
-      summ = sum( getm(grp, bi) for bi in b )
+   suml = sum( getl(grp, bi) for bi in bb )
+   if haskey(bb[1], msym(grp))  # depends on context whether m come along?
+      summ = sum( getm(grp, bi) for bi in bb )
       return isodd(suml) && abs(summ) <= 1
    end
    return isodd(suml)
@@ -203,6 +209,12 @@ coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
          ? [EuclideanVector(rmatrices[m,μ][:,k]) for k=1:3]
          : coco_zeros(phi, l, m, μ, T, A)  )
+
+# coco_init(phi::EuclideanVector{CT}
+#   this is not needed, since the EuclideanVector should never give us 
+#   a constant basis anyhow. Still ... this could become a problem if we 
+#   ever want to artificially increase the AA basis in order to get some 
+#   savings elsewhere. Maybe need to revisit this...
 
 coco_type(φ::EuclideanVector) = typeof(complex(φ))
 coco_type(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
@@ -351,6 +363,9 @@ coco_filter(φ::SphericalVector{L}, ll, mm, kk) where {L} =
 coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L} =
 			vec_cou_coe(__rotcoeff_inv, l, m, μ, L, _select_t(φ, l, m, μ))
 
+coco_init(φ::SphericalVector{L}) where {L} =
+			[vec_cou_coe(__rotcoeff_inv, 0, 0, 0, L, _select_t(φ, 0, 0, 0))] |> _init_svd
+
 # --------------- SphericalMatrix
 
 struct SphericalMatrix{L1, L2, LEN1, LEN2, T, LL} <: AbstractProperty
@@ -474,6 +489,28 @@ function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
    return fill( zero(typeof(φ)), length(list) )
 end
 
+coco_init(φ::SphericalMatrix{L1,L2}) where{L1,L2} = [ mat_cou_coe(__rotcoeff_inv, 0, 0, 0, a, b, Val(L1), Val(L2))
+				   for (a,b) in _select_ab(φ, 0, 0) ] |> _init_svd
+
+function _init_svd(CC)
+	TCC = typeof(CC[1])
+	G = [ sum( coco_dot(CC[a], CC[b]) for i = 1:1 )
+			for a = 1:length(CC), b = 1:length(CC) ]
+	svdC = svd(G)
+	rk = rank(Diagonal(svdC.S), rtol = 1e-7)
+	# If all possible non-zero cou_coes still equal 0, return nothing, i.e.,
+	# No constant term should appear.
+	if rk == 0
+		return []
+	end
+	# construct the new basis
+	Ured = Diagonal(sqrt.(svdC.S[1:rk])) * svdC.U[:, 1:rk]'
+	Ure = Matrix{TCC}(undef, rk, 1)
+	for i = 1:rk
+		Ure[i] = sum(Ured[i, j] * CC[j]  for j = 1:length(CC))
+	end
+	return Ure
+end
 
 coco_zeros(φ::TP, ll, mm, kk, T, A) where{TP <: SphericalMatrix} =
             zeros(TP, length(_select_ab(φ, sum(mm), sum(kk))))

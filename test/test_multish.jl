@@ -8,7 +8,7 @@ using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, 
            State, O3 
 using ACE.Random: rand_rot, rand_refl
-using ACEbase.Testing: fdtest
+using ACEbase.Testing: fdtest, println_slim 
 using ACE.Testing: __TestSVec
 
 rands3nrm() = ( rr = randn(SVector{3, Float64}); rr / norm(rr) )
@@ -28,7 +28,7 @@ B1p_r = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg,
 B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg,  )
 @show ACE.symbols(B1p_r)
 @show ACE.indexrange(B1p_r)
-println(@test all( ACE.indexrange(B1p_r)[symr] == ACE.indexrange(B1p)[sym]
+println_slim(@test all( ACE.indexrange(B1p_r)[symr] == ACE.indexrange(B1p)[sym]
                    for (symr, sym) in ((:nr, :n), (:lr, :l), (:mr, :m)) ) )
 φ = ACE.Invariant()
 basis = SymmetricBasis(φ, B1p, O3(), Bsel)
@@ -108,14 +108,15 @@ for ntest = 1:30
    print(".")
 end
 println()
-println(@test (toterr_rs > 1))
-println(@test (toterr_rr > 1))
+println_slim(@test (toterr_rs > 1))
+println_slim(@test (toterr_rr > 1))
 
 ## 
 
-@info("Now test a basis with O(3,3) symmetry")
-ord = 5
+@info("Now test a basis with O(3) ⊗ O(3) symmetry")
+ord = 3
 maxdeg = 7
+Bsel = SimpleSparseBasis(ord, maxdeg)
 basis = SymmetricBasis(φ, B1p, O3(:lr, :mr) ⊗ O3(:ls, :ms), Bsel)
 @show length(basis) 
 

@@ -277,3 +277,12 @@ cat_weighted_degree(bb::Prodb, Bsel::CategorySparseBasis, basis::OneParticleBasi
       length(bb) == 0 ? 0.0
                       : norm(cat_weighted_degree.(bb, Ref(Bsel), Ref(basis)), Bsel.p)
       )
+
+
+# --------------------------- 
+# Some useful filters 
+
+struct NoConstant 
+end
+
+(::NoConstant)(bb) = (length(bb) > 0)
