@@ -37,7 +37,6 @@ function PIBasisSpec( basis1p::OneParticleBasis,
                       Bsel::DownsetBasisSelector;
                       property = nothing,
                       filterfun = _->true,
-                      constant = false, 
                       init1pbasis = true )
    
    # we initialize the 1p-basis here; to prevent this it must be manually 
@@ -82,8 +81,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
                         admissible = admissible,
                         ordered = true,
                         maxvv = [length(Aspec) for _=1:maxord],
-                        filter = filter1,
-                        constant = constant )
+                        filter = filter1)
 
    return PIBasisSpec(AAspec)
 end
@@ -300,8 +298,19 @@ function evaluate_ed!(AA, dAA, basis::PIBasis,
    iAA2iA = basis.spec.iAA2iA
    dAAdA = _acquire_dAAdA!(basis)
 
-   for iAA = 1:length(basis)
+   # Must treat the constants separately. This is not so elegant and could 
+   # maybe be improved? 
+   if orders[1] == 0  # SHOULD BE THE ONLY ONE with ord=0!! 
+      iAAinit = 2
+      AA[1] = 1.0 
+      dAA[1, :] .= Ref(zero(eltype(dAA)))
+   else 
+      iAAinit = 1
+   end
+
+   for iAA = iAAinit:length(basis)
       ord = orders[iAA]
+
       # ----- compute the local adjoints dAA / dA
       # dAAdA[a] ← ∏_{t ≂̸ a} A_{v_t}
       AA[iAA] = _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, orders[iAA], basis.real)

@@ -51,8 +51,8 @@ dA = evaluate_d(B1p, cfg)
 A1, dA1 = ACE.evaluate_ed(B1p, cfg)
 
 
-println(@test( A ≈ A1 ))
-println(@test( dA ≈ dA1 ))
+println_slim(@test( A ≈ A1 ))
+println_slim(@test( dA ≈ dA1 ))
 
 ##
 

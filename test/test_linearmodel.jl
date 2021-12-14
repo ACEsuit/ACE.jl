@@ -8,7 +8,7 @@ using ACE, ACEbase, StaticArrays
 using Printf, Test, LinearAlgebra, ACE.Testing, Random
 using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, 
            grad_config, grad_params, O3
-using ACEbase.Testing: fdtest
+using ACEbase.Testing: fdtest, println_slim 
 
 
 randconfig(B1p, nX) = ACEConfig( rand(PositionState{Float64}, B1p.bases[1], nX) )
@@ -40,22 +40,22 @@ standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
 
 @info("Check FIO")
 using ACEbase.Testing: test_fio 
-println(@test(all(test_fio(naive; warntype = false))))
-println(@test(all(test_fio(standard; warntype = false))))
+println_slim(@test(all(test_fio(naive; warntype = false))))
+println_slim(@test(all(test_fio(standard; warntype = false))))
 
 ##
 
+
+evaluate_ref(basis, cfg, c) = sum(evaluate(basis, cfg) .* c)
+grad_config_ref(basis, cfg, c) = permutedims(evaluate_d(basis, cfg)) * c
+grad_params_ref(basis, cfg, c) = evaluate(basis, cfg)
+grad_params_config_ref(basis, cfg, c) = evaluate_d(basis, cfg)
+
 evaluate(naive, cfg) ≈  evaluate(standard, cfg)
+evaluate_ref(basis, cfg, c) ≈ evaluate(naive, cfg)
 grad_params(naive, cfg) ≈ grad_params(standard, cfg)
 grad_config(naive, cfg) ≈ grad_config(standard, cfg)
 
-evaluate_ref(basis, cfg, c) = sum(evaluate(basis, cfg) .* c)
-
-grad_config_ref(basis, cfg, c) = permutedims(evaluate_d(basis, cfg)) * c
-
-grad_params_ref(basis, cfg, c) = evaluate(basis, cfg)
-
-grad_params_config_ref(basis, cfg, c) = evaluate_d(basis, cfg)
 
 (fun, funref, str) = (ACE.grad_params_config, grad_params_config_ref, "grad_params_config")
 
@@ -89,6 +89,7 @@ for _ = 1:20
    print_tf(@test grad_config(standard, cfg) ≈ grad_config(standard, cfg.Xs))
    print_tf(@test grad_params(standard, cfg) ≈ grad_params(standard, cfg.Xs))
 end
+println() 
 
 ##
 
@@ -127,7 +128,7 @@ evaluate(model, cfg)
 dBB = evaluate_d(basis, cfg)
 val1 = sum(c[i] * dBB[i,:] for i = 1:length(basis))
 val2 = grad_config(model, cfg)
-println( @test( val1 ≈ val2 ))
+println_slim( @test( val1 ≈ val2 ))
 
 ##
 
