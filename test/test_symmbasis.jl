@@ -63,7 +63,7 @@ println()
 
 ## 
 
-@info("Test Basis without Constant")
+@info("Test Invariant Basis without Constant")
 basis_noc = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
 println_slim(@test length(basis_noc) == length(basis) - 1)
 BB_noc = evaluate(basis_noc, cfg)
@@ -133,54 +133,25 @@ for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalVector(L; T = ComplexF64)
-   basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
-   @time SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
-   BB = evaluate(basis, cfg)
-
-   Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
-   if !isempty(Iz)
-      @warn("The A2B map for SphericalVector has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
-   end
-
-   for ntest = 1:30
-      local Q, D, BB1 
-      Q, D = ACE.Wigner.rand_QD(L)
-      cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
-      BB1 = evaluate(basis, cfg1)
-      DtxBB1 = Ref(D') .* BB1
-      print_tf(@test isapprox(DtxBB1, BB, rtol=1e-10))
-   end
-   println()
-
-   @info(" .... derivatives")
-   for ntest = 1:30
-      _rrval(x::ACE.XState) = x.rr
-      Us = __TestSVec.(randn(SVector{3, Float64}, length(Xs)))
-      C = randn(typeof(φ.val), length(basis))
-      F = t -> sum( sum(c .* b.val)
-                    for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
-      dF = t -> [ sum( sum(c .* db)
-                  for (c, db) in zip(C, _rrval.(ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us))) * Us) ) ]
-      print_tf(@test fdtest(F, dF, [0.0], verbose=false))
-   end
-   println()
-end
-
-@info("SymmetricVector with constant term (no constant term permitted)")
-
-for L = 0:3
-   @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
-   local φ, pibasis, basis, BB, Iz
-   φ = ACE.SphericalVector(L; T = ComplexF64)
    basis = SymmetricBasis(φ, B1p, Bsel)
    @time SymmetricBasis(φ, B1p, Bsel)
    BB = evaluate(basis, cfg)
 
+   @info("check that no-const gives the same (sub-)basis")
+   basis0 = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   BB0 = evaluate(basis0, cfg)
+   if L == 0 
+      println_slim(@test BB[2:end] ≈ BB0)   
+   else
+      println_slim(@test BB ≈ BB0)
+   end
+
    Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
    if !isempty(Iz)
       @warn("The A2B map for SphericalVector has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
    end
 
+   @info("check symmetry ")
    for ntest = 1:30
       local Q, D, BB1 
       Q, D = ACE.Wigner.rand_QD(L)
@@ -204,6 +175,7 @@ for L = 0:3
    end
    println()
 end
+
 
 # ## Keep for futher profiling
 # L = 1
@@ -225,45 +197,20 @@ for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
-   basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
-   @time basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
-   BB = evaluate(basis, cfg)
-
-   for ntest = 1:30
-      local Q, D1, D2, BB1 
-      Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
-      cfg1 = ACEConfig( shuffle(Ref(Q) .* Xs) )
-      BB1 = evaluate(basis, cfg1)
-      D1txBB1xD2 = Ref(D1') .* BB1 .* Ref(D2)
-      print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
-   end
-   println()
-
-   @info(" .... derivatives")
-   for ntest = 1:30
-      _rrval(x::ACE.XState) = x.rr
-      Us = __TestSVec.(randn(SVector{3, Float64}, length(Xs)))
-      C = randn(typeof(φ.val), length(basis))
-      F = t -> sum( sum(c .* b.val)
-                    for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
-      dF = t -> [ sum( sum(c .* db)
-                       for (c, db) in zip(C, _rrval.(ACE.evaluate_d(basis, ACEConfig(Xs + t[1] * Us))) * Us) ) ]
-      print_tf(@test fdtest(F, dF, [0.0], verbose=false))
-   end
-   println()
-end
-
-@info("SymmetricMatrix with constant term (constant term only appears when L1 == L2)")
-
-
-for L1 = 0:2, L2 = 0:2
-   @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
-   local φ, pibasis, basis, BB, Iz
-   φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
    basis = SymmetricBasis(φ, B1p, Bsel)
    @time basis = SymmetricBasis(φ, B1p, Bsel)
    BB = evaluate(basis, cfg)
 
+   @info("check that no-const gives the same (sub-)basis")
+   basis0 = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   BB0 = evaluate(basis0, cfg)
+   if L1 == L2  
+      println_slim(@test BB[2:end] ≈ BB0)
+   else
+      println_slim(@test BB ≈ BB0)
+   end
+
+   @info("check symmetry ")
    for ntest = 1:30
       local Q, D1, D2, BB1 
       Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
@@ -273,23 +220,6 @@ for L1 = 0:2, L2 = 0:2
       print_tf(@test isapprox(D1txBB1xD2, BB, rtol=1e-10))
    end
    println()
-   if L1 == L2
-      @info "Tests for $(get_orbsym(L1))-$(get_orbsym(L2)) block with constant"
-      basis_noc = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
-      println_slim(@test length(basis_noc) == length(basis) - 1)
-      BB_noc = evaluate(basis_noc, cfg)
-      println_slim(@test (BB_noc == BB[2:end]))
-
-      ##
-
-      @info("Test what happens with an empty configuration")
-
-      Xs_empty = Vector{eltype(Xs)}(undef, 0)
-      cfg_empty = ACEConfig(Xs_empty)
-      B_empty = evaluate(basis, cfg_empty)
-      println(@test( all(iszero, B_empty[2:end]) ))
-      println(@test( B_empty[1].val./B_empty[1].val[1][1] ≈ SMatrix{2L1+1,2L2+1}(I(2L1+1)) ) )
-   end
 
    @info(" .... derivatives")
    for ntest = 1:30
