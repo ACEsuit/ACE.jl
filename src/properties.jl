@@ -363,8 +363,8 @@ coco_filter(φ::SphericalVector{L}, ll, mm, kk) where {L} =
 coco_init(φ::SphericalVector{L}, l, m, μ, T, A) where {L} =
 			vec_cou_coe(__rotcoeff_inv, l, m, μ, L, _select_t(φ, l, m, μ))
 
-coco_init(φ::SphericalVector{L}) where {L} =
-			[vec_cou_coe(__rotcoeff_inv, 0, 0, 0, L, _select_t(φ, 0, 0, 0))] |> _init_svd
+coco_init(φ::SphericalVector{L}) where {L} = 
+            L==0 ? reshape([SphericalVector(SVector(1.0+0.0im))],1,1) : []
 
 # --------------- SphericalMatrix
 
@@ -489,8 +489,8 @@ function coco_init(φ::SphericalMatrix{L1,L2}, l, m, μ, T, A) where{L1,L2}
    return fill( zero(typeof(φ)), length(list) )
 end
 
-coco_init(φ::SphericalMatrix{L1,L2}) where{L1,L2} = [ mat_cou_coe(__rotcoeff_inv, 0, 0, 0, a, b, Val(L1), Val(L2))
-				   for (a,b) in _select_ab(φ, 0, 0) ] |> _init_svd
+coco_init(φ::SphericalMatrix{L1,L2}) where{L1,L2} = 
+				  L1==L2 ? reshape([ACE.SphericalMatrix(SMatrix{2L1+1,2L2+1,ComplexF64}(I(2L1+1)),Val(L1),Val(L2))],1,1) : []
 
 function _init_svd(CC)
 	TCC = typeof(CC[1])
