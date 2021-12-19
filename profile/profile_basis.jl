@@ -1,88 +1,117 @@
 
+using ACE, Printf, BenchmarkTools, 
+      Profile, ProfileSVG
 
-using ACE, Random
-using Printf, Test, LinearAlgebra, JuLIP, JuLIP.Testing
-using JuLIP: evaluate, evaluate_d, evaluate!, evaluate_d!,
-             alloc_temp, alloc_temp_d
-using ACE: alloc_B, alloc_dB
-using BenchmarkTools
-using Juno
+using ACE: evaluate, evaluate!, evaluate_d, evaluate_d! 
+using ACEbase: acquire_B!, acquire_dB!
 
-# (:Si, [:C, :O])
-# N = 2:2:6
-# maxdeg in [7, 12, 17]
-degrees = Dict(2 => [7, 12, 17],
-               4 => [7, 10, 13],
-               6 => [7, 9, 11])
-for species in (:Si, ), N = 2:2:6, maxdeg in degrees[N]
-   r0 = 2.3
-   rcut = 5.0
-   trans = PolyTransform(1, r0)
-   Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-   P1 = ACE.RnYlm1pBasis(Pr; species = species)
-   D = ACE.SparsePSHDegree()
+TX = ACE.PositionState{Float64}
+B1p = ACE.Utils.RnYlm_1pbasis()
+Rn = B1p.bases[1]
+cfg = ACEConfig(rand(TX, Rn, 30))
 
-   basis = ACE.PIBasis(P1, N, D, maxdeg, evaluator = :classic)
-   basisdag = ACE.PIBasis(P1, N, D, maxdeg, evaluator = :dag)
+##
 
-   @info("species = $species; N = $N; length = $(length(basis))")
 
-   for Nat in [5, 50]
-      Rs, Zs, z0 = ACE.Random.rand_nhd(Nat, basis.basis1p.J,
-                                         species)
-      tmp = alloc_temp(basis, Rs, Zs, z0)
-      tmpd = alloc_temp_d(basis, Rs, Zs, z0)
-      tmpdag = alloc_temp(basisdag, Rs, Zs, z0)
-      tmpdagd = alloc_temp_d(basisdag, Rs, Zs, z0)
-      B = alloc_B(basis, Rs)
-      dB = alloc_dB(basis, Rs)
-      # ------------------------------
-      println("   Nat = $Nat")
-      print("   classic eval : ");
-      @btime evaluate!($B, $tmp, $basis, $Rs, $Zs, $z0)
-      print("     graph eval : ");
-      @btime evaluate!($B, $tmpdag, $basisdag, $Rs, $Zs, $z0)
-      print("   classic grad : ");
-      @btime evaluate_d!($B, $dB, $tmpd, $basis, $Rs, $Zs, $z0)
-      print("     graph grad : ")
-      @btime evaluate_d!($B, $dB, $tmpdagd, $basisdag, $Rs, $Zs, $z0)
-      println()
+# degrees = Dict(2 => [7, 12, 17],
+#                3 => [7, 11, 15],
+#                4 => [7, 10, 13], 
+#                5 => [7, 9, 11] )
+
+# bmgroup = BenchmarkGroup()
+# bmgroup["evaluate"] = BenchmarkGroup()
+# bmgroup["evaluate_d"] = BenchmarkGroup()
+# bmgroup["evaluate!"] = BenchmarkGroup()
+# bmgroup["evaluate_d!"] = BenchmarkGroup()
+
+# for ord = 2:3, deg in degrees[ord]
+#    Bsel = ACE.SimpleSparseBasis(ord, deg)
+#    B1p = ACE.Utils.RnYlm_1pbasis(maxdeg = deg, Bsel = Bsel)
+#    basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+#    B = acquire_B!(basis, cfg)
+#    dB = acquire_dB!(basis, cfg)
+
+#    bmgroup["evaluate"][ord, deg] = @benchmarkable evaluate($basis, $cfg)   
+#    bmgroup["evaluate_d"][ord, deg] = @benchmarkable evaluate($basis, $cfg)   
+#    bmgroup["evaluate!"][ord, deg] = @benchmarkable evaluate($basis, $cfg)   
+#    bmgroup["evaluate_d!"][ord, deg] = @benchmarkable evaluate($basis, $cfg)   
+# end
+
+##
+
+# tune!(bmgroup)
+
+# results = run(bmgroup, verbose = true)
+
+# ##
+
+# plot(results["evaluate"])
+
+
+## Manual Profiling Codes
+
+ord = 3
+deg = 15
+Bsel = ACE.SimpleSparseBasis(ord, deg)
+
+B1p = ACE.Utils.RnYlm_1pbasis(maxdeg = deg, Bsel = Bsel)
+Rn = B1p.bases[1]
+Ylm = B1p.bases[2]
+basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+
+TX = ACE.PositionState{Float64}
+cfg = ACEConfig(rand(TX, Rn, 50))
+B1 = acquire_B!(B1p, cfg)
+
+##
+
+# the non-allocating version here makes virtually no difference
+# Further, the move from Set to Stack fixed all the weird performance 
+# problems; it seems our 1p basis evaluation is now very fast. 
+
+@info("profile A")
+A = acquire_B!(B1p, cfg)
+@btime evaluate($B1p, $cfg)
+@btime evaluate!($A, $B1p, $cfg)
+
+##
+
+@info("profile dA")
+dA = evaluate_d(B1p, cfg)
+@btime evaluate_d($B1p, $cfg)
+@btime evaluate_d!($dA, $B1p, $cfg)
+
+##
+
+# @info("profile B")
+# B = acquire_B!(basis, cfg)
+# @btime evaluate($basis, $cfg)
+# @btime evaluate!($B, $basis, $cfg)
+
+##
+
+# @info("profile AA")
+# AA = acquire_B!(basis.pibasis, cfg)
+# @btime evaluate!($AA, $(basis.pibasis), $cfg)
+
+##
+
+# dB = acquire_dB!(basis, cfg)
+# @btime evaluate_d($basis, $cfg)
+# @btime evaluate_d!($dB, $basis, $cfg)
+
+##
+
+
+function runn(N, f, args...)
+   for n = 1:N 
+      r = f(args...)
    end
 end
 
+runn(2, evaluate_d, B1p, cfg)
 
-# species = :Si
-# N  = 4
-# maxdeg = 7
-# r0 = 2.3
-# rcut = 5.0
-# trans = PolyTransform(1, r0)
-# Pr = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)
-# P1 = ACE.RnYlm1pBasis(Pr; species = species)
-# D = ACE.SparsePSHDegree()
-#
-# Rs, Zs, z0 = ACE.Random.rand_nhd(30, Pr, species)
-# basis = ACE.PIBasis(P1, N, D, maxdeg, evaluator = :classic)
-# basisdag = ACE.PIBasis(P1, N, D, maxdeg, evaluator = :dag)
-# tmp = alloc_temp(basis, Rs, Zs, z0)
-# tmpd = alloc_temp_d(basis, Rs, Zs, z0)
-# tmpdag = alloc_temp(basisdag, Rs, Zs, z0)
-# tmpdagd = alloc_temp_d(basisdag, Rs, Zs, z0)
-# B = alloc_B(basis, Rs)
-# dB = alloc_dB(basis, Rs)
-
-# @btime evaluate_d!($B, $dB, $tmpdagd, $basisdag, $Rs, $Zs, $z0)
-# @btime evaluate_d!($B, $dB, $tmpdagd, $basisdag, $Rs, $Zs, $z0)
-
-
-#
-# function runN(N, f, args...)
-#    for n = 1:N
-#       f(args...)
-#    end
-#    return nothing
-# end
-#
-# runN(10, evaluate_d!, B, dB, tmpd, basis, Rs, Zs, z0)
-#
-# Juno.@profiler runN(10_000, evaluate_d!, B, dB, tmpd, basis, Rs, Zs, z0)
+##
+Profile.clear()
+@profile runn(100, evaluate_d, B1p, cfg)
+Profile.print()

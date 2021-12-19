@@ -2,9 +2,10 @@ using NamedTupleTools: namedtuple, merge
 
 # -------------- Implementation of Product Basis
 
-struct Product1pBasis{NB, TB <: Tuple} <: OneParticleBasis{Any}
+struct Product1pBasis{NB, TB <: Tuple, VALB} <: OneParticleBasis{Any}
    bases::TB
    indices::Vector{NTuple{NB, Int}}
+   B_pool::VectorPool{VALB}
 end
 
 function Product1pBasis(bases)
@@ -12,7 +13,8 @@ function Product1pBasis(bases)
    #       should the discrete bases come first once we implement the
    #       "strongzero" method?
    NB = length(bases)
-   Product1pBasis( tuple(bases...), NTuple{NB, Int}[] )
+   VT = _valtype(bases)
+   Product1pBasis( tuple(bases...), NTuple{NB, Int}[], VectorPool{VT}() )
 end
 
 
@@ -50,8 +52,9 @@ end
 
 # ------------------------------------
 
-valtype(basis::Product1pBasis) = 
-      promote_type(valtype.(basis.bases)...)
+valtype(basis::Product1pBasis) = _valtype(basis.bases)
+
+_valtype(bases) = promote_type(valtype.(bases)...)
 
 valtype(basis::Product1pBasis, X::AbstractState) = 
       promote_type(valtype.(basis.bases, Ref(X))...)
