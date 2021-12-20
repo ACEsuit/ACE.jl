@@ -115,3 +115,18 @@ runn(2, evaluate_d, B1p, cfg)
 Profile.clear()
 @profile runn(100, evaluate_d, B1p, cfg)
 Profile.print()
+
+
+##
+
+using StaticArrays
+const CTSTT = Union{AbstractFloat, Complex{<: AbstractFloat},
+                    SVector{N, <: AbstractFloat}, 
+                    SVector{N, <: Complex}} where {N}
+
+TT = Tuple{Float64, Int64, SVector{3, Float64}}
+filter(T -> T <: CTSTT, tuple(TT.types...))
+
+i = findall(T -> T <: CTSTT, TT.types)
+TT.types[i]
+(:a, :b, :c)[i]
