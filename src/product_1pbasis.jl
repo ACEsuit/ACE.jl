@@ -9,13 +9,18 @@ struct Product1pBasis{NB, TB <: Tuple, VALB} <: OneParticleBasis{Any}
 end
 
 function Product1pBasis(bases)
+   NB = length(bases)
+   return Product1pBasis(bases, NTuple{NB, Int}[]) 
+end
+
+function Product1pBasis(bases, indices)
    # TODO: discuss whether to construct an optimal ordering, e.g.
    #       should the discrete bases come first once we implement the
    #       "strongzero" method?
-   NB = length(bases)
    VT = _valtype(bases)
-   Product1pBasis( tuple(bases...), NTuple{NB, Int}[], VectorPool{VT}() )
+   Product1pBasis( tuple(bases...), indices, VectorPool{VT}() )
 end
+
 
 
 import Base.*

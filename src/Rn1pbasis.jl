@@ -29,7 +29,7 @@ Rn1pBasis(R::TransformedPolys{T, TT, TJ}; varsym = :rr, nsym = :n
 
 function Rn1pBasis{T, TT, TJ, VSYM, NSYM}(R::TransformedPolys{T, TT, TJ}
                                          ) where {T, TT, TJ, VSYM, NSYM} 
-   TDX = DState{(VSYM,), Tuple{SVector{3, T}}}
+   TDX = DState{NamedTuple{(VSYM,), Tuple{SVector{3, T}}}}
    return Rn1pBasis{T, TT, TJ, VSYM, NSYM, TDX}(
                R, VectorPool{T}(), VectorPool{TDX}())
 end

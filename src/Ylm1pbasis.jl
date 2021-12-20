@@ -32,7 +32,7 @@ Ylm1pBasis(SH::SHBasis{T}; varsym = :rr, lsym = :l, msym = :m)  where {T} =
       Ylm1pBasis{T, varsym, lsym, msym}(SH)
 
 function Ylm1pBasis{T, varsym, lsym, msym}(SH::SHBasis{T}) where {T, varsym, lsym, msym}
-   TDX = ACE.DState{(varsym,), Tuple{SVector{3, Complex{T}}}}
+   TDX = ACE.DState{NamedTuple{(varsym,), Tuple{SVector{3, Complex{T}}}}}
    return Ylm1pBasis{T, varsym, lsym, msym, TDX}(
             SH, VectorPool{Complex{T}}(), VectorPool{TDX}() )
 end

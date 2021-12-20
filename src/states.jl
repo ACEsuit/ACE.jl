@@ -308,8 +308,10 @@ end
 
 ## --------  not clear where needed; or deleted functionality 
 
-# promote_leaf_eltypes(X::XState{SYMS}) where {SYMS} = 
-#    promote_type( ntuple(i -> promote_leaf_eltypes(getproperty(_x(X), SYMS[i])), length(SYMS))... )
+function promote_leaf_eltypes(X::TX) where {TX <: XState} 
+   SYMS = _syms(TX)
+   promote_type( ntuple(i -> promote_leaf_eltypes(getproperty(_x(X), SYMS[i])), length(SYMS))... )
+end
 
 
 ## ----- Implementation of a Position State, as a basic example 
@@ -333,14 +335,22 @@ promote_rule(::Union{Type{S}, Type{PositionState{S}}},
 # ------------------ Basic Configurations Code 
 # TODO: get rid of this?  
 
+import ACEbase: AbstractConfiguration
+export ACEConfig 
+
 """
 `struct ACEConfig`: The canonical implementation of an `AbstractConfiguration`. 
 Just wraps a `Vector{<: AbstractState}`
 """
-struct ACEConfig{STT}
+struct ACEConfig{STT} <: AbstractConfiguration
    Xs::Vector{STT}   # list of states
 end
 
+Base.eltype(cfg::ACEConfig) = eltype(cfg.Xs)
+
+Base.iterate(cfg::ACEConfig, args...) = iterate(cfg.Xs, args...)
+
+Base.length(cfg::ACEConfig) = length(cfg.Xs)
 
 # ---------------- AD code 
 
