@@ -28,7 +28,7 @@ length(B1p)
 
 ##
 
-PosScalState{T} = ACE.State{(:rr, :x), Tuple{SVector{3, T}, T}}
+PosScalState{T} = ACE.State{NamedTuple{(:rr, :x), Tuple{SVector{3, T}, T}}}
 
 Base.promote_rule(::Union{Type{S}, Type{PosScalState{S}}}, 
              ::Type{PosScalState{T}}) where {S, T} = 

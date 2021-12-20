@@ -150,14 +150,13 @@ add_into_A_dA!(A, dA, basis::Product1pBasis, X, sym::Symbol) =
                dA[iA] += dt
             end
          end)
-
-         Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
-               release_B!(bas_i, B_i)
-               if !(basis.bases[i] isa Discrete1pBasis)
-                  release_dB!(bas_i, dB_i)
-               end
-            end ))
       end
+      Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
+         release_B!(bas_i, B_i)
+         if !(basis.bases[i] isa Discrete1pBasis)
+            release_dB!(bas_i, dB_i)
+         end
+      end))
       return nothing
    end
 end

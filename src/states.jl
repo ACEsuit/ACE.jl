@@ -44,7 +44,7 @@ struct DState{NT <: NamedTuple} <: XState{NT}
 
    # if SYMS are not the same we automatically merge them
    DState{NT}(t::NT1) where {NT <: NamedTuple, NT1 <: NamedTuple} = 
-         DState{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) )
+         DState( merge( _x(zero(DState{NT})), t ) )
 end
 
 # the two standard outward facing constructors
