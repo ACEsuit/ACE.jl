@@ -51,10 +51,8 @@ end
 State(nt::NT) where {NT <: NamedTuple} = State{NT}(nt)
 State(; kwargs...) = State(NamedTuple(kwargs))
 
-# # some variations on the above... which might not be needed anymore 
-# State{SYMS}(t::NamedTuple{SYMS1, TT}) where {SYMS, SYMS1, TT} = State{SYMS, TT}(t)
-# State{SYMS}(; kwargs...) where {SYMS} = State{SYMS}(NamedTuple(kwargs))
-# State{SYMS, TT}(; kwargs...) where {SYMS, TT} = State{SYMS, TT}(NamedTuple(kwargs))
+# some variations on the above... which might not be needed anymore 
+State{NT}(; kwargs...) where {NT <: NamedTuple} = State{NT}(NamedTuple(kwargs))
 
 
 # accessing X.nt and the fields of X.nt 
@@ -190,6 +188,23 @@ for f in (:real, :imag, :complex, )
       end
    end)
 end
+
+for f in (:real, :complex, )
+   face = Symbol("_ace_$f")
+   eval(quote
+      $f(TDX::Type{<: DState}) = typeof( $f(zero(TDX)) )
+      # import Base: $f
+      # $face(x::Type{<: Number}) = $f(x)
+      # $face(x::SVector{N, T}) where {N, T} = SVector{N, $f(T)}
+      # function $f(TDX::Type{<: DState})
+      #    SYMS, TT = _symstt(TDX)
+      #    TT1 = ntuple(i -> $face(TT[i]), length(SYMS))
+      #    vals = zero.(TT1)
+      #    return typeof(TDX( NamedTuple{SYMS}(vals) )
+      # end
+   end)
+end
+
 
 
 for f in (:rand, :randn, :zero)

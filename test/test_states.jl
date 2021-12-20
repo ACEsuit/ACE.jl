@@ -69,19 +69,16 @@ println(@test ACE.normsq(dX) == ACE.normsq(dX.rr) )
 
 @info("performance/allocation test ")
 
-bm = let 
-   Xs = [ rand(PositionState{Float64}) for _=1:100 ]
-   Ys = [ zero(PositionState{Float64}) for _=1:100 ]
-   a = rand() 
-
-   function copy!(Ys, Xs, a)
-      for i = 1:length(Ys)
-         Ys[i] = Xs[i] * a 
-      end 
-      return Ys 
-   end
-
-   @benchmark copy!(Ys, Xs, a)
+function bm_copy!(Y, X, a)
+   for i = 1:length(Y)
+      Y[i] = X[i] * a 
+   end 
+   return Y
 end
+
+Xs = [ rand(PositionState{Float64}) for _=1:100 ]
+Ys = [ zero(PositionState{Float64}) for _=1:100 ]
+a = rand() 
+bm = @benchmark bm_copy!($Ys, $Xs, $a)
 display(bm) 
 println(@test bm.allocs == 0 && bm.memory == 0)
