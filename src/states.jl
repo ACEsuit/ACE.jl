@@ -51,7 +51,7 @@ end
 State(nt::NT) where {NT <: NamedTuple} = State{NT}(nt)
 State(; kwargs...) = State(NamedTuple(kwargs))
 
-# # some variations on the above...
+# # some variations on the above... which might not be needed anymore 
 # State{SYMS}(t::NamedTuple{SYMS1, TT}) where {SYMS, SYMS1, TT} = State{SYMS, TT}(t)
 # State{SYMS}(; kwargs...) where {SYMS} = State{SYMS}(NamedTuple(kwargs))
 # State{SYMS, TT}(; kwargs...) where {SYMS, TT} = State{SYMS, TT}(NamedTuple(kwargs))
@@ -175,7 +175,6 @@ dstate_type(S::Type, X::State) = dstate_type(zero(S), X)
 # this feels a bit like a hack but might be unavoidable; 
 # real, complex goes to _ace_real, _ace_complex, which is then applied 
 # in only slightly non-standard fashion recursively to the states
-
 
 
 for f in (:real, :imag, :complex, )
