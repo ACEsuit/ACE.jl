@@ -74,7 +74,8 @@ cfg = ACEConfig(Xs)
 evaluate(B1p, Xs[1])
 evaluate(B1p, cfg)
 
-## 
+
+##
 
 @info("Symmetrize only w.r.t. rr but leave ss.")
 

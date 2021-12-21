@@ -29,10 +29,21 @@ Rn1pBasis(R::TransformedPolys{T, TT, TJ}; varsym = :rr, nsym = :n
 
 function Rn1pBasis{T, TT, TJ, VSYM, NSYM}(R::TransformedPolys{T, TT, TJ}
                                          ) where {T, TT, TJ, VSYM, NSYM} 
-   TDX = DState{(VSYM,), Tuple{SVector{3, T}}}
+   TDX = DState{NamedTuple{(VSYM,), Tuple{SVector{3, T}}}}
    return Rn1pBasis{T, TT, TJ, VSYM, NSYM, TDX}(
                R, VectorPool{T}(), VectorPool{TDX}())
 end
+
+# # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
+
+# function acquire_B!(basis::Rn1pBasis, args...) 
+#    VT = valtype(basis, args...)
+#    return acquire!(basis.B_pool, length(basis), VT)
+# end
+
+# function release_B!(basis::Rn1pBasis, B)
+#    return release!(basis.B_pool, B)
+# end
 
 # ---------------------- Implementation of Rn1pBasis
 

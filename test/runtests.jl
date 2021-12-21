@@ -11,6 +11,10 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     @testset "Transforms" begin include("polynomials/test_transforms.jl") end
     @testset "OrthogonalPolynomials" begin include("polynomials/test_orthpolys.jl") end
 
+    # ------------------------------------------
+    #  states, .. 
+    @testset "States" begin include("test_states.jl") end 
+
     # --------------------------------------------
     # core permutation-invariant functionality
     @testset "1-Particle Basis"  begin include("test_1pbasis.jl") end

@@ -103,7 +103,7 @@ for i in 1:length(c_m[1])
 
     #contract w into the jacobian to get the solution
     for j in 1:length(Jac[:,1])
-        Jgrad[j] = sum([ACE._contract(Jac[j,:][k], w[k]) for k in 1:length(w)])
+        Jgrad[j] = sum([ACE.contract(Jac[j,:][k], w[k]) for k in 1:length(w)])
     end
 
     print_tf(@test(grad ≈ Jgrad))
@@ -121,7 +121,8 @@ function wMaker()
     wtmp = [ACE.DState(rr = wtmp[j], u = uo) for j in 1:length(wtmp)]
     return wtmp
 end
-wo = Matrix{ACE.DState{(:rr, :u), Tuple{SVector{3, Float64}, Vector{Float64}}}}(undef, (54,7))
+TDX1 = ACE.DState{NamedTuple{(:rr, :u), Tuple{SVector{3, Float64}, Vector{Float64}}}}
+wo = Matrix{TDX1}(undef, (54,7))
 wt  = [wMaker() for i in 1:length(c_m[1])]
 
 for i in 1:length(wt)

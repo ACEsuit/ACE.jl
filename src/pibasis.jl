@@ -317,7 +317,6 @@ function evaluate_ed!(AA, dAA, basis::PIBasis,
 
       # ----- now convert them into dAA / dX
       for j = 1:size(dA, 2)
-         val = sum(dAAdA[a] * dA[iAA2iA[iAA, a], j] for a = 1:ord)
          dAA[iAA, j] = sum(dAAdA[a] * dA[iAA2iA[iAA, a], j]
                            for a = 1:ord) |> basis.real
       end

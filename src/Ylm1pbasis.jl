@@ -22,6 +22,18 @@ mutable struct Ylm1pBasis{T, VSYM, LSYM, MSYM, TDX} <: OneParticleBasis{Complex{
    dB_pool::VectorPool{TDX}
 end
 
+# # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
+
+# function acquire_B!(basis::Ylm1pBasis, args...) 
+#    VT = valtype(basis, args...)
+#    return acquire!(basis.B_pool, length(basis), VT)
+# end
+
+# function release_B!(basis::Ylm1pBasis, B)
+#    return release!(basis.B_pool, B)
+# end
+
+
 # ---------------------- Implementation of Ylm1pBasis
 
 
@@ -32,7 +44,7 @@ Ylm1pBasis(SH::SHBasis{T}; varsym = :rr, lsym = :l, msym = :m)  where {T} =
       Ylm1pBasis{T, varsym, lsym, msym}(SH)
 
 function Ylm1pBasis{T, varsym, lsym, msym}(SH::SHBasis{T}) where {T, varsym, lsym, msym}
-   TDX = ACE.DState{(varsym,), Tuple{SVector{3, Complex{T}}}}
+   TDX = ACE.DState{NamedTuple{(varsym,), Tuple{SVector{3, Complex{T}}}}}
    return Ylm1pBasis{T, varsym, lsym, msym, TDX}(
             SH, VectorPool{Complex{T}}(), VectorPool{TDX}() )
 end

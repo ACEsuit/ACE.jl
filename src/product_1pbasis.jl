@@ -2,18 +2,25 @@ using NamedTupleTools: namedtuple, merge
 
 # -------------- Implementation of Product Basis
 
-struct Product1pBasis{NB, TB <: Tuple} <: OneParticleBasis{Any}
+struct Product1pBasis{NB, TB <: Tuple, VALB} <: OneParticleBasis{Any}
    bases::TB
    indices::Vector{NTuple{NB, Int}}
+   B_pool::VectorPool{VALB}
 end
 
 function Product1pBasis(bases)
+   NB = length(bases)
+   return Product1pBasis(bases, NTuple{NB, Int}[]) 
+end
+
+function Product1pBasis(bases, indices)
    # TODO: discuss whether to construct an optimal ordering, e.g.
    #       should the discrete bases come first once we implement the
    #       "strongzero" method?
-   NB = length(bases)
-   Product1pBasis( tuple(bases...), NTuple{NB, Int}[] )
+   VT = _valtype(bases)
+   Product1pBasis( tuple(bases...), indices, VectorPool{VT}() )
 end
+
 
 
 import Base.*
@@ -48,10 +55,22 @@ function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
    return Product1pBasis(bases, indices)   
 end
 
+# # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
+
+# function acquire_B!(basis::Product1pBasis, args...) 
+#    VT = valtype(basis, args...)
+#    return acquire!(basis.B_pool, length(basis), VT)
+# end
+
+# function release_B!(basis::Product1pBasis, B)
+#    return release!(basis.B_pool, B)
+# end
+
 # ------------------------------------
 
-valtype(basis::Product1pBasis) = 
-      promote_type(valtype.(basis.bases)...)
+valtype(basis::Product1pBasis) = _valtype(basis.bases)
+
+_valtype(bases) = promote_type(valtype.(bases)...)
 
 valtype(basis::Product1pBasis, X::AbstractState) = 
       promote_type(valtype.(basis.bases, Ref(X))...)
@@ -142,14 +161,13 @@ add_into_A_dA!(A, dA, basis::Product1pBasis, X, sym::Symbol) =
                dA[iA] += dt
             end
          end)
-
-         Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
-               release_B!(bas_i, B_i)
-               if !(basis.bases[i] isa Discrete1pBasis)
-                  release_dB!(bas_i, dB_i)
-               end
-            end ))
       end
+      Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
+         release_B!(bas_i, B_i)
+         if !(basis.bases[i] isa Discrete1pBasis)
+            release_dB!(bas_i, dB_i)
+         end
+      end))
       return nothing
    end
 end

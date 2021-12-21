@@ -5,7 +5,8 @@ using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis
 using Random: shuffle
-using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
+using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, 
+                       println_slim
 
 ##
 @info("Testing B1pMultiplier")
@@ -33,7 +34,7 @@ mult1 = M.TestMult(X -> mult_val)
 B1p = mult1 * RnYlm
 ACE.init1pspec!(B1p, Bsel)
 
-println(@test length(B1p) == length(RnYlm))
+println_slim(@test length(B1p) == length(RnYlm))
 
 nX = 10
 Xs = rand(PositionState{Float64}, RnYlm.bases[1], nX)
@@ -41,20 +42,20 @@ cfg = ACEConfig(Xs)
 
 A1 = evaluate(RnYlm, cfg)
 A2 = evaluate(B1p, cfg)
-println(@test( A1 * mult_val ≈ A2 ))
+println_slim(@test( A1 * mult_val ≈ A2 ))
 
 ##
 
 @info("test against manual summation")
 
-_f = X -> exp(-sum(abs2, X.rr .- mult_val))
+_f = X -> exp(- ACE.sumsq(X.rr .- mult_val))
 mult2 = M.TestMult(_f)
 B1p2 = mult2 * RnYlm
 ACE.init1pspec!(B1p2, Bsel)
 
 A1 = sum( evaluate(RnYlm, X) * _f(X) for X in Xs )
 A2 = evaluate(B1p2, cfg)
-println(@test A1 ≈ A2)
+println_slim(@test A1 ≈ A2)
 
 
 ##
@@ -79,3 +80,4 @@ using ACE: Invariant, SymmetricBasis
 Bsym = SymmetricBasis(Invariant(), B1p, Bsel)
 
 evaluate(Bsym, ACEConfig(Xs))
+

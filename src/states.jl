@@ -1,28 +1,31 @@
 
 
-export ACEConfig, PositionState, DACEConfig
+export State, PositionState
 
-using ACE, StaticArrays, NamedTupleTools
+using StaticArrays, NamedTupleTools
 
 import Base: *, +, -, zero, rand, randn, show, promote_rule, rtoldefault, 
        isapprox, getproperty, real 
+
 import LinearAlgebra: norm, promote_leaf_eltypes
 
 
-abstract type XState{SYMS, TT} <: ACE.AbstractState end 
+abstract type XState{NT <: NamedTuple} <: AbstractState end 
 
 """
 `struct State` the main type for states of input variables (particles). 
 This type is intended only for storing of information but no arithmetic 
 should be performed on it. For the latter, we have the DState.
 """
-struct State{SYMS, TT} <: XState{SYMS, TT}
-   x::NamedTuple{SYMS, TT}
+struct State{NT <: NamedTuple} <: XState{NT}
+   x::NT
 
-   State{SYMS, TT}(t::NamedTuple{SYMS, TT}) where {SYMS, TT} =  
-         new{SYMS, TT}(t)
+   # standard constructor - SYMS are the same 
+   State{NT}(t::NT1) where {NT <: NamedTuple{SYMS}, NT1 <: NamedTuple{SYMS}} where {SYMS} = 
+         new{NT1}(t)
 
-   State{SYMS, TT}(t::NamedTuple{SYMS1, TT1}) where {SYMS, SYMS1, TT, TT1} = 
+   # if SYMS are not the same we automatically merge them
+   State{NT}(t::NT1) where {NT <: NamedTuple, NT1 <: NamedTuple} = 
          State{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) )
 end
 
@@ -32,49 +35,117 @@ operations defined on it, while `State` acts more like a fixed object that canno
 be manipulated. The main application of `DState` is as a derivative of a 
 `State`; see also `dstate_type`, ``
 """
-struct DState{SYMS, TT} <: XState{SYMS, TT}
-   x::NamedTuple{SYMS, TT}
+struct DState{NT <: NamedTuple} <: XState{NT}
+   x::NT
 
-   DState{SYMS, TT}(t::NamedTuple{SYMS1, TT1}) where {SYMS, SYMS1, TT, TT1} = 
-      ( SYMS == SYMS1 ? new{SYMS, TT1}(t) 
-                      : DState{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) ) )
+   # standard constructor - SYMS are the same 
+   DState{NT}(t::NT1) where {NT <: NamedTuple{SYMS}, NT1 <: NamedTuple{SYMS}} where {SYMS} = 
+         new{NT1}(t)
 
+   # if SYMS are not the same we automatically merge them
+   DState{NT}(t::NT1) where {NT <: NamedTuple, NT1 <: NamedTuple} = 
+         DState( merge( _x(zero(DState{NT})), t ) )
 end
 
-
-
-State(t::NamedTuple{SYMS, TT}) where {SYMS, TT} = State{SYMS, TT}(t)
-
-State{SYMS}(t::NamedTuple{SYMS1, TT}) where {SYMS, SYMS1, TT} = State{SYMS, TT}(t)
-
+# the two standard outward facing constructors
+State(nt::NT) where {NT <: NamedTuple} = State{NT}(nt)
 State(; kwargs...) = State(NamedTuple(kwargs))
-State{SYMS}(; kwargs...) where {SYMS} = State{SYMS}(NamedTuple(kwargs))
-State{SYMS, TT}(; kwargs...) where {SYMS, TT} = State{SYMS, TT}(NamedTuple(kwargs))
 
+# some variations on the above... which might not be needed anymore 
+State{NT}(; kwargs...) where {NT <: NamedTuple} = State{NT}(NamedTuple(kwargs))
+
+
+# accessing X.nt and the fields of X.nt 
+# this relies heavily on constant propagation 
+_x(X::XState) = getfield(X, :x)
+getproperty(X::XState, sym::Symbol) = getproperty(_x(X), sym)
+
+# ----------- printing / output 
+
+const _showdigits = Ref{Int64}(2)
+
+"""
+change how many digits are printed in the ACE States
+"""
+function showdigits!(n::Integer)
+   _showdigits[] = n 
+end 
+
+_2str(x) = string(x)
+_2str(x::AbstractFloat) = "[$(round(x, digits=_showdigits[]))]"
+_2str(x::Complex) = "[$(round(x, digits=_showdigits[]))]"
+_2str(x::SVector{N, <: AbstractFloat}) where {N} = string(round.(x, digits=_showdigits[]))
+_2str(x::SVector{N, <: Complex}) where {N} = string(round.(x, digits=_showdigits[]))[11:end]
+
+_showsym(X::State) = ""
+_showsym(X::DState) = "′"
+
+function show(io::IO, X::XState) 
+   str = prod( "$(sym):$(_2str(getproperty(_x(X), sym))), " 
+               for sym in keys(_x(X)) )
+   print(io,  "⟨" * str[1:end-2] * "⟩" * _showsym(X))
+end
+
+# ----------- some basic manipulations 
+
+# extract the symbols and the types 
+_syms(X::XState) = _syms(typeof(X))
+_syms(::Type{<: XState{NamedTuple{SYMS, TT}}}) where {SYMS, TT} = SYMS
+
+_tt(X::XState) = _tt(typeof(X))
+_tt(::Type{<: XState{NamedTuple{SYMS, TT}}}) where {SYMS, TT} = TT
+
+_symstt(X::XState) = _symstt(typeof(X))
+_symstt(::Type{<: XState{NamedTuple{SYMS, TT}}}) where {SYMS, TT} = SYMS, TT 
+
+# which properties are continuous 
 
 const CTSTT = Union{AbstractFloat, Complex{<: AbstractFloat},
-               SVector{N, <: AbstractFloat}, 
-               SVector{N, <: Complex}} where {N}
+                    SVector{N, <: AbstractFloat}, 
+                    SVector{N, <: Complex}} where {N}
 
+"""
+Find the indices of continuous properties, and return the 
+indices as well as the symbols and types
+"""
+_findcts(X::TX) where {TX <: XState} = _findcts(TX)
+
+function _findcts(TX::Type{<: XState})
+   SYMS, TT = _symstt(TX)
+   icts = findall(T -> T <: CTSTT, TT.types)
+end
+
+_ctssyms(X::TX) where {TX <: XState} = _ctssyms(TX)
+
+_ctssyms(TX::Type{<: XState}) = _syms(TX)[_findcts(TX)]
+
+
+## ----- DState constructors
+
+DState(t::NT) where {NT <: NamedTuple} = DState{NT}(t)
+
+DState(; kwargs...) = DState(NamedTuple(kwargs))
+
+DState(X::TX) where {TX <: State} = 
+      (dstate_type(X))( select(_x(X), _ctssyms(X)) )
+
+
+      
+"""
+convert a State to a corresponding DState 
+(basically just remove the discrete variables)
+"""
 dstate_type(X::DState) = typeof(X)
 
-@generated function dstate_type(X::State{SYMS, TT}) where {SYMS, TT}
-   syms2 = Symbol[] 
-   tt2 = DataType[]
-   for i = 1:length(SYMS)
-      if TT.types[i] <: CTSTT
-         push!(syms2, SYMS[i])
-         push!(tt2, TT.types[i])
-      end
-   end
-   SYMS2 = tuple(syms2...)
-   TT2 = "Tuple{" * 
-            "$(tuple(tt2...))"[2:end-1] * "}"
-   DTX = Meta.parse( "DState{$(SYMS2), $TT2}" )
+@generated function dstate_type(X::TX)  where {TX <: State}
+   CSYMS = _ctssyms(TX) 
    quote
-      $DTX 
+      typeof( DState( select(_x(X), $CSYMS) ) )
    end
 end
+      
+# the next variant of dstate_type is used to potentially extend 
+# from real states to complex dstates. 
 
 _mypromrl(T::Type{<: Number}, S::Type{<: Number}) = 
       promote_type(T, S)
@@ -85,106 +156,88 @@ _mypromrl(::Type{<: SVector{N, P}}, T::Type{<: Number}) where {N, P} =
 _mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P2} = 
       SVector{N, promote_type(P1, P2)}
 
-@generated function dstate_type(x::S, X::ACE.XState{SYMS, TT}
-                                ) where {S, SYMS, TT}
-   syms2 = Symbol[] 
-   tt2 = DataType[]
-   for i = 1:length(SYMS)
-      if TT.types[i] <: CTSTT
-         push!(syms2, SYMS[i])
-         push!(tt2, _mypromrl(S, TT.types[i]))
-      end
-   end
-   SYMS2 = tuple(syms2...)
-   TT2 = "Tuple{" * 
-            "$(tuple(tt2...))"[2:end-1] * "}"
-   DTX = Meta.parse( "DState{$(SYMS2), $TT2}" )
+@generated function dstate_type(x::S, X::TX) where {S, TX <: State}
+   SYMS, TT = _symstt(TX)
+   icts = _findcts(TX)
+   CSYMS = SYMS[icts]
+   CTT = [ _mypromrl(S, TT.types[i]) for i in icts ]
+   CTTstr = "Tuple{" * "$(tuple(CTT...))"[2:end-1] * "}"
    quote
-      $DTX 
+      $(Meta.parse( "DState{NamedTuple{$(CSYMS), $CTTstr}}" ))
    end
 end
 
-dstate_type(S::Type, X::ACE.State) = dstate_type(zero(S), X)
+dstate_type(S::Type, X::State) = dstate_type(zero(S), X)
 
-@generated function _ctssyms(::NamedTuple{SYMS, TT}) where {SYMS, TT}
-   syms2 = Symbol[] 
-   for i = 1:length(SYMS)
-      if TT.types[i] <: CTSTT
-         push!(syms2, SYMS[i])
+## ---------- explicit real/complex conversion 
+# this feels a bit like a hack but might be unavoidable; 
+# real, complex goes to _ace_real, _ace_complex, which is then applied 
+# in only slightly non-standard fashion recursively to the states
+
+
+for f in (:real, :imag, :complex, )
+   face = Symbol("_ace_$f")
+   eval(quote
+      import Base: $f
+      $face(x::Number) = $f(x)
+      $face(x::StaticArrays.StaticArray) = $f.(x)
+      function $f(X::TDX) where {TDX <: DState}
+         SYMS = _syms(TDX)
+         vals = ntuple(i -> $face(getproperty(X, SYMS[i])), length(SYMS))
+         return TDX( NamedTuple{SYMS}(vals) )
       end
-   end
-   SYMS2 = tuple(syms2...)
-   quote
-      $SYMS2
-   end
+   end)
+end
+
+for f in (:real, :complex, )
+   face = Symbol("_ace_$f")
+   eval(quote
+      $f(TDX::Type{<: DState}) = typeof( $f(zero(TDX)) )
+      # import Base: $f
+      # $face(x::Type{<: Number}) = $f(x)
+      # $face(x::SVector{N, T}) where {N, T} = SVector{N, $f(T)}
+      # function $f(TDX::Type{<: DState})
+      #    SYMS, TT = _symstt(TDX)
+      #    TT1 = ntuple(i -> $face(TT[i]), length(SYMS))
+      #    vals = zero.(TT1)
+      #    return typeof(TDX( NamedTuple{SYMS}(vals) )
+      # end
+   end)
 end
 
 
 
-DState(X::TX) where {TX <: State} = 
-      (dstate_type(X))( select(_x(X), _ctssyms(_x(X))) )
-
-DState(t::NamedTuple{SYMS, TT}) where {SYMS, TT} = DState{SYMS, TT}(t)
-
-DState(; kwargs...) = DState(NamedTuple(kwargs))
-
-_x(X::XState) = getfield(X, :x)
-getproperty(X::XState, sym::Symbol) = getproperty(_x(X), sym)
-
-_myrl(x::Number) = real(x)
-_myrl(x::StaticArrays.StaticArray) = real.(x)
-Base.real(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} = 
-      TDX( NamedTuple{SYMS}( ntuple(i -> _myrl(getproperty(X, SYMS[i])), length(SYMS)) ) )
-
-_myim(x::Number) = imag(x)
-_myim(x::SVector) = imag.(x)
-Base.imag(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} = 
-      TDX( NamedTuple{SYMS}( ntuple(i -> _myim(getproperty(X, SYMS[i])), length(SYMS)) ) )
-    
-_mycplx(x::Number) = complex(x)
-_mycplx(x::SVector) = complex.(x)
-Base.complex(X::TDX) where {TDX <: DState{SYMS}} where {SYMS} =
-      TDX( NamedTuple{SYMS}( ntuple(i -> _mycplx(getproperty(X, SYMS[i])), length(SYMS)) ) )
-
-Base.complex(::Type{TDX}) where {TDX <: DState{SYMS}} where {SYMS} =
-      typeof( complex( zero(TDX) ) )
- 
-
-function zero(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
-   vals = ntuple(i -> _ace_zero(TT.types[i]), length(SYMS))
-   return TX( NamedTuple{SYMS}( vals ) )
-end
-
-_ace_zero(args...) = zero(args...)
-_ace_zero(::Union{Symbol, Type{Symbol}}) = :O
-
-
-for f in (:rand, :randn) 
+for f in (:rand, :randn, :zero)
+   face = Symbol("_ace_$f")
    eval( quote 
-      function $f(::Union{TX, Type{TX}}) where {TX <: XState{SYMS, TT}} where {SYMS, TT} 
-         vals = ntuple(i -> $f(TT.types[i]), length(SYMS))
+      import Base: $f 
+      $face(T::Type) = $f(T) 
+      $face(x::Union{Number, AbstractArray}) = $f(typeof(x))
+
+      function $f(x::Union{TX, Type{TX}}) where {TX <: XState}
+         SYMS, TT = _symstt(x)
+         vals = ntuple(i -> $face(TT.types[i]), length(SYMS))
          return TX( NamedTuple{SYMS}( vals ) )
       end
    end )
 end
 
-const _showdigits = 4
-_2str(x) = string(x)
-_2str(x::AbstractFloat) = "[$(round(x, digits=_showdigits))]"
-_2str(x::Complex) = "[$(round(x, digits=_showdigits))]"
-_2str(x::SVector{N, <: AbstractFloat}) where {N} = string(round.(x, digits=_showdigits))
-_2str(x::SVector{N, <: Complex}) where {N} = string(round.(x, digits=_showdigits))[11:end]
+# an extra for symbols, this is a bit questionable; why do we even need it?
+_ace_zero(::Union{Symbol, Type{Symbol}}) = :O
 
-_showsym(X::State) = ""
-_showsym(X::DState) = "′"
 
-show(io::IO, X::XState{SYMS}) where {SYMS} = 
-      print(io, "{" * prod( "$(sym):$(_2str(getproperty(_x(X), sym))), " 
-                            for sym in SYMS) * "}" * _showsym(X))
+## ----------- Some arithmetic operations 
 
-for f in (:+, :-)
+# binary operations 
+
+import Base: +, -
+
+
+for f in (:+, :-, )
    eval( quote 
-      function $f(X1::TX1, X2::TX2) where {TX1 <: XState{SYMS}, TX2 <: XState{SYMS}} where {SYMS}
+      function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
+         SYMS = _syms(TX1)
+         @assert SYMS == _syms(TX2)
          vals = ntuple( i -> $f( getproperty(_x(X1), SYMS[i]), 
                                  getproperty(_x(X2), SYMS[i]) ), length(SYMS) )
          return TX1( NamedTuple{SYMS}(vals) )
@@ -192,45 +245,93 @@ for f in (:+, :-)
    end )
 end
 
-function -(X::TX) where {TX <: XState{SYMS}} where {SYMS}
-      vals = ntuple( i -> -getproperty(_x(X), SYMS[i]) )
-      return TX( NamedTuple{SYMS}(vals) )
-end
-
-function *(X1::TX, a::Number) where {TX <: XState{SYMS}} where {SYMS}
+# multiplication with a scalar 
+function *(X1::TX, a::Number) where {TX <: XState}
+   SYMS = _syms(TX)
    vals = ntuple( i -> *( getproperty(_x(X1), SYMS[i]), a ), length(SYMS) )
    return TX( NamedTuple{SYMS}(vals) )
 end
 
-function *(a::Number, X1::TX) where {TX <: XState{SYMS}} where {SYMS}
-   vals = ntuple( i -> *( getproperty(_x(X1), SYMS[i]), a ), length(SYMS) )
-   return TX( NamedTuple{SYMS}(vals) )
+*(a::Number, X1::XState) = *(X1, a)
+
+
+# unary 
+import Base: - 
+
+for f in (:-, )
+   eval(quote
+      function $f(X::TX) where {TX <: XState}
+         SYMS = _syms(TX)
+         vals = ntuple( i -> $f( getproperty(_x(X), SYMS[i]) ), length(SYMS) )
+         return TX( NamedTuple{SYMS}(vals) )
+      end
+   end)
 end
 
 
-promote_leaf_eltypes(X::XState{SYMS}) where {SYMS} = 
-   promote_type( ntuple(i -> promote_leaf_eltypes(getproperty(_x(X), SYMS[i])), length(SYMS))... )
-
-norm(X::XState{SYMS}) where {SYMS} = 
-      sum( norm( getproperty(_x(X), sym) for sym in SYMS )^2 )
+# reduction to scalar 
 
 import LinearAlgebra: dot 
-dot(X1::DState{SYMS}, X2::DState{SYMS}) where {SYMS} = 
-   sum( dot( getproperty(_x(X1), sym), getproperty(_x(X2), sym) )
-        for sym in SYMS )
-
-_contract(X1::DState{SYMS1}, X2::DState{SYMS2}) where {SYMS1, SYMS2} = 
-   sum( sum( getproperty(_x(X1), sym) .* getproperty(_x(X2), sym) )
-              for sym in SYMS1 )
-
-isapprox(X1::TX, X2::TX, args...; kwargs...
-         ) where {TX <: XState{SYMS}} where {SYMS} = 
-   all( isapprox( getproperty(_x(X1), sym), getproperty(_x(X2), sym), 
-                  args...; kwargs...) for sym in SYMS )
+import Base: isapprox
 
 
-# ----- Implementation of a Position State, as a basic example 
-PositionState{T} = State{(:rr,), Tuple{SVector{3, T}}}
+"""
+This is an exported function that is crucial to ACE internals. It implements 
+the operation 
+```
+(x, y) -> ∑_i x[i] * y[i]
+```
+i.e. like `dot` but without taking conjugates. 
+"""
+contract(X1, X2) = sum(x1 * x2 for (x1, x2) in zip(X1, X2))
+
+"""
+sum of squares (without conjugation!)
+"""
+sumsq(x) = contract(x, x)
+
+"""
+norm-squared, i.e. sum xi * xi' 
+"""
+normsq(x) = dot(x, x)
+
+
+for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
+   eval( quote 
+      function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
+         SYMS = _syms(TX1)
+         @assert SYMS == _syms(TX2)
+         return $g( $f( getproperty(_x(X1), sym), 
+                         getproperty(_x(X2), sym) )   for sym in SYMS)
+      end
+   end )
+end
+
+import LinearAlgebra: norm 
+
+for (f, g) in ((:norm, :norm), (:sumsq, :sum), (:normsq, :sum) )
+   eval( quote 
+      function $f(X::TX) where {TX <: XState}
+         SYMS = _syms(TX)
+         vals = ntuple( i -> $f( getproperty(_x(X), SYMS[i]) ),  length(SYMS))
+         return $g(vals)
+      end
+   end )
+end
+
+
+
+## --------  not clear where needed; or deleted functionality 
+
+function promote_leaf_eltypes(X::TX) where {TX <: XState} 
+   SYMS = _syms(TX)
+   promote_type( ntuple(i -> promote_leaf_eltypes(getproperty(_x(X), SYMS[i])), length(SYMS))... )
+end
+
+
+## ----- Implementation of a Position State, as a basic example 
+
+PositionState{T} = State{NamedTuple{(:rr,), Tuple{SVector{3, T}}}}
 
 PositionState(r::AbstractVector{T}) where {T <: AbstractFloat} = 
       (@assert length(r) == 3; PositionState{T}(; rr = SVector{3, T}(r)))
@@ -239,54 +340,38 @@ promote_rule(::Union{Type{S}, Type{PositionState{S}}},
              ::Type{PositionState{T}}) where {S, T} = 
       PositionState{promote_type(S, T)}
 
-# some special functionality for PositionState 
+# some special functionality for PositionState, mostly needed for testing  
 *(A::AbstractMatrix, X::TX) where {TX <: PositionState} = TX( (rr = A * X.rr,) )
-+(X::TX, u::SVector{3}) where {TX <: PositionState} = TX( (rr = X.rr + u,) )
++(X::TX, u::StaticVector{3}) where {TX <: PositionState} = TX( (rr = X.rr + u,) )
 
-real(X::PositionState{T}) where {T} = 
-            PositionState{real(T)}( (rr = real.(X.rr), ) )
+
+
 
 # ------------------ Basic Configurations Code 
+# TODO: get rid of this?  
 
-abstract type XACEConfig <: AbstractConfiguration  end 
+import ACEbase: AbstractConfiguration
+export ACEConfig 
 
 """
 `struct ACEConfig`: The canonical implementation of an `AbstractConfiguration`. 
 Just wraps a `Vector{<: AbstractState}`
 """
-struct ACEConfig{STT} <: XACEConfig
+struct ACEConfig{STT} <: AbstractConfiguration
    Xs::Vector{STT}   # list of states
 end
 
+Base.eltype(cfg::ACEConfig) = eltype(cfg.Xs)
 
-struct DACEConfig{STT} <: XACEConfig
-   Xs::Vector{STT}   # list of states
-end
+Base.iterate(cfg::ACEConfig, args...) = iterate(cfg.Xs, args...)
 
-import Base: * 
-*(t::Number, dcfg::DACEConfig) = DACEConfig( t * dcfg.Xs )
-+(cfg::ACEConfig, dcfg::DACEConfig) = ACEConfig( cfg.Xs + dcfg.Xs )
-
-
-# --- iterator to go through all states in an abstract configuration assuming
-#     that the states are stored in cfg.Xs
-
-Base.iterate(cfg::XACEConfig) =
-   length(cfg.Xs) == 0 ? nothing : (cfg.Xs[1], 1)
-
-Base.iterate(cfg::XACEConfig, i::Integer) =
-   length(cfg.Xs) == i ? nothing : (cfg.Xs[i+1], i+1)
-
-Base.length(cfg::XACEConfig) = length(cfg.Xs)
-
-Base.eltype(cfg::XACEConfig) = eltype(cfg.Xs)
-
-
+Base.length(cfg::ACEConfig) = length(cfg.Xs)
 
 # ---------------- AD code 
 
+# TODO: check whether this is still needed 
 # this function makes sure that gradients w.r.t. a State become a DState 
-function rrule(::typeof(getproperty), X::ACE.XState, sym::Symbol) 
+function rrule(::typeof(getproperty), X::XState, sym::Symbol) 
    val = getproperty(X, sym)
    return val, w -> ( NoTangent(), 
                       dstate_type(w[1], X)( NamedTuple{(sym,)}((w,)) ), 

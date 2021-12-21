@@ -48,6 +48,7 @@ println_slim(@test isapprox(BB, BB1, rtol=1e-10))
 println_slim(@test BB ≈ evaluate(basis, Xs))
 println_slim(@test evaluate_d(basis, cfg) ≈ evaluate_d(basis, Xs))
 
+
 # check there are no superfluous columns
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
 if !isempty(Iz)
@@ -239,29 +240,6 @@ end
 ##
 @info("Consistency between SphericalVector & SphericalMatrix")
 
-@info("Without Constant")
-for L = 0:3
-   @info "L = $L"
-   local Xs, cfg 
-   φ1 = ACE.SphericalVector(L; T = ComplexF64)
-   basis1 = SymmetricBasis(φ1, B1p, Bsel; filterfun = ACE.NoConstant())
-
-   φ2 = ACE.SphericalMatrix(L, 0; T = ComplexF64)
-   basis2 = SymmetricBasis(φ2, B1p, Bsel; filterfun = ACE.NoConstant())
-
-   for ntest = 1:30
-      Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
-      cfg = ACEConfig(Xs)
-      BBvec = evaluate(basis1, cfg)
-      value1 = [reshape(BBvec[i].val, 2L+1, 1) for i in 1:length(BBvec)]
-      BBmat = evaluate(basis2, cfg)
-      value2 = [BBmat[i].val for i in 1:length(BBvec)]
-      print_tf(@test isapprox(value1, value2, rtol=1e-10))
-   end
-   println()
-end
-
-@info("With Constant")
 for L = 0:3
    @info "L = $L"
    local Xs, cfg 
@@ -286,25 +264,6 @@ end
 ##
 @info("Consistency between Invariant Scalar & SphericalMatrix")
 
-@info("Without Constant")
-φ = ACE.Invariant()
-basis = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
-φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
-basis2 = SymmetricBasis(φ2, B1p, Bsel; filterfun = ACE.NoConstant())
-
-for ntest = 1:30
-   local Xs, cfg, BB 
-   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
-   cfg = ACEConfig(Xs)
-   BB = evaluate(basis, cfg)
-   BBsca = [BB[i].val for i in 1:length(BB)]
-   BB2 =  evaluate(basis2, cfg)
-   BBCFlo = [ComplexF64(BB2[i].val...) for i in 1:length(BB2)]
-   print_tf(@test isapprox(BBsca, BBCFlo, rtol=1e-10))
-end
-println()
-
-@info("With Constant")
 φ = ACE.Invariant()
 basis = SymmetricBasis(φ, B1p, Bsel)
 φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)

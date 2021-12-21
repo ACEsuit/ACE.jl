@@ -39,7 +39,8 @@ Base.iterate(φ::AbstractProperty, ::Nothing) = nothing
 `coco_o_daa` : implements a tensor product between a coupling coefficient 
 (usually an `AbstractProperty`) and a gradient (usually a `DState`). 
 """
-function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState{SYMS}} where {SYMS}
+function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState}
+   SYMS = _syms(TX)
    vals = ntuple( i -> coco_o_daa(φ.val, _x(b)[SYMS[i]]), length(SYMS) )
    return TX( NamedTuple{SYMS}(vals) )
 end
