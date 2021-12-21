@@ -55,6 +55,17 @@ function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
    return Product1pBasis(bases, indices)   
 end
 
+# # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
+
+# function acquire_B!(basis::Product1pBasis, args...) 
+#    VT = valtype(basis, args...)
+#    return acquire!(basis.B_pool, length(basis), VT)
+# end
+
+# function release_B!(basis::Product1pBasis, B)
+#    return release!(basis.B_pool, B)
+# end
+
 # ------------------------------------
 
 valtype(basis::Product1pBasis) = _valtype(basis.bases)

@@ -103,23 +103,26 @@ dA = evaluate_d(B1p, cfg)
 ##
 
 
-function runn(N, f, args...)
-   for n = 1:N 
-      r = f(args...)
-   end
-end
+# function runn(N, f, args...)
+#    for n = 1:N 
+#       r = f(args...)
+#    end
+# end
 
-runn(2, evaluate_d!, dA, B1p, cfg)
+# runn(2, evaluate!, A, B1p, cfg)
 
-##
-Profile.clear()
-@profile runn(1000, evaluate_d!, dA, B1p, cfg)
-Profile.print()
+# ##
+
+# fill!(A, 0)
+
+# Profile.clear()
+# @profile runn(10_000, evaluate!, A, B1p, cfg)
+# Profile.print()
 
 
-##
+# ##
 
-ProfileSVG.view()
+# ProfileSVG.view()
 
-##
+# ##
 

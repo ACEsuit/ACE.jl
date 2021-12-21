@@ -13,7 +13,7 @@ import ACE: valtype, gradtype,
 				ACEBasis, 
 				acquire_B!, release_B!, 
 				acquire_dB!, release_dB!, 
-				acquire!
+				acquire!, release!
 
 import ACE: VectorPool
 
@@ -147,7 +147,11 @@ valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} =
 gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
 			promote_type(T, S) 
 
+# note here: release_B! should just get dispatched but for some 
+# unexplained reason doing this explicitly makes a huge difference 
+# in julia 1.6 
 acquire_B!(alp::ALPolynomials, args...) = acquire!(alp.B_pool, sizeP(alp.L))
+release_B!(alp::ALPolynomials, B) = release!(alp.B_pool, B)
 acquire_dB!(alp::ALPolynomials, args...) = acquire_B!(alp)
 release_dB!(alp::ALPolynomials, dB) = release_B!(alp, dB)
 
