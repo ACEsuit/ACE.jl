@@ -262,6 +262,8 @@ end
 
 
 function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
+   _contract = ACE.contract 
+
    basis1p = V.pibasis.basis1p
    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
    A = zeros(ComplexF64, length(basis1p))

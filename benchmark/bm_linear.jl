@@ -25,6 +25,18 @@ wL = 1.5
 
 Nprop = 2
 
+#zygote tests
+site_energy(m,x) = sum(ACE.val.(ACE.evaluate(m, x)))
+
+#loss tests
+FS = props -> sum( (1 .+ ACE.val.(props).^2).^0.5 )
+sqr(x) = x.rr .^ 2
+
+#full loss
+loss(m, x) = (FS(ACE.evaluate(m,x)))^2 + sum(sum(sqr.(gradient(tx->FS(ACE.evaluate(m,tx)), x)[1])))
+#only energy loss
+lossE(m, x) = (FS(ACE.evaluate(m,x)))^2
+
 ##
 
 #linear model
@@ -85,10 +97,7 @@ for deg in Adegrees
 
 
    #Zygote calls for derivatives
-   site_energy(m,x) = sum(ACE.val.(ACE.evaluate(m, x)))
-   @show "1"
    Agroup["site_energy"][deg] = @benchmarkable site_energy($LM, $cfg)
-   @show "2"
    Agroup["Zygote_grad_params"][deg] = @benchmarkable gradient(x->site_energy(x,$cfg), $LM)
    Agroup["Zygote_grad_config"][deg] = @benchmarkable gradient(x->site_energy($LM,x), $cfg)
    #sum over the function so we don't compute the jacobian
@@ -97,14 +106,6 @@ for deg in Adegrees
 
 
    #loss function 
-   FS = props -> sum( (1 .+ ACE.val.(props).^2).^0.5 )
-   sqr(x) = x.rr .^ 2
-
-   #full loss
-   loss(m, x) = (FS(ACE.evaluate(m,x)))^2 + sum(sum(sqr.(gradient(tx->FS(ACE.evaluate(m,tx)), x)[1])))
-   #only energy loss
-   lossE(m, x) = (FS(ACE.evaluate(m,x)))^2
-
    Agroup["eval_full_loss"][deg] = @benchmarkable loss($LM, $cfg)
    Agroup["eval_energy_loss"][deg] = @benchmarkable lossE($LM, $cfg)
    Agroup["der_full_loss"][deg] = @benchmarkable gradient(m->loss(m,$cfg), $LM)
@@ -156,45 +157,36 @@ for ord = keys(degrees), deg in degrees[ord]
    c = [SVector{size(W)[1]}(W[:,i]) for i in 1:size(W)[2]]
    LM = ACE.LinearACEModel(bsis, c, evaluator = :standard)
 
-   Bgroup["set_params!"][deg] = @benchmarkable ACE.set_params!($LM, $c)
-   Bgroup["evaluate"][deg] = @benchmarkable ACE.evaluate($LM, $cfg)
+   Bgroup["set_params!"][ord, deg] = @benchmarkable ACE.set_params!($LM, $c)
+   Bgroup["evaluate"][ord, deg] = @benchmarkable ACE.evaluate($LM, $cfg)
    
 
 
    #ACE native calls for derivatives
-   Bgroup["grad_params"][deg] = @benchmarkable ACE.grad_params($LM, $cfg)
-   Bgroup["grad_config"][deg] = @benchmarkable ACE.grad_config($LM, $cfg)
+   Bgroup["grad_params"][ord, deg] = @benchmarkable ACE.grad_params($LM, $cfg)
+   Bgroup["grad_config"][ord, deg] = @benchmarkable ACE.grad_config($LM, $cfg)
    dp = ones(Nprop) #the forces pullback input
-   Bgroup["_rrule_evaluate"][deg] = @benchmarkable ACE._rrule_evaluate($dp, $LM, $cfg)
-   Bgroup["grad_params_config"][deg] = @benchmarkable ACE.grad_params_config($LM, $cfg)
+   Bgroup["_rrule_evaluate"][ord, deg] = @benchmarkable ACE._rrule_evaluate($dp, $LM, $cfg)
+   Bgroup["grad_params_config"][ord, deg] = @benchmarkable ACE.grad_params_config($LM, $cfg)
    dq = [ACE.DState(rr=rand(SVector{3, Float64})) for _ = 1:length(cfg)] #the adjoint
-   Bgroup["adjoint_EVAL_D1"][deg] = @benchmarkable ACE.adjoint_EVAL_D1($LM, $LM.evaluator, $cfg, $dq)
+   Bgroup["adjoint_EVAL_D1"][ord, deg] = @benchmarkable ACE.adjoint_EVAL_D1($LM, $LM.evaluator, $cfg, $dq)
 
 
 
    #Zygote calls for derivatives
-   site_energy(m,x) = sum(ACE.val.(ACE.evaluate(m, x)))
-   Bgroup["site_energy"][deg] = @benchmarkable site_energy($LM, $cfg)
-   Bgroup["Zygote_grad_params"][deg] = @benchmarkable gradient(x->site_energy(x,$cfg), $LM)
-   Bgroup["Zygote_grad_config"][deg] = @benchmarkable gradient(x->site_energy($LM,x), $cfg)
+   Bgroup["site_energy"][ord, deg] = @benchmarkable site_energy($LM, $cfg)
+   Bgroup["Zygote_grad_params"][ord, deg] = @benchmarkable gradient(x->site_energy(x,$cfg), $LM)
+   Bgroup["Zygote_grad_config"][ord, deg] = @benchmarkable gradient(x->site_energy($LM,x), $cfg)
    #sum over the function so we don't compute the jacobian
-   Bgroup["Zygote_grad_params_config"][deg] = @benchmarkable gradient(m->sum(sum(gradient(x->site_energy(m,x), $cfg)[1]).rr), $LM)
+   Bgroup["Zygote_grad_params_config"][ord, deg] = @benchmarkable gradient(m->sum(sum(gradient(x->site_energy(m,x), $cfg)[1]).rr), $LM)
 
 
 
    #loss function 
-   FS = props -> sum( (1 .+ ACE.val.(props).^2).^0.5 )
-   sqr(x) = x.rr .^ 2
-
-   #full loss
-   loss(m, x) = (FS(ACE.evaluate(m,x)))^2 + sum(sum(sqr.(gradient(tx->FS(ACE.evaluate(m,tx)), x)[1])))
-   #only energy loss
-   lossE(m, x) = (FS(ACE.evaluate(m,x)))^2
-
-   Bgroup["eval_full_loss"][deg] = @benchmarkable loss($LM, $cfg)
-   Bgroup["eval_energy_loss"][deg] = @benchmarkable lossE($LM, $cfg)
-   Bgroup["der_full_loss"][deg] = @benchmarkable gradient(m->loss(m,$cfg), $LM)
-   Bgroup["der_energy_loss"][deg] = @benchmarkable gradient(m->lossE(m,$cfg), $LM)
+   Bgroup["eval_full_loss"][ord, deg] = @benchmarkable loss($LM, $cfg)
+   Bgroup["eval_energy_loss"][ord, deg] = @benchmarkable lossE($LM, $cfg)
+   Bgroup["der_full_loss"][ord, deg] = @benchmarkable gradient(m->loss(m,$cfg), $LM)
+   Bgroup["der_energy_loss"][ord, deg] = @benchmarkable gradient(m->lossE(m,$cfg), $LM)
 
 
 end 
