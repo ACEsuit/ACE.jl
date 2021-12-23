@@ -2,25 +2,27 @@
 
 using ACE, ACEbase
 using Printf, LinearAlgebra, ACE.Testing, Random
-using ACE: evaluate, evaluate_d, SymmetricBasis, NaiveTotalDegree, PIBasis
+using ACE: evaluate, evaluate_d, SymmetricBasis, SimpleSparseBasis, PIBasis, 
+           PositionState
 using ACEbase.Testing: fdtest
 using Profile, ProfileView, TimerOutputs, BenchmarkTools
 
+##
+
 # construct the 1p-basis
-D = NaiveTotalDegree()
 maxdeg = 14
 ord = 4
+Bsel = SimpleSparseBasis(ord, maxdeg)
 
-B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, D = D)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, Bsel=Bsel)
 
 # generate a configuration
 nX = 10
-Xs = rand(EuclideanVectorState, B1p.bases[1], nX)
+Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 φ = ACE.Invariant()
-pibasis = PIBasis(B1p, ord, maxdeg; property = φ)
-basis = SymmetricBasis(pibasis, φ)
+basis = SymmetricBasis(φ, B1p, Bsel)
 @show length(basis)
 
 BB = evaluate(basis, cfg)
@@ -33,20 +35,17 @@ standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
 @info("Time evaluate incl allocation")
 @btime evaluate($standard, $cfg)
 
-@info("Time grad_config incl allocation")
+@info("Time grad_config with and without allocation")
+g = ACE.acquire_grad_config!(standard, cfg)
 @btime ACE.grad_config($standard, $cfg)
+@btime ACE.grad_config!($g, $standard, $cfg)
 
 ##
 
-@info("Time evaluate excl allocation")
-tmp = ACE.alloc_temp(standard)
-@btime ACE.evaluate!($tmp, $standard, $cfg)
-
-@info("Time grad_config excl allocation")
-g = ACE.alloc_grad_config(standard, cfg)
-tmp = ACE.alloc_temp_d(standard, length(cfg))
-@btime ACE.grad_config!($g, $tmp, $standard, $cfg)
-
+@info("Time grad_params with and without allocation")
+g = ACE.acquire_grad_params!(standard, cfg)
+@btime ACE.grad_params($standard, $cfg)
+@btime ACE.grad_params!($g, $standard, $cfg)
 
 ##
 
