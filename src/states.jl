@@ -156,7 +156,7 @@ _mypromrl(::Type{<: SVector{N, P}}, T::Type{<: Number}) where {N, P} =
 _mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P2} = 
       SVector{N, promote_type(P1, P2)}
 
-@generated function dstate_type(x::S, X::TX) where {S, TX <: State}
+@generated function dstate_type(x::S, X::TX) where {S, TX <: XState}
    SYMS, TT = _symstt(TX)
    icts = _findcts(TX)
    CSYMS = SYMS[icts]
@@ -167,7 +167,7 @@ _mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P
    end
 end
 
-dstate_type(S::Type, X::State) = dstate_type(zero(S), X)
+dstate_type(S::Type, X::XState) = dstate_type(zero(S), X)
 
 ## ---------- explicit real/complex conversion 
 # this feels a bit like a hack but might be unavoidable; 
@@ -377,5 +377,7 @@ function rrule(::typeof(getproperty), X::XState, sym::Symbol)
                       dstate_type(w[1], X)( NamedTuple{(sym,)}((w,)) ), 
                       NoTangent() )
 end
+
+
 
 
