@@ -35,7 +35,10 @@ standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
 @info("Time evaluate incl allocation")
 @btime evaluate($standard, $cfg)
 
+##
+
 @info("Time grad_config with and without allocation")
+@info("This looks like a factor 4.5 of evaluate, so probably more we can do")
 g = ACE.acquire_grad_config!(standard, cfg)
 @btime ACE.grad_config($standard, $cfg)
 @btime ACE.grad_config!($g, $standard, $cfg)
@@ -43,9 +46,11 @@ g = ACE.acquire_grad_config!(standard, cfg)
 ##
 
 @info("Time grad_params with and without allocation")
+@info("a little surprising we dont get closer to factor 1?")
 g = ACE.acquire_grad_params!(standard, cfg)
 @btime ACE.grad_params($standard, $cfg)
 @btime ACE.grad_params!($g, $standard, $cfg)
+
 
 ##
 

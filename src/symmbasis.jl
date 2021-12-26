@@ -30,21 +30,21 @@ If the PIbasis is already available, this directly constructs a
 resulting SymmetricBasis; all possible permutation-invariant basis functions 
 will be symmetrised and then reduced to a basis (rather than spanning set)
 """
-struct SymmetricBasis{BOP, PROP, SYM, REAL, VPROP} <: ACEBasis
-   pibasis::PIBasis{BOP}
+struct SymmetricBasis{PIB, PROP, SYM, REAL, VPROP} <: ACEBasis
+   pibasis::PIB
    A2Bmap::SparseMatrixCSC{PROP, Int}
    symgrp::SYM
    real::REAL
    B_pool::VectorPool{VPROP}
 end
 
-Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
+Base.length(basis::SymmetricBasis{PIB, PROP}) where {PIB, PROP} =
       size(basis.A2Bmap, 1)
 
-valtype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} = basis.real(PROP)
+valtype(basis::SymmetricBasis{PIB, PROP}) where {PIB, PROP} = basis.real(PROP)
 
 # TODO: this is not nice, there should be proper promotion 
-valtype(basis::SymmetricBasis{BOP, PROP}, X::AbstractState) where {BOP, PROP} = 
+valtype(basis::SymmetricBasis{PIB, PROP}, X::AbstractState) where {PIB, PROP} = 
       valtype(basis)
 
 gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
@@ -65,7 +65,7 @@ end
         (B1.A2Bmap == B2.A2Bmap) && 
         (B1.real == B2.real) )
 
-write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
+write_dict(B::SymmetricBasis{PIB, PROP}) where {PIB, PROP} =
       Dict( "__id__" => "ACE_SymmetricBasis",
             "pibasis" => write_dict(B.pibasis),
             "A2Bmap" => write_dict(B.A2Bmap),
@@ -306,12 +306,16 @@ end
 
 # ---------------- Evaluation code
 
-
+# NOTE: Nasty and completely not understood type instability here 
 function evaluate!(B, basis::SymmetricBasis, cfg::AbstractConfiguration)
    # compute AA
-   AA = acquire_B!(basis.pibasis, cfg)
+   # pibasis = basis.pibasis
+   # VT = valtype(basis.pibasis, cfg)::Type{Float64}
+   AA = acquire_B!(basis.pibasis, cfg)::Vector{Float64}
    evaluate!(AA, basis.pibasis, cfg)
-   return evaluate!(B, basis, AA)
+   evaluate!(B, basis, AA)
+   release_B!(basis.pibasis, AA)
+   return B 
 end
 
 # this function allows us to attach multiple symmetric bases to a single

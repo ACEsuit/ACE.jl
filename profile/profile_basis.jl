@@ -61,6 +61,7 @@ AA = acquire_B!(basis.pibasis, cfg)
 
 ##
 
+@info("profile dB")
 dB = acquire_dB!(basis, cfg)
 @btime evaluate_d($basis, $cfg)
 @btime evaluate_d!($dB, $basis, $cfg)
@@ -70,27 +71,33 @@ dB = acquire_dB!(basis, cfg)
 
 ## ------- profiling codes 
 
-# using Profile, ProfileSVG
+using Profile, ProfileSVG
 
-# function runn(N, f, args...)
-#    for n = 1:N 
-#       r = f(args...)
-#    end
-# end
+function runn(N, f, args...)
+   for n = 1:N 
+      r = f(args...)
+   end
+end
 
-# runn(2, evaluate_d!, dB, basis, cfg)
+B = evaluate(basis, cfg)
+runn(100, evaluate!, B, basis, cfg)
 
-# # ##
+##
 
-# fill!(dB, zero(eltype(dB)))
+@code_warntype evaluate!(B, basis, cfg)
+@code_warntype acquire_B!(basis.pibasis, cfg)
+
+@code_warntype ACE.valtype(basis.pibasis)
+
+# ##
+
+# fill!(B, zero(eltype(B)))
 
 # Profile.clear()
-# @profile runn(300, evaluate_d!, dB, basis, cfg)
+# @profile runn(10_000, evaluate!, B, basis, cfg)
 # Profile.print()
 
 # ##
 
 # ProfileSVG.view()
-
-# ##
 
