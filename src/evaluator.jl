@@ -69,12 +69,6 @@ end
 
 # TODO: we may need a second pool to allocate ctilde vectors...
 
-# _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: SVector}) = 
-#    acquire!(basis.B_pool, len_AA, SVector{length(c[1]),eltype(basis.A2Bmap)})
-
-# _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
-#    acquire!(basis.B_pool, len_AA)
-
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
       zeros(promote_type(eltype(basis.A2Bmap), eltype(c)), len_AA)
 
@@ -88,28 +82,6 @@ _alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: SVector}) =
    
 _alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
       zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
-
-
-# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
-#    zeros(SVector{length(c̃[1]),eltype(dAAdA)}, length(A))
-   
-# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
-#    zeros(ACE.Invariant{eltype(dAAdA)}, length(A))
-
-# _alloc_dAco(dAAdA, A, c̃::AbstractVector{ACE.EuclideanVector{T}}) where {T} = 
-#    zeros(ACE.EuclideanVector{promote_type(real(eltype(dAAdA)), T)}, length(A))
-
-# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: SVector}) = 
-#    zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) )
-   
-# _alloc_dAco(dAAdA, A, c̃::AbstractVector{<: ACE.Invariant}) = 
-#    zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) ) 
-
-# _alloc_dAco(dAAdA, A, c̃::AbstractVector{ACE.EuclideanVector{T}}) where {T} = ( 
-#    @show eltype(dAAdA); 
-#    @show eltype(c̃); 
-#    @show promote_type(eltype(dAAdA), eltype(c̃)); 
-#    zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) ) )
 
 _alloc_dAco(dAAdA::AbstractVector, A::AbstractVector, c̃) =
          zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) )
@@ -215,52 +187,118 @@ function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
    return _rrule_evaluate!(g, dp, model.evaluator, cfg)
 end
 
-# compute one site energy gradient 
 function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration)
-
-   _contract(x::AbstractVector, y::AbstractVector) = 
-         sum( _contract(xi, yi) for (xi, yi) in zip(x, y) )
-
-   _contract(x::Invariant, y::Number) = x * y
-
    basis1p = V.pibasis.basis1p
-   _real = V.real
+   pireal = V.pibasis.real 
+   symreal = V.real
    A = acquire_B!(V.pibasis.basis1p, cfg)
-   dA = acquire_dB!(V.pibasis.basis1p, cfg)
+   dA = acquire_dB!(V.pibasis.basis1p, cfg)    # MAJOR ALLOCATION!! 
    dAAdA = _acquire_dAAdA!(V.pibasis)
    
    # stage 1: precompute all the A values
    evaluate_ed!(A, dA, basis1p, cfg)
 
-   # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+   # stage 2: compute the coefficients for the ∇A_{nlm} = ∇ϕ_{nlm}
+   # dAco[nlm] = coefficient of ∇A_{nlm} (via adjoints)
    c̃ = V.coeffs
-   
-   _rec_eltype(x::AbstractVector) = _rec_eltype(x[1])
-   _rec_eltype(x::AbstractProperty) = typeof(x)
-
-   dAco =  _alloc_dAco(dAAdA, A, zeros(_rec_eltype(c̃), 3)) # tmpd.dAco  # TODO: ALLOCATION 
+   dAco =  _alloc_dAco(dAAdA, A, c̃)        # TODO: ALLOCATION 
    spec = V.pibasis.spec
 
    if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
 
    fill!(dAco, zero(eltype(dAco)))
    @inbounds for iAA = iAAinit:length(spec)
-      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * complex( _contract(c̃[iAA], dp) )
+         dAco[spec.iAA2iA[iAA, t]] += contract(dAAdA[t] * dp, c̃[iAA])
       end
    end
-
+   
    # stage 3: get the gradients
-   fill!(g, zero(eltype(g)))
-   for iX = 1:length(cfg)
-      for iA = 1:length(basis1p)
-         g[iX] += _real(dAco[iA] * dA[iA, iX])
+
+   function _update_g!(iA, iX, ::AbstractProperty)
+      g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
+   end
+
+   function _update_g!(iA, iX, c̃i::SVector)
+      for iP = 1:length(c̃i)
+         g[iX, iP] += symreal( coco_o_daa(dAco[iA][iP], dA[iA, iX]) )
       end
+   end 
+
+   fill!(g, zero(eltype(g)))
+   for iX = 1:length(cfg), iA = 1:length(basis1p)
+      _update_g!(iA, iX, c̃[1])
    end
 
    return g
 end
+
+
+# # compute one site energy gradient 
+# function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration)
+
+#    _contract(x::AbstractVector, y::AbstractVector) = 
+#          sum( _contract(xi, yi) for (xi, yi) in zip(x, y) )
+
+#    _contract(x::AbstractProperty, y::Number) = x * y
+
+#    basis1p = V.pibasis.basis1p
+#    _real = V.real
+#    symreal = V.real
+
+#    A = acquire_B!(V.pibasis.basis1p, cfg)
+#    dA = acquire_dB!(V.pibasis.basis1p, cfg)
+#    dAAdA = _acquire_dAAdA!(V.pibasis)
+   
+#    # stage 1: precompute all the A values
+#    evaluate_ed!(A, dA, basis1p, cfg)
+
+#    # stage 2: compute the coefficients for the ∇A_{klm} = ∇ϕ_{klm}
+#    c̃ = V.coeffs
+   
+#    _rec_eltype(x::AbstractVector) = _rec_eltype(x[1])
+#    _rec_eltype(x::AbstractProperty) = typeof(x)
+
+#    dAco =  _alloc_dAco(dAAdA, A, zeros(_rec_eltype(c̃), 3))   # TODO: ALLOCATION 
+#    spec = V.pibasis.spec
+
+#    if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
+
+#    fill!(dAco, zero(eltype(dAco)))
+#    @inbounds for iAA = iAAinit:length(spec)
+#       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+#       @fastmath for t = 1:spec.orders[iAA]
+#          dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * c̃[iAA] # * dp # _contract(c̃[iAA], dp)
+#       end
+#    end
+
+#    # stage 3: get the gradients
+
+#    function _update_g!(iA, iX, ::AbstractProperty)
+#       g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
+#    end
+
+#    function _update_g!(iA, iX, c̃i::SVector)
+#       for iP = 1:length(c̃i)
+#          g[iX, iP] += symreal( coco_o_daa(dAco[iA][iP], dA[iA, iX]) )
+#       end
+#    end 
+
+#    fill!(g, zero(eltype(g)))
+#    for iX = 1:length(cfg), iA = 1:length(basis1p)
+#       _update_g!(iA, iX, c̃[1])
+#    end
+
+#    # fill!(g, zero(eltype(g)))
+#    # for iX = 1:length(cfg)
+#    #    for iA = 1:length(basis1p)
+#    #       g[iX] += _real(dAco[iA] * dA[iA, iX])
+#    #    end
+#    # end
+
+#    return g
+# end
 
 
 

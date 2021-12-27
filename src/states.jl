@@ -275,26 +275,6 @@ import LinearAlgebra: dot
 import Base: isapprox
 
 
-"""
-This is an exported function that is crucial to ACE internals. It implements 
-the operation 
-```
-(x, y) -> ∑_i x[i] * y[i]
-```
-i.e. like `dot` but without taking conjugates. 
-"""
-contract(X1, X2) = sum(x1 * x2 for (x1, x2) in zip(X1, X2))
-
-"""
-sum of squares (without conjugation!)
-"""
-sumsq(x) = contract(x, x)
-
-"""
-norm-squared, i.e. sum xi * xi' 
-"""
-normsq(x) = dot(x, x)
-
 
 for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
    eval( quote 

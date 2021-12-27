@@ -48,12 +48,20 @@ g = ACE.acquire_grad_config!(standard, cfg)
 
 ##
 
+@info("grad_config vs rrule_evaluate")
+g1 = ACE._rrule_evaluate(1.0, standard, cfg)
+g2 = ACE.grad_config(standard, cfg)
+@show g1 ≈ g2  
+@btime ACE.grad_config($standard, $cfg)
+@btime ACE._rrule_evaluate(1, $standard, $cfg)
+
+##
+
 @info("Time grad_params with and without allocation")
 @info("a little surprising we dont get closer to factor 1?")
 g = ACE.acquire_grad_params!(standard, cfg)
 (@btime ACE.grad_params($standard, $cfg))
 (@btime ACE.grad_params!($g, $standard, $cfg))
-
 
 ##
 
@@ -68,7 +76,7 @@ end
 ##
 
 # Profile.clear()
-# @profile runn(20_000, ACE.grad_config, standard, cfg);
+# @profile runn(10_000, ACE._rrule_evaluate, 1, standard, cfg);
 # Profile.print()
 
 # ##
@@ -77,6 +85,8 @@ end
 
 
 ##
+
+# @code_warntype ACE._rrule_evaluate(1, standard, cfg)
 
 # # make sure to add suitable @timeit macros to the module
 # @info("Detailed benchmarking of grad_config")
