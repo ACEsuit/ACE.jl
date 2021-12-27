@@ -56,6 +56,9 @@ contract(X1::AbstractVector, X2::AbstractVector) =
 contract(x1::Union{Number, AbstractProperty}, 
          x2::Union{Number, AbstractProperty}) = x1 * x2 
 
+contract(X1::AbstractVector, x2::Union{Number, AbstractProperty}) = X1 * x2
+contract(x1::Union{Number, AbstractProperty}, X2::AbstractVector) = x1 * X2
+
 """
 sum of squares (without conjugation!)
 """

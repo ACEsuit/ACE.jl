@@ -77,6 +77,8 @@ import Base: *
 *(::_One, x) = x
 *(x::ACE.AbstractProperty, ::ACE._One) = x
 *(::ACE._One, x::ACE.AbstractProperty) = x
+*(x::StaticArray, ::ACE._One) = x
+*(::ACE._One, x::StaticArray) = x
 
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
       zeros(promote_type(eltype(basis.A2Bmap), eltype(c)), len_AA)
