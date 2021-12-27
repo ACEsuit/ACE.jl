@@ -49,11 +49,11 @@ g = ACE.acquire_grad_config!(standard, cfg)
 ##
 
 @info("grad_config vs rrule_evaluate")
-g1 = ACE._rrule_evaluate(1.0, standard, cfg)
+g1 = ACE._rrule_evaluate(ACE._One(), standard, cfg)
 g2 = ACE.grad_config(standard, cfg)
 @show g1 ≈ g2  
 @btime ACE.grad_config($standard, $cfg)
-@btime ACE._rrule_evaluate(1, $standard, $cfg)
+@btime ACE._rrule_evaluate(ACE._One(), $standard, $cfg)
 
 ##
 

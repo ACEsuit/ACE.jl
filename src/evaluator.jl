@@ -69,6 +69,15 @@ end
 
 # TODO: we may need a second pool to allocate ctilde vectors...
 
+struct _One <: Number 
+end
+
+import Base: * 
+*(x, ::_One) = x
+*(::_One, x) = x
+*(x::ACE.AbstractProperty, ::ACE._One) = x
+*(::ACE._One, x::ACE.AbstractProperty) = x
+
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
       zeros(promote_type(eltype(basis.A2Bmap), eltype(c)), len_AA)
 
@@ -83,9 +92,15 @@ _alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: SVector}) =
 _alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: Number}) = 
       zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
-_alloc_dAco(dAAdA::AbstractVector, A::AbstractVector, c̃) =
-         zeros( promote_type(eltype(dAAdA), eltype(c̃)), length(A) )
+_alloc_dAco(dAAdA::AbstractVector, A::AbstractVector, c̃::AbstractArray, args...) =
+         _alloc_dAco(dAAdA, A, c̃[1], args...)
 
+function _alloc_dAco(dAAdA::AbstractVector, A::AbstractVector, 
+                     c̃::Union{TP, SVector{N, TP}}, dp = _One()
+                     ) where {N, TP <: AbstractProperty} 
+   c̃_dp = contract(c̃, dp)                     
+   zeros( promote_type(eltype(dAAdA), typeof(c̃_dp)), length(A) )
+end
 
 # ------------------------------------------------------------
 #   Standard Evaluation code
@@ -201,7 +216,7 @@ function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration
    # stage 2: compute the coefficients for the ∇A_{nlm} = ∇ϕ_{nlm}
    # dAco[nlm] = coefficient of ∇A_{nlm} (via adjoints)
    c̃ = V.coeffs
-   dAco =  _alloc_dAco(dAAdA, A, c̃)        # TODO: ALLOCATION 
+   dAco =  _alloc_dAco(dAAdA, A, c̃, dp)        # TODO: ALLOCATION 
    spec = V.pibasis.spec
 
    if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
@@ -210,25 +225,29 @@ function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration
    @inbounds for iAA = iAAinit:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += contract(dAAdA[t] * dp, c̃[iAA])
+         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * contract(dp, c̃[iAA])
       end
    end
    
    # stage 3: get the gradients
+   # TODO: this should probably be rewritten ...
+   #       it is really really ugly. 
 
-   function _update_g!(iA, iX, ::AbstractProperty)
-      g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
+   function _update_g!(iX, dAco_i::AbstractProperty, dA_i)
+      g[iX] += symreal( coco_o_daa(dAco_i, dA_i) )
    end
 
-   function _update_g!(iA, iX, c̃i::SVector)
-      for iP = 1:length(c̃i)
-         g[iX, iP] += symreal( coco_o_daa(dAco[iA][iP], dA[iA, iX]) )
+   # this is a nasty conversion from Vector{SVector} to Matrix 
+   # and should be rewritten - we should stick with one or the other.
+   function _update_g!(iX, dAco_i::SVector, dA_i)
+      for iP = 1:length(dAco_i)
+         g[iX, iP] += symreal( coco_o_daa(dAco_i[iP], dA_i) )
       end
    end 
 
    fill!(g, zero(eltype(g)))
    for iX = 1:length(cfg), iA = 1:length(basis1p)
-      _update_g!(iA, iX, c̃[1])
+      _update_g!(iX, dAco[iA], dA[iA, iX])
    end
 
    return g

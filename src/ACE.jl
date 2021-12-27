@@ -50,7 +50,9 @@ the operation
 ```
 i.e. like `dot` but without taking conjugates. 
 """
-contract(X1, X2) = sum(x1 * x2 for (x1, x2) in zip(X1, X2))
+contract(X1::AbstractVector, X2::AbstractVector) = 
+            sum(contract(x1, x2) for (x1, x2) in zip(X1, X2))
+            
 contract(x1::Union{Number, AbstractProperty}, 
          x2::Union{Number, AbstractProperty}) = x1 * x2 
 

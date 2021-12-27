@@ -43,6 +43,7 @@ fsmodel = cfg -> FS(evaluate(model, cfg))
 
 # @info("check the model and gradient evaluate ok")
 fsmodel(cfg)
+# Zygote.refresh()
 g = Zygote.gradient(fsmodel, cfg)[1]
 
 ##
