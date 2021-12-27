@@ -46,11 +46,6 @@ g = ACE.acquire_grad_config!(standard, cfg)
 (@btime ACE.grad_config($standard, $cfg))
 (@btime ACE.grad_config!($g, $standard, $cfg))
 
-# [ Info: Time grad_config with and without allocation
-# [ Info: This looks like a factor 4.5 of evaluate, so probably more we can do
-#   283.584 μs (6 allocations: 275.34 KiB)
-#   283.458 μs (5 allocations: 275.05 KiB)
-
 ##
 
 @info("Time grad_params with and without allocation")
@@ -72,13 +67,13 @@ end
 
 ##
 
-Profile.clear()
-@profile runn(20_000, ACE.grad_config, standard, cfg);
-Profile.print()
+# Profile.clear()
+# @profile runn(20_000, ACE.grad_config, standard, cfg);
+# Profile.print()
 
-##
+# ##
 
-ProfileSVG.view()
+# ProfileSVG.view()
 
 
 ##
