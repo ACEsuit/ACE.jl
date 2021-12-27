@@ -308,10 +308,7 @@ end
 
 # NOTE: Nasty and completely not understood type instability here 
 function evaluate!(B, basis::SymmetricBasis, cfg::AbstractConfiguration)
-   # compute AA
-   # pibasis = basis.pibasis
-   # VT = valtype(basis.pibasis, cfg)::Type{Float64}
-   AA = acquire_B!(basis.pibasis, cfg)::Vector{Float64}
+   AA = acquire_B!(basis.pibasis, cfg)
    evaluate!(AA, basis.pibasis, cfg)
    evaluate!(B, basis, AA)
    release_B!(basis.pibasis, AA)

@@ -164,7 +164,7 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    pireal = V.pibasis.real 
    symreal = V.real
    A = acquire_B!(V.pibasis.basis1p, cfg)
-   dA = acquire_dB!(V.pibasis.basis1p, cfg)
+   dA = acquire_dB!(V.pibasis.basis1p, cfg)    # MAJOR ALLOCATION!! 
    dAAdA = _acquire_dAAdA!(V.pibasis)
    
    # stage 1: precompute all the A values
@@ -354,7 +354,7 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, wt::Matrix)
    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
    A = zeros(ComplexF64, length(basis1p))
    TDX = gradtype(m.basis, cfg)
-   dA = zeros(complex(TDX) , length(A), length(cfg))
+   dA = zeros(complex(TDX) , length(A), length(cfg))   
    _real = V.real
    dAAw = [acquire_B!(V.pibasis, cfg) for _ in 1:length(m.c[1])]
    dAw = [similar(A) for _ in 1:length(m.c[1])]
