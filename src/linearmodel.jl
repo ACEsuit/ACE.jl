@@ -33,17 +33,19 @@ multiple properties (with different coefficients). This can be achieved by
 simply supplying `c::Vector{SVector{N, T}}` where `N` will then be the 
 number of properties. 
 """
-struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel 
+struct LinearACEModel{NPROP, TB, TP, TEV} <: AbstractACEModel 
    basis::TB
-   c::Vector{TP}
+   c::Matrix{TP}
    evaluator::TEV   
    # grad_params_pool::VectorPool{TP}
 end 
 
 struct NaiveEvaluator end 
 
-function LinearACEModel(basis::SymmetricBasis, c = zeros(length(basis)); 
-               evaluator = :standard) 
+function LinearACEModel(basis::SymmetricBasis; 
+                        nprop = 1, 
+                        c = zeros((nprop, length(basis))),
+                        evaluator = :standard)
    if evaluator == :naive 
       ev = NaiveEvaluator()
    elseif evaluator == :standard 
@@ -53,11 +55,15 @@ function LinearACEModel(basis::SymmetricBasis, c = zeros(length(basis));
    else 
       error("unknown evaluator")
    end
+   if c isa AbstractVector 
+      c = Matrix(c')
+   end
    return LinearACEModel(basis, c, ev)
 end
 
-# LinearACEModel(basis::SymmetricBasis, c::Vector, evaluator) = 
-#          LinearACEModel(basis, c, ev, VectorPool{eltype(c)})
+LinearACEModel(basis::TB, c, ev) = 
+      LinearACEModel{size(c, 1)}()
+
 
 # ------- parameter wrangling 
 
@@ -101,28 +107,22 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
 
 
 
-
 # ------- managing temporaries 
 
 # TODO: consider providing a generic object pool / array pool 
 # acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
 acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-   acquire_grad_config!(m, cfg, m.c)
-
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: SVector}) =
-   Matrix{gradtype(m.basis, cfg)}(undef, length(cfg), length(m.c[1]))
-
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
-   Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
+   Matrix{gradtype(m.basis, cfg)}(undef, length(cfg), size(m.c, 1))
 
 release_grad_config!(m::LinearACEModel, g) = nothing 
-      #release!(m.grad_cfg_pool, g)
+   #release!(m.grad_cfg_pool, g)
 
 acquire_grad_params!(m::LinearACEModel, args...) = 
-      acquire_B!(m.basis, args...)
+   Matrix{valtype(m.basis, args...)}(undef, size(m.c))
+   # acquire_B!(m.basis, args...)
 
-release_grad_params!(m::LinearACEModel, g) = 
-      release_B!(m.basis, g)
+release_grad_params!(m::LinearACEModel, g) = nothing
+   # release_B!(m.basis, g)
 
 
 # TODO: somehow it feels wrong that valtype should depend on c. Here the reason 

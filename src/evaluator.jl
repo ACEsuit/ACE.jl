@@ -143,15 +143,13 @@ function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
 end
 
 
-grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
-      grad_config!(g, V, cfg)
-
 
 # compute one site energy gradient 
 # NB - testing shows that pre-allocating everything gains about 10% for small 
 #      configs and ca 20% for larger, more realistic configs. 
 #      worth doing at some point, but not really an immediate priority!
-function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
+function grad_config!(g, m::LinearACEModel, V::ProductEvaluator, 
+                     cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
    pireal = V.pibasis.real 
    symreal = V.real
