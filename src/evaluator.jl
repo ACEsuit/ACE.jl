@@ -366,8 +366,6 @@ end
 
 
 function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
-   _contract = ACE.contract 
-
    basis1p = V.pibasis.basis1p
    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
    A = zeros(ComplexF64, length(basis1p))
@@ -382,7 +380,7 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    evaluate_ed!(A, dA, basis1p, cfg)
    fill!(dAw, 0)
    for k = 1:length(basis1p), j = 1:length(w)
-      dAw[k] += _contract(w[j], dA[k, j])
+      dAw[k] += contract(w[j], dA[k, j])
    end
 
    # [2] dAA_k 

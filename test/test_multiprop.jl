@@ -56,6 +56,7 @@ for i in 1:length(c_m[1])
 end
 println()
 
+##
 
 @info("grad_params")
 
@@ -83,7 +84,6 @@ println()
 ##
 
 @info("adjoint_EVAL_D 1 prop")
-
 #we check by contracting the full matrix that adjoint_eval_config works
 #this assumes that grad_params_config works for one porperty. This is 
 #tested elsewhere. 
@@ -94,8 +94,7 @@ for i in 1:length(c_m[1])
 
     #create a random input emulating the pullback input
     w = rand(SVector{3, Float64}, length(Jac[1,:]))
-    u = zeros(1)
-    w = [ACE.DState(rr = w[j], u = u) for j in 1:length(w)]
+    w = [ACE.DState(rr = w[j], u = 0.0) for j in 1:length(w)]
 
     #calculate the adjoint and make a zeros to fill
     grad = ACE.adjoint_EVAL_D(singlProp[i], cfg, w)
@@ -110,18 +109,19 @@ for i in 1:length(c_m[1])
 end
 println()
 
+##
+
 @info("adjoint_EVAL_D >2 prop")
 
 #now we check that multiple properties work. For this, like before, we simply
 #compare the single property result to each of the multiple properties. 
 
-uo = zeros(1)
 function wMaker()
     wtmp = rand(SVector{3, Float64}, length(cfg))
-    wtmp = [ACE.DState(rr = wtmp[j], u = uo) for j in 1:length(wtmp)]
+    wtmp = [ACE.DState(rr = wtmp[j], u = 0.0) for j in 1:length(wtmp)]
     return wtmp
 end
-TDX1 = ACE.DState{NamedTuple{(:rr, :u), Tuple{SVector{3, Float64}, Vector{Float64}}}}
+TDX1 = ACE.DState{NamedTuple{(:rr, :u), Tuple{SVector{3, Float64}, Float64}}}
 wo = Matrix{TDX1}(undef, (54,7))
 wt  = [wMaker() for i in 1:length(c_m[1])]
 
