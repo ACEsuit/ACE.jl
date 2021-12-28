@@ -1,6 +1,6 @@
 
 
-using ACE, ACEbase
+using ACE, ACEbase, StaticArrays
 using Printf, LinearAlgebra, ACE.Testing, Random
 using ACE: evaluate, evaluate_d, SymmetricBasis, SimpleSparseBasis, PIBasis, 
            PositionState
@@ -65,18 +65,26 @@ g = ACE.acquire_grad_params!(standard, cfg)
 
 ##
 
-function runn(N, f, args...)
-   t = f(args...)
-   for n = 2:N
-     t = f(args...)
-   end 
-   t
-end
+@info("adjoint_EVAL_D - single property")
+@info("This may be the single-most important function, and it looks fantastic!")
+#create a random input emulating the pullback input
+w = [ACE.DState(rr = randn(SVector{3, Float64})) for j in 1:length(cfg)]
+@btime ACE.adjoint_EVAL_D($standard, $cfg, $w)
 
 ##
 
+# function runn(N, f, args...)
+#    t = f(args...)
+#    for n = 2:N
+#      t = f(args...)
+#    end 
+#    t
+# end
+
+# ##
+
 # Profile.clear()
-# @profile runn(10_000, ACE._rrule_evaluate, 1, standard, cfg);
+# @profile runn(10000, ACE.adjoint_EVAL_D, standard, cfg, w)
 # Profile.print()
 
 # ##
@@ -85,8 +93,6 @@ end
 
 
 ##
-
-# @code_warntype ACE._rrule_evaluate(1, standard, cfg)
 
 # # make sure to add suitable @timeit macros to the module
 # @info("Detailed benchmarking of grad_config")

@@ -276,7 +276,7 @@ import Base: isapprox
 
 
 
-for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
+for (f, g) in ( (:dot, :sum), (:isapprox, :all) )  # (:contract, :sum), 
    eval( quote 
       function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
          SYMS = _syms(TX1)
@@ -285,6 +285,18 @@ for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
                          getproperty(_x(X2), sym) )   for sym in SYMS)
       end
    end )
+end
+
+@generated function contract(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
+   SYMS = _syms(TX1)
+   @assert SYMS == _syms(TX2)
+   code = "contract(X1.$(SYMS[1]), X2.$(SYMS[1]))"
+   for sym in SYMS[2:end]
+      code *= " + contract(X1.$sym, X2.$sym)"
+   end
+   return quote 
+      $(Meta.parse(code))
+   end
 end
 
 import LinearAlgebra: norm 
