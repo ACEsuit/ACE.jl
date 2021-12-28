@@ -89,7 +89,7 @@ _w2() = SVector(ACE.DState(rr = randn(SVector{3, Float64})),
                 ACE.DState(rr = randn(SVector{3, Float64})))
 w2 = [ _w2() for j in 1:length(cfg)]
 ACE.adjoint_EVAL_D(model2, cfg, w2)
-@btime ACE.adjoint_EVAL_D($standard, $cfg, $w2)
+@btime ACE.adjoint_EVAL_D($model2, $cfg, $w2)
 
 ##
 

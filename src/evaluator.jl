@@ -311,23 +311,24 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    dA = acquire_dB!(V.pibasis.basis1p, cfg)   
    dAAdA = _acquire_dAAdA!(V.pibasis)
 
-   dAw = acquire_B!(V.pibasis.basis1p, cfg)
-   dAAw = acquire_B!(V.pibasis, cfg)
+   # dAw = acquire_B!(V.pibasis.basis1p, cfg)
+   # dAAw = acquire_B!(V.pibasis, cfg)
+   _dAw = contract(w[1], dA[1])
+   dAw = zeros(typeof(_dAw), length(V.pibasis.basis1p))
 
-   dB = similar(m.c)
+   _dAAw = _real(_dAw * dAAdA[1])
+   dAAw = zeros(typeof(_dAAw), length(V.pibasis))
 
    # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
    evaluate_ed!(A, dA, basis1p, cfg)
-   fill!(dAw, 0)
+   # fill!(dAw, 0)
    for k = 1:length(basis1p), j = 1:length(w)
-      # @show w[j], dA[k, j]
-      # @show contract(w[j], dA[k, j])
       dAw[k] += contract(w[j], dA[k, j])
    end
 
    # [2] dAA_k 
    spec = V.pibasis.spec
-   fill!(dAAw, 0)
+   # fill!(dAAw, 0)
    if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
    @inbounds for iAA = iAAinit:length(spec)
       ord = spec.orders[iAA]
@@ -338,12 +339,16 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
       end
    end
 
-   genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+   dB = similar(m.c)
+   # @show m.basis.A2Bmap[1] 
+   # @show dAAw[1] 
+   # @show m.basis.A2Bmap[1].val * dAAw[1]
+   genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a * x)
 
    release_B!(V.pibasis.basis1p, A)
-   release_B!(V.pibasis.basis1p, dAw)
    release_dB!(V.pibasis.basis1p, dA)   
-   release_B!(V.pibasis, dAAw)
+   # release_B!(V.pibasis.basis1p, dAw)
+   # release_B!(V.pibasis, dAAw)
 
    # [3] dB_k
    return dB
@@ -351,57 +356,57 @@ end
 
 
 
-#for multiple properties. dispatch on the pullback input being a matrix. 
-#Basically the same code, except for some parts where we loop over all properties. 
-#We generate a list of size "nprop" and keep the same objects as for a single property 
-#inside the list.
-function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, wt::Matrix)
-   _contract = ACE.contract 
+# #for multiple properties. dispatch on the pullback input being a matrix. 
+# #Basically the same code, except for some parts where we loop over all properties. 
+# #We generate a list of size "nprop" and keep the same objects as for a single property 
+# #inside the list.
+# function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, wt::Matrix)
+#    _contract = ACE.contract 
    
-   basis1p = V.pibasis.basis1p
-   dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
-   A = zeros(ComplexF64, length(basis1p))
-   TDX = gradtype(m.basis, cfg)
-   dA = zeros(complex(TDX) , length(A), length(cfg))   
-   _real = V.real
-   dAAw = [acquire_B!(V.pibasis, cfg) for _ in 1:length(m.c[1])]
-   dAw = [similar(A) for _ in 1:length(m.c[1])]
-   dB = similar(m.c)
+#    basis1p = V.pibasis.basis1p
+#    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
+#    A = zeros(ComplexF64, length(basis1p))
+#    TDX = gradtype(m.basis, cfg)
+#    dA = zeros(complex(TDX) , length(A), length(cfg))   
+#    _real = V.real
+#    dAAw = [acquire_B!(V.pibasis, cfg) for _ in 1:length(m.c[1])]
+#    dAw = [similar(A) for _ in 1:length(m.c[1])]
+#    dB = similar(m.c)
 
-   # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
-   evaluate_ed!(A, dA, basis1p, cfg)
-   for i in 1:length(m.c[1])
-      fill!(dAw[i], 0)
-   end
-   for prop in 1:length(m.c[1])
-      w = wt[:,prop]
-      for k = 1:length(basis1p), j = 1:length(w)
-         dAw[prop][k] += _contract(w[j], dA[k, j])
-      end
-   end
+#    # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
+#    evaluate_ed!(A, dA, basis1p, cfg)
+#    for i in 1:length(m.c[1])
+#       fill!(dAw[i], 0)
+#    end
+#    for prop in 1:length(m.c[1])
+#       w = wt[:,prop]
+#       for k = 1:length(basis1p), j = 1:length(w)
+#          dAw[prop][k] += _contract(w[j], dA[k, j])
+#       end
+#    end
 
-   # [2] dAA_k 
-   spec = V.pibasis.spec
-   for i in 1:length(m.c[1])
-      fill!(dAAw[i], 0)
-   end
-   for prop in 1:length(m.c[1])
-      if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
-      @inbounds for iAA = iAAinit:length(spec)
-         _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
-         @fastmath for t = 1:spec.orders[iAA]
-            vt = spec.iAA2iA[iAA, t]
-            dAAw[prop][iAA] += _real(dAw[prop][vt] * dAAdA[t])
-         end
-      end
-   end
+#    # [2] dAA_k 
+#    spec = V.pibasis.spec
+#    for i in 1:length(m.c[1])
+#       fill!(dAAw[i], 0)
+#    end
+#    for prop in 1:length(m.c[1])
+#       if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
+#       @inbounds for iAA = iAAinit:length(spec)
+#          _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+#          @fastmath for t = 1:spec.orders[iAA]
+#             vt = spec.iAA2iA[iAA, t]
+#             dAAw[prop][iAA] += _real(dAw[prop][vt] * dAAdA[t])
+#          end
+#       end
+#    end
 
-   adjointgenmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+#    adjointgenmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
 
-   for i in 1:length(m.c[1])
-      release_B!(V.pibasis, dAAw[i]) #TODO check that this indeed releases
-   end
+#    for i in 1:length(m.c[1])
+#       release_B!(V.pibasis, dAAw[i]) #TODO check that this indeed releases
+#    end
 
-   # [3] dB_k
-   return dB
-end
+#    # [3] dB_k
+#    return dB
+# end
