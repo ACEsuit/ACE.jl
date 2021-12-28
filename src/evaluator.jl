@@ -95,12 +95,12 @@ _alloc_ctilde(basis::SymmetricBasis, c::AbstractVector{<: Number}) =
       zeros(eltype(basis.A2Bmap), size(basis.A2Bmap, 2))
 
 _alloc_dAco(dAAdA::AbstractVector, A::AbstractVector, c̃::AbstractArray, args...) =
-         _alloc_dAco(dAAdA, A, c̃[1], args...)
+            _alloc_dAco(dAAdA, A, c̃[1], args...)
 
 function _alloc_dAco(dAAdA::AbstractVector, A::AbstractVector, 
                      c̃::Union{TP, SVector{N, TP}}, dp = _One()
                      ) where {N, TP <: AbstractProperty} 
-   c̃_dp = contract(c̃, dp)                     
+   c̃_dp = contract(c̃, dp)   
    zeros( promote_type(eltype(dAAdA), typeof(c̃_dp)), length(A) )
 end
 
@@ -243,6 +243,7 @@ function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration
    # and should be rewritten - we should stick with one or the other.
    function _update_g!(iX, dAco_i::SVector, dA_i)
       for iP = 1:length(dAco_i)
+         @show eltype(g)
          g[iX, iP] += symreal( coco_o_daa(dAco_i[iP], dA_i) )
       end
    end 
@@ -260,45 +261,45 @@ end
 
 
 
-function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
-   _contract = ACE.contract 
+# function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
+#    _contract = ACE.contract 
 
-   basis1p = V.pibasis.basis1p
-   dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
-   A = zeros(ComplexF64, length(basis1p))
-   TDX = gradtype(m.basis, cfg)
-   dA = zeros(complex(TDX) , length(A), length(cfg))
-   _real = V.real
-   dAAw = acquire_B!(V.pibasis, cfg)
-   dAw = similar(A)
-   dB = zeros(Float64, length(m.c))   # TODO: fix hard-coded parameters!!!
+#    basis1p = V.pibasis.basis1p
+#    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
+#    A = zeros(ComplexF64, length(basis1p))
+#    TDX = gradtype(m.basis, cfg)
+#    dA = zeros(complex(TDX) , length(A), length(cfg))
+#    _real = V.real
+#    dAAw = acquire_B!(V.pibasis, cfg)
+#    dAw = similar(A)
+#    dB = zeros(Float64, length(m.c))   # TODO: fix hard-coded parameters!!!
 
-   # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
-   evaluate_ed!(A, dA, basis1p, cfg)
-   fill!(dAw, 0)
-   for k = 1:length(basis1p), j = 1:length(w)
-      dAw[k] += _contract(w[j], dA[k, j])
-   end
+#    # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
+#    evaluate_ed!(A, dA, basis1p, cfg)
+#    fill!(dAw, 0)
+#    for k = 1:length(basis1p), j = 1:length(w)
+#       dAw[k] += _contract(w[j], dA[k, j])
+#    end
 
-   # [2] dAA_k 
-   spec = V.pibasis.spec
-   fill!(dAAw, 0)
-   if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
-   @inbounds for iAA = iAAinit:length(spec)
-      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
-      @fastmath for t = 1:spec.orders[iAA]
-         vt = spec.iAA2iA[iAA, t]
-         dAAw[iAA] += _real(dAw[vt] * dAAdA[t])
-      end
-   end
+#    # [2] dAA_k 
+#    spec = V.pibasis.spec
+#    fill!(dAAw, 0)
+#    if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
+#    @inbounds for iAA = iAAinit:length(spec)
+#       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
+#       @fastmath for t = 1:spec.orders[iAA]
+#          vt = spec.iAA2iA[iAA, t]
+#          dAAw[iAA] += _real(dAw[vt] * dAAdA[t])
+#       end
+#    end
 
-   genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
+#    genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
 
-   release_B!(V.pibasis, dAAw)
+#    release_B!(V.pibasis, dAAw)
 
-   # [3] dB_k
-   return dB
-end
+#    # [3] dB_k
+#    return dB
+# end
 
 
 
@@ -307,12 +308,11 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    TDX = gradtype(m.basis, cfg)
    _real = V.real
    A = acquire_B!(V.pibasis.basis1p, cfg)
-   dAw = acquire_B!(V.pibasis.basis1p, cfg)
    dA = acquire_dB!(V.pibasis.basis1p, cfg)   
-   dAAw = acquire_B!(V.pibasis, cfg)
-
    dAAdA = _acquire_dAAdA!(V.pibasis)
 
+   dAw = acquire_B!(V.pibasis.basis1p, cfg)
+   dAAw = acquire_B!(V.pibasis, cfg)
 
    dB = similar(m.c)
 
@@ -320,6 +320,8 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    evaluate_ed!(A, dA, basis1p, cfg)
    fill!(dAw, 0)
    for k = 1:length(basis1p), j = 1:length(w)
+      # @show w[j], dA[k, j]
+      # @show contract(w[j], dA[k, j])
       dAw[k] += contract(w[j], dA[k, j])
    end
 

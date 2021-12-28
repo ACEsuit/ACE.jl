@@ -271,14 +271,14 @@ function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel,
       # adj_n = ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk
       # dp ⋅ adj = ∑_n ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk * dp_n 
       # grad[k] = ∑_j dq_j ⋅ ∂B_k / ∂r_j
-      grad = ACE.adjoint_EVAL_D1(model, model.evaluator, cfg, dq)
+      grad = ACE.adjoint_EVAL_D(model, model.evaluator, cfg, dq)
 
       # gradient w.r.t parameters: 
       sdp = SVector(dp...)
-      grad_params = grad .* Ref(sdp)
+      grad_params = [ gg .* sdp for gg in grad ]
 
       # gradient w.r.t. dp    # TODO: remove the |> Vector? 
-      grad_dp = sum( model.c[k] * grad[k] for k = 1:length(grad) )  |> Vector 
+      grad_dp = sum( model.c[k] .* grad[k] for k = 1:length(grad) )  |> Vector 
 
       return NoTangent(), grad_dp, grad_params, NoTangent()
    end
