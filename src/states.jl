@@ -302,6 +302,10 @@ end
    end
 end
 
+contract(X1::Number, X2::XState) = X1 * X2 
+contract(X2::XState, X1::Number) = X1 * X2 
+
+
 import LinearAlgebra: norm 
 
 for (f, g) in ((:norm, :norm), (:sumsq, :sum), (:normsq, :sum) )

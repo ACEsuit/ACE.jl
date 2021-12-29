@@ -75,11 +75,12 @@ end
 import Base: * 
 *(x, ::_One) = x
 *(::_One, x) = x
-*(x::ACE.AbstractProperty, ::ACE._One) = x
-*(::ACE._One, x::ACE.AbstractProperty) = x
-*(x::StaticArray, ::ACE._One) = x
-*(::ACE._One, x::StaticArray) = x
-contract(::_One, x) = x
+*(x::AbstractProperty, ::_One) = x
+*(::_One, x::AbstractProperty) = x
+*(x::StaticArray, ::_One) = x
+*(::_One, x::StaticArray) = x
+*(::ACE._One, x::ACE.XState) = x
+*(x::ACE.XState, ::ACE._One) = x
 
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
       zeros(promote_type(eltype(basis.A2Bmap), eltype(c)), len_AA)
@@ -146,56 +147,21 @@ end
 
 
 # compute one site energy gradient 
-# NB - testing shows that pre-allocating everything gains about 10% for small 
-#      configs and ca 20% for larger, more realistic configs. 
-#      worth doing at some point, but not really an immediate priority!
-function grad_config!(g, m::LinearACEModel, V::ProductEvaluator, 
-                     cfg::AbstractConfiguration)
-   basis1p = V.pibasis.basis1p
-   pireal = V.pibasis.real 
-   symreal = V.real
-   A = acquire_B!(V.pibasis.basis1p, cfg)
-   dA = acquire_dB!(V.pibasis.basis1p, cfg)    # MAJOR ALLOCATION!! 
-   dAAdA = _acquire_dAAdA!(V.pibasis)
-   
-   # stage 1: precompute all the A values
-   evaluate_ed!(A, dA, basis1p, cfg)
-
-   # stage 2: compute the coefficients for the ∇A_{nlm} = ∇ϕ_{nlm}
-   # dAco[nlm] = coefficient of ∇A_{nlm} (via adjoints)
-   c̃ = V.coeffs
-   # dAco =  _alloc_dAco(dAAdA, A, c̃) # tmpd.dAco  # TODO: ALLOCATION 
-   _dAco = dAAdA[1] * c̃[1]
-   dAco = zeros(typeof(_dAco), length(A))
-   spec = V.pibasis.spec
-
-   if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
-
-   fill!(dAco, zero(eltype(dAco)))
-   @inbounds for iAA = iAAinit:length(spec)
-      _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
-      @fastmath for t = 1:spec.orders[iAA]
-         dAco[spec.iAA2iA[iAA, t]] += dAAdA[t] * c̃[iAA] #trying to avoid using .* and complex.()
-      end
-   end
-   
-   # stage 3: get the gradients
-
-   fill!(g, zero(eltype(g)))
-   for iX = 1:length(cfg), iA = 1:length(basis1p)
-      g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
-   end
-
-   return g
-end
+grad_config!(g, m::LinearACEModel, V::ProductEvaluator, 
+                     cfg::AbstractConfiguration) = 
+      _rrule_evaluate!(g, _One(), m, V, cfg)         
 
 
 function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
    g = acquire_grad_config!(model, cfg, dp)
-   return _rrule_evaluate!(g, dp, model.evaluator, cfg)
+   return _rrule_evaluate!(g, dp, model, model.evaluator, cfg)
 end
 
-function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration)
+# NB - testing shows that pre-allocating everything gains about 10% for small 
+#      configs and ca 20% for larger, more realistic configs. 
+#      worth doing at some point, but not really an immediate priority!
+function _rrule_evaluate!(g, dp, m::LinearACEModel, V::ProductEvaluator, 
+                          cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
    pireal = V.pibasis.real 
    symreal = V.real

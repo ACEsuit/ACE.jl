@@ -5,7 +5,6 @@ using StaticArrays
 using ChainRules
 import ChainRulesCore: rrule, NoTangent, ZeroTangent
 using Zygote
-using Zygote: @thunk 
 using Printf, LinearAlgebra #for the fdtestMatrix
 
 ##
@@ -30,6 +29,7 @@ c_m = rand(SVector{np,Float64}, length(basis))
 model = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 
 evaluate(model, cfg)
+grad_config(model, cfg)
 
 ##
 
