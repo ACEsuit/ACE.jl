@@ -17,7 +17,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
 #TODO check if this tests account/test u, and will it work with more things?
-nX = 54
+nX = 30
 Xs = () -> ACE.State(rr = rand(SVector{3, Float64}), u = rand())
 cfg = ACEConfig([Xs() for i in 1:nX])
 
@@ -27,11 +27,23 @@ basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 ##
 
 BB = evaluate(basis, cfg)
+dBB = ACE.evaluate_d(basis, cfg)
 
-c_m = rand(SVector{7,Float64}, length(BB))
+c_m = rand(SVector{3,Float64}, length(BB))
+
+##
 
 singlProp = [ACE.LinearACEModel(basis, rand(length(BB)), evaluator = :standard) for i in 1:length(c_m[1])]
 multiProp = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
+
+ACE.valtype(singlProp[1], cfg)
+ACE.valtype(multiProp, cfg)
+ACE.gradtype(singlProp[1], cfg)
+ACE.gradtype(multiProp, cfg)
+ACE.gradparamtype(singlProp[1], cfg)
+ACE.gradparamtype(multiProp, cfg)
+
+##
 
 @info("set_params!")
 c_s = [[c_m[j][i] for j in 1:length(c_m)] for i in 1:length(c_m[1])]
@@ -62,10 +74,12 @@ println()
 
 multiGradP = ACE.grad_params(multiProp,cfg)
 
+println_slim(@test all(isdiag, multiGradP))
+
 for i in 1:length(c_m[1])
-    singl = getproperty.(ACE.grad_params(singlProp[i],cfg),:val)
-    multi = [getproperty(multiGradP[j][i], :val) for j in 1:length(c_m)]
-    print_tf(@test(singl ≈ multi))
+    singl = ACE.grad_params(singlProp[i], cfg)
+    mult_i = [ multiGradP[j][i,i] for j = 1:length(c_m)] 
+    print_tf(@test(singl ≈ mult_i))
 end
 println()
 
@@ -73,11 +87,13 @@ println()
 
 @info("grad_config")
 
+ACE.acquire_grad_config!(multiProp, cfg)
+mgcfg = ACE.grad_config(multiProp, cfg)
+
 for i in 1:length(c_m[1])
     singl = ACE.grad_config(singlProp[i],cfg)
-    multi = ACE.grad_config(multiProp,cfg)[:,i]
-
-    print_tf(@test(singl ≈ multi))
+    mult_i = [ g[i] for g in mgcfg ]
+    print_tf(@test(singl ≈ mult_i))
 end
 println()
 

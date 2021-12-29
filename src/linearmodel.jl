@@ -100,48 +100,50 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
       NaiveEvaluator()
 
 
+# ------- return types
 
+import ACEbase: valtype, gradtype 
+
+valtype(model::LinearACEModel, cfg) = 
+      _valtype(model.basis, cfg, model.c)
+
+function _valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector) 
+   # promote_type(eltype(c), valtype(basis, cfg))
+   VTB = valtype(basis, cfg)
+   return typeof(c[1] * zero(VTB))
+end
+      
+
+gradtype(model::LinearACEModel, cfg) = 
+      _gradtype(model.basis, cfg, model.c)
+
+# g[ix] += m.c[ib] * dB[ib, ix]
+function _gradtype(basis, cfg, c) 
+   # promote_type( eltype(c), gradtype(basis, cfg) )
+   GTB = gradtype(basis, cfg)
+   return typeof( c[1] * zero(GTB) )
+end
+
+function gradparamtype(model::LinearACEModel, cfg) 
+   v = zero(valtype(model, cfg))
+   return typeof( v * model.c[1]' )
+end
 
 # ------- managing temporaries 
 
 # TODO: consider providing a generic object pool / array pool 
 # acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
+
 acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-   acquire_grad_config!(m, cfg, m.c)
-
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: SVector}) =
-   Matrix{gradtype(m.basis, cfg)}(undef, length(cfg), length(m.c[1]))
-
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
-   Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
+      Vector{gradtype(m, cfg)}(undef, length(cfg))
 
 release_grad_config!(m::LinearACEModel, g) = nothing 
-      #release!(m.grad_cfg_pool, g)
 
-acquire_grad_params!(m::LinearACEModel, args...) = 
-      acquire_B!(m.basis, args...)
+acquire_grad_params!(m::LinearACEModel, cfg) = 
+      Vector{gradparamtype(m, cfg)}(undef, length(m.c))
 
-release_grad_params!(m::LinearACEModel, g) = 
-      release_B!(m.basis, g)
+release_grad_params!(m::LinearACEModel, g) = nothing 
 
-
-# TODO: somehow it feels wrong that valtype should depend on c. Here the reason 
-#       is that c lives in the model and not in the basis. We should trace
-#       back how this occured and if possible remove these two methods. 
-#       maybe they can be replaced with "private" methods, then I'd be more 
-#       comfortable. 
-function ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: SVector})
-   return SVector{length(c[1]), valtype(basis, zero(eltype(cfg)))}
-end
-
-#calls the regular valtype
-ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
-      valtype(basis, cfg)
-
-ACEbase.valtype(model::LinearACEModel, cfg) = 
-      ACEbase.valtype(model.basis, cfg, model.c)
-
-# ACE.gradtype(model, cfg)      
 
 # ------------------- dispatching on the evaluators 
 
@@ -155,10 +157,20 @@ grad_config!(g, m::LinearACEModel, X::AbstractConfiguration) =
       grad_config!(g, m, m.evaluator, X) 
 
 grad_params(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      grad_params!(acquire_grad_params!(m, cfg, m.c), m, cfg)
+      grad_params!(acquire_grad_params!(m, cfg), m, cfg)
 
 function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
-   evaluate!(g, m.basis, cfg) 
+
+   _gi(Bi, c::Number) = Bi 
+   _gi(Bi, c::SVector{N, <: Number}) where {N} = 
+         SMatrix{N,N}( Diagonal([ Bi for _=1:N ]) )
+
+   B = acquire_B!(m.basis, cfg)
+   evaluate!(B, m.basis, cfg) 
+   for i = 1:length(g) 
+      g[i] = _gi(B[i], m.c[1])
+   end
+   release_B!(m.basis, B)
    return g 
 end
 

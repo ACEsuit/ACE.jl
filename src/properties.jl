@@ -14,6 +14,8 @@ _basetype(φ::AbstractProperty) = Base.typename(typeof(φ)).wrapper
 @inline *(a::Union{Number, AbstractMatrix}, φ::AbstractProperty) = (_basetype(φ))(a * φ.val)
 @inline *(φ::AbstractProperty, a::Union{Number, AbstractMatrix})  = (_basetype(φ))(φ.val * a)
 
+*(a::AbstractVector{<: Number}, φ::AbstractProperty) = a .* Ref(φ)
+
 Base.isapprox(φ1::AbstractProperty, φ2::AbstractProperty) = isapprox(φ1.val, φ2.val)
 
 @inline norm(φ::AbstractProperty) = norm(φ.val)
@@ -45,6 +47,9 @@ function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState}
    return TX( NamedTuple{SYMS}(vals) )
 end
 
+coco_o_daa(cc::SVector{N, <: AbstractProperty}, b::TX) where {N, TX <: XState} = 
+      SVector( ntuple(i -> coco_o_daa(cc[i], b), N) )
+
 coco_o_daa(cc::Number, b::Number) = cc * b
 coco_o_daa(cc::Number, b::SVector) = cc * b
 coco_o_daa(cc::SVector, b::SVector) = cc * transpose(b)
@@ -52,6 +57,7 @@ coco_o_daa(cc::SMatrix{N1,N2}, b::SVector{N3}) where {N1,N2,N3} =
 		reshape(cc[:] * transpose(b), Size(N1, N2, N3))
 coco_o_daa(cc::SArray{Tuple{N1,N2,N3}}, b::SVector{N4}) where {N1,N2,N3,N4} =
 		reshape(cc[:] * transpose(b), Size(N1, N2, N3, N4))
+
 
 # TODO: is this needed or can it be removed? 
 #       maybe it should also be allowed for a DState?

@@ -138,20 +138,18 @@ function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
       end
       val += symreal(pireal(aa) * V.coeffs[iAA])
    end
+
    release_B!(V.pibasis.basis1p, A)
    return val
 end
-
-
-grad_config!(g, m::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
-      grad_config!(g, V, cfg)
 
 
 # compute one site energy gradient 
 # NB - testing shows that pre-allocating everything gains about 10% for small 
 #      configs and ca 20% for larger, more realistic configs. 
 #      worth doing at some point, but not really an immediate priority!
-function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
+function grad_config!(g, m::LinearACEModel, V::ProductEvaluator, 
+                     cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
    pireal = V.pibasis.real 
    symreal = V.real
@@ -165,7 +163,9 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    # stage 2: compute the coefficients for the ∇A_{nlm} = ∇ϕ_{nlm}
    # dAco[nlm] = coefficient of ∇A_{nlm} (via adjoints)
    c̃ = V.coeffs
-   dAco =  _alloc_dAco(dAAdA, A, c̃) # tmpd.dAco  # TODO: ALLOCATION 
+   # dAco =  _alloc_dAco(dAAdA, A, c̃) # tmpd.dAco  # TODO: ALLOCATION 
+   _dAco = dAAdA[1] * c̃[1]
+   dAco = zeros(typeof(_dAco), length(A))
    spec = V.pibasis.spec
 
    if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
@@ -180,19 +180,9 @@ function grad_config!(g, V::ProductEvaluator, cfg::AbstractConfiguration)
    
    # stage 3: get the gradients
 
-   function _update_g!(iA, iX, ::AbstractProperty)
-      g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
-   end
-
-   function _update_g!(iA, iX, c̃i::SVector)
-      for iP = 1:length(c̃i)
-         g[iX, iP] += symreal( coco_o_daa(dAco[iA][iP], dA[iA, iX]) )
-      end
-   end 
-
    fill!(g, zero(eltype(g)))
    for iX = 1:length(cfg), iA = 1:length(basis1p)
-      _update_g!(iA, iX, c̃[1])
+      g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
    end
 
    return g
