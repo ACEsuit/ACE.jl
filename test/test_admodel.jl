@@ -1,6 +1,6 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
-using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val 
+using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val, grad_config
 using StaticArrays
 using ChainRules
 import ChainRulesCore: rrule, NoTangent, ZeroTangent
@@ -63,6 +63,8 @@ mat2svecs(M::AbstractArray{T}) where {T} =
       collect(reinterpret(SVector{np, T}, M))
 svecs2vec(M::AbstractVector{<: SVector{N, T}}) where {N, T} = 
       collect(reinterpret(T, M))
+svecs2vec(M::AbstractVector{<: Vector}) = 
+      svecs2vec( SVector{2}.(M) )
 
 @info("Check grad w.r.t. Params of FS-like model")
 
@@ -93,7 +95,7 @@ loss1 = model -> sum(sum(abs2, g.rr - y)
 
 # check that loss and gradient evaluate ok 
 loss1(model)
-# Zygote.refresh()
+Zygote.refresh()
 g = Zygote.gradient(loss1, model)[1]  # SEGFAULT IN THIS LINE ON J1.7!!!
 
 # wrappers to take derivatives w.r.t. the vector or parameters
@@ -101,7 +103,7 @@ F1 = θ -> ( ACE.set_params!(model, mat2svecs(θ));
             loss1(model) )
 
 dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
-            Zygote.gradient(loss1, model)[1] |> svecs2vec  )
+             val.( Zygote.gradient(loss1, model)[1] |> svecs2vec )  )
 
 F1(θ)
 dF1(θ)

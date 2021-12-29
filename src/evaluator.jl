@@ -202,48 +202,6 @@ end
 
 
 
-# function adjoint_EVAL_D1(m::LinearACEModel, V::ProductEvaluator, cfg, w)
-#    _contract = ACE.contract 
-
-#    basis1p = V.pibasis.basis1p
-#    dAAdA = zero(MVector{10, ComplexF64})   # TODO: VERY RISKY -> FIX THIS 
-#    A = zeros(ComplexF64, length(basis1p))
-#    TDX = gradtype(m.basis, cfg)
-#    dA = zeros(complex(TDX) , length(A), length(cfg))
-#    _real = V.real
-#    dAAw = acquire_B!(V.pibasis, cfg)
-#    dAw = similar(A)
-#    dB = zeros(Float64, length(m.c))   # TODO: fix hard-coded parameters!!!
-
-#    # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
-#    evaluate_ed!(A, dA, basis1p, cfg)
-#    fill!(dAw, 0)
-#    for k = 1:length(basis1p), j = 1:length(w)
-#       dAw[k] += _contract(w[j], dA[k, j])
-#    end
-
-#    # [2] dAA_k 
-#    spec = V.pibasis.spec
-#    fill!(dAAw, 0)
-#    if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
-#    @inbounds for iAA = iAAinit:length(spec)
-#       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], _real)
-#       @fastmath for t = 1:spec.orders[iAA]
-#          vt = spec.iAA2iA[iAA, t]
-#          dAAw[iAA] += _real(dAw[vt] * dAAdA[t])
-#       end
-#    end
-
-#    genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a.val * x)
-
-#    release_B!(V.pibasis, dAAw)
-
-#    # [3] dB_k
-#    return dB
-# end
-
-
-
 function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    basis1p = V.pibasis.basis1p
    TDX = gradtype(m.basis, cfg)
@@ -280,11 +238,12 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
       end
    end
 
-   dB = similar(m.c)
+   # dB = similar(m.c)
    # @show m.basis.A2Bmap[1] 
    # @show dAAw[1] 
    # @show m.basis.A2Bmap[1].val * dAAw[1]
-   genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a * x)
+   # genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a * x)
+   dB = m.basis.A2Bmap * dAAw
 
    release_B!(V.pibasis.basis1p, A)
    release_dB!(V.pibasis.basis1p, dA)   

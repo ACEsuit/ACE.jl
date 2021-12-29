@@ -288,5 +288,5 @@ function ChainRules.rrule(::typeof(_adj_evaluate), dp, model::ACE.LinearACEModel
       return NoTangent(), grad_dp, grad_params, NoTangent()
    end
 
-   return adj_evaluate(dp, model, cfg), _second_adj
+   return _adj_evaluate(dp, model, cfg), _second_adj
 end
