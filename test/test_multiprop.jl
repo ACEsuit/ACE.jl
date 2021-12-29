@@ -1,6 +1,7 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
 using ACE: evaluate, SymmetricBasis, PIBasis, O3 
+using ACEbase.Testing: println_slim
 using StaticArrays
 
 

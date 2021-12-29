@@ -114,14 +114,14 @@ function _valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector
 end
       
 
-gradtype(model::LinearACEModel, cfg) = 
-      _gradtype(model.basis, cfg, model.c)
+gradtype(model::LinearACEModel, cfg, dp = _One()) = 
+      _gradtype(model.basis, cfg, model.c, dp)
 
 # g[ix] += m.c[ib] * dB[ib, ix]
-function _gradtype(basis, cfg, c) 
+function _gradtype(basis, cfg, c, dp = _One())
    # promote_type( eltype(c), gradtype(basis, cfg) )
    GTB = gradtype(basis, cfg)
-   return typeof( c[1] * zero(GTB) )
+   return typeof( contract(dp, c[1] * zero(GTB))  )
 end
 
 function gradparamtype(model::LinearACEModel, cfg) 
@@ -134,8 +134,8 @@ end
 # TODO: consider providing a generic object pool / array pool 
 # acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
 
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      Vector{gradtype(m, cfg)}(undef, length(cfg))
+acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, dp = _One()) = 
+      Vector{gradtype(m, cfg, dp)}(undef, length(cfg))
 
 release_grad_config!(m::LinearACEModel, g) = nothing 
 
@@ -231,24 +231,16 @@ end
 
 import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 
-# NOTE: there are lots of rrule implementations in `evaluate.jl`, which seem
-#       to be doing the same thing and are clashing with this. So for now we 
-#       just get something up and running but we must return to this and 
-#       clean up all those different versions of the same thing. 
 
-# adj_evaluate is defined as a separate function so we can rrule it again (see below)
-# should be called _rrule_evaluate, but that would clash with the 
-# crap that's in evaluator.jl -> needs some cleanup 
-function adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
+function _adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
    # TODO: not clear this is correct. Shouldn't the derivative of 
    # a property w.r.t. a parameter be a property again? e.g. 
    # if φ is an invariant, then ∂_p φ is again an invariant?
    __val(a::AbstractProperty) = ACE.val(a)
-   __val(a::AbstractVector) = ACE.val.(a)
+   __val(a::AbstractArray) = ACE.val.(a)
    gp_ = ACE.grad_params(model, cfg)
-   gp = [ __val(a) .* dp for a in gp_ ]
-   g_cfg = ACE._rrule_evaluate(dp, model, cfg) # rrule for cfg only...
-   return NoTangent(), gp, g_cfg
+   gp = [ __val(a) * dp for a in gp_ ]
+   return NoTangent(), gp, _rrule_evaluate(dp, model, cfg)
 end
 
 # this is monkey-patching the rotten rrule inside of ACE
@@ -256,13 +248,14 @@ end
 #     evaluating more than we need.
 function ChainRules.rrule(::typeof(evaluate), model::ACE.LinearACEModel, cfg::AbstractConfiguration)
    return evaluate(model, cfg), 
-          dp -> adj_evaluate(dp, model, cfg)
+          dp -> _adj_evaluate(dp, model, cfg)
 end
+
 
 # rrule for the rrule ... this enables mixed second derivatives of the form 
 #   D^2 * / D p Dcfg. 
 # the code double-checks that indeed only those derivatives are needed! 
-function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel, cfg)
+function ChainRules.rrule(::typeof(_adj_evaluate), dp, model::ACE.LinearACEModel, cfg)
    # adj = (_, g_params, g_cfg) 
    #   D(dq[1] * _ + dq[2] * g_params + dq[3] * g_cfg) / D(dp, model, cfg)
    #       0 = ^^^    ^^^ = 0

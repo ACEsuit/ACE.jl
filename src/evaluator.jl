@@ -79,6 +79,7 @@ import Base: *
 *(::ACE._One, x::ACE.AbstractProperty) = x
 *(x::StaticArray, ::ACE._One) = x
 *(::ACE._One, x::StaticArray) = x
+contract(::_One, x) = x
 
 _acquire_ctilde(basis::SymmetricBasis, len_AA, c::AbstractVector{<: Number}) = 
       zeros(promote_type(eltype(basis.A2Bmap), eltype(c)), len_AA)
@@ -190,7 +191,7 @@ end
 
 
 function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
-   g = acquire_grad_config!(model, cfg, zeros(eltype(model.c[1]), 3) )
+   g = acquire_grad_config!(model, cfg, dp)
    return _rrule_evaluate!(g, dp, model.evaluator, cfg)
 end
 
@@ -222,25 +223,9 @@ function _rrule_evaluate!(g, dp, V::ProductEvaluator, cfg::AbstractConfiguration
    end
    
    # stage 3: get the gradients
-   # TODO: this should probably be rewritten ...
-   #       it is really really ugly. 
-
-   function _update_g!(iX, dAco_i::AbstractProperty, dA_i)
-      g[iX] += symreal( coco_o_daa(dAco_i, dA_i) )
-   end
-
-   # this is a nasty conversion from Vector{SVector} to Matrix 
-   # and should be rewritten - we should stick with one or the other.
-   function _update_g!(iX, dAco_i::SVector, dA_i)
-      for iP = 1:length(dAco_i)
-         @show eltype(g)
-         g[iX, iP] += symreal( coco_o_daa(dAco_i[iP], dA_i) )
-      end
-   end 
-
    fill!(g, zero(eltype(g)))
    for iX = 1:length(cfg), iA = 1:length(basis1p)
-      _update_g!(iX, dAco[iA], dA[iA, iX])
+      g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
    end
 
    release_B!(V.pibasis.basis1p, A)
