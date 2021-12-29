@@ -78,6 +78,14 @@ grad_fsmodelp(θ)
 println(@test all( ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ) ))
 
 
+##
+
+Zygote.gradient(cfg -> val(sum(evaluate(model, cfg))), cfg)[1]
+
+# this is a problem - there is still something wrong with the val adjoints???
+Zygote.gradient(model -> val(sum(evaluate(model, cfg))), model)[1]
+
+
 ## second-order adjoint (cfg and params)
 # THIS TEST CURRENTLY THROWS A SEGFAULT
 # ... but only if run as part of the test set and not 
@@ -97,13 +105,14 @@ loss1 = model -> sum(sum(abs2, g.rr - y)
 loss1(model)
 Zygote.refresh()
 g = Zygote.gradient(loss1, model)[1]  # SEGFAULT IN THIS LINE ON J1.7!!!
+g
 
 # wrappers to take derivatives w.r.t. the vector or parameters
 F1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
             loss1(model) )
 
 dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
-             val.( Zygote.gradient(loss1, model)[1] |> svecs2vec )  )
+             Zygote.gradient(loss1, model)[1] |> svecs2vec  )
 
 F1(θ)
 dF1(θ)

@@ -549,6 +549,18 @@ as we learn more about how to best implement AD.
 """
 val(x) = x.val 
 
+struct _Val{T}
+   v::T 
+end
+
+import Base: * 
+*(v::_Val, x::AbstractProperty) = v.v * val(x)
+*(x::AbstractProperty, v::_Val) = v.v * val(x)
+*(v::_Val, x::XState) = v.v * x
+*(x::XState, v::_Val) = v.v * x
+contract(v::_Val, x) = v * x
+contract(x, v::_Val) = v * x
+
 function _rrule_val(dp, x)     # ∂/∂x (dp * x) = dp 
    @assert dp isa Number 
    return NoTangent(), dp
@@ -565,10 +577,14 @@ function rrule(::typeof(_rrule_val), dp, x)   # ∂/∂... (0 + dp * dq[2])
          @show dq 
          @assert dq[1] == ZeroTangent() 
          # @assert dq[2] isa Number 
-         return NoTangent(), val(dq[2]), ZeroTangent()
+         return NoTangent(), dq[2], ZeroTangent()
       end
       return _rrule_val(dp, x), second_adj
 end 
+
+import ChainRulesCore: ProjectTo
+
+(::ProjectTo{T})(φ::Invariant{T}) where {T} = val(φ)
 
 
 

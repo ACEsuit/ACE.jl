@@ -233,13 +233,9 @@ import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 
 
 function _adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
-   # TODO: not clear this is correct. Shouldn't the derivative of 
-   # a property w.r.t. a parameter be a property again? e.g. 
-   # if φ is an invariant, then ∂_p φ is again an invariant?
-   __val(a::AbstractProperty) = ACE.val(a)
-   __val(a::AbstractArray) = ACE.val.(a)
+   @show dp
    gp_ = ACE.grad_params(model, cfg)
-   gp = [ __val(a) * dp for a in gp_ ]
+   gp = [ a * dp for a in gp_ ]
    return NoTangent(), gp, _rrule_evaluate(dp, model, cfg)
 end
 

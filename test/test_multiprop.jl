@@ -100,59 +100,62 @@ println()
 
 ##
 
-@info("adjoint_EVAL_D 1 prop")
-#we check by contracting the full matrix that adjoint_eval_config works
-#this assumes that grad_params_config works for one porperty. This is 
-#tested elsewhere. 
-for i in 1:length(c_m[1])
+# @info("adjoint_EVAL_D 1 prop")
+# #we check by contracting the full matrix that adjoint_eval_config works
+# #this assumes that grad_params_config works for one porperty. This is 
+# #tested elsewhere. 
 
-    #find the jacobian
-    Jac = ACE.grad_params_config(singlProp[i],cfg)
+# i = 2
 
-    #create a random input emulating the pullback input
-    w = rand(SVector{3, Float64}, length(Jac[1,:]))
-    w = [ACE.DState(rr = w[j], u = 0.0) for j in 1:length(w)]
+# for i in 1:length(c_m[1])
 
-    #calculate the adjoint and make a zeros to fill
-    grad = ACE.adjoint_EVAL_D(singlProp[i], cfg, w)
-    Jgrad = zeros(length(grad))
+#     #find the jacobian
+#     Jac = ACE.grad_params_config(singlProp[i],cfg)
 
-    #contract w into the jacobian to get the solution
-    for j in 1:length(Jac[:,1])
-        Jgrad[j] = sum([ACE.contract(Jac[j,:][k], w[k]) for k in 1:length(w)])
-    end
+#     #create a random input emulating the pullback input
+#     w = rand(SVector{3, Float64}, length(Jac[1,:]))
+#     w = [ACE.DState(rr = w[j], u = 0.0) for j in 1:length(w)]
 
-    print_tf(@test(grad ≈ Jgrad))
-end
-println()
+#     #calculate the adjoint and make a zeros to fill
+#     grad = ACE.adjoint_EVAL_D(singlProp[i], cfg, w)
+#     Jgrad = zeros(length(grad))
 
-##
+#     #contract w into the jacobian to get the solution
+#     for j in 1:length(Jac[:,1])
+#         Jgrad[j] = sum([ACE.contract(Jac[j,:][k], w[k]) for k in 1:length(w)])
+#     end
 
-@info("adjoint_EVAL_D >2 prop")
+#     print_tf(@test(grad ≈ Jgrad))
+# end
+# println()
 
-#now we check that multiple properties work. For this, like before, we simply
-#compare the single property result to each of the multiple properties. 
+# ##
 
-function wMaker()
-    wtmp = rand(SVector{3, Float64}, length(cfg))
-    wtmp = [ACE.DState(rr = wtmp[j], u = 0.0) for j in 1:length(wtmp)]
-    return wtmp
-end
-TDX1 = ACE.DState{NamedTuple{(:rr, :u), Tuple{SVector{3, Float64}, Float64}}}
-wo = Matrix{TDX1}(undef, (54,7))
-wt  = [wMaker() for i in 1:length(c_m[1])]
+# @info("adjoint_EVAL_D >2 prop")
 
-for i in 1:length(wt)
-    for j in 1:length(wt[i])
-        wo[j,i] = wt[i][j]
-    end
-end
+# #now we check that multiple properties work. For this, like before, we simply
+# #compare the single property result to each of the multiple properties. 
 
-multiEval = ACE.adjoint_EVAL_D(multiProp, cfg, wo)
+# function wMaker()
+#     wtmp = rand(SVector{3, Float64}, length(cfg))
+#     wtmp = [ACE.DState(rr = wtmp[j], u = 0.0) for j in 1:length(wtmp)]
+#     return wtmp
+# end
+# TDX1 = ACE.DState{NamedTuple{(:rr, :u), Tuple{SVector{3, Float64}, Float64}}}
+# wo = Matrix{TDX1}(undef, (54,7))
+# wt  = [wMaker() for i in 1:length(c_m[1])]
 
-for i in 1:length(c_m[1])
-    singl = ACE.adjoint_EVAL_D(singlProp[i], cfg, wo[:,i])
-    multi = [multiEval[j][i] for j in 1:length(c_m)]
-    print_tf(@test(singl ≈ multi))
-end
-println() 
+# for i in 1:length(wt)
+#     for j in 1:length(wt[i])
+#         wo[j,i] = wt[i][j]
+#     end
+# end
+
+# multiEval = ACE.adjoint_EVAL_D(multiProp, cfg, wo)
+
+# for i in 1:length(c_m[1])
+#     singl = ACE.adjoint_EVAL_D(singlProp[i], cfg, wo[:,i])
+#     multi = [multiEval[j][i] for j in 1:length(c_m)]
+#     print_tf(@test(singl ≈ multi))
+# end
+# println() 
