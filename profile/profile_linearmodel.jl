@@ -73,18 +73,22 @@ w = [ACE.DState(rr = randn(SVector{3, Float64})) for j in 1:length(cfg)]
 
 ##
 
-@info("Multi-property adjoint_EVAL_D")
+@info("Multi-property")
 
 c_m = randn(SVector{2, Float64}, length(basis))
 model2 = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 
+@info(" - evaluate")
+@btime evaluate($model2, $cfg)
+@info(" - grad_params")
+@btime ACE.grad_params($model2, $cfg)
+@info(" - grad_config")
 @btime ACE.grad_config($model2, $cfg)
 w20 = randn(SVector{2, Float64})
+@info(" - _rrule_evaluate")
 @btime ACE._rrule_evaluate($w20, $model2, $cfg)
 
-# this doesn't work yet - needs a reorganisation of the multi-property codes...
-# ACE._rrule_evaluate((ACE._One()), model2, cfg)
-
+@info(" - adjoint_EVAL_D")
 _w2() = SVector(ACE.DState(rr = randn(SVector{3, Float64})), 
                 ACE.DState(rr = randn(SVector{3, Float64})))
 w2 = [ _w2() for j in 1:length(cfg)]
