@@ -545,21 +545,19 @@ to be ADed. I.e. `val` has rrules implemented that should allow taking up
 to two derivatives. 
 
 TODO: at the moment this is a bit hacky, and needs to be adjusted over time
-as we learn more about how to best implement AD.
+as we learn more about how to best implement AD. The real question is what 
+is the correct adjoint of this operation? E.g., if 
+````
+     val : { Invariant{T} } -> { T }
+```
+then should 
+```
+   val* :  { T } -> { Invariant{T} }
+```
+? If this is the case, then we need a parameterised `val` function. I.e. 
+we need to remember what the Property is that we started from.
 """
 val(x) = x.val 
-
-struct _Val{T}
-   v::T 
-end
-
-import Base: * 
-*(v::_Val, x::AbstractProperty) = v.v * val(x)
-*(x::AbstractProperty, v::_Val) = v.v * val(x)
-*(v::_Val, x::XState) = v.v * x
-*(x::XState, v::_Val) = v.v * x
-contract(v::_Val, x) = v * x
-contract(x, v::_Val) = v * x
 
 function _rrule_val(dp, x)     # ∂/∂x (dp * x) = dp 
    @assert dp isa Number 
@@ -573,10 +571,8 @@ rrule(::typeof(val), x) =
 function rrule(::typeof(_rrule_val), dp, x)   # ∂/∂... (0 + dp * dq[2])
       @assert dp isa Number 
       function second_adj(dq)
-         @show x 
-         @show dq 
          @assert dq[1] == ZeroTangent() 
-         # @assert dq[2] isa Number 
+         # @assert dq[2] isa Number  # TODO -> revisit this?!
          return NoTangent(), dq[2], ZeroTangent()
       end
       return _rrule_val(dp, x), second_adj
