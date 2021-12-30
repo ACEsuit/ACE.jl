@@ -233,7 +233,6 @@ import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 
 
 function _adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
-   @show dp
    gp_ = ACE.grad_params(model, cfg)
    gp = [ a * dp for a in gp_ ]
    return NoTangent(), gp, _rrule_evaluate(dp, model, cfg)
@@ -256,7 +255,7 @@ function ChainRules.rrule(::typeof(_adj_evaluate), dp, model::ACE.LinearACEModel
    #   D(dq[1] * _ + dq[2] * g_params + dq[3] * g_cfg) / D(dp, model, cfg)
    #       0 = ^^^    ^^^ = 0
    #   D( dq[3] * g_cfg ) / D( dq, model, cfg )
-   #  but for simplicity ignore Dcfg for now (not yet implemented)
+   # but for simplicity ignore Dcfg for now (not yet implemented)
    # recall also that g_cfg = D (dp * eval(model, cfg)) / D cfg
    # dp should be a vector of the same length as the number of properties
 
@@ -275,11 +274,10 @@ function ChainRules.rrule(::typeof(_adj_evaluate), dp, model::ACE.LinearACEModel
       grad = ACE.adjoint_EVAL_D(model, model.evaluator, cfg, dq)
 
       # gradient w.r.t parameters: 
-      sdp = SVector(dp...)
-      grad_params = [ gg .* sdp for gg in grad ]
+      grad_params = [ gg * dp for gg in grad ]
 
       # gradient w.r.t. dp    # TODO: remove the |> Vector? 
-      grad_dp = sum( model.c[k] .* grad[k] for k = 1:length(grad) )  |> Vector 
+      grad_dp = sum( model.c[k] * grad[k] for k = 1:length(grad) )  |> Vector 
 
       return NoTangent(), grad_dp, grad_params, NoTangent()
    end
