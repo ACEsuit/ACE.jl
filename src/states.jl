@@ -254,6 +254,9 @@ end
 
 *(a::Number, X1::XState) = *(X1, a)
 
+*(aa::SVector{N, <: Number}, X1::XState) where {N} = aa .* Ref(X1)
+promote_rule(::Type{SVector{N, T}}, ::Type{TX}) where {N, T <: Number, TX <: XState} = 
+      SVector{N, promote_type(T, TX)}
 
 # unary 
 import Base: - 
@@ -298,6 +301,10 @@ end
       $(Meta.parse(code))
    end
 end
+
+contract(X1::Number, X2::XState) = X1 * X2 
+contract(X2::XState, X1::Number) = X1 * X2 
+
 
 import LinearAlgebra: norm 
 

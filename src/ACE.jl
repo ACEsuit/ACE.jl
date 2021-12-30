@@ -83,6 +83,8 @@ include("states.jl")
 include("symmetrygroups.jl")
 include("properties.jl")
 
+contract(X1::AbstractVector{<: DState}, x2::DState) = contract.(X1, Ref(x2))
+
 
 include("prototypes.jl")
 

@@ -1,11 +1,10 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
-using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val 
+using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val, grad_config
 using StaticArrays
 using ChainRules
 import ChainRulesCore: rrule, NoTangent, ZeroTangent
 using Zygote
-using Zygote: @thunk 
 using Printf, LinearAlgebra #for the fdtestMatrix
 
 ##
@@ -30,6 +29,7 @@ c_m = rand(SVector{np,Float64}, length(basis))
 model = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 
 evaluate(model, cfg)
+grad_config(model, cfg)
 
 ##
 
@@ -93,7 +93,7 @@ loss1 = model -> sum(sum(abs2, g.rr - y)
 
 # check that loss and gradient evaluate ok 
 loss1(model)
-# Zygote.refresh()
+Zygote.refresh()
 g = Zygote.gradient(loss1, model)[1]  # SEGFAULT IN THIS LINE ON J1.7!!!
 
 # wrappers to take derivatives w.r.t. the vector or parameters
@@ -101,7 +101,7 @@ F1 = θ -> ( ACE.set_params!(model, mat2svecs(θ));
             loss1(model) )
 
 dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
-            Zygote.gradient(loss1, model)[1] |> svecs2vec  )
+             Zygote.gradient(loss1, model)[1] |> svecs2vec  )
 
 F1(θ)
 dF1(θ)
