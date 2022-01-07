@@ -28,7 +28,7 @@ length(B1p)
 
 ##
 
-PosScalState{T} = ACE.State{(:rr, :x), Tuple{SVector{3, T}, T}}
+PosScalState{T} = ACE.State{NamedTuple{(:rr, :x), Tuple{SVector{3, T}, T}}}
 
 Base.promote_rule(::Union{Type{S}, Type{PosScalState{S}}}, 
              ::Type{PosScalState{T}}) where {S, T} = 
@@ -51,8 +51,8 @@ dA = evaluate_d(B1p, cfg)
 A1, dA1 = ACE.evaluate_ed(B1p, cfg)
 
 
-println(@test( A ≈ A1 ))
-println(@test( dA ≈ dA1 ))
+println_slim(@test( A ≈ A1 ))
+println_slim(@test( dA ≈ dA1 ))
 
 ##
 

@@ -1,9 +1,0 @@
-[deps]
-ACE = "3e8ccfd2-c8b0-11ea-32f1-f3a5990fd77a"
-ACEbase = "14bae519-eb20-449c-a949-9c58ed33163e"
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
-ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"

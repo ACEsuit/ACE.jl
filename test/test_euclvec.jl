@@ -10,6 +10,8 @@ using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest
 
+##
+
 # construct the 1p-basis
 maxdeg = 6
 ord = 3
@@ -44,7 +46,7 @@ end
 @info("Test FIO")
 using ACEbase.Testing: test_fio
 
-println(@test(all(test_fio(basis; warntype = false))))
+println_slim(@test(all(test_fio(basis; warntype = false))))
 
 ##
 

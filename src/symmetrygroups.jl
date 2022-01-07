@@ -41,7 +41,7 @@ get_sym_spec(G::NoSym, bb) = bb
 
 
 function coupling_coeffs(symgrp::NoSym, bb, rotc::Rot3DCoeffs{T, TP}) where {T, TP}
-   return [ TP(1.0) ], [bb]
+   return [ one(TP) ], [bb]
 end
 
 
@@ -93,13 +93,12 @@ is_refbasisfcn(G::O3, AA) = all( bi[msym(G)] == 0 for bi in AA )
 get_sym_spec(G::O3, bb) = delete.(bb, (msym(G),))
 
 
-function coupling_coeffs(symgrp::O3, bb, rotc::Rot3DCoeffs)
+function coupling_coeffs(symgrp::O3, bb, rotc::Rot3DCoeffs{T, TP}) where {T, TP}
    # bb = [ b1, b2, b3, ... ]
    # bi = (μ = ..., n = ..., l = ..., m = ...)
    #    (μ, n) -> n; only the l and m are used in the angular basis
    if length(bb) == 0
-      # return [1.0,], [bb,]
-		error("correlation order 0 is currently not allowed")
+      return coco_init(rotc.phi), [bb,]
    end
    # convert to a format that the Rotations3D implementation can understand
    # this utility function splits the bb = (b1, b2 ...) with each
@@ -252,7 +251,7 @@ function coupling_coeffs(symgrp::O3O3, bb, rotc::Rot3DCoeffs)
    # bi = (μ = ..., n = ..., l1 = ..., m1 = ..., l2 = ..., m2 = ...)
    #    (μ, n, ...) -> n; only the l and m are used in the angular basis
    if length(bb) == 0
-      error("correlation order 0 is currently not allowed")
+      return coco_init(rotc.phi), [bb,]
    end
 
    # the prototype namedtuple describing a single 1p basis fcn 

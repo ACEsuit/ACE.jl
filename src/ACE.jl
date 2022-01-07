@@ -33,6 +33,7 @@ function coco_init end
 function coco_zeros end
 function coco_filter end
 function coco_dot end
+function coco_type end 
 
 # TODO 
 # * decide on rand(basis) interface
@@ -75,10 +76,11 @@ include("discrete1pbasis.jl")
 
 include("product_1pbasis.jl")
 
-include("sparsegrids.jl")
-
 # basis selectors used to specify finite subsets of basis functions
 include("basisselectors.jl")
+# ... amongst other things used to initialize sparse basis sets 
+include("sparsegrids.jl")
+
 
 # the permutation-invariant, and symmerized bases
 include("pibasis.jl")
@@ -110,6 +112,23 @@ include("testing/testing.jl")
 
 include("ad.jl")
 
+
+# ---------------- some extra experimental dispatching
+
+evaluate(basis::SymmetricBasis, Xs::AbstractVector) = 
+      evaluate(basis, ACEConfig(Xs))
+
+evaluate_d(basis::SymmetricBasis, Xs::AbstractVector) = 
+      evaluate_d(basis, ACEConfig(Xs))
+
+evaluate(model::LinearACEModel, Xs::AbstractVector) = 
+      evaluate(model, ACEConfig(Xs))
+
+grad_config(model::LinearACEModel, Xs::AbstractVector) = 
+      grad_config(model, ACEConfig(Xs))
+
+grad_params(model::LinearACEModel, Xs::AbstractVector) = 
+      grad_params(model, ACEConfig(Xs))
 
 end # module
 

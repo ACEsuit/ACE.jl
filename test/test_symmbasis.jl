@@ -7,7 +7,7 @@ using ACE
 using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, O3
 using ACE.Random: rand_rot, rand_refl
-using ACEbase.Testing: fdtest
+using ACEbase.Testing: fdtest, println_slim
 using ACE.Testing: __TestSVec
 
 # using Profile, ProfileView
@@ -42,7 +42,12 @@ BB = evaluate(basis, cfg)
 # a stupid but necessary test
 AA = evaluate(basis.pibasis, cfg)
 BB1 = basis.A2Bmap * AA
-println(@test isapprox(BB, BB1, rtol=1e-10))
+println_slim(@test isapprox(BB, BB1, rtol=1e-10))
+
+@info("evaluate with vector vs config")
+println_slim(@test BB ≈ evaluate(basis, Xs))
+println_slim(@test evaluate_d(basis, cfg) ≈ evaluate_d(basis, Xs))
+
 
 # check there are no superfluous columns
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
@@ -59,17 +64,27 @@ println()
 
 ## 
 
+@info("Test Invariant Basis without Constant")
+basis_noc = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+println_slim(@test length(basis_noc) == length(basis) - 1)
+BB_noc = evaluate(basis_noc, cfg)
+println_slim(@test (BB_noc == BB[2:end]))
+
+##
+
 @info("Test what happens with an empty configuration")
 
 Xs_empty = Vector{eltype(Xs)}(undef, 0)
 cfg_empty = ACEConfig(Xs_empty)
-println(@test( all(iszero, evaluate(basis, cfg_empty)) ))
+B_empty = evaluate(basis, cfg_empty)
+println(@test( all(iszero, B_empty[2:end]) ))
+println(@test( B_empty[1] == ACE.Invariant(1.0) ) )
 
 ##
 import ACEbase
 @info("Test FIO")
 let basis1 = basis 
-   println(@test(all(ACEbase.Testing.test_fio(basis1; warntype=true))))
+   println_slim(@test(all(ACEbase.Testing.test_fio(basis1; warntype=true))))
 end
 
 
@@ -83,7 +98,7 @@ A = zeros(length(cfgs), length(basis))
 for (i, cfg) in enumerate(cfgs)
    A[i, :] = getproperty.(evaluate(basis, cfg), :val)
 end
-println(@test rank(A) == length(basis))
+println_slim(@test rank(A) == length(basis))
 
 # ## Keep for futher profiling
 # φ = ACE.Invariant()
@@ -123,11 +138,21 @@ for L = 0:3
    @time SymmetricBasis(φ, B1p, Bsel)
    BB = evaluate(basis, cfg)
 
+   @info("check that no-const gives the same (sub-)basis")
+   basis0 = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   BB0 = evaluate(basis0, cfg)
+   if L == 0 
+      println_slim(@test BB[2:end] ≈ BB0)   
+   else
+      println_slim(@test BB ≈ BB0)
+   end
+
    Iz = findall(iszero, sum(norm, basis.A2Bmap, dims = 1))
    if !isempty(Iz)
       @warn("The A2B map for SphericalVector has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
    end
 
+   @info("check symmetry ")
    for ntest = 1:30
       local Q, D, BB1 
       Q, D = ACE.Wigner.rand_QD(L)
@@ -151,6 +176,7 @@ for L = 0:3
    end
    println()
 end
+
 
 # ## Keep for futher profiling
 # L = 1
@@ -176,6 +202,16 @@ for L1 = 0:2, L2 = 0:2
    @time basis = SymmetricBasis(φ, B1p, Bsel)
    BB = evaluate(basis, cfg)
 
+   @info("check that no-const gives the same (sub-)basis")
+   basis0 = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   BB0 = evaluate(basis0, cfg)
+   if L1 == L2  
+      println_slim(@test BB[2:end] ≈ BB0)
+   else
+      println_slim(@test BB ≈ BB0)
+   end
+
+   @info("check symmetry ")
    for ntest = 1:30
       local Q, D1, D2, BB1 
       Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
@@ -231,7 +267,7 @@ end
 φ = ACE.Invariant()
 basis = SymmetricBasis(φ, B1p, Bsel)
 φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
-basis2 = SymmetricBasis(φ2, B1p, Bsel)   
+basis2 = SymmetricBasis(φ2, B1p, Bsel)
 
 for ntest = 1:30
    local Xs, cfg, BB 

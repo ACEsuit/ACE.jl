@@ -7,7 +7,7 @@
 
 using ACE, Random
 using Printf, Test, LinearAlgebra, ACE.Testing, StaticArrays
-using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
+using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim 
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis, O3
 
@@ -34,17 +34,18 @@ cfg = ACEConfig(Xs)
 AA = evaluate(pibasis, cfg)
 AA_r = evaluate(pibasis_r, cfg)
 
-println(@test(length(pibasis) == length(AA)))
+println_slim(@test(length(pibasis) == length(AA)))
 
 spec = ACE.get_spec(pibasis)
-println(@test all(length(b) > 0 for b in spec))
+println_slim(@test all(length(b) > 0 for b in spec[2:end]))
+println_slim(@test length(spec[1]) == 0)  # the constant term 
 
 spec_naive = [
     [ ACE.get_spec(B1p, pibasis.spec.iAA2iA[iAA, t])
       for t = 1:pibasis.spec.orders[iAA] ]   for iAA = 1:length(pibasis)
     ]
 
-println(@test spec == spec_naive)
+println_slim(@test spec == spec_naive)
 
 
 # get inverse Aspec
@@ -55,25 +56,25 @@ end
 
 ## a really naive implementation of PIBasis to check correctness
 A = evaluate(B1p, cfg)
-AA_naive =  [ prod( A[ inv_spec1[ b1 ] ] for b1 in b ) for b in spec ]
-println(@test( AA_naive ≈ AA ))
+AA_naive =  [ prod( A[ inv_spec1[ b1 ] ] for b1 in b; init=1.0 ) for b in spec ]
+println_slim(@test( AA_naive ≈ AA ))
 
 AA_r_naive = real.(AA_naive)
-println(@test( AA_r_naive ≈ AA_r ))
+println_slim(@test( AA_r_naive ≈ AA_r ))
 
 
 ## FIO tests 
 
 @info("FIO Test")
-println(@test( all(test_fio(pibasis)) ))
-println(@test( all(test_fio(pibasis_r)) ))
+println_slim(@test( all(test_fio(pibasis)) ))
+println_slim(@test( all(test_fio(pibasis_r)) ))
 
 ## Testing derivatives
 
 @info("Derivatives of PIbasis")
 for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
   AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
-  println(@test AA1 ≈ AA)
+  println_slim(@test AA1 ≈ AA)
 
   for ntest = 1:30
     _rrval(x::ACE.XState) = x.rr
