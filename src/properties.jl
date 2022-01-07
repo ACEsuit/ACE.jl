@@ -250,12 +250,15 @@ rot3Dcoeffs(::EquivariantMatrix,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], Clebs
 
 write_dict(φ::EquivariantMatrix{T}) where {T} =
       Dict("__id__" => "ACE_EquivariantMatrix",
-              "val" => write_dict(Matrix(φ.val)),
+              "valr" => write_dict(real.(Matrix(φ.val))),
+              "vali" => write_dict(imag.(Matrix(φ.val))),
                 "T" => write_dict(T) )
 
 function read_dict(::Val{:ACE_EquivariantMatrix}, D::Dict)
    T = read_dict(D["T"])
-   return EquivariantMatrix{T}(SMatrix{3, 3, Complex{T}, 9}(read_dict(D["val"])))
+   valr = SMatrix{3, 3, T, 9}(read_dict(D["valr"]))
+   vali = SMatrix{3, 3, T, 9}(read_dict(D["vali"]))
+   return EquivariantMatrix{T}(valr + im * vali)
 end
 
 # differentiation - cf #27
