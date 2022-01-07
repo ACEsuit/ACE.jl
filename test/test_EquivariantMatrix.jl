@@ -1,6 +1,6 @@
 using ACE, StaticArrays
 using Random, Printf, Test, LinearAlgebra, ACE.Testing
-using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, EquivariantMatrix
+using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, EuclideanMatrix
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest
 
@@ -18,10 +18,10 @@ cfg = ACEConfig(Xs)
 
 ##
 
-@info("SymmetricBasis construction and evaluation: EquivariantMatrix")
+@info("SymmetricBasis construction and evaluation: EuclideanMatrix")
 
 
-φ = ACE.EquivariantMatrix(Float64)
+φ = ACE.EuclideanMatrix(Float64)
 pibasis = PIBasis(B1p, Bsel; property = φ)
 basis = SymmetricBasis(φ, pibasis)
 @time SymmetricBasis(φ, pibasis)
@@ -30,7 +30,7 @@ BB = evaluate(basis, cfg)
 
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
 if !isempty(Iz)
-   @warn("The A2B map for EquivariantMatrix has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
+   @warn("The A2B map for EuclideanMatrix has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
 end
 
 ##

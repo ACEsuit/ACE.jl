@@ -214,27 +214,27 @@ rmatrices = Dict(
 
 #---------------------- Equivariant matrices
 
-struct EquivariantMatrix{T} <: AbstractProperty where T<:Real
+struct EuclideanMatrix{T} <: AbstractProperty where T<:Real
    val::SMatrix{3, 3, Complex{T}, 9}
 end
 
 
-real(φ::EquivariantMatrix) = EquivariantMatrix(φ.val)
-complex(φ::EquivariantMatrix) = EquivariantMatrix(φ.val)
-complex(::Type{EquivariantMatrix{T}}) where {T} = EquivariantMatrix{complex(T)}
+real(φ::EuclideanMatrix) = EuclideanMatrix(φ.val)
+complex(φ::EuclideanMatrix) = EuclideanMatrix(φ.val)
+complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
 
-isrealB(::EquivariantMatrix) = true
-isrealAA(::EquivariantMatrix) = false
-
-
-#fltype(::EquivariantMatrix{T}) where {T} = T
-
-EquivariantMatrix{T}() where {T <: Real} = EquivariantMatrix{T}(zero(SMatrix{3, 3, ComplexF64, 9}))
-
-EquivariantMatrix(T::DataType=Float64) = EquivariantMatrix{T}()
+isrealB(::EuclideanMatrix) = true
+isrealAA(::EuclideanMatrix) = false
 
 
-function filter(φ::EquivariantMatrix, grp::O3, b::Array)
+#fltype(::EuclideanMatrix{T}) where {T} = T
+
+EuclideanMatrix{T}() where {T <: Real} = EuclideanMatrix{T}(zero(SMatrix{3, 3, ComplexF64, 9}))
+
+EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
+
+
+function filter(φ::EuclideanMatrix, grp::O3, b::Array)
    if length(b) <= 1 #MS: Not sure if this should be here
       return true
    end
@@ -246,40 +246,41 @@ function filter(φ::EquivariantMatrix, grp::O3, b::Array)
    return iseven(suml)
 end
 
-rot3Dcoeffs(::EquivariantMatrix,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
+rot3Dcoeffs(::EuclideanMatrix,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
 
-write_dict(φ::EquivariantMatrix{T}) where {T} =
-      Dict("__id__" => "ACE_EquivariantMatrix",
+write_dict(φ::EuclideanMatrix{T}) where {T} =
+      Dict("__id__" => "ACE_EuclideanMatrix",
               "valr" => write_dict(real.(Matrix(φ.val))),
               "vali" => write_dict(imag.(Matrix(φ.val))),
                 "T" => write_dict(T) )
 
-function read_dict(::Val{:ACE_EquivariantMatrix}, D::Dict)
+function read_dict(::Val{:ACE_EuclideanMatrix}, D::Dict)
    T = read_dict(D["T"])
    valr = SMatrix{3, 3, T, 9}(read_dict(D["valr"]))
    vali = SMatrix{3, 3, T, 9}(read_dict(D["vali"]))
-   return EquivariantMatrix{T}(valr + im * vali)
+   return EuclideanMatrix{T}(valr + im * vali)
 end
 
 # differentiation - cf #27
-# *(φ::EquivariantMatrix, dAA::SVector) = φ.val * dAA'
+# *(φ::EuclideanMatrix, dAA::SVector) = φ.val * dAA'
 
-coco_init(phi::EquivariantMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
+coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 2 && abs(m) <= 2 && abs(μ) <= 2)
-         ? vec([EquivariantMatrix{CT}(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
+         ? vec([EuclideanMatrix{CT}(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
          : coco_zeros(phi, l, m, μ, T, A)  )
 
-coco_zeros(φ::EquivariantMatrix, ll, mm, kk, T, A) =  EquivariantMatrix.(zeros(SMatrix{3, 3, Complex{T}, 9},9))
+# This is slightly different from implementation in EuclideanVector!
+coco_zeros(::EuclideanMatrix, ll, mm, kk, T, A) =  EuclideanMatrix.(zeros(SMatrix{3, 3, Complex{T}, 9},9))
 
-coco_filter(::EquivariantMatrix, ll, mm) =
+coco_filter(::EuclideanMatrix, ll, mm) =
             iseven(sum(ll)) && (abs(sum(mm)) <= 2)
 
-coco_filter(::EquivariantMatrix, ll, mm, kk) =
+coco_filter(::EuclideanMatrix, ll, mm, kk) =
       abs(sum(mm)) <= 2 &&
       abs(sum(kk)) <= 2 &&
       iseven(sum(ll))
 
-coco_dot(u1::EquivariantMatrix, u2::EquivariantMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
+coco_dot(u1::EuclideanMatrix, u2::EuclideanMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
 #dot(u1.val, u2.val)
 
 include("equi_coeffs_dict.jl")
