@@ -250,10 +250,17 @@ struct EuclideanMatrix{T} <: AbstractProperty where T<:Real
    val::SMatrix{3, 3, Complex{T}, 9}
 end
 
+Base.show(io::IO, φ::EuclideanMatrix) = 
+   print(io,  "m[$(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3])]
+m[$(φ.val[2,1]), $(φ.val[2,2]), $(φ.val[2,3])] 
+m[$(φ.val[3,1]), $(φ.val[3,2]), $(φ.val[3,3])]")
 
 real(φ::EuclideanMatrix) = EuclideanMatrix(φ.val)
 complex(φ::EuclideanMatrix) = EuclideanMatrix(φ.val)
 complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
+
++(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val)
+Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::EuclideanMatrix) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
 
 isrealB(::EuclideanMatrix) = true
 isrealAA(::EuclideanMatrix) = false
@@ -262,7 +269,6 @@ isrealAA(::EuclideanMatrix) = false
 #fltype(::EuclideanMatrix{T}) where {T} = T
 
 EuclideanMatrix{T}() where {T <: Real} = EuclideanMatrix{T}(zero(SMatrix{3, 3, ComplexF64, 9}))
-
 EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
 
 
@@ -300,6 +306,11 @@ coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 2 && abs(m) <= 2 && abs(μ) <= 2)
          ? vec([EuclideanMatrix{CT}(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
          : coco_zeros(phi, l, m, μ, T, A)  )
+
+
+coco_init(::EuclideanMatrix{CT}) where {CT<:Real} = [EuclideanMatrix{CT}(SMatrix{3,3,Float64,9}([1.0,0,0,0,1.0,0,0,0,1.0]))]       
+coco_type(φ::EuclideanMatrix) = typeof(complex(φ))
+coco_type(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
 
 # This is slightly different from implementation in EuclideanVector!
 coco_zeros(::EuclideanMatrix, ll, mm, kk, T, A) =  EuclideanMatrix.(zeros(SMatrix{3, 3, Complex{T}, 9},9))
