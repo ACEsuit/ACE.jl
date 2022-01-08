@@ -250,10 +250,14 @@ struct EuclideanMatrix{T} <: AbstractProperty
    val::SMatrix{3, 3, T, 9}
 end
 
-Base.show(io::IO, φ::EuclideanMatrix) = 
-   print(io,  "m[$(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3])]
-m[$(φ.val[2,1]), $(φ.val[2,2]), $(φ.val[2,3])] 
-m[$(φ.val[3,1]), $(φ.val[3,2]), $(φ.val[3,3])]")
+function Base.show(io::IO, φ::EuclideanMatrix)
+   print(io, "3x3 EuclideanMatrix:\n")
+   for i=1:2
+      show(io, EuclideanVector(φ.val[i,:]))
+      print(io, "\n")
+   end
+   show(io, EuclideanVector(φ.val[3,:]))
+end
 
 real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val))
 complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val))

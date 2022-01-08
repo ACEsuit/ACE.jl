@@ -46,7 +46,6 @@ println(@test(all(test_fio(basis; warntype = false))))
 
 tol = 1e-14
 
-
 ##
 local Xs, BB
 Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
@@ -79,27 +78,27 @@ end
 println()
 
 
-# @info("Test equivariance properties for complex version")
-#
-# basis = SymmetricBasis(φ, pibasis; isreal=false)
-# # a stupid but necessary test
-# BB = evaluate(basis, cfg)
-# BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
-# println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
-#
-#
-# @info("check for rotation, permutation and inversion equivariance")
-# for ntest = 1:30
-#    local Xs, BB
-#    Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
-#    BB = evaluate(basis, ACEConfig(Xs))
-#    Q = rand([-1,1]) * ACE.Random.rand_rot()
-#    Xs_rot = Ref(Q) .* shuffle(Xs)
-#    BB_rot = evaluate(basis, ACEConfig(Xs_rot))
-#    print_tf(@test all([ norm(Q' * b1 - b2) < tol
-#                         for (b1, b2) in zip(BB_rot, BB)  ]))
-# end
-# println()
+@info("Test equivariance properties for complex version")
+
+basis = SymmetricBasis(φ, pibasis; isreal=false)
+# a stupid but necessary test
+BB = evaluate(basis, cfg)
+BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
+println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
+
+
+@info("check for rotation, permutation and inversion equivariance")
+for ntest = 1:30
+   local Xs, BB
+   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+   BB = evaluate(basis, ACEConfig(Xs))
+   Q = rand([-1,1]) * ACE.Random.rand_rot()
+   Xs_rot = Ref(Q) .* shuffle(Xs)
+   BB_rot = evaluate(basis, ACEConfig(Xs_rot))
+   print_tf(@test all([ norm(Q' * b1 * Q - b2) < tol
+                        for (b1, b2) in zip(BB_rot, BB)  ]))
+end
+println()
 
 # ## keep for further profiling
 #
@@ -118,7 +117,7 @@ println()
 @info(" ... derivatives")
 _rrval(x::ACE.XState) = x.rr
 for ntest = 1:30
-   Us = randn(SMatrix{3, 3, Float64,9 }, length(Xs))
+   Us = randn(SVector{3,Float64 }, length(Xs))
    C = randn(typeof(φ.val), length(basis))
    F = t -> sum( sum(c .* b.val)
                  for (c, b) in zip(C, ACE.evaluate(basis, ACEConfig(Xs + t[1] * Us))) )
