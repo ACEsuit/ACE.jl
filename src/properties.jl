@@ -246,8 +246,8 @@ rmatrices = Dict(
 
 #---------------------- Equivariant matrices
 
-struct EuclideanMatrix{T} <: AbstractProperty where T<:Real
-   val::SMatrix{3, 3, Complex{T}, 9}
+struct EuclideanMatrix{T} <: AbstractProperty
+   val::SMatrix{3, 3, T, 9}
 end
 
 Base.show(io::IO, φ::EuclideanMatrix) = 
@@ -255,30 +255,33 @@ Base.show(io::IO, φ::EuclideanMatrix) =
 m[$(φ.val[2,1]), $(φ.val[2,2]), $(φ.val[2,3])] 
 m[$(φ.val[3,1]), $(φ.val[3,2]), $(φ.val[3,3])]")
 
-real(φ::EuclideanMatrix) = EuclideanMatrix(φ.val)
-complex(φ::EuclideanMatrix) = EuclideanMatrix(φ.val)
+real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val))
+complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val))
 complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
 
 +(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val)
 Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::EuclideanMatrix) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
 
-isrealB(::EuclideanMatrix) = true
+isrealB(::EuclideanMatrix) where {T} = (T == real(T))
 isrealAA(::EuclideanMatrix) = false
 
 
 #fltype(::EuclideanMatrix{T}) where {T} = T
 
-EuclideanMatrix{T}() where {T <: Real} = EuclideanMatrix{T}(zero(SMatrix{3, 3, ComplexF64, 9}))
+EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T}(zero(SMatrix{3, 3, T, 9}))
 EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
 
 
-function filter(φ::EuclideanMatrix, grp::O3, b::Array)
-   if length(b) <= 1 #MS: Not sure if this should be here
+function filter(φ::EuclideanMatrix, grp::O3, bb::Array)
+   if length(bb) == 0  # no zero-correlations allowed 
+      return false 
+   end
+   if length(bb) == 1 #MS: Not sure if this should be here
       return true
    end
-   suml = sum( getl(grp, bi) for bi in b )
-   if haskey(b[1], msym(grp))  # depends on context whether m come along?
-      summ = sum( getm(grp, bi) for bi in b )
+   suml = sum( getl(grp, bi) for bi in bb )
+   if haskey(bb[1], msym(grp))  # depends on context whether m come along?
+      summ = sum( getm(grp, bi) for bi in bb )
       return iseven(suml) && abs(summ) <= 2
    end
    return iseven(suml)
@@ -304,16 +307,17 @@ end
 
 coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 2 && abs(m) <= 2 && abs(μ) <= 2)
-         ? vec([EuclideanMatrix{CT}(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
+         ? vec([EuclideanMatrix(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
          : coco_zeros(phi, l, m, μ, T, A)  )
 
 
-coco_init(::EuclideanMatrix{CT}) where {CT<:Real} = [EuclideanMatrix{CT}(SMatrix{3,3,Float64,9}([1.0,0,0,0,1.0,0,0,0,1.0]))]       
+#coco_init(::EuclideanMatrix{CT}) where {CT<:Real} = [EuclideanMatrix(SMatrix{3,3,Complex{CT},9}([1.0,0,0,0,1.0,0,0,0,1.0]))]       
 coco_type(φ::EuclideanMatrix) = typeof(complex(φ))
 coco_type(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
 
 # This is slightly different from implementation in EuclideanVector!
-coco_zeros(::EuclideanMatrix, ll, mm, kk, T, A) =  EuclideanMatrix.(zeros(SMatrix{3, 3, Complex{T}, 9},9))
+coco_zeros(φ::EuclideanMatrix, ll, mm, kk, T, A) =  zeros(typeof(complex(φ)), 9)
+#EuclideanMatrix.(zeros(SMatrix{3, 3, Complex{T}, 9},9))
 
 coco_filter(::EuclideanMatrix, ll, mm) =
             iseven(sum(ll)) && (abs(sum(mm)) <= 2)
