@@ -11,16 +11,14 @@ cfg = ACEConfig(rand(TX, Rn, 30))
 
 ##
 
-degrees = Dict(2 => [7, 10, 12],
-               3 => [7, 9, 11] )
+# degrees = Dict(2 => [9, 17],
+#                3 => [7, 15] )
 
-Adegrees = [7, 10, 13, 16, 19] 
+Adegrees = [10, 17]
 
-# degrees = Dict(2 => [7, 12, 17],
-#                3 => [7, 11, 15],
-#                4 => [7, 10, 13], 
-#                5 => [7, 9, 11] )
-
+degrees = Dict(2 => [10, 17],
+               3 => [9, 15],
+               5 => [7, 11] )
 wL = 1.5 
 
 ##
@@ -80,10 +78,10 @@ basis_suite["B"] = Bgroup
 
 ##
 
-@info("Tune")
-tune!(basis_suite)
+# @info("Tune")
+# tune!(basis_suite)
 
-@info("Run")
-results = run(basis_suite, verbose = true)   
+# @info("Run")
+# results = run(basis_suite, verbose = true)   
 
 

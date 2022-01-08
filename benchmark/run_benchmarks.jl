@@ -8,10 +8,12 @@ using ACE, PkgBenchmark
 results = benchmarkpkg(ACE)
 writeresults(@__DIR__() * "/results.json", results)
 
-results_main = benchmarkpkg(ACE, "main")
-writeresults(@__DIR__() * "/results_main.json", results)
+# results_main = benchmarkpkg(ACE, "main")
+# writeresults(@__DIR__() * "/results_main.json", results)
 
-results = readresults(@__DIR__() * "/results.json")
-results_base = readresults(@__DIR__() * "/results_main.json")
-judgement = judge(results, results_main)
-export_markdown(@__DIR__() * "/judge.md", judgement)
+export_markdown(@__DIR__() * "/results.md", results)
+
+# results = readresults(@__DIR__() * "/results.json")
+# results_base = readresults(@__DIR__() * "/results_main.json")
+# judgement = judge(results, results_main)
+# export_markdown(@__DIR__() * "/judge.md", judgement)

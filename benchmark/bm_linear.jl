@@ -11,15 +11,14 @@ cfg = ACEConfig(rand(TX, Rn, 30))
 
 ##
 
-degrees = Dict(2 => [7, 10, 12],
-               3 => [7, 9, 11] )
+# degrees = Dict(2 => [9, 17],
+#                3 => [7, 15] )
 
-Pnumprops = [1, 2, 3, 4] 
+Pnumprops = [1, 2, 4] 
 
-# degrees = Dict(2 => [7, 12, 17],
-#                3 => [7, 11, 15],
-#                4 => [7, 10, 13], 
-#                5 => [7, 9, 11] )
+degrees = Dict(2 => [10, 17],
+               3 => [9, 15],
+               5 => [7, 11] )
 
 wL = 1.5 
 
@@ -52,19 +51,19 @@ Pgroup["grad_params"] = BenchmarkGroup()
 Pgroup["grad_config"] = BenchmarkGroup()
 Pgroup["_rrule_evaluate"] = BenchmarkGroup()
 Pgroup["grad_params_config"] = BenchmarkGroup()
-Pgroup["adjoint_EVAL_D1"] = BenchmarkGroup()
+Pgroup["adjoint_EVAL_D"] = BenchmarkGroup()
 
-#zygote calls
-Pgroup["site_energy"] = BenchmarkGroup()
-Pgroup["Zygote_grad_params"] = BenchmarkGroup()
-Pgroup["Zygote_grad_config"] = BenchmarkGroup()
-Pgroup["Zygote_grad_params_config"] = BenchmarkGroup()
+# #zygote calls
+# Pgroup["site_energy"] = BenchmarkGroup()
+# Pgroup["Zygote_grad_params"] = BenchmarkGroup()
+# Pgroup["Zygote_grad_config"] = BenchmarkGroup()
+# Pgroup["Zygote_grad_params_config"] = BenchmarkGroup()
 
-#loss functions
-Pgroup["eval_full_loss"] = BenchmarkGroup()
-Pgroup["eval_energy_loss"] = BenchmarkGroup()
-Pgroup["der_full_loss"] = BenchmarkGroup()
-Pgroup["der_energy_loss"] = BenchmarkGroup()
+# #loss functions
+# Pgroup["eval_full_loss"] = BenchmarkGroup()
+# Pgroup["eval_energy_loss"] = BenchmarkGroup()
+# Pgroup["der_full_loss"] = BenchmarkGroup()
+# Pgroup["der_energy_loss"] = BenchmarkGroup()
 
 for numprops in Pnumprops 
    local B1p
@@ -94,24 +93,24 @@ for numprops in Pnumprops
    Pgroup["_rrule_evaluate"][numprops] = @benchmarkable ACE._rrule_evaluate($dp, $LM, $cfg)
    Pgroup["grad_params_config"][numprops] = @benchmarkable ACE.grad_params_config($LM, $cfg)
    dq = [ACE.DState(rr=rand(SVector{3, Float64})) for _ = 1:length(cfg)] #the adjoint
-   Pgroup["adjoint_EVAL_D1"][numprops] = @benchmarkable ACE.adjoint_EVAL_D1($LM, $LM.evaluator, $cfg, $dq)
+   Pgroup["adjoint_EVAL_D"][numprops] = @benchmarkable ACE.adjoint_EVAL_D($LM, $LM.evaluator, $cfg, $dq)
 
 
 
-   #Zygote calls for derivatives
-   Pgroup["site_energy"][numprops] = @benchmarkable site_energy($LM, $cfg)
-   Pgroup["Zygote_grad_params"][numprops] = @benchmarkable gradient(x->site_energy(x,$cfg), $LM)
-   Pgroup["Zygote_grad_config"][numprops] = @benchmarkable gradient(x->site_energy($LM,x), $cfg)
-   #sum over the function so we don't compute the jacobian
-   Pgroup["Zygote_grad_params_config"][numprops] = @benchmarkable gradient(m->sum(sum(gradient(x->site_energy(m,x), $cfg)[1]).rr), $LM)
+   # #Zygote calls for derivatives
+   # Pgroup["site_energy"][numprops] = @benchmarkable site_energy($LM, $cfg)
+   # Pgroup["Zygote_grad_params"][numprops] = @benchmarkable gradient(x->site_energy(x,$cfg), $LM)
+   # Pgroup["Zygote_grad_config"][numprops] = @benchmarkable gradient(x->site_energy($LM,x), $cfg)
+   # #sum over the function so we don't compute the jacobian
+   # Pgroup["Zygote_grad_params_config"][numprops] = @benchmarkable gradient(m->sum(sum(gradient(x->site_energy(m,x), $cfg)[1]).rr), $LM)
 
 
 
-   #loss function 
-   Pgroup["eval_full_loss"][numprops] = @benchmarkable loss($LM, $cfg)
-   Pgroup["eval_energy_loss"][numprops] = @benchmarkable lossE($LM, $cfg)
-   Pgroup["der_full_loss"][numprops] = @benchmarkable gradient(m->loss(m,$cfg), $LM)
-   Pgroup["der_energy_loss"][numprops] = @benchmarkable gradient(m->lossE(m,$cfg), $LM)
+   # #loss function 
+   # Pgroup["eval_full_loss"][numprops] = @benchmarkable loss($LM, $cfg)
+   # Pgroup["eval_energy_loss"][numprops] = @benchmarkable lossE($LM, $cfg)
+   # Pgroup["der_full_loss"][numprops] = @benchmarkable gradient(m->loss(m,$cfg), $LM)
+   # Pgroup["der_energy_loss"][numprops] = @benchmarkable gradient(m->lossE(m,$cfg), $LM)
 
 
 end 
@@ -132,19 +131,19 @@ Bgroup["grad_params"] = BenchmarkGroup()
 Bgroup["grad_config"] = BenchmarkGroup()
 Bgroup["_rrule_evaluate"] = BenchmarkGroup()
 Bgroup["grad_params_config"] = BenchmarkGroup()
-Bgroup["adjoint_EVAL_D1"] = BenchmarkGroup()
+Bgroup["adjoint_EVAL_D"] = BenchmarkGroup()
 
-#zygote calls
-Bgroup["site_energy"] = BenchmarkGroup()
-Bgroup["Zygote_grad_params"] = BenchmarkGroup()
-Bgroup["Zygote_grad_config"] = BenchmarkGroup()
-Bgroup["Zygote_grad_params_config"] = BenchmarkGroup()
+# #zygote calls
+# Bgroup["site_energy"] = BenchmarkGroup()
+# Bgroup["Zygote_grad_params"] = BenchmarkGroup()
+# Bgroup["Zygote_grad_config"] = BenchmarkGroup()
+# Bgroup["Zygote_grad_params_config"] = BenchmarkGroup()
 
-#loss functions
-Bgroup["eval_full_loss"] = BenchmarkGroup()
-Bgroup["eval_energy_loss"] = BenchmarkGroup()
-Bgroup["der_full_loss"] = BenchmarkGroup()
-Bgroup["der_energy_loss"] = BenchmarkGroup()
+# #loss functions
+# Bgroup["eval_full_loss"] = BenchmarkGroup()
+# Bgroup["eval_energy_loss"] = BenchmarkGroup()
+# Bgroup["der_full_loss"] = BenchmarkGroup()
+# Bgroup["der_energy_loss"] = BenchmarkGroup()
 
 
 for ord = keys(degrees), deg in degrees[ord]
@@ -175,24 +174,24 @@ for ord = keys(degrees), deg in degrees[ord]
    Bgroup["_rrule_evaluate"][ord, deg] = @benchmarkable ACE._rrule_evaluate($dp, $LM, $cfg)
    Bgroup["grad_params_config"][ord, deg] = @benchmarkable ACE.grad_params_config($LM, $cfg)
    dq = [ACE.DState(rr=rand(SVector{3, Float64})) for _ = 1:length(cfg)] #the adjoint
-   Bgroup["adjoint_EVAL_D1"][ord, deg] = @benchmarkable ACE.adjoint_EVAL_D1($LM, $LM.evaluator, $cfg, $dq)
+   Bgroup["adjoint_EVAL_D"][ord, deg] = @benchmarkable ACE.adjoint_EVAL_D($LM, $LM.evaluator, $cfg, $dq)
 
 
 
-   #Zygote calls for derivatives
-   Bgroup["site_energy"][ord, deg] = @benchmarkable site_energy($LM, $cfg)
-   Bgroup["Zygote_grad_params"][ord, deg] = @benchmarkable gradient(x->site_energy(x,$cfg), $LM)
-   Bgroup["Zygote_grad_config"][ord, deg] = @benchmarkable gradient(x->site_energy($LM,x), $cfg)
-   #sum over the function so we don't compute the jacobian
-   Bgroup["Zygote_grad_params_config"][ord, deg] = @benchmarkable gradient(m->sum(sum(gradient(x->site_energy(m,x), $cfg)[1]).rr), $LM)
+   # #Zygote calls for derivatives
+   # Bgroup["site_energy"][ord, deg] = @benchmarkable site_energy($LM, $cfg)
+   # Bgroup["Zygote_grad_params"][ord, deg] = @benchmarkable gradient(x->site_energy(x,$cfg), $LM)
+   # Bgroup["Zygote_grad_config"][ord, deg] = @benchmarkable gradient(x->site_energy($LM,x), $cfg)
+   # #sum over the function so we don't compute the jacobian
+   # Bgroup["Zygote_grad_params_config"][ord, deg] = @benchmarkable gradient(m->sum(sum(gradient(x->site_energy(m,x), $cfg)[1]).rr), $LM)
 
 
 
-   #loss function 
-   Bgroup["eval_full_loss"][ord, deg] = @benchmarkable loss($LM, $cfg)
-   Bgroup["eval_energy_loss"][ord, deg] = @benchmarkable lossE($LM, $cfg)
-   Bgroup["der_full_loss"][ord, deg] = @benchmarkable gradient(m->loss(m,$cfg), $LM)
-   Bgroup["der_energy_loss"][ord, deg] = @benchmarkable gradient(m->lossE(m,$cfg), $LM)
+   # #loss function 
+   # Bgroup["eval_full_loss"][ord, deg] = @benchmarkable loss($LM, $cfg)
+   # Bgroup["eval_energy_loss"][ord, deg] = @benchmarkable lossE($LM, $cfg)
+   # Bgroup["der_full_loss"][ord, deg] = @benchmarkable gradient(m->loss(m,$cfg), $LM)
+   # Bgroup["der_energy_loss"][ord, deg] = @benchmarkable gradient(m->lossE(m,$cfg), $LM)
 
 
 end 
@@ -205,8 +204,8 @@ linear_suite["B"] = Bgroup
 
 ##
 
-@info("Tune")
-tune!(linear_suite)
+# @info("Tune")
+# tune!(linear_suite)
 
-@info("Run")
-results = run(linear_suite, verbose = true)   
+# @info("Run")
+# results = run(linear_suite, verbose = true)   
