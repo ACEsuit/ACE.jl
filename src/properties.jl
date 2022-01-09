@@ -266,7 +266,7 @@ complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
 +(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val)
 Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::EuclideanMatrix) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
 
-isrealB(::EuclideanMatrix) where {T} = (T == real(T))
+isrealB(::EuclideanMatrix{T}) where {T} = (T == real(T))
 isrealAA(::EuclideanMatrix) = false
 
 
