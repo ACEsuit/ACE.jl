@@ -77,6 +77,26 @@ for ntest = 1:30
 end
 println()
 
+@info("Check for symmetry")
+for ntest = 1:30
+   local Xs, BB
+   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+   BB = evaluate(basis, ACEConfig(Xs))
+   print_tf(@test all([ b.val == transpose(b.val)
+   for b in BB  ]))
+end
+println()
+
+@info("Check magnitude of complex part")
+for ntest = 1:30
+   local Xs, BB
+   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+   BB = evaluate(basis, ACEConfig(Xs))
+   print_tf(@test all([ norm(complex(b)) < .1 
+   for b in BB  ]))
+end
+println()
+
 
 @info("Test equivariance properties for complex version")
 
