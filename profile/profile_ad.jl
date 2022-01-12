@@ -21,6 +21,14 @@ W = rand(Nprop, length(bsis))
 c = [SVector{size(W)[1]}(W[:,i]) for i in 1:size(W)[2]]
 LM = ACE.LinearACEModel(bsis, c, evaluator = :standard)
 
+# generate a configuration
+nX = 100
+Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+cfg = ACEConfig(Xs)
+
+
+
+
 
 @info("evaluation")
 @btime ACE.evaluate(LM, cfg);
@@ -35,7 +43,7 @@ LM = ACE.LinearACEModel(bsis, c, evaluator = :standard)
 @btime ACE.grad_params_config(LM, cfg)
 @info("Adjoint der grad according to params")
 adj = [ACE.DState(rr=rand(SVector{3, Float64})) for _ = 1:length(cfg)]
-@btime ACE.adjoint_EVAL_D1(LM, LM.evaluator, cfg, adj)
+@btime ACE.adjoint_EVAL_D(LM, LM.evaluator, cfg, adj)
 
 @info("Zygote calls")
 
@@ -69,3 +77,5 @@ lossE(m, x) = (FS(ACE.evaluate(m,x)))^2
 
 @info("der only energies")
 @btime gradient(m->lossE(m,cfg), LM);
+
+
