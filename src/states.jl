@@ -156,7 +156,7 @@ _mypromrl(::Type{<: SVector{N, P}}, T::Type{<: Number}) where {N, P} =
 _mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P2} = 
       SVector{N, promote_type(P1, P2)}
 
-@generated function dstate_type(x::S, X::TX) where {S, TX <: State}
+@generated function dstate_type(x::S, X::TX) where {S, TX <: XState}
    SYMS, TT = _symstt(TX)
    icts = _findcts(TX)
    CSYMS = SYMS[icts]
@@ -167,7 +167,7 @@ _mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P
    end
 end
 
-dstate_type(S::Type, X::State) = dstate_type(zero(S), X)
+dstate_type(S::Type, X::XState) = dstate_type(zero(S), X)
 
 ## ---------- explicit real/complex conversion 
 # this feels a bit like a hack but might be unavoidable; 
@@ -254,6 +254,9 @@ end
 
 *(a::Number, X1::XState) = *(X1, a)
 
+*(aa::SVector{N, <: Number}, X1::XState) where {N} = aa .* Ref(X1)
+promote_rule(::Type{SVector{N, T}}, ::Type{TX}) where {N, T <: Number, TX <: XState} = 
+      SVector{N, promote_type(T, TX)}
 
 # unary 
 import Base: - 
@@ -275,28 +278,8 @@ import LinearAlgebra: dot
 import Base: isapprox
 
 
-"""
-This is an exported function that is crucial to ACE internals. It implements 
-the operation 
-```
-(x, y) -> ∑_i x[i] * y[i]
-```
-i.e. like `dot` but without taking conjugates. 
-"""
-contract(X1, X2) = sum(x1 * x2 for (x1, x2) in zip(X1, X2))
 
-"""
-sum of squares (without conjugation!)
-"""
-sumsq(x) = contract(x, x)
-
-"""
-norm-squared, i.e. sum xi * xi' 
-"""
-normsq(x) = dot(x, x)
-
-
-for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
+for (f, g) in ( (:dot, :sum), (:isapprox, :all) )  # (:contract, :sum), 
    eval( quote 
       function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
          SYMS = _syms(TX1)
@@ -306,6 +289,22 @@ for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
       end
    end )
 end
+
+@generated function contract(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
+   SYMS = _syms(TX1)
+   @assert SYMS == _syms(TX2)
+   code = "contract(X1.$(SYMS[1]), X2.$(SYMS[1]))"
+   for sym in SYMS[2:end]
+      code *= " + contract(X1.$sym, X2.$sym)"
+   end
+   return quote 
+      $(Meta.parse(code))
+   end
+end
+
+contract(X1::Number, X2::XState) = X1 * X2 
+contract(X2::XState, X1::Number) = X1 * X2 
+
 
 import LinearAlgebra: norm 
 
@@ -377,5 +376,7 @@ function rrule(::typeof(getproperty), X::XState, sym::Symbol)
                       dstate_type(w[1], X)( NamedTuple{(sym,)}((w,)) ), 
                       NoTangent() )
 end
+
+
 
 

@@ -14,6 +14,8 @@ _basetype(φ::AbstractProperty) = Base.typename(typeof(φ)).wrapper
 @inline *(a::Union{Number, AbstractMatrix}, φ::AbstractProperty) = (_basetype(φ))(a * φ.val)
 @inline *(φ::AbstractProperty, a::Union{Number, AbstractMatrix})  = (_basetype(φ))(φ.val * a)
 
+*(a::AbstractVector{<: Number}, φ::AbstractProperty) = a .* Ref(φ)
+
 Base.isapprox(φ1::AbstractProperty, φ2::AbstractProperty) = isapprox(φ1.val, φ2.val)
 
 @inline norm(φ::AbstractProperty) = norm(φ.val)
@@ -45,6 +47,9 @@ function coco_o_daa(φ::AbstractProperty, b::TX) where {TX <: XState}
    return TX( NamedTuple{SYMS}(vals) )
 end
 
+coco_o_daa(cc::SVector{N, <: AbstractProperty}, b::TX) where {N, TX <: XState} = 
+      SVector( ntuple(i -> coco_o_daa(cc[i], b), N) )
+
 coco_o_daa(cc::Number, b::Number) = cc * b
 coco_o_daa(cc::Number, b::SVector) = cc * b
 coco_o_daa(cc::SVector, b::SVector) = cc * transpose(b)
@@ -52,6 +57,7 @@ coco_o_daa(cc::SMatrix{N1,N2}, b::SVector{N3}) where {N1,N2,N3} =
 		reshape(cc[:] * transpose(b), Size(N1, N2, N3))
 coco_o_daa(cc::SArray{Tuple{N1,N2,N3}}, b::SVector{N4}) where {N1,N2,N3,N4} =
 		reshape(cc[:] * transpose(b), Size(N1, N2, N3, N4))
+
 
 # TODO: is this needed or can it be removed? 
 #       maybe it should also be allowed for a DState?
@@ -539,11 +545,21 @@ to be ADed. I.e. `val` has rrules implemented that should allow taking up
 to two derivatives. 
 
 TODO: at the moment this is a bit hacky, and needs to be adjusted over time
-as we learn more about how to best implement AD.
+as we learn more about how to best implement AD. The real question is what 
+is the correct adjoint of this operation? E.g., if 
+````
+     val : { Invariant{T} } -> { T }
+```
+then should 
+```
+   val* :  { T } -> { Invariant{T} }
+```
+? If this is the case, then we need a parameterised `val` function. I.e. 
+we need to remember what the Property is that we started from.
 """
 val(x) = x.val 
 
-function _rrule_val(dp, x)     # D/Dx (dp[1] * dx)
+function _rrule_val(dp, x)     # ∂/∂x (dp * x) = dp 
    @assert dp isa Number 
    return NoTangent(), dp
 end
@@ -552,15 +568,19 @@ rrule(::typeof(val), x) =
          val(x), 
          dp -> _rrule_val(dp, x)
 
-function rrule(::typeof(_rrule_val), dp, x)   # D/D... (0 + dp * dq[2])
+function rrule(::typeof(_rrule_val), dp, x)   # ∂/∂... (0 + dp * dq[2])
       @assert dp isa Number 
       function second_adj(dq)
          @assert dq[1] == ZeroTangent() 
-         @assert dq[2] isa Number 
+         # @assert dq[2] isa Number  # TODO -> revisit this?!
          return NoTangent(), dq[2], ZeroTangent()
       end
       return _rrule_val(dp, x), second_adj
 end 
+
+import ChainRulesCore: ProjectTo
+
+(::ProjectTo{T})(φ::Invariant{T}) where {T} = val(φ)
 
 
 

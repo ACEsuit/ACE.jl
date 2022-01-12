@@ -42,6 +42,33 @@ function coco_type end
 function _rrule_evaluate end 
 function _rrule_evaluate_d end 
 
+"""
+This is an exported function that is crucial to ACE internals. It implements 
+the operation 
+```
+(x, y) -> ∑_i x[i] * y[i]
+```
+i.e. like `dot` but without taking conjugates. 
+"""
+contract(X1::AbstractVector, X2::AbstractVector) = 
+            sum(contract(x1, x2) for (x1, x2) in zip(X1, X2))
+            
+contract(x1::Union{Number, AbstractProperty}, 
+         x2::Union{Number, AbstractProperty}) = x1 * x2 
+
+contract(X1::AbstractVector, x2::Union{Number, AbstractProperty}) = X1 * x2
+contract(x1::Union{Number, AbstractProperty}, X2::AbstractVector) = x1 * X2
+
+"""
+sum of squares (without conjugation!)
+"""
+sumsq(x) = contract(x, x)
+
+"""
+norm-squared, i.e. sum xi * xi' 
+"""
+normsq(x) = dot(x, x)
+
 
 
 include("auxiliary.jl")
@@ -55,6 +82,8 @@ include("polynomials/wigner.jl")
 include("states.jl")
 include("symmetrygroups.jl")
 include("properties.jl")
+
+contract(X1::AbstractVector{<: DState}, x2::DState) = contract.(X1, Ref(x2))
 
 
 include("prototypes.jl")
