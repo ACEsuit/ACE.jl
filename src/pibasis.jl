@@ -64,7 +64,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    tup2b = vv -> _get_pibfcn(Aspec, vv)
 
    #  degree or level of a basis function ↦ is it admissible?
-   admissible = bb -> (level(bb, Bsel, basis1p) <= maxlevel(Bsel, basis1p))
+   admissible = bb -> (level(bb, Bsel, basis1p) <= maxlevel(bb, Bsel, basis1p))
 
    if property != nothing
       filter1 = bb -> filterfun(bb) && filter(bb, Bsel, basis1p) && filter(property, symgrp, bb)
