@@ -129,8 +129,10 @@ write_dict(B::Categorical1pBasis) =
       Dict( "__id__" => "ACE_Categorical1pBasis", 
             "categories" => write_dict(B.categories), 
             "VSYM" => String(_varsym(B)), 
-            "ISYM" => String(_isym(B)))
+            "ISYM" => String(_isym(B)), 
+            "label" => B.label)
 
 read_dict(::Val{:ACE_Categorical1pBasis}, D::Dict)  = 
    Categorical1pBasis( read_dict(D["categories"]), 
-                  Symbol(D["VSYM"]), Symbol(D["ISYM"]) )
+                  Symbol(D["VSYM"]), Symbol(D["ISYM"]), 
+                  D["label"] )

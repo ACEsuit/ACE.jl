@@ -83,12 +83,14 @@ write_dict(basis::Rn1pBasis{T}) where {T} = Dict(
       "__id__" => "ACE_Rn1pBasis",
           "R" => write_dict(basis.R), 
           "varsym" => _varsym(basis), 
-          "nsym" => _nsym(basis) )
+          "nsym" => _nsym(basis), 
+          "label" => basis.label )
 
 read_dict(::Val{:ACE_Rn1pBasis}, D::Dict) = 
-            Rn1pBasis(read_dict(D["R"]), 
+            Rn1pBasis(read_dict(D["R"]); 
                       varsym = Symbol(D["varsym"]), 
-                      nsym = Symbol(D["nsym"]))
+                      nsym = Symbol(D["nsym"]), 
+                      label = D["label"] )
 
 # TODO: this seems really poor; should the valtype use a type promotion here 
 # what if the input is a Dual???

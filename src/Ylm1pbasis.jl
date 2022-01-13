@@ -95,13 +95,15 @@ write_dict(basis::Ylm1pBasis{T}) where {T} = Dict(
           "SH" => write_dict(basis.SH), 
           "varsym" => _varsym(basis),
           "lsym" => _lsym(basis),
-          "msym" => _msym(basis) )
+          "msym" => _msym(basis), 
+          "label" => basis.label )
    
 read_dict(::Val{:ACE_Ylm1pBasis}, D::Dict) = 
-      Ylm1pBasis(read_dict(D["SH"]), 
+      Ylm1pBasis(read_dict(D["SH"]); 
                  varsym = Symbol(D["varsym"]), 
                  lsym = Symbol(D["lsym"]), 
-                 msym = Symbol(D["msym"]) )
+                 msym = Symbol(D["msym"]),
+                 label = D["label"] )
 
 # TODO: fix the type promotion...
 
