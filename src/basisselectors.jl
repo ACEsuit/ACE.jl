@@ -114,6 +114,9 @@ level(b::Onepb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
 level(bb::Prodb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
       length(bb) == 0 ? 0 : sum( degree(b, basis) for b in bb )
 
+maxlevel(bb, Bsel::SimpleSparseBasis, args...) = 
+      Bsel.maxlevel
+
 maxlevel(Bsel::SimpleSparseBasis, args...) = 
       Bsel.maxlevel
 
