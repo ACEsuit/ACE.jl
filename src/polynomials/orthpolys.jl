@@ -118,6 +118,10 @@ Base.length(P::OrthPolyBasis) = length(P.A)
       all( getfield(J1, sym) == getfield(J2, sym)
            for sym in (:pr, :tr, :pl, :tl, :A, :B, :C) )
 
+Base.show(io::IO, P::OrthPolyBasis) = 
+         print(io, "OrthPolyBasis(pl = $(P.pl), tl = $(P.tl), pr = $(P.pr), tr = $(P.tr), ...)")
+
+
 write_dict(J::OrthPolyBasis{T}) where {T} = Dict(
       "__id__" => "ACE_OrthPolyBasis",
       "T" => write_dict(T),

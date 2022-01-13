@@ -21,18 +21,22 @@ mutable struct Rn1pBasis{T, TT, TJ, VSYM, NSYM, TDX} <: OneParticleBasis{T}
    R::TransformedPolys{T, TT, TJ}
    B_pool::VectorPool{T}
    dB_pool::VectorPool{TDX}
+   label::String
 end
 
-Rn1pBasis(R::TransformedPolys{T, TT, TJ}; varsym = :rr, nsym = :n
+Rn1pBasis(R::TransformedPolys{T, TT, TJ}; label="Rn", varsym = :rr, nsym = :n
             ) where {T, TT, TJ} = 
-      Rn1pBasis{T, TT, TJ, varsym, nsym}(R)
+      Rn1pBasis{T, TT, TJ, varsym, nsym}(R, label)
 
-function Rn1pBasis{T, TT, TJ, VSYM, NSYM}(R::TransformedPolys{T, TT, TJ}
+function Rn1pBasis{T, TT, TJ, VSYM, NSYM}(R::TransformedPolys{T, TT, TJ}, 
+                                          label::String
                                          ) where {T, TT, TJ, VSYM, NSYM} 
    TDX = DState{NamedTuple{(VSYM,), Tuple{SVector{3, T}}}}
    return Rn1pBasis{T, TT, TJ, VSYM, NSYM, TDX}(
-               R, VectorPool{T}(), VectorPool{TDX}())
+               R, VectorPool{T}(), VectorPool{TDX}(), label)
 end
+
+
 
 # # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
 
@@ -57,6 +61,16 @@ _rr(X, Rn::Rn1pBasis) = getproperty(X, _varsym(Rn))
 # -> TODO : figure out how to do this well!!!
 # Base.rand(basis::Ylm1pBasis) =
 #       AtomState(rand(basis.zlist.list), ACE.Random.rand_vec(basis.J))
+
+
+function Base.show(io::IO, basis::Rn1pBasis)
+   print(io, "Rn1pBasis{$(_varsym(basis)), $(_nsym(basis))}(") 
+   print(io, basis.R.J) 
+   print(io, ", ")
+   print(io, basis.R.trans)
+   print(io, ", \"$(basis.label)\")")
+end
+
 
 get_spec(basis::Rn1pBasis, n::Integer) = NamedTuple{(_nsym(basis),)}((n,))
 

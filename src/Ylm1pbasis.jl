@@ -20,6 +20,7 @@ mutable struct Ylm1pBasis{T, VSYM, LSYM, MSYM, TDX} <: OneParticleBasis{Complex{
    SH::SHBasis{T}  # SH = Ylm
    B_pool::VectorPool{Complex{T}}
    dB_pool::VectorPool{TDX}
+   label::String
 end
 
 # # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
@@ -40,13 +41,14 @@ end
 Ylm1pBasis(maxL::Integer, T = Float64; kwargs...) = 
       Ylm1pBasis((SHBasis(maxL, T)); kwargs...)
 
-Ylm1pBasis(SH::SHBasis{T}; varsym = :rr, lsym = :l, msym = :m)  where {T} = 
-      Ylm1pBasis{T, varsym, lsym, msym}(SH)
+Ylm1pBasis(SH::SHBasis{T}; label = "Ylm", varsym = :rr, lsym = :l, msym = :m)  where {T} = 
+      Ylm1pBasis{T, varsym, lsym, msym}(SH, label)
 
-function Ylm1pBasis{T, varsym, lsym, msym}(SH::SHBasis{T}) where {T, varsym, lsym, msym}
+function Ylm1pBasis{T, varsym, lsym, msym}(SH::SHBasis{T}, label) where {T, varsym, lsym, msym}
    TDX = ACE.DState{NamedTuple{(varsym,), Tuple{SVector{3, Complex{T}}}}}
    return Ylm1pBasis{T, varsym, lsym, msym, TDX}(
-            SH, VectorPool{Complex{T}}(), VectorPool{TDX}() )
+            SH, VectorPool{Complex{T}}(), VectorPool{TDX}(), 
+            label )
 end
 
 Base.length(basis::Ylm1pBasis) = length(basis.SH)
@@ -69,6 +71,11 @@ function get_spec(basis::Ylm1pBasis, i::Integer)
 end
 
 get_spec(basis::Ylm1pBasis) = get_spec.(Ref(basis), 1:length(basis))
+
+function Base.show(io::IO, basis::Ylm1pBasis)
+   print(io, "Ylm1pBasis{$(_varsym(basis)), $(_lsym(basis)), $(_msym(basis))}($(basis.SH.alp.L), \"$(basis.label)\")")
+end
+
 
 
 # function get_spec(basis::Ylm1pBasis{T, VS, L, M}) where {T, VS, L, M}

@@ -17,9 +17,9 @@ include("imports.jl")
 using ACEbase.ObjectPools: acquire!, release!, VectorPool
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
-import ACEbase: evaluate, evaluate_d 
-import ACEbase: gradtype, valtype
-import ACEbase: acquire_B!, release_B!, acquire_dB!, release_dB! 
+import ACEbase: evaluate, evaluate_d, gradtype, valtype, 
+                acquire_B!, release_B!, acquire_dB!, release_dB!, 
+                ACEBasis
 
 
 # TODO: gradtype should have a standard fallback 
@@ -42,9 +42,11 @@ function coco_type end
 function _rrule_evaluate end 
 function _rrule_evaluate_d end 
 
+getlabel(basis::ACEBasis) = hasproperty(basis, :label) ? basis.label : ""
+
+
 """
-This is an exported function that is crucial to ACE internals. It implements 
-the operation 
+This function is crucial to ACE internals. It implements the operation 
 ```
 (x, y) -> ∑_i x[i] * y[i]
 ```

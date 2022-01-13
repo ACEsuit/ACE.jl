@@ -76,6 +76,7 @@ evaluate(P, State(u = :x))
 """
 struct Categorical1pBasis{VSYM, ISYM, LEN, T} <: Discrete1pBasis{LEN}
    categories::SList{LEN, T}
+   label::String 
 end
 
 _varsym(::Categorical1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = VSYM
@@ -87,14 +88,15 @@ _idx(b, B::Categorical1pBasis) = getproperty(b, _isym(B))
 Base.length(B::Categorical1pBasis) = length(B.categories)
 
 Categorical1pBasis(categories::AbstractArray; 
-              varsym::Symbol = nothing, idxsym::Symbol = nothing) = 
-      Categorical1pBasis(categories, varsym, idxsym)
+              varsym::Symbol = nothing, idxsym::Symbol = nothing, 
+              label = "C$(idxsym)") = 
+      Categorical1pBasis(categories, varsym, idxsym, label)
 
-Categorical1pBasis(categories::AbstractArray, varsym::Symbol, isym::Symbol) = 
-      Categorical1pBasis(SList(categories), varsym, isym)
+Categorical1pBasis(categories::AbstractArray, varsym::Symbol, isym::Symbol, label::String) = 
+      Categorical1pBasis(SList(categories), varsym, isym, label)
 
-Categorical1pBasis(categories::SList{LEN, T}, varsym::Symbol, isym::Symbol) where {LEN, T} = 
-      Categorical1pBasis{varsym, isym, LEN, T}(categories)
+Categorical1pBasis(categories::SList{LEN, T}, varsym::Symbol, isym::Symbol, label::String) where {LEN, T} = 
+      Categorical1pBasis{varsym, isym, LEN, T}(categories, label)
 
 function ACE.evaluate!(A, basis::Categorical1pBasis, X::AbstractState)
    fill!(A, false)
