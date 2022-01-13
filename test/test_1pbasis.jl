@@ -5,7 +5,7 @@
 using ACE
 using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      PositionState, Product1pBasis
+      PositionState, Product1pBasis, getlabel
 using Random: shuffle
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim
 
@@ -22,8 +22,8 @@ Bsel = SimpleSparseBasis(maxorder, maxdeg)
 
 trans = PolyTransform(1, r0)   # r -> x = 1/r^2
 J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)   #  J_n(x) * (x - xcut)^pcut
-Rn = Rn1pBasis(J)
-Ylm = Ylm1pBasis(maxdeg)
+Rn = Rn1pBasis(J; label = "Rn")
+Ylm = Ylm1pBasis(maxdeg; label = "Ylm")
 B1p = Product1pBasis( (Rn, Ylm) )
 ACE.init1pspec!(B1p, Bsel)
 
@@ -42,6 +42,13 @@ for ntest = 1:30
    print_tf(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
 end
 println()
+
+## 
+@info("test access via labels")
+println_slim(@test(getlabel(Ylm) == "Ylm"))
+println_slim(@test(getlabel(Rn) == "Rn"))
+println_slim(@test(B1p["Ylm"] == Ylm))
+println_slim(@test(B1p["Rn"] == Rn))
 
 ##
 

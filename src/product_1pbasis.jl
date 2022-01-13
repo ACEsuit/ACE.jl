@@ -38,6 +38,24 @@ _numb(b::Product1pBasis{NB}) where {NB} = NB
 
 Base.length(basis::Product1pBasis) = length(basis.indices)
 
+
+function Base.show(io::IO, basis::Product1pBasis)
+   print(io, "Product1pBasis") 
+   print(io, basis.bases)
+end
+
+Base.getindex(basis::Product1pBasis, i::Integer) = basis.bases[i] 
+
+function Base.getindex(basis::Product1pBasis, label::AbstractString)
+   inds = findall(getlabel.(basis.bases) .== label) 
+   if length(inds) == 0
+      error("label not found amongst 1p basis components")
+   elseif length(inds) > 1 
+      error("label not unique amongst 1p basis components")
+   end
+   return basis.bases[inds[1]]
+end
+
 # ------------------------- FIO CODES
 
 ==(B1::Product1pBasis, B2::Product1pBasis) = 
