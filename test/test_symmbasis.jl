@@ -56,8 +56,6 @@ if !isempty(Iz)
    @warn("The A2B map for Invariants has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
 end
 
-ACE.clean_pibasis!(basis)
-
 ##
 
 for ntest = 1:30

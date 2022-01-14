@@ -170,7 +170,11 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis,
    # TODO: filter and throw out everything that hasn't been used!!
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
-   return SymmetricBasis(pibasis, A2Bmap, symgrp, _real)
+   basis = SymmetricBasis(pibasis, A2Bmap, symgrp, _real)
+   # clean up a bit, i.e. remove AA basis functions that we don't need
+   # to evaluate the symmetric basis
+   clean_pibasis!(basis)
+   return basis
 end
 
 function SymmetricBasis(pibasis, A2Bmap, symgrp, _real) 
