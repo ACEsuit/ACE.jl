@@ -103,6 +103,16 @@ end
 
 get_spec(AAspec::PIBasisSpec, i::Integer) = AAspec.iAA2iA[i, 1:AAspec.orders[i]]
 
+# ------------------ PISpec sparsification 
+
+"""
+returns a new `PIBasisSpec` constructed from the old one, but keeping only 
+the basis indices `Ikeep`. This maintains the order of the basis functions. 
+"""
+sparsify(spec::PIBasisSpec, Ikeep::AbstractVector{<: Integer}) = 
+      PIBasisSpec(spec.orders[Ikeep], spec.iAA2iA[Ikeep, :])
+
+
 
 # --------------------------------- PIBasis implementation
 
@@ -174,6 +184,17 @@ setreal(basis::PIBasis, isreal::Bool) =
    PIBasis(basis.basis1p, basis.spec, isreal)
 
 maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
+
+
+# ------------------ sparsification 
+
+function sparsify!(basis::PIBasis, Ikeep::AbstractVector{<: Integer}) 
+   basis.spec = sparsify(basis.spec, Ikeep)
+   return basis 
+end 
+
+# -------------------
+
 
 # TODO: this is a hack; cf. #68
 function scaling(pibasis::PIBasis, p)

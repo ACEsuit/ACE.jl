@@ -30,7 +30,7 @@ If the PIbasis is already available, this directly constructs a
 resulting SymmetricBasis; all possible permutation-invariant basis functions 
 will be symmetrised and then reduced to a basis (rather than spanning set)
 """
-struct SymmetricBasis{PIB, PROP, SYM, REAL, VPROP} <: ACEBasis
+mutable struct SymmetricBasis{PIB, PROP, SYM, REAL, VPROP} <: ACEBasis
    pibasis::PIB
    A2Bmap::SparseMatrixCSC{PROP, Int}
    symgrp::SYM
@@ -204,6 +204,26 @@ function get_spec(basis::SymmetricBasis)
    return identity.(spec_B)
 end
 
+
+# ---------------- Filtering the AA basis if there are zero-rows in the A2B map
+
+"""
+Remove elements of the AA basis, when there are zero-rows in the A2B map, i.e.
+when some AA basis elements are simply not required to evaluate the 
+symmetric basis. 
+"""
+function clean_pibasis!(basis::SymmetricBasis; atol = 0.0)
+   # get the zero-columns 
+   Inz = sort( findall(x -> x > atol, sum(norm, basis.A2Bmap, dims=1)[:]) )
+   if length(Inz) < size(basis.A2Bmap, 2)
+      # remove those columns from the A2Bmap 
+      sparsify!(basis.pibasis, Inz)
+      # remove those columns from the A2Bmap 
+      basis.A2Bmap = basis.A2Bmap[:, Inz] 
+   end
+   return basis
+end
+
 # ---------------- A modified sparse matmul
 
 # TODO: move this stuff all to aux? 
@@ -252,57 +272,6 @@ function genmul!(C, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B, mulop)
    return C
 end
 
-# #dispatching for SVectors and B being a list of matrices rather than a single matrix
-# #the function below does the same, but return identical coppies for all properties
-# #only works on things that are parameter independent. 
-# function adjointgenmul!(C::AbstractVector{<: SVector}, A::AbstractSparseMatrixCSC, B, mulop)
-#    for prop in 1:length(C[1]) #TODO is it worth checking everything?
-#       size(A, 2) == size(B[prop], 1) || throw(DimensionMismatch())
-#       size(B[prop], 2) == size(C, 2) || throw(DimensionMismatch())
-#    end
-#    size(A, 1) == size(C, 1) || throw(DimensionMismatch())
-#    nzv = nonzeros(A)
-#    rv = rowvals(A)
-#    fill!(C, zero(eltype(C)))
-#    for k in 1:size(C, 2)
-#       for prop in 1:length(C[1]) #we add this loop over properties
-#          @inbounds for col in 1:size(A, 2)
-#             αxj = B[prop][col,k]
-#             for j in nzrange(A, col)
-#                   mop = mulop(nzv[j], αxj) #find the value we need
-#                   zerotmp = zeros(length(C[1])) #make an array of zeros
-#                   zerotmp[prop] = 1 #put a one only in the current position
-#                   tmp = SVector{length(C[1])}(zerotmp) #make it an SVector
-#                   C[rv[j], k] += mop * tmp #this should add only on the current property
-#             end
-#          end
-#       end
-#    end
-#    return C
-# end
-
-# #TODO, is this worth having? 
-# #dispatching for SVectors
-# #here we simply pass a coppy or a fill() or the mulop to every
-# #property on the SVector.
-# function genmul!(C::AbstractVector{<: SVector}, A::AbstractSparseMatrixCSC, B, mulop)
-#    size(A, 2) == size(B, 1) || throw(DimensionMismatch())
-#    size(A, 1) == size(C, 1) || throw(DimensionMismatch())
-#    size(B, 2) == size(C, 2) || throw(DimensionMismatch())
-#    nzv = nonzeros(A)
-#    rv = rowvals(A)
-#    fill!(C, zero(eltype(C)))
-#    for k in 1:size(C, 2)
-#        @inbounds for col in 1:size(A, 2)
-#            αxj = B[col,k]
-#            for j in nzrange(A, col)
-#                mop = mulop(nzv[j], αxj)
-#                C[rv[j], k] += mop * ones(SVector{length(C[1]),eltype(mop)})
-#            end
-#        end
-#    end
-#    return C
-# end
 
 # ---------------- Evaluation code
 
