@@ -26,7 +26,7 @@ struct State{NT <: NamedTuple} <: XState{NT}
 
    # if SYMS are not the same we automatically merge them
    State{NT}(t::NT1) where {NT <: NamedTuple, NT1 <: NamedTuple} = 
-         State{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) )
+         State( merge( _x(zero(State{NT})), t ) )
 end
 
 """
