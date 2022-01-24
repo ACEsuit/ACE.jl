@@ -208,8 +208,13 @@ end
 
 coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
-         ? [EuclideanVector(rmatrices[m,μ][:,k]) for k=1:3]
+         ? [EuclideanVector(conj(crmatrices[(l=l,m=-m,mu=-μ,i=i)])) for i=1:3]
          : coco_zeros(phi, l, m, μ, T, A)  )
+
+#coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
+#      (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
+#         ? [EuclideanVector(rmatrices[m,μ][:,k]) for k=1:3]
+#         : coco_zeros(phi, l, m, μ, T, A)  )
 
 # coco_init(phi::EuclideanVector{CT}
 #   this is not needed, since the EuclideanVector should never give us 
@@ -232,17 +237,7 @@ coco_filter(::EuclideanVector, ll, mm, kk) =
 
 coco_dot(u1::EuclideanVector, u2::EuclideanVector) = dot(u1.val, u2.val)
 
-rmatrices = Dict(
-  (-1,-1) => SMatrix{3, 3, ComplexF64, 9}(1/6, 1im/6, 0, -1im/6, 1/6, 0, 0, 0, 0),
-  (-1,0) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 0, 0, 0, 0, 1/(3*sqrt(2)), 1im/(3*sqrt(2)), 0),
-  (-1,1) => SMatrix{3, 3, ComplexF64, 9}(-1/6, -1im/6, 0, -1im/6, 1/6, 0, 0, 0, 0),
-  (0,-1) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 1/(3*sqrt(2)), 0, 0, -1im/(3*sqrt(2)), 0, 0, 0),
-  (0,0) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 0, 0, 0, 0, 0, 0, 1/3),
-  (0,1) => SMatrix{3, 3, ComplexF64, 9}(0, 0, -1/(3*sqrt(2)), 0, 0, -1im/(3*sqrt(2)), 0, 0, 0),
-  (1,-1) => SMatrix{3, 3, ComplexF64, 9}(-1/6, 1im/6, 0, 1im/6, 1/6, 0, 0, 0, 0),
-  (1,0) => SMatrix{3, 3, ComplexF64, 9}(0, 0, 0, 0, 0, 0, -1/(3*sqrt(2)), 1im/(3*sqrt(2)), 0),
-  (1,1) => SMatrix{3, 3, ComplexF64, 9}(1/6, -1im/6, 0, 1im/6, 1/6, 0, 0, 0, 0)
-  )
+include("cov_coeffs_dict.jl")
 
 #---------------------- Equivariant matrices
 
@@ -253,8 +248,8 @@ end
 function Base.show(io::IO, φ::EuclideanMatrix)
    # println(io, "3x3 $(typeof(φ)):")
    println(io, "e[ $(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3]);")
-   println(io, "   $(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3]);")
-   print(io,   "   $(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3]) ]")
+   println(io, "   $(φ.val[2,1]), $(φ.val[2,2]), $(φ.val[2,3]);")
+   print(io,   "   $(φ.val[3,1]), $(φ.val[3,2]), $(φ.val[3,3]) ]")
 end
 
 real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val))
@@ -307,11 +302,14 @@ end
 # differentiation - cf #27
 # *(φ::EuclideanMatrix, dAA::SVector) = φ.val * dAA'
 
+#coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
+#      (l <= 2 && abs(m) <= l && abs(μ) <= l)
+#         ? vec([EuclideanMatrix(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
+#         : coco_zeros(phi, l, m, μ, T, A)  )
 coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
-      (l == 2 && abs(m) <= 2 && abs(μ) <= 2)
-         ? vec([EuclideanMatrix(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
-         : coco_zeros(phi, l, m, μ, T, A)  )
-
+   (l <= 2 && abs(m) <= l && abs(μ) <= l)
+      ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
+      : coco_zeros(phi, l, m, μ, T, A)  )
 
 #coco_init(::EuclideanMatrix{CT}) where {CT<:Real} = [EuclideanMatrix(SMatrix{3,3,Complex{CT},9}([1.0,0,0,0,1.0,0,0,0,1.0]))]       
 coco_type(φ::EuclideanMatrix) = typeof(complex(φ))
