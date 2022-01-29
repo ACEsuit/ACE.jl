@@ -64,7 +64,7 @@ function PIBasisSpec( basis1p::OneParticleBasis,
    tup2b = vv -> _get_pibfcn(Aspec, vv)
 
    #  degree or level of a basis function ↦ is it admissible?
-   admissible = bb -> (level(bb, Bsel, basis1p) <= maxlevel(Bsel, basis1p))
+   admissible = bb -> (level(bb, Bsel, basis1p) <= maxlevel(bb, Bsel, basis1p))
 
    if property != nothing
       filter1 = bb -> filterfun(bb) && filter(bb, Bsel, basis1p) && filter(property, symgrp, bb)
@@ -102,6 +102,16 @@ end
 
 
 get_spec(AAspec::PIBasisSpec, i::Integer) = AAspec.iAA2iA[i, 1:AAspec.orders[i]]
+
+# ------------------ PISpec sparsification 
+
+"""
+returns a new `PIBasisSpec` constructed from the old one, but keeping only 
+the basis indices `Ikeep`. This maintains the order of the basis functions. 
+"""
+sparsify(spec::PIBasisSpec, Ikeep::AbstractVector{<: Integer}) = 
+      PIBasisSpec(spec.orders[Ikeep], spec.iAA2iA[Ikeep, :])
+
 
 
 # --------------------------------- PIBasis implementation
@@ -174,6 +184,17 @@ setreal(basis::PIBasis, isreal::Bool) =
    PIBasis(basis.basis1p, basis.spec, isreal)
 
 maxcorrorder(basis::PIBasis) = maxcorrorder(basis.spec)
+
+
+# ------------------ sparsification 
+
+function sparsify!(basis::PIBasis, Ikeep::AbstractVector{<: Integer}) 
+   basis.spec = sparsify(basis.spec, Ikeep)
+   return basis 
+end 
+
+# -------------------
+
 
 # TODO: this is a hack; cf. #68
 function scaling(pibasis::PIBasis, p)
@@ -270,22 +291,85 @@ function evaluate_ed!(AA, dAA, basis::PIBasis,
 end
 
 function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   if ord == 1
+      return _AA_local_adjoints_1!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   elseif ord == 2
+      return _AA_local_adjoints_2!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   # elseif ord == 3
+   #    return _AA_local_adjoints_3!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   # elseif ord == 4
+   #    return _AA_local_adjoints_4!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   else 
+      return _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   end
+end
+
+function _AA_local_adjoints_1!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   @inbounds dAAdA[1] = 1 
+   @inbounds A1 = A[iAA2iA[iAA, 1]]
+   return _real(A1)
+end
+
+function _AA_local_adjoints_2!(dAAdA, A, iAA2iA, iAA, ord, _real)
+   @inbounds A1 = A[iAA2iA[iAA, 1]]
+   @inbounds A2 = A[iAA2iA[iAA, 2]]
+   @inbounds dAAdA[1] = A2 
+   @inbounds dAAdA[2] = A1
+   return _real(A1 * A2)
+end
+
+# function _AA_local_adjoints_3!(dAAdA, A, iAA2iA, iAA, ord, _real)
+#    A1 = A[iAA2iA[iAA, 1]]
+#    A2 = A[iAA2iA[iAA, 2]]
+#    A3 = A[iAA2iA[iAA, 3]]
+#    A12 = A1 * A2
+#    dAAdA[1] = A2 * A3  
+#    dAAdA[2] = A1 * A3 
+#    dAAdA[3] = A12
+#    return _real(A12 * A3)
+# end
+
+# function _AA_local_adjoints_4!(dAAdA, A, iAA2iA, iAA, ord, _real)
+#    @inbounds A1 = A[iAA2iA[iAA, 1]]
+#    @inbounds A2 = A[iAA2iA[iAA, 2]]
+#    @inbounds A3 = A[iAA2iA[iAA, 3]]
+#    @inbounds A4 = A[iAA2iA[iAA, 4]]
+#    A12 = A1 * A2
+#    A34 = A3 * A4
+#    @inbounds dAAdA[1] = A2 * A34  
+#    @inbounds dAAdA[2] = A1 * A34 
+#    @inbounds dAAdA[3] = A12 * A4 
+#    @inbounds dAAdA[4] = A12 * A3
+#    return _real(A12 * A34)
+# end
+
+
+function _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
    @assert length(dAAdA) >= ord
+   @assert ord >= 2
    # TODO - optimize a bit more? can move one operation out of the loop
    # Forward pass:
+   @inbounds A1 = A[iAA2iA[iAA, 1]]
+   @inbounds A2 = A[iAA2iA[iAA, 2]]
    @inbounds dAAdA[1] = 1
-   @inbounds AAfwd = A[iAA2iA[iAA, 1]]
-   @inbounds for a = 2:ord
+   @inbounds dAAdA[2] = A1
+   @inbounds AAfwd = A1 * A2
+   @inbounds for a = 3:ord-1
       dAAdA[a] = AAfwd
       AAfwd *= A[iAA2iA[iAA, a]]
    end
-   aa = _real(AAfwd)
+   @inbounds dAAdA[ord] = AAfwd
+   @inbounds Aend = A[iAA2iA[iAA, ord]]
+   aa = _real(AAfwd * Aend)
    # backward pass
-   @inbounds AAbwd = A[iAA2iA[iAA, ord]]
-   @inbounds for a = ord-1:-1:1
+   @inbounds AAbwd = Aend 
+   @inbounds for a = ord-1:-1:3
       dAAdA[a] *= AAbwd
       AAbwd *= A[iAA2iA[iAA, a]]
    end
+   dAAdA[2] *= AAbwd 
+   AAbwd *= A2 
+   dAAdA[1] *= AAbwd 
 
    return aa 
 end

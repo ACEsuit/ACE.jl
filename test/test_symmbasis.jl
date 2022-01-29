@@ -48,12 +48,15 @@ println_slim(@test isapprox(BB, BB1, rtol=1e-10))
 println_slim(@test BB ≈ evaluate(basis, Xs))
 println_slim(@test evaluate_d(basis, cfg) ≈ evaluate_d(basis, Xs))
 
+##
 
 # check there are no superfluous columns
 Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
 if !isempty(Iz)
    @warn("The A2B map for Invariants has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
 end
+
+##
 
 for ntest = 1:30
       Xs1 = shuffle(rand_refl(rand_rot(Xs)))
