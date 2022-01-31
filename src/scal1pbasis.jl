@@ -116,26 +116,6 @@ evaluate!(B, basis::Scal1pBasis, x::Number) =
 evaluate!(B, basis::Scal1pBasis, X::AbstractState) =
       evaluate!(B, basis.P, _val(X, basis))
 
-"""
-returns an `SVector{N}` of the form `x * e_I` where `e_I` is the Ith canonical basis vector.
-"""
-@generated function __e(::SVector{N}, ::Val{I}, x::T) where {N, I, T}
-   code = "SA["
-   for i = 1:N 
-      if i == I
-         code *= "x,"
-      else 
-         code *= "0,"
-      end
-   end
-   code *= "]"
-   quote 
-      $( Meta.parse(code) )
-   end
-end
-
-__e(::Number, ::Any, x) = x
-
 
 function _scal1pbasis_grad(TDX::Type, basis::Scal1pBasis, gval)
    gval_tdx = __e( getproperty(zero(TDX), _varsym(basis)), 
