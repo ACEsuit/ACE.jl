@@ -1,7 +1,6 @@
 using ACE, Test, ACEbase, ACEbase.Testing, StaticArrays
 using ACE.Random: rand_rot, rand_refl
 using Random: shuffle
-
 ##
 #=
 @info("Rudimentary tests for sparse basis selectors and intersections of such")
@@ -85,56 +84,58 @@ function get_config(X::Vector{SVector{3, Float64}}, k::Int, j::Int)
     return config
 end
 
-
-evaluate_onsite!(B::AbstractVector{Matrix{SMatrix{3,3,T,9}}}, m::E2MatrixModel, at::AbstractAtoms, k::Int, nlist::PairList)
-
-k=1
-j=2
-tol = 10^-5
+basis = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env0, Bsel; bondsymmetry="Invariant" )
+length(basis)
+basis = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env0, Bsel;)
+length(basis)
+basis = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env0, Bsel;bondsymmetry="Covariant")
+length(basis)
+n_particle = 11
+tol = 10^-14
 #env0 = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= 0.0)
-for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
+@info("Test equivariance properties under bond symmetry constraints");
+for bs in ["Invariant", "Covariant"]
+    for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
 
-    basis = ACE.Utils.SymmetricBond_basis(property, env0, Bsel; bondsymmetry="Invariant" )
-    @show length(basis)
+        k= rand(1:n_particle)
+        j= rand([ i for i =1:n_particle if i != k])
+        basis = ACE.Utils.SymmetricBond_basis(property, env0, Bsel; bondsymmetry="Invariant" )
+        @show length(basis)
 
-    rr0 = SVector{3}(rand(Float64,3))
-    X = [ SVector{3}(rand(Float64,3)) for _ = 1:11 ]
-    cfg = get_config(X, k, j)
-    B1 = ACE.evaluate(basis, cfg)
+        rr0 = SVector{3}(rand(Float64,3))
+        X = [ SVector{3}(rand(Float64,3)) for _ = 1:n_particle ]
+        cfg = get_config(X, k, j)
+        B1 = ACE.evaluate(basis, cfg)
 
-    println("------------------------------------------------------------")
-    @info("Test rotation-equivariance for property $(typeof(property))")
+        println("------------------------------------------------------------")
+        @info( string("Test rotation-equivariance for property $(typeof(property)) and bond symmetry of type ", bs))
 
-    for ntest = 1:30
-        Q = rand_refl() * rand_rot()
-        X2 = [Q * x for x in X]
-        cfg2 = get_config(X2, k, j)
-        B2 = ACE.evaluate(basis, cfg2)
-        if property == ACE.Invariant()
-            print_tf(@test isapprox(B1, B2, rtol=tol))
-        elseif property == ACE.EuclideanVector()
-            print_tf(@test isapprox( map(x->Q*x, B1), B2, rtol=tol))
-        elseif property == ACE.EuclideanMatrix()
-            print_tf(@test isapprox( map(x->Q * x * Q', B1), B2, rtol=tol))
+        for ntest = 1:30
+            Q = rand_refl() * rand_rot()
+            X2 = [Q * x for x in X]
+            cfg2 = get_config(X2, k, j)
+            B2 = ACE.evaluate(basis, cfg2)
+            if property == ACE.Invariant()
+                print_tf(@test isapprox(B1, B2, rtol=tol))
+            elseif property == ACE.EuclideanVector()
+                print_tf(@test isapprox( map(x->Q*x, B1), B2, rtol=tol))
+            elseif property == ACE.EuclideanMatrix()
+                print_tf(@test isapprox( map(x->Q * x * Q', B1), B2, rtol=tol))
+            end
         end
+        println()
     end
-    println()
 end
 
 @info("Test bond-symmetry conditions")
 
-using LinearAlgebra
-tol = 10^-15
-env = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= 0.0);
-
-
-
+tol = 10^-10
 for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
 
     println("------------------------------------------------------------")
-    @info("Test bond-symmetry conditions for property $(typeof(property))")
+    @info("Test bond-symmetry conditions for property $(typeof(property)) and tolerance tol = $tol")
     println()
-    basis_bondinv = ACE.Utils.SymmetricBond_basis(property, env, Bsel; bondsymmetry="Invariant");
+    basis_bondinv = ACE.Utils.SymmetricBond_basis(property, env0, Bsel; bondsymmetry="Invariant");
     #@show length(basis_bondinv );
 
     @info("Test for invariance under bond inversion");
@@ -145,13 +146,13 @@ for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
         cfg2 = vcat( [ ACE.State(rr = r-.5*rr0, rr0 = -rr0, be = :env) for r in randX ] , [ACE.State(rr = -rr0, rr0 = -rr0, be = :bond)]) |> ACEConfig;
         B1 = ACE.evaluate(basis_bondinv , cfg1);
         B2 = ACE.evaluate(basis_bondinv, cfg2);
-        print_tf(@test all([ norm(b1-b2) < tol for (b1,b2) in zip(B1,B2)]));
+        print_tf(@test all([ isapprox(b1.val,b2.val, rtol = tol) for (b1,b2) in zip(B1,B2)]));
     end
     println()
 
     
     @info("Test for covariance under bond inversion");
-    basis_bondcov = ACE.Utils.SymmetricBond_basis(property, env, Bsel; bondsymmetry="Covariant");
+    basis_bondcov = ACE.Utils.SymmetricBond_basis(property, env0, Bsel; bondsymmetry="Covariant");
     #@show length(basis_bondcov );
     for ntest = 1:300
         rr0 = SVector{3}(rand(Float64,3));
@@ -160,7 +161,7 @@ for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
         cfg2 = vcat( [ ACE.State(rr = r-.5*rr0, rr0 = -rr0, be = :env) for r in randX ] , [ACE.State(rr = -rr0, rr0 = -rr0, be = :bond)]) |> ACEConfig;
         B1 = ACE.evaluate(basis_bondcov, cfg1);
         B2 = ACE.evaluate(basis_bondcov, cfg2);
-        print_tf(@test all([ norm(b1+b2) < tol for (b1,b2) in zip(B1,B2)]));
+        print_tf(@test all([ isapprox(b1.val,-b2.val, rtol = tol) for (b1,b2) in zip(B1,B2)]));
     end
     println()
     
