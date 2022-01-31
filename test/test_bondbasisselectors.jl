@@ -84,12 +84,6 @@ function get_config(X::Vector{SVector{3, Float64}}, k::Int, j::Int)
     return config
 end
 
-basis = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env0, Bsel; bondsymmetry="Invariant" )
-length(basis)
-basis = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env0, Bsel;)
-length(basis)
-basis = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env0, Bsel;bondsymmetry="Covariant")
-length(basis)
 n_particle = 11
 tol = 10^-14
 #env0 = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= 0.0)
