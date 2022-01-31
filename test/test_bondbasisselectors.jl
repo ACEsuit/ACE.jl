@@ -31,27 +31,7 @@ maxorder = 3
 Bsel = ACE.SparseBasis(; maxorder=maxorder, p = 2, default_maxdeg = 4) 
 
 ##
-
-@info("Test invariance")
-
-
-basis_inv = ACE.Utils.SymmetricBond_basis(ACE.Invariant(), env, Bsel; )
-@show length(basis_inv)
-
-rr0 = SVector{3}(rand(Float64,3))
-cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), rr0 = rr0,
-                  be = rand([:bond,:env])) 
-        for _ = 1:10 ] |> ACEConfig
-B1_inv = ACE.evaluate(basis_inv, cfg)
-
-for ntest = 1:30
-    Q = rand_refl() * rand_rot()
-    Xs2 = ACE.shuffle([ ACE.State(rr = Q * X.rr, rr0 = Q * X.rr0, be = X.be)  for X in cfg.Xs ])
-    B2_inv = ACE.evaluate(basis_inv, ACEConfig(Xs2))
-    print_tf(@test isapprox(B1_inv, B2_inv, rtol=1e-10))
-end
-println()
-@info("Test Euclidian covariance")
+@info("Test rotation-equivariance properties")
 
 tol = 10^-14
 for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
@@ -66,7 +46,7 @@ for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
     B1 = ACE.evaluate(basis, cfg)
 
     println("------------------------------------------------------------")
-    @info("Test rotation-equivariance for property $(typeof(property))")
+    @info("Test rotation-equivariance for property $(typeof(property)) with tol = $tol")
 
     for ntest = 1:30
         Q = rand_refl() * rand_rot()
