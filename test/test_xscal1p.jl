@@ -20,7 +20,7 @@ bsel = ACE.SimpleSparseBasis(3, maxdeg)
 
 ##
 
-B1p = ACE.XScal1pBasis(:u, (:k, :m), P)
+B1p = ACE.xscal1pbasis(:u, (k = 0:maxdeg, m = 0:maxdeg), P)
 ACE.init1pspec!(B1p, bsel)
 ACE.fill_rand_coeffs!(B1p, randn)
 
