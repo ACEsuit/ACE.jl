@@ -1,9 +1,6 @@
-
 #
-# TODO: 
-#   - bring back Legendre Polynomials
-#   - write wrappers for Chebyshev, Gegenbauer, etc 
-#   - 
+#   WORK IN PROGRESS - CURRENTLY NOT INCLUDED
+#
 #
 
 module SNAP

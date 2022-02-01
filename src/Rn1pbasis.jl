@@ -37,18 +37,6 @@ function Rn1pBasis{T, TT, TJ, VSYM, NSYM}(R::TransformedPolys{T, TT, TJ},
 end
 
 
-
-# # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
-
-# function acquire_B!(basis::Rn1pBasis, args...) 
-#    VT = valtype(basis, args...)
-#    return acquire!(basis.B_pool, length(basis), VT)
-# end
-
-# function release_B!(basis::Rn1pBasis, B)
-#    return release!(basis.B_pool, B)
-# end
-
 # ---------------------- Implementation of Rn1pBasis
 
 Base.length(basis::Rn1pBasis) = length(basis.R)
@@ -81,7 +69,10 @@ get_spec(basis::Rn1pBasis) = get_spec.(Ref(basis), 1:length(basis))
 
 function sparsify!(basis::Rn1pBasis, spec)
    maxn = maximum(_n(b, basis) for b in spec) 
-   ACE.OrthPolys.set_length!(basis.R.J, maxn-1)
+   # generate a new radial basis 
+   if maxn > length(basis)
+      basis.P = ACE.OrthPolys.TransformedPolys(maxn, basis.P)
+   end
    return basis
 end
 

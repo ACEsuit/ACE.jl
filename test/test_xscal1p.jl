@@ -48,13 +48,6 @@ spec = ACE.get_spec(symB.pibasis)
 spec1p = ACE.clean_1pbasis!(symB.pibasis)
 basis1p = symB.pibasis.basis1p
 
-keep = ACE.sparsify!(basis1p)
-
-##
-
-ACE._sparsify_component!(basis1p.bases[1], spec1p)
-ACE._sparsify_component!(basis1p.bases[2], spec1p)
-
 ##
 
 

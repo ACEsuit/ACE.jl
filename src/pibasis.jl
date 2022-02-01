@@ -212,11 +212,11 @@ pibasis what the correct indices are.
 function clean_1pbasis!(basis::PIBasis)
    spec = get_spec(basis)
    B1p = basis.basis1p
-   spec1p = eltype(spec[1])[]
+   spec1p = NamedTuple[]
    for bb in spec 
       append!(spec1p, bb)
    end
-   unique!(spec1p)
+   identity.(unique!(spec1p))
    # sparsify the product 1p basis 
    _, new_inds = sparsify!(basis.basis1p, spec1p)
    # now fix the indexing of the PIBasis specification 
