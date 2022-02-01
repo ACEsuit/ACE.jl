@@ -209,7 +209,29 @@ function get_spec(basis::SymmetricBasis)
 end
 
 
-# ---------------- Filtering the AA basis if there are zero-rows in the A2B map
+# ---------------- sparsification and cleanup codes 
+
+"""
+`sparsify!(basis::SymmetricBasis; del = ..., keep = ...)`
+
+sparsify the symmetric basis by either specifyin which basis functions to 
+keep or which ones to delete.
+"""
+function sparsify!(basis::SymmetricBasis; 
+                  del::Union{Nothing, AbstractVector{<: Integer}} = nothing, 
+                  keep::Union{Nothing, AbstractVector{<: Integer}} = nothing)
+   if ( (del == nothing && keep == nothing ) || 
+        (del != nothing && keep != nothing ) )
+      error("sparsify!: must provide either del or keep kwarg but not both")
+   end 
+   if del != nothing 
+      keep = setdiff(1:length(basis), del)
+   end
+   basis.A2Bmap = basis.A2Bmap[keep, :]
+   clean_pibasis!(basis; atol = 0.0)
+end
+
+# this is also used for Filtering the AA basis if there are zero-rows in the A2B map
 
 """
 Remove elements of the AA basis, when there are zero-rows in the A2B map, i.e.
