@@ -225,6 +225,7 @@ function clean_pibasis!(basis::SymmetricBasis; atol = 0.0)
       # remove those columns from the A2Bmap 
       basis.A2Bmap = basis.A2Bmap[:, Inz] 
    end
+   clean_1pbasis!(basis.pibasis)
    return basis
 end
 

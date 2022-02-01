@@ -5,7 +5,8 @@
 using ACE
 using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      PositionState, Product1pBasis, State, ACEConfig
+      PositionState, Product1pBasis, State, ACEConfig, 
+      SymmetricBasis
 using Random: shuffle
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
 using ACE.OrthPolys: transformed_jacobi
@@ -16,12 +17,12 @@ maxdeg = 5
 trans = ACE.Transforms.IdTransform()
 P = transformed_jacobi(2*maxdeg, trans, 1.0, 0.0; pin = 0, pcut = 0) 
 
-bsel = ACE.SimpleSparseBasis(3, maxdeg)
+Bsel = ACE.SimpleSparseBasis(3, maxdeg)
 
 ##
 
 B1p = ACE.xscal1pbasis(:u, (k = 0:maxdeg, m = 0:maxdeg), P)
-ACE.init1pspec!(B1p, bsel)
+ACE.init1pspec!(B1p, Bsel)
 ACE.fill_rand_coeffs!(B1p, randn)
 
 ##
@@ -35,7 +36,27 @@ dB = evaluate_d(B1p, X)
 
 ##
 
+symB = SymmetricBasis(ACE.Invariant(), ACE.Utils.RnYlm_1pbasis(), Bsel)
+
+@show length(symB.pibasis.basis1p)
+ACE.clean_1pbasis!(symB.pibasis)
+@show length(symB.pibasis.basis1p)
+
+
+spec = ACE.get_spec(symB.pibasis)
+
+spec1p = ACE.clean_1pbasis!(symB.pibasis)
+basis1p = symB.pibasis.basis1p
+
+keep = ACE.sparsify!(basis1p)
+
 ##
+
+ACE._sparsify_component!(basis1p.bases[1], spec1p)
+ACE._sparsify_component!(basis1p.bases[2], spec1p)
+
+##
+
 
 ##
 

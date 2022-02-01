@@ -72,9 +72,20 @@ function Base.show(io::IO, basis::Rn1pBasis)
 end
 
 
+# ------------- specs and sparsification 
+
 get_spec(basis::Rn1pBasis, n::Integer) = NamedTuple{(_nsym(basis),)}((n,))
 
 get_spec(basis::Rn1pBasis) = get_spec.(Ref(basis), 1:length(basis))
+
+
+function sparsify!(basis::Rn1pBasis, spec)
+   maxn = maximum(_n(b, basis) for b in spec) 
+   ACE.OrthPolys.set_length!(basis.R.J, maxn-1)
+   return basis
+end
+
+# ---------------
 
 ==(P1::Rn1pBasis, P2::Rn1pBasis) = 
    ( (P1.R == P2.R) && (typeof(P1) == typeof(P2)) )

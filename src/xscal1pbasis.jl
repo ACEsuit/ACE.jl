@@ -106,10 +106,11 @@ gradtype(basis::XScal1pBasis, X::AbstractState) =
       dstate_type(valtype(basis, X), X)
 
 
+
+argsyms(basis::XScal1pBasis) = ( _varsym(basis), )
+
 symbols(basis::XScal1pBasis) = [ _idxsyms(basis)... ]
 
-# *** NOTE THE 1:5 range is complete rubbish!!!!
-#     this really screams for reverse construction of the bases. ouch.
 indexrange(basis::XScal1pBasis) = basis.rgs
 
 # *** is this really needed? 

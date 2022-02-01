@@ -106,6 +106,9 @@ OrthPolyBasis(pl, tl::T, pr, tr::T, A::Vector{T}, B::Vector{T}, C::Vector{T},
                  VectorPool{T}(), VectorPool{T}())                 
 
 
+set_length!(::OrthPolyBasis, len::Integer) = (@warn("not implemented"));
+
+
 valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
       promote_type(T, TX)
 

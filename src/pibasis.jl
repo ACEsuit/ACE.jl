@@ -114,6 +114,18 @@ sparsify(spec::PIBasisSpec, Ikeep::AbstractVector{<: Integer}) =
 
 
 
+function _fix_A_indices!(spec::PIBasisSpec, new_inds::AbstractVector{<: Integer})
+   for iAA = 1:size(spec.iAA2iA, 1)
+      for α = 1:spec.orders[iAA]
+         vα = spec.iAA2iA[iAA, α]
+         new_vα = new_inds[vα]
+         @assert new_vα > 0 
+         spec.iAA2iA[iAA, α] = new_vα
+      end
+   end
+   return nothing 
+end
+
 # --------------------------------- PIBasis implementation
 
 
@@ -192,6 +204,35 @@ function sparsify!(basis::PIBasis, Ikeep::AbstractVector{<: Integer})
    basis.spec = sparsify(basis.spec, Ikeep)
    return basis 
 end 
+
+"""
+This should allow the 1p basis to sparsify itself, then feed back to the 
+pibasis what the correct indices are.
+"""
+function clean_1pbasis!(basis::PIBasis)
+   spec = get_spec(basis)
+   B1p = basis.basis1p
+   spec1p = eltype(spec[1])[]
+   for bb in spec 
+      append!(spec1p, bb)
+   end
+   unique!(spec1p)
+   # sparsify the product 1p basis 
+   _, new_inds = sparsify!(basis.basis1p, spec1p)
+   # now fix the indexing of the PIBasis specification 
+   _fix_A_indices!(basis.spec, new_inds)
+   return basis 
+end
+
+# syms = symbols(B1p)
+# rgs = Dict{Symbol, Any}([sym => [] for sym in syms]...)
+# for bb in spec, b in bb, sym in keys(b)
+#    push!(rgs[sym], getproperty(b, sym)) 
+# end
+# for sym in syms 
+#    rgs[sym] = identity.(unique(rgs[sym]))
+# end
+
 
 # -------------------
 
