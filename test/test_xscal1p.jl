@@ -104,3 +104,33 @@ ACE.sparsify!(B1p, ACE.get_spec(B1p))
 ## 
 
 @info("XScal with norm(rr) as input")
+B1p = ACE.xscal1pbasis(P, (k = 1:maxdeg, m = 0:maxdeg), ACE.GetNorm{:rr}(); 
+                       label = "Xkm")
+ACE.init1pspec!(B1p, Bsel)
+ACE.fill_rand_coeffs!(B1p, randn)
+
+@info("check get_val, get_val_d")
+X = State( rr = ACE.rand_sphere() * (0.5+rand()/2) )
+println_slim(@test ACE.getval(X, B1p) ≈ norm(X.rr))
+println_slim(@test ACE.getval_d(X, B1p).rr ≈ X.rr/norm(X.rr))
+
+@info("check get_val, get_val_d")
+B = evaluate(B1p, X)
+dB = evaluate_d(B1p, X)
+println_slim(@test ACE.evaluate_ed(B1p, X) == (B, dB))
+
+##
+
+
+@info("Finite-difference tests at a few random points")
+for ntest = 1:10 
+   local c, F, dF 
+   c = randn(length(B1p))
+   rr0 = Vector(ACE.rand_sphere() * (0.5 + rand()/0.5))
+   F = rr -> ACE.contract(c, evaluate(B1p, State(rr = SVector{3}(rr))))
+   dF = rr -> ACE.contract(c, getproperty.(evaluate_d(B1p, State(rr = SVector{3}(rr))), :rr)) |> Vector
+   dF(rr0)
+   print_tf(@test all( fdtest(F, dF, rr0; verbose=false) ))
+end
+println() 
+

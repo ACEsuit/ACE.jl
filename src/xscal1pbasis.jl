@@ -18,11 +18,10 @@ getval_d(X, ::GetVal{VSYM}) where {VSYM} =
       DState( NamedTuple{(VSYM,)}( (one(getproperty(X, VSYM)),) ) )
 
 
-struct GetVali{VSYM, IND} <: StaticGet end 
-
-getval(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = getproperty(X, VSYM)[IND]
-
-getval_d(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = __e(getproperty(X, VSYM), Val{IND}())
+# TODO - this is incomplete for now 
+# struct GetVali{VSYM, IND} <: StaticGet end 
+# getval(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = getproperty(X, VSYM)[IND]
+# getval_d(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = __e(getproperty(X, VSYM), Val{IND}())
 
 
 struct GetNorm{VSYM} <: StaticGet end 
@@ -31,7 +30,7 @@ getval(X, ::GetNorm{VSYM}) where {VSYM} = norm(getproperty(X, VSYM))
 
 function getval_d(X, ::GetNorm{VSYM}) where {VSYM}
    x = getproperty(X, VSYM)
-   return x/norm(x)
+   return DState( NamedTuple{(VSYM,)}( (x/norm(x),) ) )
 end 
 
 
