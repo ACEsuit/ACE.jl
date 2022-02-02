@@ -19,21 +19,23 @@ mutable struct XScal1pBasis{VSYM, ISYMS, T, TT, TJ, NI, TRG} <: OneParticleBasis
    rgs::TRG
    spec::Vector{NamedTuple{ISYMS, NTuple{NI, Int}}}
    coeffs::Matrix{T}
+   label::String 
 end
 
 
-function xscal1pbasis(varsym::Symbol, idxsyms, P::TransformedPolys)
+function xscal1pbasis(varsym::Symbol, idxsyms, P::TransformedPolys; label = "")
    ISYMS = tuple(keys(idxsyms)...)
    rgs = NamedTuple{ISYMS}( tuple([idxsyms[sym] for sym in ISYMS]...) )
-   return XScal1pBasis(varsym, ISYMS, rgs, P)
+   return XScal1pBasis(varsym, ISYMS, rgs, P, label)
 end 
 
 function XScal1pBasis(varsym::Symbol, ISYMS::NTuple{NI, Symbol}, 
                       rgs::TRG, P::TransformedPolys{T, TT, TJ}, 
+                      label::String = "", 
                       spec = NamedTuple{ISYMS, NTuple{NI, Int}}[], 
                       coeffs = Matrix{T}(undef, (0,0))
                      ) where {NI, T, TT, TJ, TRG}
-   return XScal1pBasis{varsym, ISYMS, T, TT, TJ, NI, TRG}(P, rgs, spec, coeffs)
+   return XScal1pBasis{varsym, ISYMS, T, TT, TJ, NI, TRG}(P, rgs, spec, coeffs, label)
 end
 
 
@@ -56,6 +58,8 @@ _val(x::Number, basis::XScal1pBasis) = x
 Base.length(basis::XScal1pBasis) = size(basis.coeffs, 1)
 
 get_spec(basis::XScal1pBasis) = copy(basis.spec)
+
+get_spec(basis::XScal1pBasis, i::Integer) = basis.spec[i] 
 
 function set_spec!(basis::XScal1pBasis, spec)
    basis.spec = identity.(spec)
@@ -86,7 +90,26 @@ function fill_rand_coeffs!(basis::XScal1pBasis, f::Function)
    return basis 
 end
 
-# *** todo 
+"""
+`fill_diag_coeffs!(basis::XScal1pBasis, sym = _idxsys(basis)[1])`
+
+This sets XScal1p basis paramerers as follows: 
+```
+P_{n,v} = J_n
+```
+where `sym = :n` and `v` is the rest of the symbols joined together. 
+I.e., this reduces the XScal basis to a standard Scal basis. 
+"""
+function fill_diag_coeffs!(basis::XScal1pBasis, sym = _idxsys(basis)[1])
+   fill!(basis.coeffs, 0)
+   for (ib, b) in enumerate(basis.spec)
+      n = b[sym]
+      basis.coeffs[ib, n] = 1
+   end
+   return basis
+end
+
+# ========================= 
 
 
 ==(P1::XScal1pBasis, P2::XScal1pBasis) = _allfieldsequal(P1, P2)
@@ -102,7 +125,8 @@ function write_dict(basis::XScal1pBasis{T}) where {T}
                           for sym in ISYMS]... ),
           "varsym" => string(_varsym(basis)),
           "spec" => convert.(Dict, basis.spec), 
-          "coeffs" => write_dict(basis.coeffs)
+          "coeffs" => write_dict(basis.coeffs), 
+          "label" => basis.label 
       )
 end
 
@@ -116,7 +140,7 @@ function read_dict(::Val{:ACE_XScal1pBasis}, D::Dict)
                              for sym in ISYMS ]... )) |> NamedTuple{ISYMS}
    spec = NamedTuple{ISYMS}.(namedtuple.(D["spec"]))
    coeffs = read_dict(D["coeffs"])
-   return XScal1pBasis(VSYM, ISYMS, rgs, P, spec, coeffs)
+   return XScal1pBasis(VSYM, ISYMS, rgs, P, D["label"], spec, coeffs)
 end
 
 valtype(basis::XScal1pBasis) = 
@@ -145,11 +169,18 @@ function get_index(basis::XScal1pBasis, b::NamedTuple)
    ISYMS = _idxsyms(basis)
    b1 = select(b, ISYMS)
    idx = findall(isequal(b1), basis.spec)
-   @assert length(idx) == 1
+   if length(idx) != 1
+      @show b1 
+      @show basis.spec 
+   end
+   if length(idx) == 0
+      error("didn't find b in the spec")
+   elseif length(idx) > 1
+      error("b appears in spec more than once")
+   end
    return idx[1]
 end 
    
-
 
 # ---------------------------  Evaluation code
 #
