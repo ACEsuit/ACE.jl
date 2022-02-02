@@ -29,20 +29,21 @@ function xscal1pbasis(varsym::Symbol, idxsyms, P::TransformedPolys)
 end 
 
 function XScal1pBasis(varsym::Symbol, ISYMS::NTuple{NI, Symbol}, 
-                      rgs::TRG, P::TransformedPolys{T, TT, TJ}
+                      rgs::TRG, P::TransformedPolys{T, TT, TJ}, 
+                      spec = NamedTuple{ISYMS, NTuple{NI, Int}}[], 
+                      coeffs = Matrix{T}(undef, (0,0))
                      ) where {NI, T, TT, TJ, TRG}
-   spec = NamedTuple{ISYMS, NTuple{NI, Int}}[]
-   return XScal1pBasis{varsym, ISYMS, T, TT, TJ, NI, TRG}(P, rgs, spec, Matrix{T}(undef, (0,0)))
+   return XScal1pBasis{varsym, ISYMS, T, TT, TJ, NI, TRG}(P, rgs, spec, coeffs)
 end
 
 
 _varsym(basis::XScal1pBasis{VSYM}) where {VSYM} = VSYM
 
-# *** NOT SURE HOW TO DEAL WITH THIS?  revisit 
 _idxsyms(basis::XScal1pBasis{VSYM, ISYMS}) where {VSYM, ISYMS} = ISYMS
 
 
 # *** todo - generalize the _val to specify how a value is extracted. 
+#     e.g. allow norm(rr) to be in front
 
 _val(X::AbstractState, basis::XScal1pBasis) = getproperty(X, _varsym(basis))
 
@@ -62,13 +63,22 @@ function set_spec!(basis::XScal1pBasis, spec)
    return basis 
 end
 
-# *** should there be also bounds checked on the indices? 
-isadmissible(b::NamedTuple{BSYMS}, basis::XScal1pBasis) where {BSYMS} = 
-         all(sym in BSYMS for sym in _idxsyms(basis))
+function isadmissible(b::NamedTuple{BSYMS}, basis::XScal1pBasis) where {BSYMS} 
+   ISYMS = _idxsyms(basis)
+   @assert all(sym in BSYMS for sym in ISYMS)
+   return all(b[sym] in basis.rgs[sym] for sym in ISYMS) 
+end 
 
 degree(b::NamedTuple, basis::XScal1pBasis) = 
          getproperty(b, _idxsyms(basis)[1]) - 1
 
+"""
+`fill_rand_coeffs!(basis::XScal1pBasis, f::Function)`
+
+This fills the parameters of the XScal1pBasis with coefficients generated 
+by the function f. We say "random" because most typically, we expect 
+`f = rand` or `f = randn` or similar.
+"""
 function fill_rand_coeffs!(basis::XScal1pBasis, f::Function)
    for n = 1:length(basis.coeffs)
       basis.coeffs[n] = f()
@@ -78,19 +88,36 @@ end
 
 # *** todo 
 
+
 ==(P1::XScal1pBasis, P2::XScal1pBasis) = _allfieldsequal(P1, P2)
 
-# write_dict(basis::Scal1pBasis{T}) where {T} = Dict(
-#       "__id__" => "ACE_Scal1pBasis",
-#           "P" => write_dict(basis.P) , 
-#           "varsym" => string(_varsym(basis)), 
-#           "varidx" => _varidx(basis), 
-#           "idxsym" => string(_idxsym(basis)) )
 
-# read_dict(::Val{:ACE_Scal1pBasis}, D::Dict) =   
-#       Scal1pBasis(Symbol(D["varsym"]), Int(D["varidx"]), Symbol(D["idxsym"]), 
-#                   read_dict(D["P"]))
+function write_dict(basis::XScal1pBasis{T}) where {T} 
+   ISYMS = _idxsyms(basis)
+   return Dict(
+      "__id__" => "ACE_XScal1pBasis",
+          "P" => write_dict(basis.P), 
+          "syms" => [string.(ISYMS)...], 
+          "rgs" => Dict([ string(sym) => write_dict(collect(basis.rgs[sym])) 
+                          for sym in ISYMS]... ),
+          "varsym" => string(_varsym(basis)),
+          "spec" => convert.(Dict, basis.spec), 
+          "coeffs" => write_dict(basis.coeffs)
+      )
+end
 
+using NamedTupleTools: namedtuple 
+
+function read_dict(::Val{:ACE_XScal1pBasis}, D::Dict) 
+   P = read_dict(D["P"])
+   ISYMS = tuple(Symbol.(D["syms"])...)
+   VSYM = Symbol(D["varsym"])
+   rgs = namedtuple(Dict( [  sym => read_dict(D["rgs"][string(sym)]) 
+                             for sym in ISYMS ]... )) |> NamedTuple{ISYMS}
+   spec = NamedTuple{ISYMS}.(namedtuple.(D["spec"]))
+   coeffs = read_dict(D["coeffs"])
+   return XScal1pBasis(VSYM, ISYMS, rgs, P, spec, coeffs)
+end
 
 valtype(basis::XScal1pBasis) = 
       promote_type(valtype(basis.P), eltype(basis.coeffs))
@@ -113,11 +140,16 @@ symbols(basis::XScal1pBasis) = [ _idxsyms(basis)... ]
 
 indexrange(basis::XScal1pBasis) = basis.rgs
 
-# *** is this really needed? 
-# _getidx(b, basis::XScal1pBasis) = b[_idxsym(basis) ]
-# get_index(basis::XScal1pBasis, b) = _getidx(b, basis)
-# TODO: need better structure to support this ... 
-# rand_radial(basis::XScal1pBasis) = rand_radial(basis.P)
+# this is needed to generate the product 1p basis
+function get_index(basis::XScal1pBasis, b::NamedTuple) 
+   ISYMS = _idxsyms(basis)
+   b1 = select(b, ISYMS)
+   idx = findall(isequal(b1), basis.spec)
+   @assert length(idx) == 1
+   return idx[1]
+end 
+   
+
 
 # ---------------------------  Evaluation code
 #

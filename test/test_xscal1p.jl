@@ -8,7 +8,7 @@ using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis, State, ACEConfig, 
       SymmetricBasis
 using Random: shuffle
-using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio
+using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim
 using ACE.OrthPolys: transformed_jacobi
 
 ##
@@ -27,11 +27,28 @@ ACE.fill_rand_coeffs!(B1p, randn)
 
 ##
 
-# cfg = [ State(u = rand()) for _=1:10 ] |> ACEConfig
+@info("check symbols")
+println_slim(@test sort(ACE.symbols(B1p)) == sort([:k, :m]) )
+
+@info("check `get_index`")
+for ntest = 1:30 
+   idx = rand(1:length(B1p))
+   b = B1p.spec[idx] 
+   print_tf(@test ACE.get_index(B1p, b) == idx)
+end
+
+@info("check fio")
+println_slim(@test all( test_fio(B1p; warntype=false) ))
+
+
+##
+
 
 X = State(u = rand())
 B = evaluate(B1p, X)
 dB = evaluate_d(B1p, X)
+
+##
 
 
 ##
