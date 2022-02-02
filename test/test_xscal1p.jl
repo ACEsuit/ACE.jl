@@ -72,23 +72,31 @@ ACE.fill_diag_coeffs!(B1p, :k)
 u = rand() 
 J = evaluate(B1p.P, u)
 B = evaluate(B1p, State(u=u))
-println_slim(@test all(B[ib] == J[b[sym]] for (ib, b) in enumerate(B1p.spec)))
+println_slim(@test all(B[ib] == J[b.k] for (ib, b) in enumerate(B1p.spec)))
 
 ##
 
 @info("incorporate into product basis")
 
-Xu_ka = ACE.xscal1pbasis(:u, (k = 1:maxdeg, a = 0:maxdeg), P; label = "Xka")
-ACE.init1pspec!(Xu_ka, Bsel)
-Xv_a = ACE.Scal1pBasis(:v, :a, P)
-B1p = Xu_ka * Xv_a
+Xka_u = ACE.xscal1pbasis(:u, (k = 1:maxdeg, a = 0:maxdeg), P; label = "Xka_u")
+ACE.init1pspec!(Xka_u, Bsel)
+Pa_v = ACE.Scal1pBasis(:v, :a, P; label = "Pa_v")
+B1p = Xka_u * Pa_v
 ACE.init1pspec!(B1p, Bsel)
+println_slim(@test B1p["Xka_u"] == Xka_u)
+println_slim(@test B1p["Pa_v"] == Pa_v)
 
 rand_uv_state() = State(u = rand(), v = rand())
 X = rand_uv_state()
 
 evaluate(B1p, X)
 
-@show length(Xu_ka)
-@show length(Xv_a)
+@show length(B1p)
+@show length(Xka_u)
+@show length(Pa_v)
+@info("sparsify")
 ACE.sparsify!(B1p, ACE.get_spec(B1p))
+@show length(B1p)
+@show length(Xka_u)
+@show length(Pa_v)
+

@@ -73,6 +73,23 @@ function isadmissible(b::NamedTuple{BSYMS}, basis::XScal1pBasis) where {BSYMS}
    return all(b[sym] in basis.rgs[sym] for sym in ISYMS) 
 end 
 
+function sparsify!(basis::XScal1pBasis, spec)
+   # spec is the part of the basis we keep 
+   inds = Vector{Int}(undef, length(spec))
+   for (ib, b) in enumerate(spec)
+      iold = findall(isequal(b), basis.spec)
+      @assert length(iold) == 1
+      inds[ib] = iold[1] 
+   end
+   # keep the original order of the basis since we assume it is ordered
+   # by some sensible notion of degree. 
+   p = sortperm(inds)
+   basis.spec = spec[p]
+   basis.coeffs = basis.coeffs[p, :]
+   return basis
+end
+   
+
 degree(b::NamedTuple, basis::XScal1pBasis) = 
          getproperty(b, _idxsyms(basis)[1]) - 1
 
