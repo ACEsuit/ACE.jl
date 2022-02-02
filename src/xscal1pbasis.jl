@@ -6,23 +6,26 @@ import ACE.OrthPolys: TransformedPolys
 import NamedTupleTools
 using NamedTupleTools: namedtuple
 
-# ------------------ Some different ways to product and argument 
+# ------------------ Some different ways to produce an argument 
 
-struct GetVal{VSYM} end 
+abstract type StaticGet end 
+
+struct GetVal{VSYM} <: StaticGet end 
 
 getval(X, ::GetVal{VSYM}) where {VSYM} = getproperty(X, VSYM) 
 
-getval_d(X, ::GetVal{VSYM}) where {VSYM} = one(getproperty(X, VSYM))
+getval_d(X, ::GetVal{VSYM}) where {VSYM} = 
+      DState( NamedTuple{(VSYM,)}( (one(getproperty(X, VSYM)),) ) )
 
 
-struct GetVali{VSYM, IND} end 
+struct GetVali{VSYM, IND} <: StaticGet end 
 
 getval(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = getproperty(X, VSYM)[IND]
 
 getval_d(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = __e(getproperty(X, VSYM), Val{IND}())
 
 
-struct GetNorm{VSYM} end 
+struct GetNorm{VSYM} <: StaticGet end 
 
 getval(X, ::GetNorm{VSYM}) where {VSYM} = norm(getproperty(X, VSYM))
 
@@ -31,6 +34,11 @@ function getval_d(X, ::GetNorm{VSYM}) where {VSYM}
    return x/norm(x)
 end 
 
+
+write_dict(fval::StaticGet) = Dict("__id__" => "ACE_StaticGet", 
+                                   "expr" => string(typeof(fval)) )
+
+read_dict(::Val{:ACE_StaticGet}, D::Dict) = eval( Meta.parse(D["expr"]) )()
 
 # ------------------------------------------------------------------------
 
@@ -41,8 +49,9 @@ One-particle basis of the form $P_n(x_i)$ for a general scalar, invariant
 input `x`. This type basically just translates the `TransformedPolys` into a valid
 one-particle basis.
 """
-mutable struct XScal1pBasis{VSYM, ISYMS, T, TT, TJ, NI, TRG} <: OneParticleBasis{T}
+mutable struct XScal1pBasis{ISYMS, FVAL, T, TT, TJ, NI, TRG} <: OneParticleBasis{T}
    P::TransformedPolys{T, TT, TJ}
+   fval::FVAL    
    rgs::TRG
    spec::Vector{NamedTuple{ISYMS, NTuple{NI, Int}}}
    coeffs::Matrix{T}
@@ -50,33 +59,33 @@ mutable struct XScal1pBasis{VSYM, ISYMS, T, TT, TJ, NI, TRG} <: OneParticleBasis
 end
 
 
-function xscal1pbasis(varsym::Symbol, idxsyms, P::TransformedPolys; label = "")
+xscal1pbasis(P::TransformedPolys, idxsyms, valsym::Symbol; kwargs...) = 
+      xscal1pbasis(P, idxsyms, GetVal{valsym}(); kwargs...)
+
+xscal1pbasis(P::TransformedPolys, idxsyms, valsym::Symbol, validx::Int; kwargs...) = 
+      xscal1pbasis(P, idxsyms, GetVali{valsym, validx}(); kwargs...)
+
+function xscal1pbasis(P::TransformedPolys, idxsyms, fval; label = "")
    ISYMS = tuple(keys(idxsyms)...)
    rgs = NamedTuple{ISYMS}( tuple([idxsyms[sym] for sym in ISYMS]...) )
-   return XScal1pBasis(varsym, ISYMS, rgs, P, label)
+   return XScal1pBasis(fval, ISYMS, rgs, P, label)
 end 
 
-function XScal1pBasis(varsym::Symbol, ISYMS::NTuple{NI, Symbol}, 
+function XScal1pBasis(fval, ISYMS::NTuple{NI, Symbol}, 
                       rgs::TRG, P::TransformedPolys{T, TT, TJ}, 
                       label::String = "", 
                       spec = NamedTuple{ISYMS, NTuple{NI, Int}}[], 
                       coeffs = Matrix{T}(undef, (0,0))
                      ) where {NI, T, TT, TJ, TRG}
-   return XScal1pBasis{varsym, ISYMS, T, TT, TJ, NI, TRG}(P, rgs, spec, coeffs, label)
+   return XScal1pBasis{ISYMS, typeof(fval), T, TT, TJ, NI, TRG}(P, fval, rgs, spec, coeffs, label)
 end
 
 
-_varsym(basis::XScal1pBasis{VSYM}) where {VSYM} = VSYM
+_idxsyms(basis::XScal1pBasis{ISYMS}) where {ISYMS} = ISYMS
 
-_idxsyms(basis::XScal1pBasis{VSYM, ISYMS}) where {VSYM, ISYMS} = ISYMS
+getval(X, basis::XScal1pBasis) = getval(X, basis.fval)
 
-
-# *** todo - generalize the _val to specify how a value is extracted. 
-#     e.g. allow norm(rr) to be in front
-
-_val(X::AbstractState, basis::XScal1pBasis) = getproperty(X, _varsym(basis))
-
-_val(x::Number, basis::XScal1pBasis) = x
+getval_d(X, basis::XScal1pBasis) = getval_d(X, basis.fval)
 
 
 # ---------------------- Implementation of Scal1pBasis
@@ -164,10 +173,10 @@ function write_dict(basis::XScal1pBasis{T}) where {T}
    return Dict(
       "__id__" => "ACE_XScal1pBasis",
           "P" => write_dict(basis.P), 
+          "fval" => write_dict(basis.fval), 
           "syms" => [string.(ISYMS)...], 
           "rgs" => Dict([ string(sym) => write_dict(collect(basis.rgs[sym])) 
                           for sym in ISYMS]... ),
-          "varsym" => string(_varsym(basis)),
           "spec" => convert.(Dict, basis.spec), 
           "coeffs" => write_dict(basis.coeffs), 
           "label" => basis.label 
@@ -178,13 +187,13 @@ using NamedTupleTools: namedtuple
 
 function read_dict(::Val{:ACE_XScal1pBasis}, D::Dict) 
    P = read_dict(D["P"])
+   fval = read_dict(D["fval"])
    ISYMS = tuple(Symbol.(D["syms"])...)
-   VSYM = Symbol(D["varsym"])
    rgs = namedtuple(Dict( [  sym => read_dict(D["rgs"][string(sym)]) 
                              for sym in ISYMS ]... )) |> NamedTuple{ISYMS}
    spec = NamedTuple{ISYMS}.(namedtuple.(D["spec"]))
    coeffs = read_dict(D["coeffs"])
-   return XScal1pBasis(VSYM, ISYMS, rgs, P, D["label"], spec, coeffs)
+   return XScal1pBasis(fval, ISYMS, rgs, P, D["label"], spec, coeffs)
 end
 
 valtype(basis::XScal1pBasis) = 
@@ -194,7 +203,7 @@ valtype(basis::XScal1pBasis, cfg::AbstractConfiguration) =
       valtype(basis, zero(eltype(cfg)))
 
 valtype(basis::XScal1pBasis, X::AbstractState) = 
-      promote_type(valtype(basis.P, _val(X, basis)), eltype(basis.coeffs))
+      promote_type(valtype(basis.P, getval(X, basis)), eltype(basis.coeffs))
 
 
 gradtype(basis::XScal1pBasis, X::AbstractState) = 
@@ -231,7 +240,7 @@ end
 
 
 evaluate!(B, basis::XScal1pBasis, X::AbstractState) =
-      evaluate!(B, basis, _val(X, basis))
+      evaluate!(B, basis, getval(X, basis))
 
 function evaluate!(B, basis::XScal1pBasis, x::Number)
    P = evaluate(basis.P, x)
@@ -240,39 +249,27 @@ function evaluate!(B, basis::XScal1pBasis, x::Number)
 end 
 
 
-# *** What is this?!?!?
-function _xscal1pbasis_grad(TDX::Type, basis::XScal1pBasis, gval)
-   return TDX( NamedTuple{(_varsym(basis),)}((gval,)) )
-end
-
 function evaluate_d!(dB, basis::XScal1pBasis, X::AbstractState)
    TDX = eltype(dB)
-   x = _val(X, basis)
+   x = getval(X, basis)
    dP = acquire_dB!(basis.P, x)
    evaluate_d!(dP, basis.P, x)
-   dB[:] .= _xscal1pbasis_grad.(Ref(TDX), Ref(basis), basis.coeffs * dP )
-   # *** What is this?!?!?
-   # for n = 1:length(basis)
-   #    dB[n] = _scal1pbasis_grad(TDX, basis, dP[n])
-   # end
+   dx = getval_d(X, basis)
+   dB[:] .= TDX.( Ref(dx) .* (basis.coeffs * dP) )
    release_dB!(basis.P, dP)
    return dB
 end
 
 function evaluate_ed!(B, dB, basis::XScal1pBasis, X::AbstractState)
    TDX = eltype(dB)
-   x = _val(X, basis)
+   x = getval(X, basis)
    P = acquire_B!(basis.P, x)
    dP = acquire_dB!(basis.P, x)
    evaluate!(P, basis.P, x)
    evaluate_d!(dP, basis.P, x)
    mul!(B, basis.coeffs, P)
-   dB[:] .= _xscal1pbasis_grad.(Ref(TDX), Ref(basis), basis.coeffs * dP )
-   # mul1(dB, basis.coeffs, dP)
-   # *** What is this?!?!?
-   # for n = 1:length(basis)
-   #    dB[n] = _scal1pbasis_grad(TDX, basis, dP[n])
-   # end
+   dx = getval_d(X, basis)
+   dB[:] .= TDX.( Ref(dx) .* (basis.coeffs * dP) )
    release_B!(basis.P, P)
    release_dB!(basis.P, dP)
    return B, dB

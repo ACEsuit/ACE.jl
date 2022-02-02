@@ -23,7 +23,7 @@ Bsel = ACE.SimpleSparseBasis(3, maxdeg)
 
 ##
 
-B1p = ACE.xscal1pbasis(:u, (k = 1:maxdeg, m = 0:maxdeg), P; label = "Xkm")
+B1p = ACE.xscal1pbasis(P, (k = 1:maxdeg, m = 0:maxdeg), :u; label = "Xkm")
 ACE.init1pspec!(B1p, Bsel)
 ACE.fill_rand_coeffs!(B1p, randn)
 
@@ -53,6 +53,7 @@ B = evaluate(B1p, X)
 dB = evaluate_d(B1p, X)
 println_slim(@test ACE.evaluate_ed(B1p, X) == (B, dB) )
 
+
 ##
 
 @info("Finite-difference tests at a few random points")
@@ -78,7 +79,7 @@ println_slim(@test all(B[ib] == J[b.k] for (ib, b) in enumerate(B1p.spec)))
 
 @info("incorporate into product basis")
 
-Xka_u = ACE.xscal1pbasis(:u, (k = 1:maxdeg, a = 0:maxdeg), P; label = "Xka_u")
+Xka_u = ACE.xscal1pbasis(P, (k = 1:maxdeg, a = 0:maxdeg),:u; label = "Xka_u")
 ACE.init1pspec!(Xka_u, Bsel)
 Pa_v = ACE.Scal1pBasis(:v, :a, P; label = "Pa_v")
 B1p = Xka_u * Pa_v
@@ -100,3 +101,6 @@ ACE.sparsify!(B1p, ACE.get_spec(B1p))
 @show length(Xka_u)
 @show length(Pa_v)
 
+## 
+
+@info("XScal with norm(rr) as input")
