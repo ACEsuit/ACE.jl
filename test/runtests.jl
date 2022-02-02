@@ -35,10 +35,13 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     @testset "AD-LinearACEModel"  begin include("test_admodel.jl") end 
 
     # Experimental material
+    @testset "Sparsification" begin include("test_sparsify.jl") end 
+    @testset "XScal1pBasis" begin include("test_xscal1p.jl") end 
     # @testset "Multipliers" begin include("test_multiplier.jl") end
     # @testset "Bonds" begin include("test_bonds.jl") end
     # @testset "BasisSelectors" begin include("test_basisselectors.jl") end
 end
+
 
 
     # -----------------------------------------
@@ -47,4 +50,3 @@ end
     # include("test_orth.jl")
     # include("bonds/test_cylindrical.jl")
     # include("bonds/test_fourier.jl")
-    # include("bonds/test_envpairbasis.jl")
