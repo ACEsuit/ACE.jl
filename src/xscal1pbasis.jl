@@ -6,6 +6,33 @@ import ACE.OrthPolys: TransformedPolys
 import NamedTupleTools
 using NamedTupleTools: namedtuple
 
+# ------------------ Some different ways to product and argument 
+
+struct GetVal{VSYM} end 
+
+getval(X, ::GetVal{VSYM}) where {VSYM} = getproperty(X, VSYM) 
+
+getval_d(X, ::GetVal{VSYM}) where {VSYM} = one(getproperty(X, VSYM))
+
+
+struct GetVali{VSYM, IND} end 
+
+getval(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = getproperty(X, VSYM)[IND]
+
+getval_d(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = __e(getproperty(X, VSYM), Val{IND}())
+
+
+struct GetNorm{VSYM} end 
+
+getval(X, ::GetNorm{VSYM}) where {VSYM} = norm(getproperty(X, VSYM))
+
+function getval_d(X, ::GetNorm{VSYM}) where {VSYM}
+   x = getproperty(X, VSYM)
+   return x/norm(x)
+end 
+
+
+# ------------------------------------------------------------------------
 
 @doc raw"""
 `struct XScal1pBasis <: OneParticleBasis`

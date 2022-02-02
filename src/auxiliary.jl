@@ -69,4 +69,6 @@ returns an `SVector{N}` of the form `x * e_I` where `e_I` is the Ith canonical b
    end
 end
 
+__e(xx::SVector{N, T}, valI::Val{I}) where {N, T, I} = __e(xx, valI, one(T))
+
 __e(::Number, ::Any, x) = x

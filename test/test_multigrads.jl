@@ -8,7 +8,7 @@ using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
            Product1pBasis, Scal1pBasis
 using Random: shuffle
-using ACEbase.Testing: fdtest, print_tf
+using ACEbase.Testing: fdtest, print_tf, println_slim
 
 ##
 

@@ -25,8 +25,8 @@ end
 
 scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; varidx = 1, label = "", kwargs...) = 
             Scal1pBasis(varsym, varidx, idxsym,  
-                  ACE.OrthPolys.transformed_jacobi(args...; kwargs...);
-                  label = label)
+                  ACE.OrthPolys.transformed_jacobi(args...; kwargs...), 
+                  label)
 
 Scal1pBasis(varsym::Symbol, idxsym::Symbol, P::TransformedPolys{T, TT, TJ};
             label = ""
