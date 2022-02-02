@@ -292,7 +292,7 @@ end
 
 
 """
-`EvenL`: selects all basis functions where the sum of 
+`EvenL`: selects all basis functions where the sum `L = \sum_i l_i` of the degrees `l_i` of the spherical harmonics is even.   
 """
 struct EvenL
       isym::Symbol
