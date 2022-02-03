@@ -45,6 +45,9 @@ struct DState{NT <: NamedTuple} <: XState{NT}
    # if SYMS are not the same we automatically merge them
    DState{NT}(t::NT1) where {NT <: NamedTuple, NT1 <: NamedTuple} = 
          DState( merge( _x(zero(DState{NT})), t ) )
+
+   DState{NT}(dX::DState) where {NT} = DState{NT}(_x(dX))
+
 end
 
 # the two standard outward facing constructors
@@ -128,7 +131,6 @@ DState(; kwargs...) = DState(NamedTuple(kwargs))
 
 DState(X::TX) where {TX <: State} = 
       (dstate_type(X))( select(_x(X), _ctssyms(X)) )
-
 
       
 """

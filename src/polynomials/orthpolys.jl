@@ -105,7 +105,6 @@ OrthPolyBasis(pl, tl::T, pr, tr::T, A::Vector{T}, B::Vector{T}, C::Vector{T},
    OrthPolyBasis(pl, tl, pr, tr, A, B, C, tdf, ww, 
                  VectorPool{T}(), VectorPool{T}())                 
 
-
 valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
       promote_type(T, TX)
 
@@ -131,14 +130,16 @@ write_dict(J::OrthPolyBasis{T}) where {T} = Dict(
       "tl" => J.tl,
       "A" => J.A,
       "B" => J.B,
-      "C" => J.C
+      "C" => J.C, 
+      "tdf" => J.tdf, 
+      "ww" => J.ww
    )
 
 OrthPolyBasis(D::Dict, T=read_dict(D["T"])) =
    OrthPolyBasis(
       D["pl"], D["tl"], D["pr"], D["tr"],
       Vector{T}(D["A"]), Vector{T}(D["B"]), Vector{T}(D["C"]),
-      T[], T[]
+      T.(D["tdf"]), T.(D["ww"])
    )
 
 read_dict(::Val{:ACE_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
@@ -150,6 +151,9 @@ function ACE.rand_radial(J::OrthPolyBasis)
    @assert maximum(abs, diff(J.ww)) == 0
    return rand(J.tdf)
 end
+
+OrthPolyBasis(N::Integer, J::OrthPolyBasis) = 
+      OrthPolyBasis(N, J.pcut, J.tcut, J.pin, J.tin, J.tdf, J.ww)
 
 function OrthPolyBasis(N::Integer,
                        pcut::Integer,
@@ -171,7 +175,7 @@ function OrthPolyBasis(N::Integer,
    end
 
    if minimum(tdf) < tl || maximum(tdf) > tr
-      @warn("OrthoPolyBasis: t range outside [tl, tr]")
+      @warn("OrthPolyBasis: t range outside [tl, tr]")
    end
 
    A = zeros(T, N)
@@ -288,7 +292,7 @@ end
 
 A utility function to generate a jacobi-type basis
 """
-function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)
+function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 3 * N)
    tl, tr = minmax(tin, tcut)
    dt = (tr - tl) / Nquad
    tdf = range(tl + dt/2, tr - dt/2, length=Nquad)
@@ -315,6 +319,10 @@ function TransformedPolys(J::OrthPolyBasis{T}, trans, rl, ru)  where {T}
    return TransformedPolys(J, trans, T(rl), T(ru), B_pool, B_pool)
 end
 
+TransformedPolys(maxN::Integer, P::TransformedPolys) = 
+         TransformedPolys(OrthPolyBasis(maxN, P.J), P.trans, P.rl, P.ru)
+
+         
 ==(J1::TransformedPolys, J2::TransformedPolys) = (
    (J1.J == J2.J) &&
    (J1.trans == J2.trans) &&

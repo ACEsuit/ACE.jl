@@ -44,3 +44,31 @@ function _read_dict_1pspec(D::Dict)
    NTPROTO = namedtuple(D["SYMS"]...)
    return [ NTPROTO(binds) for binds in D["inds"] ]
 end
+
+
+
+#
+# This is a useful utility function used e.g. in scal1pbasis.jl
+#
+
+"""
+returns an `SVector{N}` of the form `x * e_I` where `e_I` is the Ith canonical basis vector.
+"""
+@generated function __e(::SVector{N}, ::Val{I}, x::T) where {N, I, T}
+   code = "SA["
+   for i = 1:N 
+      if i == I
+         code *= "x,"
+      else 
+         code *= "0,"
+      end
+   end
+   code *= "]"
+   quote 
+      $( Meta.parse(code) )
+   end
+end
+
+__e(xx::SVector{N, T}, valI::Val{I}) where {N, T, I} = __e(xx, valI, one(T))
+
+__e(::Number, ::Any, x) = x

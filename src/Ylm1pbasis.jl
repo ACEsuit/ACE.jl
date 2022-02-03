@@ -72,11 +72,12 @@ end
 
 get_spec(basis::Ylm1pBasis) = get_spec.(Ref(basis), 1:length(basis))
 
-function Base.show(io::IO, basis::Ylm1pBasis)
-   print(io, "Ylm1pBasis{$(_varsym(basis)), $(_lsym(basis)), $(_msym(basis))}($(basis.SH.alp.L), \"$(basis.label)\")")
+
+function sparsify!(basis::Ylm1pBasis{T}, keep) where {T} 
+   maxL = maximum(_l(b, basis) for b in keep)
+   basis.SH = SHBasis(maxL, T)
+   return basis 
 end
-
-
 
 # function get_spec(basis::Ylm1pBasis{T, VS, L, M}) where {T, VS, L, M}
 #    @assert length(basis) == (_maxL(basis) + 1)^2
@@ -86,6 +87,14 @@ end
 #    end
 #    return spec
 # end
+
+#------ 
+
+
+function Base.show(io::IO, basis::Ylm1pBasis)
+   print(io, "Ylm1pBasis{$(_varsym(basis)), $(_lsym(basis)), $(_msym(basis))}($(basis.SH.alp.L), \"$(basis.label)\")")
+end
+
 
 ==(P1::Ylm1pBasis, P2::Ylm1pBasis) =  
       ( (P1.SH == P2.SH) && (typeof(P1) == typeof(P2)) )

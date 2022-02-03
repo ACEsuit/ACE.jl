@@ -18,24 +18,29 @@ one-particle basis.
 mutable struct Scal1pBasis{VSYM, VIDX, ISYM, T, TT, TJ} <: OneParticleBasis{T}
    P::TransformedPolys{T, TT, TJ}
    B_pool::VectorPool{T}
-   dB_pool::VectorPool{T}   
+   dB_pool::VectorPool{T}  
+   label::String
 end
 
 
-scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; varidx = 1, kwargs...) = 
+scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; varidx = 1, label = "", kwargs...) = 
             Scal1pBasis(varsym, varidx, idxsym,  
-                  ACE.OrthPolys.transformed_jacobi(args...; kwargs...))
+                  ACE.OrthPolys.transformed_jacobi(args...; kwargs...), 
+                  label)
 
-Scal1pBasis(varsym::Symbol, idxsym::Symbol, P::TransformedPolys{T, TT, TJ}
-            ) where {T, TT, TJ} = Scal1pBasis(varsym, 1, idxsym, P)
+Scal1pBasis(varsym::Symbol, idxsym::Symbol, P::TransformedPolys{T, TT, TJ};
+            label = ""
+            ) where {T, TT, TJ} = Scal1pBasis(varsym, 1, idxsym, P, label)
 
-Scal1pBasis(varsym::Symbol, varidx::Integer, idxsym::Symbol, P::TransformedPolys{T, TT, TJ}
+Scal1pBasis(varsym::Symbol, varidx::Integer, idxsym::Symbol, 
+            P::TransformedPolys{T, TT, TJ}, label::String = ""
             ) where {T, TT, TJ} = 
-      Scal1pBasis{varsym, Int(varidx), idxsym, T, TT, TJ}(P)
+      Scal1pBasis{varsym, Int(varidx), idxsym, T, TT, TJ}(P, label)
 
-Scal1pBasis{VSYM, VIDX, ISYM, T, TT, TJ}(P::TransformedPolys{T, TT, TJ}
+Scal1pBasis{VSYM, VIDX, ISYM, T, TT, TJ}(
+               P::TransformedPolys{T, TT, TJ}, label::String=""
             ) where {VSYM, VIDX, ISYM, T, TT, TJ} = 
-      Scal1pBasis{VSYM, VIDX, ISYM, T, TT, TJ}(P, VectorPool{T}(), VectorPool{T}())
+      Scal1pBasis{VSYM, VIDX, ISYM, T, TT, TJ}(P, VectorPool{T}(), VectorPool{T}(), label)
 
 _varsym(basis::Scal1pBasis{VSYM}) where {VSYM} = VSYM
 _varidx(basis::Scal1pBasis{VSYM, VIDX}) where {VSYM, VIDX} = VIDX
@@ -62,6 +67,16 @@ function set_spec!(basis::Scal1pBasis, spec::Vector)
    @assert old_spec == spec 
    return basis 
 end
+
+function sparsify!(basis::Scal1pBasis, spec)
+   maxn = maximum(_getidx(b, basis) for b in spec)
+   # generate a new radial basis 
+   if maxn > length(basis)
+      basis.P = ACE.OrthPolys.TransformedPolys(maxn, basis.P)
+   end
+   return basis
+end
+   
 
 ==(P1::Scal1pBasis, P2::Scal1pBasis) = (P1.P == P2.P)
 
@@ -115,26 +130,6 @@ evaluate!(B, basis::Scal1pBasis, x::Number) =
 
 evaluate!(B, basis::Scal1pBasis, X::AbstractState) =
       evaluate!(B, basis.P, _val(X, basis))
-
-"""
-returns an `SVector{N}` of the form `x * e_I` where `e_I` is the Ith canonical basis vector.
-"""
-@generated function __e(::SVector{N}, ::Val{I}, x::T) where {N, I, T}
-   code = "SA["
-   for i = 1:N 
-      if i == I
-         code *= "x,"
-      else 
-         code *= "0,"
-      end
-   end
-   code *= "]"
-   quote 
-      $( Meta.parse(code) )
-   end
-end
-
-__e(::Number, ::Any, x) = x
 
 
 function _scal1pbasis_grad(TDX::Type, basis::Scal1pBasis, gval)
