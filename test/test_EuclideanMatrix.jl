@@ -38,7 +38,7 @@ end
 @info("Test FIO")
 using ACEbase.Testing: test_fio
 
-println(@test(all(test_fio(basis; warntype = false))))
+println_slim(@test(all(test_fio(basis; warntype = false))))
 
 ##
 
@@ -100,7 +100,7 @@ basis = SymmetricBasis(φ, pibasis; isreal=false)
 # a stupid but necessary test
 BB = evaluate(basis, cfg)
 BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
-println(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
+println_slim(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
 
 
 @info("check for rotation, permutation and inversion equivariance")
