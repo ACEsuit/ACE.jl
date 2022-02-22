@@ -237,16 +237,18 @@ end
 # -------------------
 
 
+_scaling_absvalue(x::Number) = abs(x)
+_scaling_absvalue(x::Symbol) = 0
+
+
 # TODO: this is a hack; cf. #68
 function scaling(pibasis::PIBasis, p)
-   _absvaluep(x::Number) = abs(x)^p
-   _absvaluep(x::Symbol) = 0
    ww = zeros(Float64, length(pibasis))
    bspec = get_spec(pibasis)
    for i = 1:length(pibasis)
       for b in bspec[i]
          # TODO: revisit how this should be implemented for a general basis
-         ww[i] += sum(_absvaluep, b)  #  abs.(values(b)).^p
+         ww[i] += sum(x -> _scaling_absvalue(x)^p, b)  #  abs.(values(b)).^p
       end
    end
    return ww
