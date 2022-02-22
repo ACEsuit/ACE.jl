@@ -74,7 +74,7 @@ evaluate(P, State(u = :x))
 # Error : val = x not found in this list
 ```
 """
-struct Categorical1pBasis{VSYM, ISYM, LEN, T} <: Discrete1pBasis{LEN}
+struct Categorical1pBasis{VSYM, ISYM, LEN, T} <: Discrete1pBasis{Bool}
    categories::SList{LEN, T}
    label::String 
 end
