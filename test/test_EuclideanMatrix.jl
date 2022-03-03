@@ -92,6 +92,7 @@ for ntest = 1:30
 end
 println()
 print(ACE.get_spec(basis)[1])
+
 ##
 
 @info("Test equivariance properties for complex version")

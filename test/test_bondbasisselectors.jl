@@ -34,7 +34,7 @@ Bsel = ACE.SparseBasis(; maxorder=maxorder, p = 2, default_maxdeg = 4)
 
 tol = 10^-14
 for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
-
+    local basis, cfg, B1 
     basis = ACE.Utils.SymmetricBond_basis(property, env, Bsel; )
     @show length(basis)
 
@@ -84,16 +84,18 @@ function get_config(X::Vector{SVector{3, Float64}}, k::Int, j::Int)
     return config
 end
 
+##
+
 n_particle = 11
 tol = 10^-14
 #env0 = ACE.EllipsoidBondEnvelope(r0cut, rcut, zcut;floppy=false, λ= 0.0)
 @info("Test equivariance properties under bond symmetry constraints");
 for bs in ["Invariant", "Covariant"]
     for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
-
+        local basis, X, cfg, B1
         k= rand(1:n_particle)
         j= rand([ i for i =1:n_particle if i != k])
-        basis = ACE.Utils.SymmetricBond_basis(property, env0, Bsel; bondsymmetry="Invariant" )
+        basis = ACE.Utils.SymmetricBond_basis(property, env0, Bsel; bondsymmetry=bs )
         @show length(basis)
 
         rr0 = SVector{3}(rand(Float64,3))
@@ -121,6 +123,7 @@ for bs in ["Invariant", "Covariant"]
     end
 end
 
+##
 @info("Test bond-symmetry conditions")
 
 tol = 10^-10
@@ -134,6 +137,7 @@ for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
 
     @info("Test for invariance under bond inversion");
     for ntest = 1:300
+        local B1
         rr0 = SVector{3}(rand(Float64,3));
         randX = [ SVector{3}(rand(Float64,3)) for _ =1:10];
         cfg1 = vcat( [ ACE.State(rr = r-.5*rr0, rr0 =  rr0, be = :env) for r in randX ] , [ACE.State(rr =  rr0, rr0 =  rr0, be = :bond)]) |> ACEConfig;
@@ -149,6 +153,7 @@ for property in [ACE.Invariant(), ACE.EuclideanVector(), ACE.EuclideanMatrix()]
     basis_bondcov = ACE.Utils.SymmetricBond_basis(property, env0, Bsel; bondsymmetry="Covariant");
     #@show length(basis_bondcov );
     for ntest = 1:300
+        local B1
         rr0 = SVector{3}(rand(Float64,3));
         randX = [ SVector{3}(rand(Float64,3)) for _ =1:10];
         cfg1 = vcat( [ ACE.State(rr = r-.5*rr0, rr0 =  rr0, be = :env) for r in randX ] , [ACE.State(rr =  rr0, rr0 =  rr0, be = :bond)]) |> ACEConfig;
