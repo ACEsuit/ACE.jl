@@ -42,7 +42,7 @@ cutoff_env(env::CylindricalBondEnvelope) = sqrt(env.rcut^2 + (env.r0cut + env.zc
 cutoff_radialbasis(env::CylindricalBondEnvelope) = sqrt(env.rcut^2 + (env.zcut + env.floppy * env.λ * env.r0cut)^2)
 
 struct EllipsoidBondEnvelope{T} <: BondEnvelope{T}
-   r0cut::T
+   r0cut::T # bond-length cutoff
    rcut::T
    zcut::T  # must satisfy zcut >= r0cut/2
    p0::Int

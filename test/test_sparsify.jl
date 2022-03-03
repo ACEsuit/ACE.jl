@@ -43,7 +43,7 @@ println()
 @info("check evaluation is consistent")
 
 for ntest = 1:30 
-   local cfg 
+   local cfg , BB1 
    cfg = [ State(rr = ACE.rand_radial(B1p["Rn"]) * ACE.rand_sphere()) for _=1:10 ] 
    BB1 = evaluate(symB, cfg)
    BB2 = evaluate(symB2, cfg)

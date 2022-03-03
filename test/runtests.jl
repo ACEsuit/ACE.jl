@@ -27,6 +27,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     # @testset "Clebsch-Gordan" begin include("test_cg.jl") end
     @testset "SymmetricBasis" begin include("test_symmbasis.jl") end
     @testset "EuclideanVector" begin include("test_euclvec.jl") end
+    @testset "EuclideanMatrix" begin include("test_EuclideanMatrix.jl") end
     @testset "Multiple SH Bases" begin include("test_multish.jl") end
 
     # Model tests
@@ -35,11 +36,12 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     @testset "AD-LinearACEModel"  begin include("test_admodel.jl") end 
 
     # Experimental material
+    @testset "Bonds" begin include("test_bonds.jl") end
+    @testset "Bond BasisSelectors" begin include("test_bondbasisselectors.jl") end
     @testset "Sparsification" begin include("test_sparsify.jl") end 
     @testset "XScal1pBasis" begin include("test_xscal1p.jl") end 
     # @testset "Multipliers" begin include("test_multiplier.jl") end
     # @testset "Bonds" begin include("test_bonds.jl") end
-    # @testset "BasisSelectors" begin include("test_basisselectors.jl") end
 end
 
 

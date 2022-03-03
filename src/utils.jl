@@ -74,7 +74,7 @@ BondBasisSelector(Bsel::ACE.SparseBasis;
             weight_cat = Dict(:bond => bond_weight, :env=> env_weight) 
          )
 
-function SymmetricBond_basis(ϕ::ACE.AbstractProperty, env::ACE.BondEnvelope, Bsel::ACE.SparseBasis; RnYlm = nothing, kwargs...)
+function SymmetricBond_basis(ϕ::ACE.AbstractProperty, env::ACE.BondEnvelope, Bsel::ACE.SparseBasis; RnYlm = nothing, bondsymmetry=nothing, kwargs...)
    BondSelector =  BondBasisSelector(Bsel; kwargs...)
    if RnYlm === nothing
        RnYlm = RnYlm_1pbasis(;   r0 = ACE.cutoff_radialbasis(env), 
@@ -85,9 +85,16 @@ function SymmetricBond_basis(ϕ::ACE.AbstractProperty, env::ACE.BondEnvelope, Bs
                                            kwargs...
                                        )
    end
+   filterfun = _->true
+   if bondsymmetry == "Invariant"
+      filterfun = ACE.EvenL(:be, [:bond])
+   end
+   if bondsymmetry == "Covariant"
+      filterfun = x -> !(ACE.EvenL(:be, [:bond])(x))
+   end
    Bc = ACE.Categorical1pBasis([:bond, :env]; varsym = :be, idxsym = :be )
    B1p =  Bc * RnYlm * env
-   return ACE.SymmetricBasis(ϕ, B1p, BondSelector)
+   return ACE.SymmetricBasis(ϕ, B1p, BondSelector; filterfun = filterfun)
 end
 
 # invariant_basis(; kwargs...) =

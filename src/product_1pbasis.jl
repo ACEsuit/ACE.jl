@@ -292,8 +292,13 @@ this performs some generic work to sparsify a 1p-basis component.
 but the actual sparsificatin happens in the individual basis implementations 
 """
 function _sparsify_component!(basis1p, keep)
-   # get rid of all info we don't need 
+   # if basis1p has no symbols (e.g. a multiplier) then it means it must 
+   # be a one-component basis, so there is nothing to sparsify.
    syms = symbols(basis1p)
+   if isempty(syms)
+      return basis1p
+   end
+   # get rid of all info we don't need 
    keep1 = unique( select.(keep, Ref(syms)) )
    # double-check that keep1 is compatible 
    spec = get_spec(basis1p) 
