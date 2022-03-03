@@ -28,7 +28,7 @@ See [Documentation](https://acesuit.github.io/ACE.jl/dev/) for more details on A
 
 `ACE.jl` is © 2019, Christoph Ortner
 
-`ACE.jl` is published and distributed under the [Academic Software License v1.0 (ASL).](ASL.md)
+Most of `ACE.jl` is published and distributed under the [Academic Software License v1.0 (ASL).](ASL.md). Some parts are distributed under the more permissive [The MIT License](https://opensource.org/licenses/MIT) - see `/license/MIT.md' for further details.
 
 `ACE.jl` is distributed in the hope that it will be useful for non-commercial academic research, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the ASL for more details.
 
