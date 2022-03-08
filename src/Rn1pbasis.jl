@@ -5,7 +5,7 @@ import ACE.OrthPolys: TransformedPolys
 #       unifies Rn, Ylm and Pk and then just needs a tiny bit of wrapping...
 
 @doc raw"""
-`struct Rn1pBasis <: OneParticleBasis`
+`Rn1pBasis <: OneParticleBasis`
 
 One-particle basis of the form $R_n(r_{ij})$, i.e.,
 no dependence on species or on $l$.
