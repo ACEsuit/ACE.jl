@@ -152,7 +152,7 @@ P_{n,v} = J_n
 where `sym = :n` and `v` is the rest of the symbols joined together. 
 I.e., this reduces the XScal basis to a standard Scal basis. 
 """
-function fill_diag_coeffs!(basis::XScal1pBasis, sym = _idxsys(basis)[1])
+function fill_diag_coeffs!(basis::XScal1pBasis, sym = _idxsyms(basis)[1])
    fill!(basis.coeffs, 0)
    for (ib, b) in enumerate(basis.spec)
       n = b[sym]
