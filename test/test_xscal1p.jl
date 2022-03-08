@@ -81,11 +81,11 @@ println_slim(@test all(B[ib] == J[b.k] for (ib, b) in enumerate(B1p.spec)))
 
 Xka_u = ACE.xscal1pbasis(P, (k = 1:maxdeg, a = 0:maxdeg),:u; label = "Xka_u")
 ACE.init1pspec!(Xka_u, Bsel)
-Pa_v = ACE.Scal1pBasis(:v, :a, P; label = "Pa_v")
+Pa_v = ACE.Scal1pBasis(:v, nothing, :a, P, "Pa_v")
 B1p = Xka_u * Pa_v
 ACE.init1pspec!(B1p, Bsel)
-println_slim(@test B1p["Xka_u"] == Xka_u)
-println_slim(@test B1p["Pa_v"] == Pa_v)
+println_slim(@test B1p["Xka_u"] === Xka_u)
+println_slim(@test B1p["Pa_v"] === Pa_v)
 
 rand_uv_state() = State(u = rand(), v = rand())
 X = rand_uv_state()
@@ -145,7 +145,7 @@ trans = ACE.Transforms.IdTransform()
 P = transformed_jacobi(maxdeg, trans, 1.0, 0.0; pin = 0, pcut = 0)
 
 @info(" ... Scal1pBasis compatibility")
-Bu = ACE.Scal1pBasis(:u, 1, :k, P)
+Bu = ACE.Scal1pBasis(:u, nothing, :k, P)
 Bu_x = ACE.xscal1pbasis(P, (k = 1:maxdeg,), ACE.GetVal{:u}(), label = "Bu_x")
 ACE.init1pspec!(Bu_x, Bsel)
 Bu_x.coeffs[:,:] += I 
@@ -154,6 +154,7 @@ for ntest = 1:30
    X = ACE.State(u = rand())
    print_tf(@test ACE.evaluate(Bu, X) ≈ ACE.evaluate(Bu_x, X) )
 end
+println()
 
 
 @info(" ... Rn1pBasis compatibility")
@@ -167,5 +168,4 @@ for ntest = 1:30
    X = ACE.State(rr = rr)
    print_tf(@test ACE.evaluate(Br, X) ≈ ACE.evaluate(Br_x, X) )
 end
-
-
+println()

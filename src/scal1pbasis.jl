@@ -18,10 +18,8 @@ one-particle basis.
 function Scal1pBasis(varsym::Symbol, varidx::Union{Integer, Nothing}, idxsym::Symbol, 
                      P::TransformedPolys, label::String = "")
    getval = isnothing(varidx) ? ACE.GetVal{varsym}() : ACE.getVali{varsym, varidx}()
-   B = XScal1pBasis(P, 
-                    NamedTuple{(idxsym,)}( (1:length(P),) ),
-                    getval, 
-                    label ) 
+   B = xscal1pbasis(P, NamedTuple{(idxsym,)}( (1:length(P),) ),
+                    getval; label=label) 
    init1pspec!(B, SimpleSparseBasis(1, length(P)))
    fill_diag_coeffs!(B)
    return B    
@@ -32,3 +30,11 @@ scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; varidx = nothing, label = "
             Scal1pBasis(varsym, varidx, idxsym,  
                   ACE.OrthPolys.transformed_jacobi(args...; kwargs...), 
                   label)
+
+
+                  # function xscal1pbasis(P::TransformedPolys, idxsyms, fval; label = "")
+                  #    ISYMS = tuple(keys(idxsyms)...)
+                  #    rgs = NamedTuple{ISYMS}( tuple([idxsyms[sym] for sym in ISYMS]...) )
+                  #    return XScal1pBasis(fval, ISYMS, rgs, P, label)
+                  # end 
+                  

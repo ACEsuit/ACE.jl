@@ -17,6 +17,7 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
 
     # --------------------------------------------
     # core permutation-invariant functionality
+    @testset "XScal1pBasis" begin include("test_xscal1p.jl") end 
     @testset "1-Particle Basis"  begin include("test_1pbasis.jl") end
     @testset "MultipleFeatures" begin  include("test_multigrads.jl") end
     @testset "Categorical1pBasis" begin include("test_discrete.jl") end
@@ -39,7 +40,6 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     @testset "Bonds" begin include("test_bonds.jl") end
     @testset "Bond BasisSelectors" begin include("test_bondbasisselectors.jl") end
     @testset "Sparsification" begin include("test_sparsify.jl") end 
-    @testset "XScal1pBasis" begin include("test_xscal1p.jl") end 
     # @testset "Multipliers" begin include("test_multiplier.jl") end
     # @testset "Bonds" begin include("test_bonds.jl") end
 end

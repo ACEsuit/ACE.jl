@@ -87,6 +87,9 @@ getval(X, basis::XScal1pBasis) = getval(X, basis.fval)
 getval_d(X, basis::XScal1pBasis) = getval_d(X, basis.fval)
 
 
+rand_radial(basis::XScal1pBasis) = rand_radial(basis.P)
+
+
 # ---------------------- Implementation of Scal1pBasis
 
 
@@ -127,6 +130,10 @@ end
 
 degree(b::NamedTuple, basis::XScal1pBasis) = 
          getproperty(b, _idxsyms(basis)[1]) - 1
+
+degree(b::NamedTuple, basis::XScal1pBasis, weight::Dict) = 
+      weight[_idxsyms(basis)[1]] * degree(b, basis)
+         
 
 """
 `fill_rand_coeffs!(basis::XScal1pBasis, f::Function)`
@@ -226,6 +233,9 @@ function get_index(basis::XScal1pBasis, b::NamedTuple)
       @show basis.spec 
    end
    if length(idx) == 0
+      @error("XScal1pBasis : didn't find b in the spec")
+      @show b 
+      @show basis.spec 
       error("didn't find b in the spec")
    elseif length(idx) > 1
       error("b appears in spec more than once")
