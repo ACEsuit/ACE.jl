@@ -19,7 +19,7 @@ maxorder = 3
 Bsel = SimpleSparseBasis(maxorder, maxdeg)
 
 trans = trans = PolyTransform(1, r0)
-Pk = ACE.scal1pbasis(:x, :k, maxdeg, trans, rcut)
+Pk = ACE.scal1pbasis(:x, :k, maxdeg, trans, rcut; label = "Pk")
 RnYlm = ACE.Utils.RnYlm_1pbasis()
 
 B1p = RnYlm * Pk
@@ -37,9 +37,9 @@ Base.promote_rule(::Union{Type{S}, Type{PosScalState{S}}},
 X = rand(PosScalState{Float64})
 cfg = ACEConfig([ rand(PosScalState{Float64}) for _=1:10 ])
 
-Rn = B1p.bases[1]
-Ylm = B1p.bases[2]
-Pk = B1p.bases[3]
+Rn = B1p["Rn"] #B1p.bases[1]
+Ylm = B1p["Ylm"] #.bases[2]
+Pk = B1p["Pk"] #.bases[3]
 
 ACE.gradtype(B1p, cfg)
 ACE.valtype(B1p, cfg)

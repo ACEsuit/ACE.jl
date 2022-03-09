@@ -137,12 +137,14 @@ for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalVector(L; T = ComplexF64)
+   B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
+   B1pa = deepcopy(B1p); B1pb = deepcopy(B1p)
    basis = SymmetricBasis(φ, B1p, Bsel)
-   @time SymmetricBasis(φ, B1p, Bsel)
+   @time SymmetricBasis(φ, B1pa, Bsel)
    BB = evaluate(basis, cfg)
 
    @info("check that no-const gives the same (sub-)basis")
-   basis0 = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   basis0 = SymmetricBasis(φ, B1pb, Bsel; filterfun = ACE.NoConstant())
    BB0 = evaluate(basis0, cfg)
    if L == 0 
       println_slim(@test BB[2:end] ≈ BB0)   
@@ -201,12 +203,16 @@ for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
    local φ, pibasis, basis, BB, Iz
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
+   B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
+   # TODO: these deepcopies should not be needed, what's going on here? 
+   #       probably caused by sparsification, but it still shouldn't cause an error
+   B1pa = deepcopy(B1p); B1pb = deepcopy(B1p)
    basis = SymmetricBasis(φ, B1p, Bsel)
-   @time basis = SymmetricBasis(φ, B1p, Bsel)
+   @time basis = SymmetricBasis(φ, B1pa, Bsel)
    BB = evaluate(basis, cfg)
 
    @info("check that no-const gives the same (sub-)basis")
-   basis0 = SymmetricBasis(φ, B1p, Bsel; filterfun = ACE.NoConstant())
+   basis0 = SymmetricBasis(φ, B1pb, Bsel; filterfun = ACE.NoConstant())
    BB0 = evaluate(basis0, cfg)
    if L1 == L2  
       println_slim(@test BB[2:end] ≈ BB0)
@@ -247,10 +253,11 @@ for L = 0:3
    @info "L = $L"
    local Xs, cfg 
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
-   basis1 = SymmetricBasis(φ1, B1p, Bsel)
+   B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
+   basis1 = SymmetricBasis(φ1, deepcopy(B1p), Bsel)
 
    φ2 = ACE.SphericalMatrix(L, 0; T = ComplexF64)
-   basis2 = SymmetricBasis(φ2, B1p, Bsel)
+   basis2 = SymmetricBasis(φ2, deepcopy(B1p), Bsel)
 
    for ntest = 1:30
       Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
@@ -268,9 +275,10 @@ end
 @info("Consistency between Invariant Scalar & SphericalMatrix")
 
 φ = ACE.Invariant()
-basis = SymmetricBasis(φ, B1p, Bsel)
+B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
+basis = SymmetricBasis(φ, deepcopy(B1p), Bsel)
 φ2 = ACE.SphericalMatrix(0, 0; T = ComplexF64)
-basis2 = SymmetricBasis(φ2, B1p, Bsel)
+basis2 = SymmetricBasis(φ2, deepcopy(B1p), Bsel)
 
 for ntest = 1:30
    local Xs, cfg, BB 
