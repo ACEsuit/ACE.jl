@@ -26,11 +26,7 @@ J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)   #  J_n(x) * (x - xcut)^p
 Rn = Rn1pBasis(J; label = "Rn")
 
 # new implementation 
-Rn_w = ACE.B1pComponent(J, 
-                       ACE.GetNorm{:rr}(), 
-                       [ (n = i,) for i = 1:length(J) ], 
-                       "Rn"
-                       )
+Rn_w = ACE.Rn1pBasis_w(J)
 
 for ntest = 1:30 
    X = ACE.State(rr = ACE.rand_radial(J) * ACE.rand_sphere())
@@ -41,13 +37,7 @@ end
 
 Ylm = Ylm1pBasis(maxdeg; label = "Ylm")
 
-
-get_ylm_spec(SH) = [ begin l, m = ACE.SphericalHarmonics.idx2lm(i); 
-                      (l = l, m = m) end for i = 1:length(SH) ]
-
-ylm_spec = get_ylm_spec(Ylm.SH)
-
-Ylm_w = ACE.B1pComponent(Ylm.SH, ACE.GetVal{:rr}(), ylm_spec, "Ylm")
+Ylm_w = ACE.Ylm1pBasis_w(Ylm.SH.alp.L)
 
 for ntest = 1:30 
    X = ACE.State(rr = ACE.rand_radial(J) * ACE.rand_sphere())
@@ -58,7 +48,7 @@ end
 ## scalar basis 
 
 Bu = ACE.Scal1pBasis(:u, nothing, :k, J) 
-Bu_w = ACE.B1pComponent(J, ACE.GetVal{:u}(), [ (k=i,) for i = 1:length(J)], "Bk")
+Bu_w = ACE.Scal1pBasis_w(:u, nothing, :k, J)
 
 for ntest = 1:30 
    X = ACE.State(rr = ACE.rand_radial(J) * ACE.rand_sphere(), u = ACE.rand_radial(J))

@@ -2,6 +2,16 @@
 import ACE.SphericalHarmonics: SHBasis, index_y
 
 
+function Ylm1pBasis_w(L::Integer; varsym = :rr, lsym = :l, msym = :m, 
+                                  label = "Y$lsym$msym")
+   SH = SphericalHarmonics.SHBasis(L)
+   NTLM = NamedTuple{(lsym, msym)}
+   spec = [ NTLM(tuple(SphericalHarmonics.idx2lm(i)...))
+            for i = 1:length(SH) ]
+   return B1pComponent(SH, GetVal{varsym}(), spec, label)
+end
+
+
 @doc raw"""
 `struct Ylm1pBasis <: OneParticleBasis`
 

@@ -37,4 +37,14 @@ scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; varidx = nothing, label = "
                   #    rgs = NamedTuple{ISYMS}( tuple([idxsyms[sym] for sym in ISYMS]...) )
                   #    return XScal1pBasis(fval, ISYMS, rgs, P, label)
                   # end 
-                  
+                 
+
+function Scal1pBasis_w(varsym::Symbol, varidx::Union{Integer, Nothing}, idxsym::Symbol, 
+                       P::TransformedPolys, label::String = "P$idxsym")
+   getval = isnothing(varidx) ? ACE.GetVal{varsym}() : ACE.getVali{varsym, varidx}()
+   spec = [ NamedTuple{(idxsym,)}((i,)) for i = 1:length(P) ]
+   return B1pComponent(P, getval, spec, label)
+end
+
+            
+
