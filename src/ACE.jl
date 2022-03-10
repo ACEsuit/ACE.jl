@@ -108,6 +108,8 @@ include("scal1pbasis.jl")
 
 include("discrete1pbasis.jl")
 
+include("b1pwrapper.jl")
+
 include("product_1pbasis.jl")
 
 # basis selectors used to specify finite subsets of basis functions

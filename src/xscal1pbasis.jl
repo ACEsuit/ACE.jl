@@ -10,12 +10,18 @@ using NamedTupleTools: namedtuple
 
 abstract type StaticGet end 
 
+ACE.evaluate(fval::StaticGet, X) = getval(X, fval)
+ACE.evaluate_d(fval::StaticGet, X) = getval_d(X, fval)
+
+
 struct GetVal{VSYM} <: StaticGet end 
 
 getval(X, ::GetVal{VSYM}) where {VSYM} = getproperty(X, VSYM) 
 
 getval_d(X, ::GetVal{VSYM}) where {VSYM} = 
       DState( NamedTuple{(VSYM,)}( (one(getproperty(X, VSYM)),) ) )
+
+
 
 
 # TODO - this is incomplete for now 
@@ -242,7 +248,7 @@ function get_index(basis::XScal1pBasis, b::NamedTuple)
    end
    return idx[1]
 end 
-   
+
 
 # ---------------------------  Evaluation code
 #
