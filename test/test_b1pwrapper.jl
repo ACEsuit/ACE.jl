@@ -29,7 +29,7 @@ Rn = Rn1pBasis(J; label = "Rn")
 Rn_w = ACE.B1pComponent(J, 
                        ACE.GetNorm{:rr}(), 
                        [ (n = i,) for i = 1:length(J) ], 
-                       "Rn_w"
+                       "Rn"
                        )
 
 for ntest = 1:30 
@@ -47,7 +47,7 @@ get_ylm_spec(SH) = [ begin l, m = ACE.SphericalHarmonics.idx2lm(i);
 
 ylm_spec = get_ylm_spec(Ylm.SH)
 
-Ylm_w = ACE.B1pComponent(Ylm.SH, ACE.GetVal{:rr}(), ylm_spec, "Ylm_w")
+Ylm_w = ACE.B1pComponent(Ylm.SH, ACE.GetVal{:rr}(), ylm_spec, "Ylm")
 
 for ntest = 1:30 
    X = ACE.State(rr = ACE.rand_radial(J) * ACE.rand_sphere())
@@ -58,7 +58,7 @@ end
 ## scalar basis 
 
 Bu = ACE.Scal1pBasis(:u, nothing, :k, J) 
-Bu_w = ACE.B1pComponent(J, ACE.GetVal{:u}(), [ (k=i,) for i = 1:length(J)], "Bu_w")
+Bu_w = ACE.B1pComponent(J, ACE.GetVal{:u}(), [ (k=i,) for i = 1:length(J)], "Bk")
 
 for ntest = 1:30 
    X = ACE.State(rr = ACE.rand_radial(J) * ACE.rand_sphere(), u = ACE.rand_radial(J))

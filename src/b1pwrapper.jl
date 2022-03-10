@@ -107,9 +107,9 @@ symbols(basis::B1pComponent) = [ _idxsyms(basis)... ]
 
 function indexrange(basis::B1pComponent) 
    ISYMS = _idxsyms(basis)
-   minidx = Dict([sym => minimum(b[sym] for b in basis.spec)]...)
-   maxidx = Dict([sym => maximum(b[sym] for b in basis.spec)]...)
-   return Dict([sym => minidx[sym]:maxidx[sym]]...)
+   minidx = Dict([sym => minimum(b[sym] for b in basis.spec) for sym in ISYMS]...)
+   maxidx = Dict([sym => maximum(b[sym] for b in basis.spec) for sym in ISYMS]...)
+   return Dict([sym => minidx[sym]:maxidx[sym] for sym in ISYMS]...)
 end
 
 # this is needed to generate the product 1p basis - it returns the 
@@ -142,7 +142,7 @@ function degree(b::NamedTuple, basis::B1pComponent, weight::Dict)
    return sum( weight[sym] * __degree__(b[sym]) for sym in ISYMS )
 end
 
-# --------------- FIO operations 
+# --------------- IO operations 
 
 
 ==(P1::B1pComponent, P2::B1pComponent) = ( 
@@ -167,6 +167,20 @@ function read_dict(::Val{:ACE_B1pComponent}, D::Dict)
    spec = NamedTuple{ISYMS}.(namedtuple.(D["spec"]))
    fval = read_dict(D["fval"])
    return B1pComponent(basis, fval, spec, D["label"])
+end
+
+
+function show(io::IO, basis::B1pComponent)
+   vsyms = get_symbols(basis.fval)
+   strvsyms = filter(!isequal(':'), "$vsyms")
+   if length(vsyms) == 1 
+      strvsyms = strvsyms[1:end-2] * ")"
+   end
+   print(io, "B1pComponent( $(basis.label)$(strvsyms)")
+   for (key, rg) in indexrange(basis)
+      print(io, ", $key = $(rg)")
+   end
+   println(io, ")")
 end
 
 

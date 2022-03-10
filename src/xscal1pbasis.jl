@@ -21,7 +21,7 @@ getval(X, ::GetVal{VSYM}) where {VSYM} = getproperty(X, VSYM)
 getval_d(X, ::GetVal{VSYM}) where {VSYM} = 
       DState( NamedTuple{(VSYM,)}( (one(getproperty(X, VSYM)),) ) )
 
-
+get_symbols(::GetVal{VSYM}) where {VSYM} = (VSYM,)
 
 
 # TODO - this is incomplete for now 
@@ -38,6 +38,8 @@ function getval_d(X, ::GetNorm{VSYM}) where {VSYM}
    x = getproperty(X, VSYM)
    return DState( NamedTuple{(VSYM,)}( (x/norm(x),) ) )
 end 
+
+get_symbols(::GetNorm{VSYM}) where {VSYM} = (VSYM,)
 
 
 write_dict(fval::StaticGet) = Dict("__id__" => "ACE_StaticGet", 
