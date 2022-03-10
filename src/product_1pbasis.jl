@@ -96,18 +96,34 @@ valtype(basis::Product1pBasis, X::AbstractState) =
 # valtype(basis::Product1pBasis, cfg::AbstractConfiguration) = 
 #       promote_type( valtype.(basis.bases, Ref(first(cfg)))... )
 
-function valtype(basis::Product1pBasis, cfg::AbstractConfiguration) 
+function valtype(basis::Product1pBasis, cfg::UConfig) 
    X = zero(eltype(cfg))
    return promote_type( valtype.(basis.bases, Ref(X))... )
 end
 
-gradtype(basis::Product1pBasis, cfg::Union{AbstractConfiguration, AbstractVector}) = 
+gradtype(basis::Product1pBasis, cfg::UConfig) = 
       gradtype(basis, zero(eltype(cfg)))
 
 function gradtype(basis::Product1pBasis, X::AbstractState) 
    VALT = valtype(basis, X)
    return dstate_type(VALT, X)
 end
+
+
+function evaluate!(A, basis::Product1pBasis, X::AbstractState)
+   fill!(A, zero(eltype(A)))
+   add_into_A!(A, basis, X)
+   return A
+end
+
+function evaluate!(A, basis::Product1pBasis, cfg::UConfig)
+   fill!(A, zero(eltype(A)))
+   for X in cfg 
+      add_into_A!(A, basis, X)
+   end
+   return A
+end
+
 
 import Base.Cartesian: @nexprs
 

@@ -229,6 +229,7 @@ end
 
 # ------------------- an rrule for evaluating a linear model
 
+import ChainRules 
 import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 
 

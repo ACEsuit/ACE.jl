@@ -5,7 +5,8 @@
 using ACE
 using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
-      PositionState, Product1pBasis, getlabel
+      PositionState, Product1pBasis, getlabel, get_spec, 
+      State, rand_radial, rand_sphere 
 using Random: shuffle
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim
 
@@ -22,16 +23,17 @@ Bsel = SimpleSparseBasis(maxorder, maxdeg)
 
 trans = PolyTransform(1, r0)   # r -> x = 1/r^2
 J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)   #  J_n(x) * (x - xcut)^pcut
-Rn = Rn1pBasis(J; label = "Rn")
-Ylm = Ylm1pBasis(maxdeg; label = "Ylm")
+Rn = Rn1pBasis(J)
+Ylm = Ylm1pBasis(maxdeg)
 B1p = Product1pBasis( (Rn, Ylm) )
 ACE.init1pspec!(B1p, Bsel)
 
+
 nX = 10
-Xs = rand(PositionState{Float64}, Rn, nX)
+Xs = [ State(rr = rand_radial(J) * rand_sphere() ) for _=1:nX ]
 cfg = ACEConfig(Xs)
 
-A = evaluate(B1p, cfg)
+A = evaluate(B1p, Xs)
 
 @info("test against manual summation")
 A1 = sum( evaluate(B1p, X) for X in Xs )
@@ -54,7 +56,7 @@ println_slim(@test(B1p["Rn"] == Rn))
 
 @info("Test FIO")
 for _B in (J, Rn, Ylm, B1p)
-   print(string(Base.typename(typeof(_B)))[10:end-1], ": ")
+   print(string(Base.typename(typeof(_B)))[10:end-1], " - ", getlabel(_B), " : ")
    println_slim((@test(all(test_fio(_B)))))
 end
 

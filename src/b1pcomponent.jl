@@ -62,6 +62,8 @@ end
 # -------------- management of the basis specification, in particular the 
 #                interaction with Product1pBasis 
 
+getlabel(basis::B1pComponent) = basis.label
+
 Base.length(basis::B1pComponent) = length(basis.spec)
 
 _idxsyms(basis::B1pComponent{ISYMS}) where {ISYMS} = ISYMS
@@ -83,7 +85,7 @@ function isadmissible(b::NamedTuple{BSYMS}, basis::B1pComponent) where {BSYMS}
    # this is an assert since it should ALWAYS be true, if not there is a bug
    @assert all(sym in BSYMS for sym in ISYMS)  
    # project to the ISYMS and check it is in the b1pcomponent 
-   return (b[ISYMS] in basis.invspec)
+   return haskey(basis.invspec, b[ISYMS])
 end
 
 # TODO - LATER 
@@ -180,7 +182,7 @@ function show(io::IO, basis::B1pComponent)
    for (key, rg) in indexrange(basis)
       print(io, ", $key = $(rg)")
    end
-   println(io, ")")
+   print(io, ")")
 end
 
 
@@ -201,14 +203,17 @@ function gradtype(basis::B1pComponent, X::AbstractState)
       # dstate_type(valtype(basis, X), X)
 end
 
+acquire_B!(basis::B1pComponent, args...) = 
+         Vector{valtype(basis, args...)}(undef, length(basis))
+
+release_B!(basis::B1pComponent, args...) = nothing
 
 
 # ------------------------ Evaluation code
 #                          this is basically an interface for the inner basis
 
 evaluate(basis::B1pComponent, X::AbstractState) = 
-      evaluate!(Vector{valtype(basis, X)}(undef, length(basis)), 
-                basis, X)
+      evaluate!(acquire_B!(basis, X), basis, X)
 
 evaluate!(B, basis::B1pComponent, X::AbstractState) =
       evaluate!(B, basis.basis, evaluate(basis.fval, X))

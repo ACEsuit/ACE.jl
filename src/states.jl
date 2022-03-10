@@ -381,4 +381,4 @@ end
 
 
 
-
+const UConfig = Union{ACEConfig, AbstractVector{<: AbstractState}}

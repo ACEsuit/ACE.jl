@@ -302,6 +302,8 @@ max L degree for which the alp coefficients have been precomputed
 """
 maxL(sh::AbstractSHBasis) = sh.alp.L
 
+valtype(sh::SHBasis{T}) where {T} = Complex{T}
+
 valtype(sh::SHBasis{T}, x::AbstractVector{S}) where {T, S} = 
 			Complex{promote_type(T, S)}
 
