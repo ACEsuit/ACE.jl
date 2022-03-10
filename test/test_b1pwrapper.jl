@@ -53,3 +53,16 @@ for ntest = 1:30
    X = ACE.State(rr = ACE.rand_radial(J) * ACE.rand_sphere())
    print_tf(@test evaluate(Ylm, X) ≈ evaluate(Ylm_w, X) )
 end
+
+
+## scalar basis 
+
+Bu = ACE.Scal1pBasis(:u, nothing, :k, J) 
+Bu_w = ACE.B1pComponent(J, ACE.GetVal{:u}(), [ (k=i,) for i = 1:length(J)], "Bu_w")
+
+for ntest = 1:30 
+   X = ACE.State(rr = ACE.rand_radial(J) * ACE.rand_sphere(), u = ACE.rand_radial(J))
+   print_tf(@test evaluate(Bu, X) ≈ evaluate(Bu_w, X) )
+end
+
+
