@@ -1,23 +1,6 @@
 
 
 
-# ----------- This file implements the abstract one-particle basis interface
-
-
-function evaluate!(A, basis::OneParticleBasis, cfg::AbstractConfiguration)
-   fill!(A, 0)
-   for X in cfg
-      add_into_A!(A, basis, X)
-   end
-   return A
-end
-
-function evaluate!(A, basis::OneParticleBasis, X::AbstractState)
-   fill!(A, 0)
-   add_into_A!(A, basis, X)
-   return A
-end
-
 _check_args_is_sym() = true
 _check_args_is_sym(::Symbol) = true
 

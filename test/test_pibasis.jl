@@ -28,7 +28,7 @@ pibasis_r = PIBasis(B1p, O3(), Bsel; property = φ, isreal=true)
 
 # generate a configuration
 nX = 10
-Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
 cfg = ACEConfig(Xs)
 
 AA = evaluate(pibasis, cfg)

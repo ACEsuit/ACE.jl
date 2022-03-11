@@ -91,24 +91,29 @@ contract(X1::AbstractVector{<: DState}, x2::DState) = contract.(X1, Ref(x2))
 include("prototypes.jl")
 
 
+# methods to transform a state X into a variable that can be fed into 
+# a basis / function evaluating a feature vector
+include("transforms.jl")
+
+
 # basic polynomial building blocks
 include("polynomials/sphericalharmonics.jl")
 include("polynomials/transforms.jl"); @reexport using ACE.Transforms
 include("polynomials/orthpolys.jl"); @reexport using ACE.OrthPolys
 
-# The One-particle basis is the first proper building block
-include("oneparticlebasis.jl")
+# 1p basis wrappers 
+include("b1pcomponent.jl")
+include("b1pcomponents/Rn.jl")
+include("b1pcomponents/Ylm.jl")
+include("b1pcomponents/scal.jl")
 
-# three specific 1p-bases that are always useful
-include("Ylm1pbasis.jl")
-include("xscal1pbasis.jl")
-
-include("Rn1pbasis.jl")
-include("scal1pbasis.jl")
-
+# todo - move this once we get to it... 
 include("discrete1pbasis.jl")
 
+# the main product 1p basis 
 include("product_1pbasis.jl")
+
+
 
 # basis selectors used to specify finite subsets of basis functions
 include("basisselectors.jl")
@@ -121,9 +126,9 @@ include("pibasis.jl")
 include("symmbasis.jl")
 
 
-# some experimental stuff  
-include("multiplier.jl")
-include("bonds.jl")
+# # some experimental stuff  
+# include("multiplier.jl")
+# include("bonds.jl")
 
 # models and model evaluators
 
@@ -144,7 +149,7 @@ include("utils.jl")
 include("testing/testing.jl")
 
 
-include("ad.jl")
+# include("ad.jl")
 
 
 # ---------------- some extra experimental dispatching

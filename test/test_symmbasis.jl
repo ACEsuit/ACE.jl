@@ -16,7 +16,7 @@ using ACE.Testing: __TestSVec
 using ACE.Wigner
 using ACE.Wigner: get_orbsym
 
-
+##
 # construct the 1p-basis
 maxdeg = 6
 ord = 3
@@ -26,7 +26,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
 nX = 10
-Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
 cfg = ACEConfig(Xs)
 
 ##
@@ -95,7 +95,7 @@ end
 
 @info("Test linear independence of the basis")
 # generate some random configurations; ord^2 + 1 sounds good :)
-cfgs = [ ACEConfig(rand(PositionState{Float64}, B1p.bases[1], nX)) 
+cfgs = [ ACEConfig(rand(PositionState{Float64}, B1p["Rn"].basis, nX)) 
          for _ = 1:(3*length(basis)) ]
 A = zeros(length(cfgs), length(basis))
 for (i, cfg) in enumerate(cfgs)
@@ -135,7 +135,7 @@ println()
 
 for L = 0:3
    @info "Tests for L = $L ⇿ $(get_orbsym(0))-$(get_orbsym(L)) block"
-   local φ, pibasis, basis, BB, Iz
+   local φ, pibasis, basis, BB, Iz, B1p 
    φ = ACE.SphericalVector(L; T = ComplexF64)
    B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
    B1pa = deepcopy(B1p); B1pb = deepcopy(B1p)
@@ -201,7 +201,7 @@ end
 
 for L1 = 0:2, L2 = 0:2
    @info "Tests for L₁ = $L1, L₂ = $L2 ⇿ $(get_orbsym(L1))-$(get_orbsym(L2)) block"
-   local φ, pibasis, basis, BB, Iz
+   local φ, pibasis, basis, BB, Iz, B1p 
    φ = ACE.SphericalMatrix(L1, L2; T = ComplexF64)
    B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
    # TODO: these deepcopies should not be needed, what's going on here? 
@@ -251,7 +251,7 @@ end
 
 for L = 0:3
    @info "L = $L"
-   local Xs, cfg 
+   local Xs, cfg, B1p 
    φ1 = ACE.SphericalVector(L; T = ComplexF64)
    B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
    basis1 = SymmetricBasis(φ1, deepcopy(B1p), Bsel)
@@ -260,7 +260,7 @@ for L = 0:3
    basis2 = SymmetricBasis(φ2, deepcopy(B1p), Bsel)
 
    for ntest = 1:30
-      Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+      Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
       cfg = ACEConfig(Xs)
       BBvec = evaluate(basis1, cfg)
       value1 = [reshape(BBvec[i].val, 2L+1, 1) for i in 1:length(BBvec)]
@@ -282,7 +282,7 @@ basis2 = SymmetricBasis(φ2, deepcopy(B1p), Bsel)
 
 for ntest = 1:30
    local Xs, cfg, BB 
-   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+   Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
    cfg = ACEConfig(Xs)
    BB = evaluate(basis, cfg)
    BBsca = [BB[i].val for i in 1:length(BB)]
