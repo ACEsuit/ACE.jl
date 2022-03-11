@@ -194,12 +194,13 @@ valtype(basis::B1pComponent, X::AbstractState) =
       valtype(basis.basis, evaluate(basis.fval, X))
 
 function gradtype(basis::B1pComponent, X::AbstractState) 
+   x = evaluate(basis.fval, X)
    # gradient type of the inner basis which knows nothing about states 
-   TDB = grad_type(basis.basis, evaluate(basis.fval, X))
+   TDB = gradtype(basis.basis, x)
    # now we need to incorporate the grad type of fval itself 
-   TDVAL = promote_type(TDB, grad_type(basis.fval, X))
+   # dx = evaluate_d(basis.fval, X)
    # the gradient will be a product of a TDB times a TDVAL 
-   return promote_type(TDB, TDVAL)
+   return grad_type_dP(TDB, basis.fval, X)
       # dstate_type(valtype(basis, X), X)
 end
 
@@ -207,6 +208,11 @@ acquire_B!(basis::B1pComponent, args...) =
          Vector{valtype(basis, args...)}(undef, length(basis))
 
 release_B!(basis::B1pComponent, args...) = nothing
+
+acquire_dB!(basis::B1pComponent, X::AbstractState) = 
+            Vector{gradtype(basis, X)}(undef, length(basis))
+
+release_dB!(basis::B1pComponent, args...) = nothing
 
 
 # ------------------------ Evaluation code
@@ -217,6 +223,14 @@ evaluate(basis::B1pComponent, X::AbstractState) =
 
 evaluate!(B, basis::B1pComponent, X::AbstractState) =
       evaluate!(B, basis.basis, evaluate(basis.fval, X))
+
+
+
+evaluate_d(basis::B1pComponent, X::AbstractState) = 
+      evaluate_d!(acquire_dB!(basis, X), basis, X)
+
+evaluate_ed(basis::B1pComponent, X::AbstractState) = 
+      evaluate_ed!(acquire_B!(basis, X), acquire_dB!(basis, X), basis, X)
 
 
 function evaluate_d!(dB, basis::B1pComponent, X::AbstractState)
@@ -232,20 +246,18 @@ function evaluate_ed!(B, dB, basis::B1pComponent, X::AbstractState)
    x = evaluate(basis.fval, X)
    dP = acquire_dB!(basis.basis, x)
    evaluate_ed!(B, dP, basis.basis, x)
-   dx = evaluate_d(basis.fval, X)
-   dB[:] .= TDX.( Ref(dx) .* (basis.coeffs * dP) )
+   dx_x_dP!(dB, dP, basis.fval, X)
    release_dB!(basis.basis, dP)
    return B, dB
 end
 
 
-# *** TODO 
-# # this one we probably only need for training so can relax the efficiency a bit 
-# function evaluate_dd(basis::Scal1pBasis, X::AbstractState) 
-#    ddP = ForwardDiff.derivative(x -> evaluate_d(basis, _val(X, basis)))
-#    TDX = gradtype(basis, X)
-#    return _scal1pbasis_grad.(Ref(TDX), Ref(basis), ddP_n)
-# end
+# this one we probably only need for training so ...
+#   - we can relax the efficiency a bit 
+#   - we actually never need the evaluate_dd but only the 
+#     associated backpropagation operation which may be a bit simpler 
+#     to implement. 
+# evaluate_dd(basis::B1pComponent, X::AbstractState)
 
 
 #=   *** TODO 

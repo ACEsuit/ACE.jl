@@ -1,5 +1,5 @@
 
-
+using LinearAlgebra: I 
 # ------------------ Some different ways to produce an argument 
 
 abstract type StaticGet end 
@@ -7,15 +7,33 @@ abstract type StaticGet end
 ACE.evaluate(fval::StaticGet, X) = getval(X, fval)
 ACE.evaluate_d(fval::StaticGet, X) = getval_d(X, fval)
 
+valtype(fval::StaticGet, X) = typeof(evaluate(fval, X))
+gradtype(fval::StaticGet, X) = typeof(evaluate_d(fval, X))
+
 
 struct GetVal{VSYM} <: StaticGet end 
 
 getval(X, ::GetVal{VSYM}) where {VSYM} = getproperty(X, VSYM) 
 
+_one(x::Number) = one(x)
+_one(x::SVector{3, T}) where {T}  = SMatrix{3, 3, T}(I)
+
 getval_d(X, ::GetVal{VSYM}) where {VSYM} = 
-      DState( NamedTuple{(VSYM,)}( (one(getproperty(X, VSYM)),) ) )
+      DState( NamedTuple{(VSYM,)}( (_one(getproperty(X, VSYM)),) ) )
 
 get_symbols(::GetVal{VSYM}) where {VSYM} = (VSYM,)
+
+function dx_x_dP!(dB, dP, ::GetVal{VSYM}, X) where {VSYM}
+   x = getproperty(X, VSYM)
+   TDX = eltype(dB)
+   for n = 1:length(dB)
+      dB[n] = TDX(  DState( NamedTuple{(VSYM,)}( ( dP[n], ) ) ) )
+   end
+   return dB 
+end
+
+grad_type_dP(TDP, ::GetVal{VSYM}, X) where {VSYM} = 
+      typeof(DState( NamedTuple{(VSYM,)}( (zero(TDP),) ) ))
 
 
 # TODO - this is incomplete for now 
@@ -33,6 +51,16 @@ function getval_d(X, ::GetNorm{VSYM}) where {VSYM}
    return DState( NamedTuple{(VSYM,)}( (x/norm(x),) ) )
 end 
 
+function evaluate_dd(::GetNorm{VSYM}, X) where {VSYM}
+   𝐫 = getproperty(X,VSYM)
+   r = norm(𝐫)
+   𝐫̂ = 𝐫 / r
+   ddx = (I - 𝐫̂ * 𝐫̂') / r
+   return DState( NamedTuple{(VSYM,)}( (ddx,) ) )
+end 
+
+
+
 get_symbols(::GetNorm{VSYM}) where {VSYM} = (VSYM,)
 
 
@@ -40,3 +68,18 @@ write_dict(fval::StaticGet) = Dict("__id__" => "ACE_StaticGet",
                                    "expr" => string(typeof(fval)) )
 
 read_dict(::Val{:ACE_StaticGet}, D::Dict) = eval( Meta.parse(D["expr"]) )()
+
+
+function dx_x_dP!(dB, dP, ::GetNorm{VSYM}, X) where {VSYM}
+   x = getproperty(X, VSYM)
+   dx = x/norm(x)
+   TDX = eltype(dB)
+   for n = 1:length(dB)
+      dB[n] = TDX(  DState( NamedTuple{(VSYM,)}( ( dx * dP[n], ) ) ) )
+   end
+   return dB 
+end
+
+grad_type_dP(TDP, ::GetNorm{VSYM}, X) where {VSYM} = 
+      typeof(DState( NamedTuple{(VSYM,)}( (zero(SVector{3,TDP}),) ) ))
+

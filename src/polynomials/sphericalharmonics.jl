@@ -307,6 +307,11 @@ valtype(sh::SHBasis{T}) where {T} = Complex{T}
 valtype(sh::SHBasis{T}, x::AbstractVector{S}) where {T, S} = 
 			Complex{promote_type(T, S)}
 
+gradtype(sh::SHBasis{T}) where {T} = SVector{3, Complex{T}}
+
+gradtype(sh::SHBasis{T}, x::AbstractVector{S})  where {T, S} = 
+			SVector{3, Complex{promote_type(T, S)}}
+
 import Base.==
 ==(B1::AbstractSHBasis, B2::AbstractSHBasis) =
 		(B1.alp == B2.alp) && (typeof(B1) == typeof(B2))
