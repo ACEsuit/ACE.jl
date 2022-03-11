@@ -1,8 +1,15 @@
+using StaticArrays
+import ACE 
+import ACE: evaluate, evaluate_d, evaluate_dd, valtype, gradtype, 
+            write_dict, read_dict, 
+            DState 
 
-using LinearAlgebra: I 
+using LinearAlgebra: I, norm  
+
 # ------------------ Some different ways to produce an argument 
 
-abstract type StaticGet end 
+abstract type StateTransform end 
+abstract type StaticGet <: StateTransform end 
 
 ACE.evaluate(fval::StaticGet, X) = getval(X, fval)
 ACE.evaluate_d(fval::StaticGet, X) = getval_d(X, fval)

@@ -172,7 +172,7 @@ end
 
 
 function show(io::IO, basis::B1pComponent)
-   vsyms = get_symbols(basis.fval)
+   vsyms = Transforms.get_symbols(basis.fval)
    strvsyms = filter(!isequal(':'), "$vsyms")
    if length(vsyms) == 1 
       strvsyms = strvsyms[1:end-2] * ")"
@@ -199,7 +199,7 @@ function gradtype(basis::B1pComponent, X::AbstractState)
    # now we need to incorporate the grad type of fval itself 
    # dx = evaluate_d(basis.fval, X)
    # the gradient will be a product of a TDB times a TDVAL 
-   return grad_type_dP(TDB, basis.fval, X)
+   return Transforms.grad_type_dP(TDB, basis.fval, X)
       # dstate_type(valtype(basis, X), X)
 end
 
@@ -245,7 +245,7 @@ function evaluate_ed!(B, dB, basis::B1pComponent, X::AbstractState)
    x = evaluate(basis.fval, X)
    dP = acquire_dB!(basis.basis, x)
    evaluate_ed!(B, dP, basis.basis, x)
-   dx_x_dP!(dB, dP, basis.fval, X)
+   Transforms.dx_x_dP!(dB, dP, basis.fval, X)
    release_dB!(basis.basis, dP)
    return B, dB
 end

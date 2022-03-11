@@ -1,4 +1,5 @@
-import ACE.OrthPolys: TransformedPolys
+import ACE.OrthPolys: TransformedPolys, OrthPolyBasis
+import ACE.Transforms: GetNorm
 
 @doc raw"""
 `Rn1pBasis`
@@ -13,8 +14,8 @@ scalar but gradient is vectorial.
 The default symbols are `:rr` for the state and `:n` for the index of the 
 basis function. 
 """
-function Rn1pBasis(R::TransformedPolys;
-            varsym = :rr, nsym = :n, label="R$nsym", ) 
+function Rn1pBasis(R::Union{TransformedPolys, OrthPolyBasis};
+                   varsym = :rr, nsym = :n, label="R$nsym", ) 
    spec = [ NamedTuple{(nsym,)}((i,)) for i = 1:length(R) ]
-   return B1pComponent(R, ACE.GetNorm{varsym}(), spec, label)
+   return B1pComponent(R, GetNorm{varsym}(), spec, label)
 end
