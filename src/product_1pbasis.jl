@@ -109,6 +109,9 @@ function gradtype(basis::Product1pBasis, X::AbstractState)
    return dstate_type(VALT, X)
 end
 
+acquire_dB!(basis::Product1pBasis, Xs::UConfig) = 
+      Matrix{gradtype(basis, Xs)}(undef, (length(basis), length(Xs)))
+
 
 function evaluate!(A, basis::Product1pBasis, X::AbstractState)
    fill!(A, zero(eltype(A)))
@@ -123,6 +126,40 @@ function evaluate!(A, basis::Product1pBasis, cfg::UConfig)
    end
    return A
 end
+
+
+_check_args_is_sym() = true 
+_check_args_is_sym(::Symbol) = true
+
+# args... may be empty or a symbol  for partial derivatives
+function evaluate_d!(dA, basis::Product1pBasis, X::Union{AbstractState, UConfig}, 
+                     args...)
+   A = acquire_B!(basis, X)
+   evaluate_ed!(A, dA, basis, X, args...)
+   release_B!(basis, A)
+   return dA
+end
+
+# args... may be empty or a symbol  for partial derivatives
+function evaluate_ed!(A, dA, basis::OneParticleBasis,
+                     cfg::UConfig, args...)
+   @assert _check_args_is_sym(args...)
+   fill!(A, 0)
+   for (j, X) in enumerate(cfg)
+      add_into_A_dA!(A, (@view dA[:, j]), basis, X, args...)
+   end
+   return A, dA
+end
+
+# args... may be empty or a symbol for partial derivatives
+function evaluate_ed!(A, dA, basis::Product1pBasis, X::AbstractState, args...)
+   @assert _check_args_is_sym(args...)
+   fill!(A, 0)
+   add_into_A_dA!(A, dA, basis, X, args...)
+   return A, dA
+end
+
+
 
 
 import Base.Cartesian: @nexprs

@@ -235,14 +235,29 @@ _ace_zero(::Union{Symbol, Type{Symbol}}) = :O
 import Base: +, -
 
 
+# for f in (:+, :-, )
+#    eval( quote 
+#       function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
+#          SYMS = _syms(TX1)
+#          @assert SYMS == _syms(TX2)
+#          vals = ntuple( i -> $f( getproperty(_x(X1), SYMS[i]), 
+#                                  getproperty(_x(X2), SYMS[i]) ), length(SYMS) )
+#          return TX1( NamedTuple{SYMS}(vals) )
+#       end
+#    end )
+# end
+
 for f in (:+, :-, )
    eval( quote 
       function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
-         SYMS = _syms(TX1)
-         @assert SYMS == _syms(TX2)
-         vals = ntuple( i -> $f( getproperty(_x(X1), SYMS[i]), 
-                                 getproperty(_x(X2), SYMS[i]) ), length(SYMS) )
-         return TX1( NamedTuple{SYMS}(vals) )
+         SYMS1 = ACE._syms(TX1)
+         @assert issubset(ACE._syms(TX2), SYMS1)
+         vals = ntuple( i -> begin 
+                  sym = SYMS1[i]
+                  v1 = getproperty(ACE._x(X1), sym)
+                  haskey(ACE._x(X2), sym) ? $f(v1, getproperty(ACE._x(X2), sym)) : v1
+               end, length(SYMS1))
+         return TX1( NamedTuple{SYMS1}(vals) )
       end
    end )
 end

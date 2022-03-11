@@ -28,23 +28,24 @@ J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)   #  J_n(x) * (x - xcut)^p
 Rn = Rn1pBasis(J)
 Ylm = Ylm1pBasis(maxL)
 Pk = Scal1pBasis(:u, nothing, :k, J)
-B1p = Product1pBasis( (Rn, Ylm) )
-ACE.init1pspec!(B1p, Bsel)
-
+A_nlm = Product1pBasis( (Rn, Ylm) )
+ACE.init1pspec!(A_nlm, Bsel)
+A_nlmk = Product1pBasis( (Rn, Ylm, Pk) )
+ACE.init1pspec!(A_nlmk, Bsel)
 
 nX = 10
 Xs = [ State(rr = rand_radial(J) * rand_sphere() ) for _=1:nX ]
 cfg = ACEConfig(Xs)
 
-A = evaluate(B1p, Xs)
+A = evaluate(A_nlm, Xs)
 
 @info("test against manual summation")
-A1 = sum( evaluate(B1p, X) for X in Xs )
+A1 = sum( evaluate(A_nlm, X) for X in Xs )
 println_slim(@test A1 ≈ A)
 
 @info("test permutation invariance")
 for ntest = 1:30
-   print_tf(@test A ≈ evaluate(B1p, ACEConfig(shuffle(Xs))))
+   print_tf(@test A ≈ evaluate(A_nlm, ACEConfig(shuffle(Xs))))
 end
 println()
 
@@ -52,13 +53,15 @@ println()
 @info("test access via labels")
 println_slim(@test(getlabel(Ylm) == "Ylm"))
 println_slim(@test(getlabel(Rn) == "Rn"))
-println_slim(@test(B1p["Ylm"] == Ylm))
-println_slim(@test(B1p["Rn"] == Rn))
+println_slim(@test(getlabel(Pk) == "Pk"))
+println_slim(@test(A_nlm["Ylm"] === Ylm))
+println_slim(@test(A_nlm["Rn"] === Rn))
+println_slim(@test(A_nlmk["Pk"] === Pk))
 
 ##
 
 @info("Test FIO")
-for _B in (J, Rn, Ylm, Pk, B1p)
+for _B in (J, Rn, Ylm, Pk, A_nlm, A_nlmk)
    print(string(Base.typename(typeof(_B)))[10:end-1], " - ", getlabel(_B), " : ")
    println_slim((@test(all(test_fio(_B)))))
 end
@@ -66,7 +69,8 @@ end
 ##
 
 @info("Testing gradients for several 1p basis components")
-for basis in (Pk, Rn, Ylm)
+for basis in (Pk, Rn, Ylm, A_nlm, A_nlmk)
+   local X 
    @info(" .... $(basis)")
    _randX() = State( rr = rand_radial(J) * rand_sphere(), u = rand_radial(J) )
    X = _randX()
@@ -103,29 +107,41 @@ for basis in (Pk, Rn, Ylm)
 end
 
 
-##
-
-@info("Product basis evaluate_ed! tests")
-
-A1 = ACE.acquire_B!(B1p, cfg)
-ACE.evaluate!(A1, B1p, cfg)
-A2 = ACE.acquire_B!(B1p, cfg)
-dA = ACE.acquire_dB!(B1p, cfg)
-ACE.evaluate_ed!(A2, dA, B1p, cfg)
-println_slim(@test A1 ≈ A2)
-
-println_slim(@test( evaluate_d(B1p, Xs) ≈ dA ))
 
 ##
-@info("Product basis gradient test")
 
-for ntest = 1:30
-   x0 = randn(3)
-   c = rand(length(B1p))
-   F = x -> sum(ACE.evaluate(B1p, _vec2X(x)) .* c)
-   dF = x -> sum(ACE.evaluate_d(B1p, ACEConfig([_vec2X(x)])) .* c).rr |> Vector
-   print_tf(@test fdtest(F, dF, x0; verbose=false))
+
+@info("Product 1p basis test on configurations")
+
+for basis in (A_nlm, A_nlmk)   
+   @info(" .... $(basis)")
+   local Xs, cfg, A1, nX
+   nX = 5
+   Xs = [ State(rr = rand_radial(J) * rand_sphere(), 
+                u = rand_radial(J) ) for _=1:nX ]
+   cfg = ACEConfig(Xs)
+   A1 = ACE.acquire_B!(basis, cfg)
+   ACE.evaluate!(A1, basis, cfg)
+   A2 = ACE.acquire_B!(basis, cfg)
+   dA = ACE.acquire_dB!(basis, cfg)
+   ACE.evaluate_ed!(A2, dA, basis, cfg)
+   println_slim(@test A1 ≈ A2)
+   println_slim(@test( evaluate_d(basis, Xs) ≈ dA ))
+
+   for ntest = 1:30
+      nX = 5
+      _randX() = State( rr = rand_radial(J) * rand_sphere(), u = rand_radial(J) )
+      Xs = [_randX() for _=1:5] 
+      Us = [DState(_randX()) for _=1:5]
+      c = rand(length(basis))
+      F = t -> sum( evaluate(basis, Xs + t * Us) .* c )
+      dF = t -> begin 
+         dB = evaluate_d(basis, Xs + t * Us)
+         c_dB = sum(c .* dB, dims=1)[:]
+         ACE.contract(c_dB, Us)
+      end
+      print_tf(@test fdtest(F, dF, 0.0; verbose=false))
+   end
+   println()
+
 end
-println()
-##
-

@@ -7,7 +7,8 @@ using LinearAlgebra: dot
 
 import ACE
 
-import ACE: evaluate!, evaluate_d!, read_dict, write_dict,
+import ACE: evaluate!, evaluate_d!, evaluate_ed!, 
+            read_dict, write_dict,
             transform, transform_d, transform_dd, inv_transform,
             ACEBasis, ScalarACEBasis, 
             valtype, gradtype, 
@@ -260,7 +261,7 @@ function evaluate_d!(dP, J::OrthPolyBasis, t; maxn=length(J))
    return dP
 end
 
-function ACE.evaluate_ed!(P, dP, J::OrthPolyBasis, t; maxn=length(J))
+function evaluate_ed!(P, dP, J::OrthPolyBasis, t; maxn=length(J))
    @assert maxn <= length(P)
    @assert maxn <= length(dP)
 
@@ -406,7 +407,7 @@ function evaluate_d!(dP, J::TransformedPolys, r; maxn=length(J))
    return dP
 end
 
-function ACE.evaluate_ed!(P, dP, J::TransformedPolys, r; maxn=length(J))
+function evaluate_ed!(P, dP, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
    t = transform(J.trans, r)
    dt = transform_d(J.trans, r)
