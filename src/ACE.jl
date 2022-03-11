@@ -127,7 +127,6 @@ include("symmbasis.jl")
 
 # # some experimental stuff  
 # include("multiplier.jl")
-# include("bonds.jl")
 
 # models and model evaluators
 
@@ -143,10 +142,7 @@ include("random.jl")
 include("utils.jl")
 @reexport using ACE.Utils
 
-
-
 include("testing/testing.jl")
-
 
 # include("ad.jl")
 
