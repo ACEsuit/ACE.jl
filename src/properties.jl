@@ -243,7 +243,7 @@ coco_filter(::EuclideanVector, ll, mm, kk) =
 
 coco_dot(u1::EuclideanVector, u2::EuclideanVector) = dot(u1.val, u2.val)
 
-include("cov_coeffs_dict.jl")
+include("eucl/cov_coeffs_dict.jl")
 
 #---------------------- Equivariant matrices
 
@@ -336,7 +336,7 @@ coco_filter(::EuclideanMatrix, ll, mm, kk) =
 coco_dot(u1::EuclideanMatrix, u2::EuclideanMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
 #dot(u1.val, u2.val)
 
-include("equi_coeffs_dict.jl")
+include("eucl/equi_coeffs_dict.jl")
 
 # --------------------- 
 # some codes to help convert from svector, smatrix to spherical ... 
