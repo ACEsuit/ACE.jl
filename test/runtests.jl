@@ -35,8 +35,6 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     @testset "AD-LinearACEModel"  begin include("test_admodel.jl") end 
 
     # Experimental material
-    # @testset "Bonds" begin include("test_bonds.jl") end
-    # @testset "Bond BasisSelectors" begin include("test_bondbasisselectors.jl") end
     @testset "Sparsification" begin include("test_sparsify.jl") end 
     # @testset "Multipliers" begin include("test_multiplier.jl") end
 end

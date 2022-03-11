@@ -114,7 +114,6 @@ include("discrete1pbasis.jl")
 include("product_1pbasis.jl")
 
 
-
 # basis selectors used to specify finite subsets of basis functions
 include("basisselectors.jl")
 # ... amongst other things used to initialize sparse basis sets 
@@ -128,7 +127,6 @@ include("symmbasis.jl")
 
 # # some experimental stuff  
 # include("multiplier.jl")
-# include("bonds.jl")
 
 # models and model evaluators
 
@@ -144,10 +142,7 @@ include("random.jl")
 include("utils.jl")
 @reexport using ACE.Utils
 
-
-
 include("testing/testing.jl")
-
 
 # include("ad.jl")
 
