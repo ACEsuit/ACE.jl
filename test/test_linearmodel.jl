@@ -11,7 +11,7 @@ using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis,
 using ACEbase.Testing: fdtest, println_slim 
 
 
-randconfig(B1p, nX) = ACEConfig( rand(PositionState{Float64}, B1p.bases[1], nX) )
+randconfig(B1p, nX) = ACEConfig( rand(PositionState{Float64}, B1p["Rn"].basis, nX) )
 
 ##
 

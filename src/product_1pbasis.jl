@@ -32,6 +32,8 @@ import Base.*
       Product1pBasis((B1, B2.bases...))
 *(B1::Product1pBasis, B2::Product1pBasis) =
       Product1pBasis((B1.bases..., B2.bases...))
+*(B1::Product1pBasis, B2::B1pComponent) =
+      Product1pBasis((B1.bases..., B2))
 
 
 _numb(b::Product1pBasis{NB}) where {NB} = NB
@@ -326,9 +328,13 @@ function sparsify!(basis1p::Product1pBasis, keep::AbstractVector{<: NamedTuple})
    # now we need to recompute the indices array, this can be easily done via 
    # set_spec!(basis::Product1pBasis{NB}, spec), but before we do that 
    # we should sparsify the basis components as well 
-   for bas_i in basis1p.bases 
-      _sparsify_component!(bas_i, new_spec)
-   end
+   #  .... but it is not so clear that his is a good idea, maybe the 
+   #       1p basis components should just remain frozen???
+   #       => turn this off for now 
+   # TODO - return to this point?!?!?
+   # for bas_i in basis1p.bases 
+   #    _sparsify_component!(bas_i, new_spec)
+   # end
 
    # finally fix the basis1pspec internally: 
    set_spec!(basis1p, new_spec)
@@ -340,30 +346,30 @@ end
 
 using NamedTupleTools: select 
 
-"""
-this performs some generic work to sparsify a 1p-basis component. 
-but the actual sparsificatin happens in the individual basis implementations 
-"""
-function _sparsify_component!(basis1p, keep)
-   # if basis1p has no symbols (e.g. a multiplier) then it means it must 
-   # be a one-component basis, so there is nothing to sparsify.
-   syms = symbols(basis1p)
-   if isempty(syms)
-      return basis1p
-   end
-   # get rid of all info we don't need 
-   keep1 = unique( select.(keep, Ref(syms)) )
-   # double-check that keep1 is compatible 
-   spec = get_spec(basis1p) 
-   @assert all(b in spec for b in keep1)
-   # now get the basis spec and get the list of indices to keep 
-   if length(keep1) < length(spec)
-      # Ikeep = findall( [b in keep1 for b in spec] )
-      # sparsify!(basis1p, Ikeep)
-      sparsify!(basis1p, keep1)
-   end 
-   return basis1p 
-end
+# """
+# this performs some generic work to sparsify a 1p-basis component. 
+# but the actual sparsificatin happens in the individual basis implementations 
+# """
+# function _sparsify_component!(basis1p, keep)
+#    # if basis1p has no symbols (e.g. a multiplier) then it means it must 
+#    # be a one-component basis, so there is nothing to sparsify.
+#    syms = symbols(basis1p)
+#    if isempty(syms)
+#       return basis1p
+#    end
+#    # get rid of all info we don't need 
+#    keep1 = unique( select.(keep, Ref(syms)) )
+#    # double-check that keep1 is compatible 
+#    spec = get_spec(basis1p) 
+#    @assert all(b in spec for b in keep1)
+#    # now get the basis spec and get the list of indices to keep 
+#    if length(keep1) < length(spec)
+#       # Ikeep = findall( [b in keep1 for b in spec] )
+#       # sparsify!(basis1p, Ikeep)
+#       sparsify!(basis1p, keep1)
+#    end 
+#    return basis1p 
+# end
 
 
 # --------------- AD codes

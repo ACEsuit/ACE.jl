@@ -8,8 +8,6 @@ import ACE: PolyTransform, transformed_jacobi, Rn1pBasis,
             init1pspec!, Ylm1pBasis,
             Product1pBasis, SimpleSparseBasis
 
-# import ACE.PairPotentials: PolyPairBasis
-
 # - simple ways to construct a radial basis
 # - construct a descriptor
 # - simple wrappers to generate RPI basis functions (ACE + relatives)
@@ -43,7 +41,7 @@ function Rn_basis(;
       nsym = :n)
 
    J = transformed_jacobi(maxdeg, trans, rcut, rin; pcut=pcut, pin=pin)
-   return Rn1pBasis(J, varsym = varsym, nsym = nsym)
+   return Rn1pBasis(J; varsym = varsym, nsym = nsym)
 end
 
 @doc raw"""

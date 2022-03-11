@@ -157,8 +157,10 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis,
             # add the same PI basis function several times, but in the call to
             # `sparse` the values will just be added.
             if !haskey(invAAspec, bcol_ordered)
+               @warn("bcol_ordered not in AA-spec")
                @show bcol_ordered
-               @show degree(bcol_ordered, NaiveTotalDegree(), pibasis.basis1p)
+               # @show degree(bcol_ordered, NaiveTotalDegree(), pibasis.basis1p)
+               error("bcol_ordered not in AA-spec")
             end
             idxAA = invAAspec[bcol_ordered]
             push!(Irow, idxB)

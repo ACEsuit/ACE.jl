@@ -132,16 +132,15 @@ end
 
 # this should be revisited, doesn't feel clean yet 
 
-__degree__(n::Integer) = abs(n)
-
-function degree(b::NamedTuple, basis::B1pComponent) 
+function degree(b::NamedTuple, basis::B1pComponent)
    ISYMS = _idxsyms(basis)
-   return sum( __degree__(b[sym]) for sym in ISYMS )
+   idx = basis.invspec[ b[ISYMS] ]
+   return degree(basis.basis, idx)
 end
 
-function degree(b::NamedTuple, basis::B1pComponent, weight::Dict) 
+function degree(b::NamedTuple, basis::B1pComponent, weight::Dict)
    ISYMS = _idxsyms(basis)
-   return sum( weight[sym] * __degree__(b[sym]) for sym in ISYMS )
+   return weight[ISYMS[1]] * degree(b, basis)
 end
 
 # --------------- IO operations 

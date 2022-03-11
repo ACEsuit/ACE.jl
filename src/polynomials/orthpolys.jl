@@ -378,6 +378,7 @@ valtype(P::TransformedPolys, args...) = valtype(P.J, args...)
 
 gradtype(P::TransformedPolys, args...) = gradtype(P.J, args...)
 
+ACE.degree(P::TransformedPolys, n::Integer) = n
 
 function ACE.rand_radial(J::TransformedPolys)
    t = ACE.rand_radial(J.J)
