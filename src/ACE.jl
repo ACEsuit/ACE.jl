@@ -91,14 +91,14 @@ contract(X1::AbstractVector{<: DState}, x2::DState) = contract.(X1, Ref(x2))
 include("prototypes.jl")
 
 
-# methods to transform a state X into a variable that can be fed into 
-# a basis / function evaluating a feature vector
-include("transforms.jl")
-
+# methods to transform stuff: 
+#  - a state X into a variable that can be fed into a basis 
+#  - distance transforms 
+#  - transformations of an inner basis, e.g. linear transformations
+include("transforms/transforms.jl"); @reexport using ACE.Transforms
 
 # basic polynomial building blocks
 include("polynomials/sphericalharmonics.jl")
-include("polynomials/transforms.jl"); @reexport using ACE.Transforms
 include("polynomials/orthpolys.jl"); @reexport using ACE.OrthPolys
 
 # 1p basis wrappers 
@@ -112,7 +112,6 @@ include("discrete1pbasis.jl")
 
 # the main product 1p basis 
 include("product_1pbasis.jl")
-
 
 
 # basis selectors used to specify finite subsets of basis functions
