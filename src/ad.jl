@@ -1,4 +1,34 @@
 
+struct SChain{TC}
+   F:Tuple{TC}
+end
+
+
+# construct a chain recursively 
+chain(F1, F2, args...) = chain( chain(F1, F2), chain(args...) )
+# for most arguments, just form a tuple 
+chain(F1, F2) = SChain( (F1, F2) )
+# if one of them is a chain already, then combine into a single long chain 
+chain(F1::SChain, F2) = SChain( tuple(F1.F..., F2) )
+chain(F1, F2::SChain) = SChain( tuple(F1, F2.F...) )
+chain(F1::SChain, F2::SChain) = chain( tuple(F1.F..., F2.F...) )
+
+@generated function evaluate(chain::SChain{TC}, X)
+   LEN = length(chain)  # inferred 
+   code = Expr[]  
+   push(code, :(X_0 = X))
+   for l = 1:LEN 
+      push!(code, Meta.parse("F_$l = chain.F[$l]")
+      push!(code, Meta.parse("X_$l = evaluate(F_$l, X_$(l-1));")
+   end
+   append!(code, "return X_$LEN")
+   Meta.parse(code)
+end
+
+
+
+
+
 # Experimental AD codes
 
 import ChainRulesCore, ChainRules
