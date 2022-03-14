@@ -245,7 +245,7 @@ function evaluate_ed!(B, dB, basis::B1pComponent, X::AbstractState)
    x = evaluate(basis.fval, X)
    dP = acquire_dB!(basis.basis, x)
    evaluate_ed!(B, dP, basis.basis, x)
-   Transforms.dx_x_dP!(dB, dP, basis.fval, X)
+   rrule_evaluate!(dB, dP, basis.fval, X)
    release_dB!(basis.basis, dP)
    return B, dB
 end
@@ -256,6 +256,7 @@ end
 #   - we actually never need the evaluate_dd but only the 
 #     associated backpropagation operation which may be a bit simpler 
 #     to implement. 
+# so we will likely remove this entirely.
 # evaluate_dd(basis::B1pComponent, X::AbstractState)
 
 

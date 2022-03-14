@@ -2,7 +2,8 @@ using StaticArrays
 import ACE 
 import ACE: evaluate, evaluate_d, evaluate_dd, valtype, gradtype, 
             write_dict, read_dict, 
-            DState 
+            DState, 
+            rrule_evaluate!, frule_evaluate! 
 
 using LinearAlgebra: I, norm  
 
@@ -30,7 +31,7 @@ getval_d(X, ::GetVal{VSYM}) where {VSYM} =
 
 get_symbols(::GetVal{VSYM}) where {VSYM} = (VSYM,)
 
-function dx_x_dP!(dB, dP, ::GetVal{VSYM}, X) where {VSYM}
+function rrule_evaluate!(dB, dP, ::GetVal{VSYM}, X) where {VSYM}
    x = getproperty(X, VSYM)
    TDX = eltype(dB)
    for n = 1:length(dB)
@@ -67,7 +68,6 @@ function evaluate_dd(::GetNorm{VSYM}, X) where {VSYM}
 end 
 
 
-
 get_symbols(::GetNorm{VSYM}) where {VSYM} = (VSYM,)
 
 
@@ -77,7 +77,7 @@ write_dict(fval::StaticGet) = Dict("__id__" => "ACE_StaticGet",
 read_dict(::Val{:ACE_StaticGet}, D::Dict) = eval( Meta.parse(D["expr"]) )()
 
 
-function dx_x_dP!(dB, dP, ::GetNorm{VSYM}, X) where {VSYM}
+function rrule_evaluate!(dB, dP, ::GetNorm{VSYM}, X) where {VSYM}
    x = getproperty(X, VSYM)
    dx = x/norm(x)
    TDX = eltype(dB)
