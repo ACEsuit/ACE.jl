@@ -1,6 +1,11 @@
 
-struct SChain{TC}
-   F:Tuple{TC}
+function rrule_evaluate end 
+
+function frule_evaluate end 
+
+
+struct SChain{TT}
+   F::TT
 end
 
 
@@ -13,21 +18,28 @@ chain(F1::SChain, F2) = SChain( tuple(F1.F..., F2) )
 chain(F1, F2::SChain) = SChain( tuple(F1, F2.F...) )
 chain(F1::SChain, F2::SChain) = chain( tuple(F1.F..., F2.F...) )
 
-@generated function evaluate(chain::SChain{TC}, X)
-   LEN = length(chain)  # inferred 
+Base.length(c::SChain) = length(c.F)
+
+@generated function evaluate(chain::SChain{TT}, X) where {TT}
+   LEN = length(TT.types)
    code = Expr[]  
-   push(code, :(X_0 = X))
+   push!(code, :(X_0 = X))
    for l = 1:LEN 
-      push!(code, Meta.parse("F_$l = chain.F[$l]")
-      push!(code, Meta.parse("X_$l = evaluate(F_$l, X_$(l-1));")
+      push!(code, Meta.parse("F_$l = chain.F[$l]"))
+      push!(code, Meta.parse("X_$l = evaluate(F_$l, X_$(l-1))"))
+      push!(code, Meta.parse("release!(X_$(l-1))"))
    end
-   append!(code, "return X_$LEN")
-   Meta.parse(code)
+   push!(code, Meta.parse("return X_$LEN"))
+   return Expr(:block, code...)
 end
 
 
 
+##
 
+##
+
+#=
 
 # Experimental AD codes
 
@@ -71,3 +83,4 @@ function rrule(y::EVAL_D, params)
    return val, adj
 end
 
+=#

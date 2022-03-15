@@ -143,3 +143,23 @@ inv_transform(t::AgnesiTransform, x::Number) = t.r0 * ( (1/x-1)/t.a )^(1/t.p)
 (t::AgnesiTransform)(x) = transform(t, x)
 
 
+# ------------------------------------------------------
+# generic ad codes for distance transforms 
+
+import ACE: rrule_evaluate, frule_evaluate 
+
+ACE.evaluate(trans::DistanceTransform, r::Number) = transform(trans, r)
+
+function frule_evaluate(trans::DistanceTransform, r::Number, ∇r)
+   # ∇r will be an abstract array or an abstract array encapsulated in a state
+   dt = transform_d(trans, r)
+   return dt * ∇r
+end
+
+function rrule_evaluate(trans::DistanceTransform, r::Number, w::AbstractVector)
+   # here, the typical scenario is that evaluate -> B(T(r)), so the rrule 
+   # should give ∑_n u_n d/dr B_n(T(r)) = ∑_n u_n B_n'(T(r)) * T'(r)
+   # i.e. w = ∑_n u_n B_n'(T(r)) which is scalar-like. 
+   return transform_d(trans, r) * w
+end
+

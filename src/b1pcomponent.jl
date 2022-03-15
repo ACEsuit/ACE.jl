@@ -260,9 +260,12 @@ end
 # evaluate_dd(basis::B1pComponent, X::AbstractState)
 
 
-#=   *** TODO 
 # -------------- AD codes 
 
+
+
+
+#=   *** TODO 
 import ChainRules: rrule, ZeroTangent, NoTangent
 
 function _rrule_evaluate(basis::Scal1pBasis, X::AbstractState, 
