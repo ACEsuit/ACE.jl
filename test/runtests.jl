@@ -8,7 +8,8 @@ using ACE, Test, Printf, LinearAlgebra, StaticArrays, BenchmarkTools
     #   basic polynomial basis building blocks
     @testset "Ylm" begin include("polynomials/test_ylm.jl") end
     @testset "TestWigner" begin include("testing/test_wigner.jl") end
-    @testset "Transforms" begin include("polynomials/test_transforms.jl") end
+    @testset "Transforms" begin include("transforms/test_transforms.jl") end
+    @testset "Lambdas" begin include("transforms/test_lambdas.jl") end
     @testset "OrthogonalPolynomials" begin include("polynomials/test_orthpolys.jl") end
 
     # --------------------------------------------

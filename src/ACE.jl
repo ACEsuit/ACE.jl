@@ -74,6 +74,7 @@ normsq(x) = dot(x, x)
 
 
 include("auxiliary.jl")
+include("transforms/lambdas.jl")
 
 include("pools.jl")
 include("ad.jl")

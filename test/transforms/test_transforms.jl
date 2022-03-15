@@ -156,24 +156,3 @@ for pin in 0:2, pcut in 2:4
    xx = 0.5 .+ rand(100) * 2.5 
    print_tf(@test(evaluate.(Ref(B), xx) ≈ evaluate.(Ref(B_new), xx)))
 end
-
-##
-# for ntest = 1:30 
-# xx = 0.5 + rand() * 2.5 
-# print_tf(@test all(evaluate.(Ref(B), xx) .≈ evaluate.(Ref(B_new), xx)))
-#    end
-# end
-
-
-##
-#       """
-# `discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)`
-
-# A utility function to generate a jacobi-type basis
-# """
-# function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 3 * N)
-#    tl, tr = minmax(tin, tcut)
-#    dt = (tr - tl) / Nquad
-#    tdf = range(tl + dt/2, tr - dt/2, length=Nquad)
-#    return OrthPolyBasis(N, pcut, tcut, pin, tin, tdf)
-# end

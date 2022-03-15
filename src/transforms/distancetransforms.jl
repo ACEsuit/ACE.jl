@@ -146,9 +146,9 @@ inv_transform(t::AgnesiTransform, x::Number) = t.r0 * ( (1/x-1)/t.a )^(1/t.p)
 # ------------------------------------------------------
 # generic ad codes for distance transforms 
 
-import ACE: rrule_evaluate, frule_evaluate 
+import ACE: rrule_evaluate, frule_evaluate, evaluate 
 
-ACE.evaluate(trans::DistanceTransform, r::Number) = transform(trans, r)
+evaluate(trans::DistanceTransform, r::Number) = transform(trans, r)
 
 function frule_evaluate(trans::DistanceTransform, r::Number, ∇r)
    # ∇r will be an abstract array or an abstract array encapsulated in a state
