@@ -1,10 +1,19 @@
 
 
-using ACE, Test, StaticArrays, BenchmarkTools
+using ACE, Test, StaticArrays, BenchmarkTools, ACEbase 
 using ACE: read_dict, write_dict, 
            evaluate, evaluate_d, evaluate_dd
 using ACEbase.Testing: println_slim, print_tf, fdtest
 using LinearAlgebra: norm 
+
+# TODO: move this into ACEbase.Testing 
+function save_load(obj)
+   D = write_dict(obj)
+   tmpf = tempname() * ".json"
+   ACEbase.FIO.save_dict(tmpf, D)
+   D2 = ACEbase.FIO.load_dict(tmpf)
+   return read_dict(load_dict(tmpf))
+end
 
 ##
 
@@ -19,8 +28,7 @@ for (f, g, rndx) in ff
    show(f);  println() 
    xx = [ rndx() for _=1:30 ]
    println_slim( @test f.(xx) ≈ g.(xx) )
-   D = write_dict(f)
-   f1 = read_dict(D)
+   f1 = save_load(f)
    println_slim( @test f.(xx) ≈ f1.(xx) )
    for ntest = 1:30 
       x = rand() * 3 
@@ -40,5 +48,3 @@ f1 = read_dict(write_dict(f))
 print("      Raw Anon:"); @btime $g(($rndx)())
 print(" LegibleLambda:"); @btime evaluate($f, ($rndx)())
 print("  Deserialized:"); @btime evaluate($f1, ($rndx)())
-
-##
