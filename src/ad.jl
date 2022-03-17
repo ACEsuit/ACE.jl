@@ -10,7 +10,7 @@ end
 
 
 # construct a chain recursively 
-chain(F1, F2, args...) = chain( chain(F1, F2), chain(args...) )
+chain(F1, F2, args...) = chain( chain(F1, F2), args... )
 # for most arguments, just form a tuple 
 chain(F1, F2) = SChain( (F1, F2) )
 # if one of them is a chain already, then combine into a single long chain 

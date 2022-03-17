@@ -4,8 +4,6 @@ import LegibleLambdas
 import LegibleLambdas: @λ, LegibleLambda
 import ACE: read_dict, write_dict 
 
-import Serialization: serialize, deserialize
-
 
 export @λ
 

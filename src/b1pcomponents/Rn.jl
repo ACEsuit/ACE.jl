@@ -19,3 +19,12 @@ function Rn1pBasis(R::Union{TransformedPolys, OrthPolyBasis};
    spec = [ NamedTuple{(nsym,)}((i,)) for i = 1:length(R) ]
    return B1pComponent(R, GetNorm{varsym}(), spec, label)
 end
+
+
+function Rn1pBasis_new(R::OrthPolyBasis; 
+                       trans = IdTransform(), 
+                       varsym = :rr, nsym = :n, label="R$nsym", )
+   spec = [ NamedTuple{(nsym,)}((i,)) for i = 1:length(R) ]
+   R1 = chain((@λ rr -> norm(rr)), trans, R)
+   return B1pComponent(R1, GetVal{varsym}(), spec, label)
+end

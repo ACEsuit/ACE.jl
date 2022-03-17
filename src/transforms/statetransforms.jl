@@ -7,6 +7,11 @@ import ACE: evaluate, evaluate_d, evaluate_dd, valtype, gradtype,
 
 using LinearAlgebra: I, norm  
 
+# TODO: 
+#   - retire GetNorm
+#   - polish GetVal, and expand to GetVali 
+#   - polish the frule and rrule implementations 
+
 # ------------------ Some different ways to produce an argument 
 
 abstract type StateTransform end 

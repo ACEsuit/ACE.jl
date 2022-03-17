@@ -147,6 +147,8 @@ println()
 
 ## TESTING COMPATIBILITY WITH NEW IMPLEMENTATION 
 
+
+
 @info("Testing compatibility of chain vs TransformedPoly")
 for pin in 0:2, pcut in 2:4
    # @info("pin = $pin, pcut=$pcut, random transform")
@@ -155,4 +157,20 @@ for pin in 0:2, pcut in 2:4
    B_new = ACE.chain(trans, B.J)
    xx = 0.5 .+ rand(100) * 2.5 
    print_tf(@test(evaluate.(Ref(B), xx) ≈ evaluate.(Ref(B_new), xx)))
+end
+
+# what it should really do: 
+# B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
+# J = B.J 
+ref_eval(J, X) = evaluate(J, evaluate(trans, norm(X.rr)))
+
+for pin in 0:2, pcut in 2:4
+   trans = PolyTransform(1+rand(), 1+rand())
+   B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
+   Rn = ACE.Rn1pBasis(B)
+   Rn_new = ACE.Rn1pBasis_new(B.J; trans=trans)
+   for ntest = 1:20 
+      X = State( rr = ACE.rand_sphere() * ACE.rand_radial(B) )
+      print_tf(@test evaluate(Rn, X) ≈ ref_eval(B.J, X))
+   end
 end
