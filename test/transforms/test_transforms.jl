@@ -164,8 +164,11 @@ end
 # J = B.J 
 
 for pin in 0:2, pcut in 2:4
-   trans = PolyTransform(1+rand(), 1+rand())
-   trans2 = ACE.analytic("r -> ((1 + $(trans.r0)) / (1 + r))^($(trans.p))")
+   pin = 0; pcut = 2
+   r0 = 1+rand()
+   p = 1+rand()
+   trans = PolyTransform(p, r0)
+   trans2 = ACE.λ("r -> ((1 + $r0) / (1 + r))^($p)")
    B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
    Rn_new = ACE.Rn1pBasis_new(B.J; trans=trans2)
    ref_eval(J, X) = evaluate(J, evaluate(trans, norm(X.rr)))

@@ -401,7 +401,7 @@ _cutoff(J::TransformedPolys) = J.ru
 
 function evaluate!(P, J::TransformedPolys, r; maxn=length(J))
    # transform coordinates
-   t = transform(J.trans, r)
+   t = evaluate(J.trans, r)
    # evaluate the actual polynomials
    evaluate!(P, J.J, t; maxn=maxn)
    return P
@@ -446,11 +446,11 @@ a `TransformPolys` basis with an inner polynomial basis of `OrthPolys` type.
 * `Nquad = 1000` : number of quadrature points
 """
 function transformed_jacobi(maxdeg::Integer,
-                            trans::DistanceTransform,
+                            trans,
                             rcut::Real, rin::Real = 0.0;
                             kwargs...)
-   J =  discrete_jacobi(maxdeg; tcut = transform(trans, rcut),
-                                tin = transform(trans, rin),
+   J =  discrete_jacobi(maxdeg; tcut = evaluate(trans, rcut),
+                                tin = evaluate(trans, rin),
                                 pcut = 2,
                                 kwargs...)
    return TransformedPolys(J, trans, rin, rcut)
