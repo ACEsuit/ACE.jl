@@ -6,20 +6,36 @@ struct ArrayCache{T}
    mats::Vector{Stack{Matrix{T}}}
 end
 
-struct CachedArray{N, T}
+struct CachedArray{N, T} <: AbstractArray{T, N} 
    A::Array{T, N}
    pool::ArrayCache{T}
 end
 
 
+release!(A::Any) = nothing 
 release!(pA::CachedArray) = release!(pA.pool, pA)
 
-release!(A::AbstractArray) = nothing 
-release!(A::Number) = nothing 
+using Base: @propagate_inbounds
 
-Base.getindex(pA::CachedArray, args...) = getindex(pA.A, args...)
+@propagate_inbounds function Base.getindex(pA::CachedArray, I...) 
+   @boundscheck checkbounds(pA.A, I...)
+   @inbounds pA.A[I...]
+end
 
-Base.setindex!(pA::CachedArray, args...) = Base.setindex!(pA.A, args...)
+@propagate_inbounds function Base.setindex!(pA::CachedArray, val, I...)
+   @boundscheck checkbounds(pA.A, I...)
+   @inbounds pA.A[I...] = val
+end
+
+# Base.getindex(pA::CachedArray, args...) = getindex(pA.A, args...)
+
+# Base.setindex!(pA::CachedArray, args...) = setindex!(pA.A, args...)
+
+Base.length(pA::CachedArray) = length(pA.A)
+
+Base.eltype(pA::CachedArray) = eltype(pA.A)
+
+Base.size(pA::CachedArray, args...) = size(pA.A, args...)
 
 
 function ArrayCache{T}() where {T} 

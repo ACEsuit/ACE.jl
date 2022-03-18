@@ -5,6 +5,23 @@ import Base:   ==
 import ACE: read_dict, write_dict, 
        transform, transform_d, transform_dd, inv_transform
 
+
+# ----- new transforms implementation 
+import ACE: λ 
+
+polytransform(p, r0) = λ("r -> ((1+$r0)/(1+r))^$p")
+
+idtransform() = λ("r -> r")
+
+morsetransform(lambda, r0) = λ("r -> exp(- $lambda * (r / $r0))")
+
+agnesitransform(r0, p=2, a=(p-1)/(p+1)) = λ("r -> 1 / (1 + $a * (r / $r0)^$p)")
+
+
+
+
+# ---------
+
 """
 `DistanceTransform`  - abstract supertype for transformations from real 
 numbers to real numbers. Historically they are called DistanceTransform, 
@@ -60,6 +77,9 @@ transform_dd(t::PolyTransform, r::Number) = poly_trans_dd(t.p, t.r0, r)
 inv_transform(t::PolyTransform, x::Number) = poly_trans_inv(t.p, t.r0, x)
 
 (t::PolyTransform)(x) = transform(t, x)
+
+
+
 
 """
 `IdTransform`: Implements the distance transform `z -> z`;

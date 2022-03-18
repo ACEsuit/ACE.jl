@@ -162,15 +162,52 @@ end
 # what it should really do: 
 # B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
 # J = B.J 
-ref_eval(J, X) = evaluate(J, evaluate(trans, norm(X.rr)))
 
 for pin in 0:2, pcut in 2:4
    trans = PolyTransform(1+rand(), 1+rand())
+   trans2 = ACE.analytic("r -> ((1 + $(trans.r0)) / (1 + r))^($(trans.p))")
    B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
-   Rn = ACE.Rn1pBasis(B)
-   Rn_new = ACE.Rn1pBasis_new(B.J; trans=trans)
+   Rn_new = ACE.Rn1pBasis_new(B.J; trans=trans2)
+   ref_eval(J, X) = evaluate(J, evaluate(trans, norm(X.rr)))
    for ntest = 1:20 
       X = State( rr = ACE.rand_sphere() * ACE.rand_radial(B) )
-      print_tf(@test evaluate(Rn, X) ≈ ref_eval(B.J, X))
+      print_tf(@test evaluate(Rn_new, X) ≈ ref_eval(B.J, X))
    end
+end
+
+## confirm equivalence of a few transforms 
+
+for ntest = 1:30 
+   p = rand(1:4)
+   r0 = 1 + rand() 
+   T1 = ACE.PolyTransform(p, r0)
+   T2 = ACE.Transforms.polytransform(p, r0)
+   r = 0.5 + 3 * rand() 
+   print_tf(@test T1(r) ≈ T2(r))
+end
+
+for ntest = 1:30 
+   T1 = ACE.IdTransform()
+   T2 = ACE.Transforms.idtransform()
+   r = 0.5 + 3 * rand() 
+   print_tf(@test evaluate(T1, r) ≈ T2(r))
+end
+
+for ntest = 1:30 
+   lambda = 1 + 2 * rand()
+   r0 = 1 + rand() 
+   T1 = ACE.MorseTransform(lambda, r0)
+   T2 = ACE.Transforms.morsetransform(lambda, r0)
+   r = 0.5 + 3 * rand() 
+   print_tf(@test T1(r) ≈ T2(r))
+end
+
+for ntest = 1:30 
+   r0 = 1 + rand() 
+   p = rand(2:4)
+   a = (p-1)/(p+2) + rand() - 0.5 
+   T1 = ACE.AgnesiTransform(r0, p, a)
+   T2 = ACE.Transforms.agnesitransform(r0, p, a)
+   r = 0.5 + 3 * rand() 
+   print_tf(@test T1(r) ≈ T2(r))
 end

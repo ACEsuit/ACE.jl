@@ -5,9 +5,11 @@ import LegibleLambdas: @λ, LegibleLambda
 import ACE: read_dict, write_dict 
 
 
-export @λ
+λ(str::String) = λ(Meta.parse(str))
 
+λ(ex::Expr) = LegibleLambda(ex, eval(ex))
 
+analytic(str::String) = legiblelambda(str)
 
 evaluate(t::LegibleLambda, x) = t.λ(x)
 
@@ -30,7 +32,4 @@ function write_dict(t::LegibleLambda)
       )
 end
 
-function read_dict(::Val{:ACE_LegibleLambda}, D::Dict) 
-   ex = Meta.parse(D["ex"])
-   return LegibleLambda(ex, eval(ex))
-end
+read_dict(::Val{:ACE_LegibleLambda}, D::Dict) = λ(D["ex"])

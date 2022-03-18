@@ -7,13 +7,16 @@ using LinearAlgebra: dot
 
 import ACE
 
-import ACE: evaluate!, evaluate_d!, evaluate_ed!, 
+import ACE: evaluate, 
+            evaluate!, evaluate_d!, evaluate_ed!, 
             read_dict, write_dict,
             transform, transform_d, transform_dd, inv_transform,
             ACEBasis, ScalarACEBasis, 
             valtype, gradtype, 
-            acquire!, release!, acquire_B!, release_B!, 
-            acquire_dB!, release_dB!
+            acquire!, release!, 
+            acquire_B!, release_B!, 
+            acquire_dB!, release_dB!, 
+            ArrayCache
 
 using ACE.Transforms: DistanceTransform
 
@@ -97,14 +100,14 @@ struct OrthPolyBasis{T} <: ScalarACEBasis
    tdf::Vector{T}
    ww::Vector{T}
    # -------------
-   B_pool::VectorPool{T}
-   dB_pool::VectorPool{T}
+   B_pool::ArrayCache{T}
+   dB_pool::ArrayCache{T}
 end
 
 OrthPolyBasis(pl, tl::T, pr, tr::T, A::Vector{T}, B::Vector{T}, C::Vector{T}, 
               tdf, ww) where {T} = 
    OrthPolyBasis(pl, tl, pr, tr, A, B, C, tdf, ww, 
-                 VectorPool{T}(), VectorPool{T}())                 
+                 ArrayCache{T}(), ArrayCache{T}())
 
 valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
       promote_type(T, TX)
@@ -221,6 +224,13 @@ function OrthPolyBasis(N::Integer,
    end
 
    return OrthPolyBasis(pl, tl, pr, tr, A, B, C, collect(tdf), collect(ww))
+end
+
+
+function evaluate(J::OrthPolyBasis, t) 
+   cA = acquire!(J.B_pool, length(J))
+   evaluate!(cA.A, J, t)
+   return cA 
 end
 
 

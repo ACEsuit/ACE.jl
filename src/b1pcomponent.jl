@@ -218,10 +218,10 @@ release_dB!(basis::B1pComponent, args...) = nothing
 #                          this is basically an interface for the inner basis
 
 evaluate(basis::B1pComponent, X::AbstractState) = 
-      evaluate!(acquire_B!(basis, X), basis, X)
+         evaluate(basis.basis, evaluate(basis.fval, X))
 
-evaluate!(B, basis::B1pComponent, X::AbstractState) =
-      evaluate!(B, basis.basis, evaluate(basis.fval, X))
+# evaluate!(B, basis::B1pComponent, X::AbstractState) =
+#       evaluate!(B, basis.basis, )
 
 
 
