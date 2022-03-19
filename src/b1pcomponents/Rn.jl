@@ -14,16 +14,9 @@ scalar but gradient is vectorial.
 The default symbols are `:rr` for the state and `:n` for the index of the 
 basis function. 
 """
-function Rn1pBasis(R::Union{TransformedPolys, OrthPolyBasis};
-                   varsym = :rr, nsym = :n, label="R$nsym", ) 
-   spec = [ NamedTuple{(nsym,)}((i,)) for i = 1:length(R) ]
-   return B1pComponent(R, GetNorm{varsym}(), spec, label)
-end
-
-
-function Rn1pBasis_new(R::OrthPolyBasis; 
-                       trans = IdTransform(), 
-                       varsym = :rr, nsym = :n, label="R$nsym", )
+function Rn1pBasis(  R::OrthPolyBasis; 
+                     trans = IdTransform(), 
+                     varsym = :rr, nsym = :n, label="R$nsym", )
    spec = [ NamedTuple{(nsym,)}((i,)) for i = 1:length(R) ]
    R1 = chain((@λ rr -> norm(rr)), trans, R)
    return B1pComponent(R1, GetVal{varsym}(), spec, label)

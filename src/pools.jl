@@ -37,6 +37,8 @@ Base.eltype(pA::CachedArray) = eltype(pA.A)
 
 Base.size(pA::CachedArray, args...) = size(pA.A, args...)
 
+Base.parent(pA::CachedArray) = pA.A
+
 
 function ArrayCache{T}() where {T} 
    nt = nthreads()
@@ -44,6 +46,11 @@ function ArrayCache{T}() where {T}
    mats = [ Stack{Matrix{T}}() for _=1:nt ]
    return ArrayCache(vecs, mats)
 end
+
+acquire!(c::ArrayCache{T}, len::Integer, ::Type{T}) where {T} = acquire!(c, len)
+
+acquire!(c::ArrayCache, len::Integer, S::DataType) =
+         Vector{S}(undef, len)
 
 function acquire!(c::ArrayCache{T}, len::Integer) where {T}
    stack = c.vecs[threadid()]

@@ -34,6 +34,30 @@ Base.length(c::SChain) = length(c.F)
 end
 
 
+# function evaluate_ed(chain::SChain{TT}, X) where {TT} 
+#    LEN = length(chain.F)
+#    Xi = evaluate(chain.F[1], X)
+#    dFi = evaluate_d(chain.F[1], X)
+#    for i = 2:LEN
+#       Xi, dFi = frule_evaluate(chain.F[i], Xi, dFi)
+#    end
+#    return Xi, dFi 
+# end
+
+function evaluate_ed(chain::SChain{TT}, X) where {TT} 
+   LEN = length(chain.F)
+   Xi = evaluate(chain.F[1], X)
+   dFi = evaluate_d(chain.F[1], X)
+   for i = 2:LEN
+      dFi = evaluate_d(chain.F[i], Xi)
+      Xi = evaluate(chain.F[i], Xi)
+   end
+   return Xi, dFi 
+end
+
+
+##
+nothing 
 
 ##
 

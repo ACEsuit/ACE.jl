@@ -4,7 +4,8 @@
 
 ##
 using ACE, Printf, Test, LinearAlgebra
-using ACE: evaluate, evaluate_d, read_dict, write_dict
+using ACE: evaluate, evaluate_d, evaluate_ed, read_dict, write_dict
+using ACEbase.Testing: print_tf, println_slim, fdtest 
 using ACE.Testing
 
 verbose = false
@@ -12,12 +13,67 @@ maxdeg = 10
 
 ##
 
+@info("Testing PolyTransforms")
+for p = 2:4
+   r0 = 1+rand()
+   trans = polytransform(p, r0)
+   rr = 1 .+ rand(100)
+   val = ((1 + r0) ./ (1 .+ rr)).^p
+   println_slim(@test(trans.(rr) ≈ val))
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0]); println()
+end
+println()
+
+##
+
+@info("Testing Morse Transform")
+for lam = 1.0:3.0
+   r0 = 1+rand()
+   trans = morsetransform(lam, r0)
+   rr = 1 .+ rand(100)
+   val = exp.( - lam * (rr/r0 .- 1))
+   println_slim(@test(trans.(rr) ≈ val))
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0]); println() 
+end
+println()
+
+##
+
+@info("Testing Agnesi Transform")
+for p = 2:4
+   r0 = 1+rand()
+   trans = agnesitransform(r0, p)
+   a = (p-1)/(p+1)
+   rr = 1 .+ rand(100)
+   val = 1 ./ (1 .+ a * (rr / r0).^p)
+   println_slim(@test(trans.(rr) ≈ val))
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0]); println()
+end
+println()
+
+
+##
+
+trans = polytransform(1+rand(), 1+rand())
+B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = 2)
+r = 2+rand()
+V1 = evaluate(B1, r)
+dV = evaluate_d(B1, r)
+# V1 ≈ V2
+u = rand(length(V1))
+F = t -> dot( evaluate(B1, t), u ) 
+dF = t -> dot( evaluate_ed(B1, t)[2], u)
+fdtest(F, dF, 1.235)
+
+
+##
+
 @info("Testing Transforms and TransformedPolys")
 for p in 2:4
    @info("p = $p, random transform")
-   trans = PolyTransform(1+rand(), 1+rand())
+   trans = polytransform(1+rand(), 1+rand())
    @info("      test (de-)dictionisation")
-   @test all(ACE.Testing.test_fio(trans))
+   # @test all(ACE.Testing.test_fio(trans))
    B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = p)
    B2 = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = p, pcut = p)
    for B in [B1, B2]
@@ -41,35 +97,7 @@ for p in 2:4
 end
 
 ##
-
-@info("Testing PolyTransforms")
-for p = 2:4
-   r0 = 1+rand()
-   trans = PolyTransform(p, r0)
-   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
-end
-println()
-
-##
-
-@info("Testing Morse Transform")
-for lam = 1.0:3.0
-   r0 = 1+rand()
-   trans = ACE.Transforms.MorseTransform(lam, r0)
-   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
-end
-println()
-
-##
-
-@info("Testing Agnesi Transform")
-for p = 2:4
-   r0 = 1+rand()
-   trans = ACE.Transforms.AgnesiTransform(r0, p)
-   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
-end
-println()
-
+nothing 
 ##
 
 # TODO: This could be moved to some Tools package
@@ -143,74 +171,3 @@ println()
 
 #---
 
-
-
-## TESTING COMPATIBILITY WITH NEW IMPLEMENTATION 
-
-
-
-@info("Testing compatibility of chain vs TransformedPoly")
-for pin in 0:2, pcut in 2:4
-   # @info("pin = $pin, pcut=$pcut, random transform")
-   trans = PolyTransform(1+rand(), 1+rand())
-   B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
-   B_new = ACE.chain(trans, B.J)
-   xx = 0.5 .+ rand(100) * 2.5 
-   print_tf(@test(evaluate.(Ref(B), xx) ≈ evaluate.(Ref(B_new), xx)))
-end
-
-# what it should really do: 
-# B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
-# J = B.J 
-
-for pin in 0:2, pcut in 2:4
-   pin = 0; pcut = 2
-   r0 = 1+rand()
-   p = 1+rand()
-   trans = PolyTransform(p, r0)
-   trans2 = ACE.λ("r -> ((1 + $r0) / (1 + r))^($p)")
-   B = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = pin, pcut = pcut)
-   Rn_new = ACE.Rn1pBasis_new(B.J; trans=trans2)
-   ref_eval(J, X) = evaluate(J, evaluate(trans, norm(X.rr)))
-   for ntest = 1:20 
-      X = State( rr = ACE.rand_sphere() * ACE.rand_radial(B) )
-      print_tf(@test evaluate(Rn_new, X) ≈ ref_eval(B.J, X))
-   end
-end
-
-## confirm equivalence of a few transforms 
-
-for ntest = 1:30 
-   p = rand(1:4)
-   r0 = 1 + rand() 
-   T1 = ACE.PolyTransform(p, r0)
-   T2 = ACE.Transforms.polytransform(p, r0)
-   r = 0.5 + 3 * rand() 
-   print_tf(@test T1(r) ≈ T2(r))
-end
-
-for ntest = 1:30 
-   T1 = ACE.IdTransform()
-   T2 = ACE.Transforms.idtransform()
-   r = 0.5 + 3 * rand() 
-   print_tf(@test evaluate(T1, r) ≈ T2(r))
-end
-
-for ntest = 1:30 
-   lambda = 1 + 2 * rand()
-   r0 = 1 + rand() 
-   T1 = ACE.MorseTransform(lambda, r0)
-   T2 = ACE.Transforms.morsetransform(lambda, r0)
-   r = 0.5 + 3 * rand() 
-   print_tf(@test T1(r) ≈ T2(r))
-end
-
-for ntest = 1:30 
-   r0 = 1 + rand() 
-   p = rand(2:4)
-   a = (p-1)/(p+2) + rand() - 0.5 
-   T1 = ACE.AgnesiTransform(r0, p, a)
-   T2 = ACE.Transforms.agnesitransform(r0, p, a)
-   r = 0.5 + 3 * rand() 
-   print_tf(@test T1(r) ≈ T2(r))
-end

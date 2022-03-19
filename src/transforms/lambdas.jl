@@ -33,3 +33,8 @@ function write_dict(t::LegibleLambda)
 end
 
 read_dict(::Val{:ACE_LegibleLambda}, D::Dict) = λ(D["ex"])
+
+import Base: ==
+
+==(F1::LegibleLambda, F2::LegibleLambda) = (F1.ex == F2.ex)
+

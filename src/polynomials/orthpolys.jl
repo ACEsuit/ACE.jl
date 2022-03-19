@@ -7,30 +7,24 @@ using LinearAlgebra: dot
 
 import ACE
 
-import ACE: evaluate, 
-            evaluate!, evaluate_d!, evaluate_ed!, 
+import ACE: evaluate!, evaluate_d!, evaluate_ed!, 
+            evaluate, evaluate_d, evaluate_ed, evaluate_dd, 
+            _rrule_evaluate, _rrule_evaluate_d,
             read_dict, write_dict,
-            transform, transform_d, transform_dd, inv_transform,
+            inv_transform,
             ACEBasis, ScalarACEBasis, 
             valtype, gradtype, 
             acquire!, release!, 
-            acquire_B!, release_B!, 
-            acquire_dB!, release_dB!, 
-            ArrayCache
-
-using ACE.Transforms: DistanceTransform
-
-import ACE: VectorPool
+            ArrayCache, 
+            chain 
 
 using ForwardDiff: derivative
 
 import Base: ==
 
 import ChainRules: rrule, NoTangent
-import ACE: evaluate, evaluate_d, evaluate_dd, 
-            _rrule_evaluate, _rrule_evaluate_d
 
-export transformed_jacobi
+export orthpolys, transformed_jacobi, discrete_jacobi
 
 
 # these inner functions have been timed to run at 
@@ -228,9 +222,22 @@ end
 
 
 function evaluate(J::OrthPolyBasis, t) 
-   cA = acquire!(J.B_pool, length(J))
-   evaluate!(cA.A, J, t)
+   cA = acquire!(J.B_pool, length(J), valtype(J, t))
+   evaluate!(parent(cA), J, t)
    return cA 
+end
+
+function evaluate_d(J::OrthPolyBasis, t) 
+   cA = acquire!(J.B_pool, length(J), gradtype(J, t))
+   evaluate_d!(parent(cA), J, t)
+   return cA 
+end
+
+function ACE.evaluate_ed(J::OrthPolyBasis, t) 
+   cA = acquire!(J.B_pool, length(J), valtype(J, t))
+   cdA = acquire!(J.B_pool, length(J), gradtype(J, t))
+   evaluate_ed!(parent(cA), parent(cdA), J, t)
+   return cA, cdA 
 end
 
 
@@ -332,104 +339,6 @@ function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 3 * N)
 end
 
 
-# ----------------------------------------------------------------
-#   Transformed Polynomials Basis
-# ----------------------------------------------------------------
-
-
-struct TransformedPolys{T, TT, TJ} <: ScalarACEBasis
-   J::TJ          # the actual basis
-   trans::TT      # coordinate transform
-   rl::T          # lower bound r
-   ru::T          # upper bound r = rcut
-   B_pool::VectorPool{T}
-   dB_pool::VectorPool{T}
-end
-
-function TransformedPolys(J::OrthPolyBasis{T}, trans, rl, ru)  where {T}
-   B_pool = VectorPool{T}()
-   return TransformedPolys(J, trans, T(rl), T(ru), B_pool, B_pool)
-end
-
-TransformedPolys(maxN::Integer, P::TransformedPolys) = 
-         TransformedPolys(OrthPolyBasis(maxN, P.J), P.trans, P.rl, P.ru)
-
-         
-==(J1::TransformedPolys, J2::TransformedPolys) = (
-   (J1.J == J2.J) &&
-   (J1.trans == J2.trans) &&
-   (J1.rl == J2.rl) &&
-   (J1.ru == J2.ru) )
-
-TransformedPolys(J, trans, rl, ru) =
-   TransformedPolys(J, trans, rl, ru)
-
-write_dict(J::TransformedPolys) = Dict(
-      "__id__" => "ACE_TransformedPolys",
-      "J" => write_dict(J.J),
-      "rl" => J.rl,
-      "ru" => J.ru,
-      "trans" => write_dict(J.trans)
-   )
-
-TransformedPolys(D::Dict) =
-   TransformedPolys(
-      read_dict(D["J"]),
-      read_dict(D["trans"]),
-      D["rl"],
-      D["ru"]
-   )
-
-read_dict(::Val{:ACE_TransformedPolys}, D::Dict) = TransformedPolys(D)
-
-Base.length(J::TransformedPolys) = length(J.J)
-
-valtype(P::TransformedPolys, args...) = valtype(P.J, args...)
-
-gradtype(P::TransformedPolys, args...) = gradtype(P.J, args...)
-
-ACE.degree(P::TransformedPolys, n::Integer) = n
-
-function ACE.rand_radial(J::TransformedPolys)
-   t = ACE.rand_radial(J.J)
-   return inv_transform(J.trans, t)
-end
-
-# This is NOT the JuLIP or ACEatoms cutoff, but an internal function 
-_cutoff(J::TransformedPolys) = J.ru
-
-
-function evaluate!(P, J::TransformedPolys, r; maxn=length(J))
-   # transform coordinates
-   t = evaluate(J.trans, r)
-   # evaluate the actual polynomials
-   evaluate!(P, J.J, t; maxn=maxn)
-   return P
-end
-
-
-function evaluate_d!(dP, J::TransformedPolys, r; maxn=length(J))
-   # transform coordinates
-   t = transform(J.trans, r)
-   dt = transform_d(J.trans, r)
-   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-   evaluate_d!(dP, J.J, t, maxn=maxn)
-   @. dP *= dt
-   return dP
-end
-
-function evaluate_ed!(P, dP, J::TransformedPolys, r; maxn=length(J))
-   # transform coordinates
-   t = transform(J.trans, r)
-   dt = transform_d(J.trans, r)
-   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
-   evaluate_ed!(P, dP, J.J, t, maxn=maxn)
-   @. dP *= dt
-   return P, dP
-end
-
-evaluate_dd(J::TransformedPolys, r) = derivative(r -> evaluate_d(J, r), r)
-
 
 """
 `transformed_jacobi(maxdeg, trans, rcut, rin = 0.0; kwargs...)` : construct
@@ -453,11 +362,24 @@ function transformed_jacobi(maxdeg::Integer,
                                 tin = evaluate(trans, rin),
                                 pcut = 2,
                                 kwargs...)
-   return TransformedPolys(J, trans, rin, rcut)
+   return chain(trans, J)
 end
 
 
+
+
 # ------------- AD
+
+import ACE: frule_evaluate
+
+function ACE.frule_evaluate(J::OrthPolyBasis, t::Number, dt::Number) 
+   len = length(J)
+   B = acquire!(J.B_pool, len)
+   dB = acquire!(J.B_pool, len)
+   evaluate_ed!(B, dB, J, t)
+   dB[:] .*= dt 
+   return B, dB
+end
 
 
 
@@ -492,19 +414,6 @@ function _rrule_evaluate(J::OrthPolyBasis, t::Number,
    end
 
    return a
-end
-
-function _rrule_evaluate(P::TransformedPolys, x::Number, 
-                         dx::AbstractVector{<: Number})
-   t = transform(P.trans, x)
-   dt = transform_d(P.trans, x)
-   a = _rrule_evaluate(P.J, t, dx)
-   return a * dt
-end
-
-function rrule(::typeof(evaluate), P::TransformedPolys, x::Number)
-   B = evaluate(P, x)
-   return B, dx -> (NoTangent(), NoTangent(), _rrule_evaluate(P, x, dx))
 end
 
 
@@ -543,22 +452,5 @@ function _rrule_evaluate_d(J::OrthPolyBasis, t::Number,
    end
    return a
 end 
-
-
-function _rrule_evaluate_d(P::TransformedPolys, x::Number, 
-                           w::AbstractVector{<: Number})
-   t = transform(P.trans, x)
-   dt = transform_d(P.trans, x)
-   ddt = transform_dd(P.trans, x)
-   return _rrule_evaluate_d(P.J, t, w, dt, ddt)
-end
-
-
-function rrule(::typeof(evaluate_d), P::TransformedPolys, x::Number)
-   dB = evaluate_d(P, x)
-   return dB, dx -> (NoTangent(), NoTangent(), _rrule_evaluate_d(P, x, dx))
-end
-
-
 
 end
