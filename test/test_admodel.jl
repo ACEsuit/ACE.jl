@@ -1,11 +1,10 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
-using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val 
+using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val, grad_config
 using StaticArrays
 using ChainRules
 import ChainRulesCore: rrule, NoTangent, ZeroTangent
 using Zygote
-using Zygote: @thunk 
 using Printf, LinearAlgebra #for the fdtestMatrix
 
 ##
@@ -30,6 +29,7 @@ c_m = rand(SVector{np,Float64}, length(basis))
 model = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 
 evaluate(model, cfg)
+grad_config(model, cfg)
 
 ##
 
@@ -37,15 +37,17 @@ evaluate(model, cfg)
 c = reinterpret(SVector{2, Float64}, θ)
 ACE.set_params!(model, c)
 
-# FS = props -> sum([ 0.77^n * (1 + props[n]^2)^(1/n) for n = 1:length(props) ] )
 FS = props -> sum( (1 .+ val.(props).^2).^0.5 )
 fsmodel = cfg -> FS(evaluate(model, cfg))
 
 # @info("check the model and gradient evaluate ok")
 fsmodel(cfg)
+
+# Zygote.refresh()
 g = Zygote.gradient(fsmodel, cfg)[1]
 
-##
+
+## checks rrule_evaluate
 
 @info("Check the AD Forces for an FS-like model")
 Us = randn(SVector{3, Float64}, length(cfg))
@@ -53,9 +55,9 @@ F = t -> fsmodel(ACEConfig(cfg.Xs + t * Us))
 dF = t -> sum( dot(u, g.rr) for (u,g) in zip(Us, Zygote.gradient(fsmodel, cfg)[1]) )
 dF(0.0)
 
-ACEbase.Testing.fdtest(F, dF, 0.0, verbose=true)
+println(@test all( ACEbase.Testing.fdtest(F, dF, 0.0, verbose=true) ))
 
-##
+## checks adjoint w.r.t. params
 
 mat2svecs(M::AbstractArray{T}) where {T} =   
       collect(reinterpret(SVector{np, T}, M))
@@ -71,12 +73,16 @@ grad_fsmodelp = θ -> (
          Zygote.gradient(model -> FS(evaluate(model, cfg)), model)[1] |> svecs2vec )
 grad_fsmodelp(θ)
 
-ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
+println(@test all( ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ) ))
 
 
-## THIS TEST CURRENTLY THROWS A SEGFAULT
+## second-order adjoint (cfg and params)
+# THIS TEST CURRENTLY THROWS A SEGFAULT
+# ... but only if run as part of the test set and not 
+#     when run manually ?!?!?
 
-# @info("Check AD for a second partial derivative w.r.t cfg and params")
+@info("Check AD for a second partial derivative w.r.t cfg and params")
+
 
 # fsmodel1 = (model, cfg) -> FS(evaluate(model, cfg))
 # grad_fsmodel1 = (model, cfg) -> Zygote.gradient(x -> fsmodel1(model, x), cfg)[1]
@@ -87,6 +93,7 @@ ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
 
 # # check that loss and gradient evaluate ok 
 # loss1(model)
+# Zygote.refresh()
 # g = Zygote.gradient(loss1, model)[1]  # SEGFAULT IN THIS LINE ON J1.7!!!
 
 # # wrappers to take derivatives w.r.t. the vector or parameters
@@ -94,8 +101,10 @@ ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ)
 #             loss1(model) )
 
 # dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
-#             Zygote.gradient(loss1, model)[1] |> svecs2vec  )
+#              Zygote.gradient(loss1, model)[1] |> svecs2vec  )
 
 # F1(θ)
 # dF1(θ)
-# ACEbase.Testing.fdtest(F1, dF1, θ; verbose=true)
+# println(@test all( ACEbase.Testing.fdtest(F1, dF1, θ; verbose=true) )) 
+@warn("test removed due to unexplained segfaults only occuring in testing runs")
+

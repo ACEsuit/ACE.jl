@@ -114,6 +114,9 @@ level(b::Onepb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
 level(bb::Prodb, Bsel::SimpleSparseBasis, basis::OneParticleBasis) =
       length(bb) == 0 ? 0 : sum( degree(b, basis) for b in bb )
 
+maxlevel(bb, Bsel::SimpleSparseBasis, args...) = 
+      Bsel.maxlevel
+
 maxlevel(Bsel::SimpleSparseBasis, args...) = 
       Bsel.maxlevel
 
@@ -125,7 +128,7 @@ maxorder(Bsel::SimpleSparseBasis, args...) =
 """
 `AbstractSparseBasis`: Super-type for sparse basis selection as sub-levelsets of
 the levelset function `level` and corresponding (possibly order-dependent)
-levels provided in the dictionary `maxdegs::Dict{Any, Float64}`. In the default
+levels provided in the dictionary `maxlevels::Dict{Any, Float64}`. In the default
 implementation the levelset function and the degree function are identical.
 
 Basis functions are selected in two steps. First, "admissible" basis 
@@ -180,15 +183,15 @@ function SparseBasis(;  maxorder::Integer = nothing,
                         p = 1, 
                         weight = Dict(:l => 1.0, :n => 1.0), 
                         default_maxdeg = nothing, 
-                        maxdegs = nothing ) 
-   if (default_maxdeg != nothing) && (maxdegs == nothing )
+                        maxlevels = nothing ) 
+   if (default_maxdeg != nothing) && (maxlevels == nothing )
       return SparseBasis(maxorder, weight, 
                          Dict{Any, Float64}("default" => default_maxdeg), 
                          p)
-   elseif (default_maxdeg == nothing) && (maxdegs != nothing)
-      SparseBasis(maxorder, weight, maxdegs, p)
+   elseif (default_maxdeg == nothing) && (maxlevels != nothing)
+      SparseBasis(maxorder, weight, maxlevels, p)
    else
-      error("""Either both or neither optional arguments `maxdegs` and 
+      error("""Either both or neither optional arguments `maxlevels` and 
                `default_maxdeg` were provided. To avoid ambiguity ensure that 
                exactly one of these arguments is provided.""")
    end
@@ -279,10 +282,78 @@ cat_weighted_degree(bb::Prodb, Bsel::CategorySparseBasis, basis::OneParticleBasi
       )
 
 
-# --------------------------- 
+      # --------------------------- 
 # Some useful filters 
 
 struct NoConstant 
 end
 
 (::NoConstant)(bb) = (length(bb) > 0)
+
+
+"""
+`EvenL`: selects all basis functions where the sum `L = sum_i l_i` of the degrees `l_i` of the spherical harmonics is even.   
+"""
+struct EvenL
+      isym::Symbol
+      categories
+end
+  
+function (f::ACE.EvenL)(bb) 
+      if isempty(bb)
+            return true
+      else
+            suml(s) = sum( [getl(O3(), b) for b in bb if getproperty(b, f.isym) == s])
+            return all(iseven(suml(s)) for s in f.categories)
+      end
+end
+
+
+#=
+"""
+`DownsetIntersection`: Basis selector whose set of admissible specifications is the intersection 
+of the sets of admissible specifications of the sparse basis selectors contained in the lists `DBsels` and `ABsels`.
+"""
+struct DownsetIntersection <: DownsetBasisSelector
+   DBsels::Vector{DownsetBasisSelector}
+   ABsels::Vector{AbstractBasisSelector}
+   maxorder::Int
+end
+
+maxlevel(Bsel::DownsetIntersection, basis::OneParticleBasis) = 1.0 
+maxorder(Bsel::DownsetIntersection) = Bsel.maxorder
+
+
+function Base.intersect(Bsel1::DownsetIntersection,Bsel2::DownsetBasisSelector)
+      return DownsetIntersection(vcat(Bsel1.DBsels,[Bsel2]), BSel1.ABsels, minimum([maxorder(Bsel1),maxorder(Bsel2)]))
+end
+
+function Base.intersect(Bsel1::DownsetIntersection,Bsel2::AbstractBasisSelector)
+      return DownsetIntersection(Bsel1.DBsels, vcat(Bsel1.ABsels,[Bsel2]), minimum([maxorder(Bsel1),maxorder(Bsel2)]))
+end
+
+function Base.intersect(Bsel1::DownsetBasisSelector, Bsel2::AbstractBasisSelector) 
+      Bsel = DownsetIntersection(Vector{DownsetBasisSelector}([]), Vector{AbstractBasisSelector}([]), Inf)
+      return intersect(intersect(Bsel, Bsel1), Bsel2)
+end
+
+Base.intersect(Bsel1::AbstractBasisSelector, Bsel2::DownsetBasisSelector)  = intersect(Bsel2,Bsel1)
+Base.intersect(Bsel1::AbstractBasisSelector, Bsel2::DownsetIntersection) = intersect(Bsel2,Bsel1)
+
+function Base.intersect(Bsel1::DownsetIntersection, Bsel2::DownsetIntersection)
+      Bsel = deepcopy(Bsel1)
+      for b in Bsel2
+            Bsel = intersect(Bsel, b)
+      end
+      return Bsel
+end
+
+function level(bb, Bsel::DownsetIntersection, basis::OneParticleBasis) 
+   return maximum([ level(bb, bsel, basis)/maxlevel(bsel,basis) for bsel in Bsel.DBsels])
+   #return maximum([ level(bb, bsel, basis)/maxlevel(length(bb),bsel,basis) for bsel in Bsel.DBsels])
+end
+
+function filter(bb, Bsel::DownsetIntersection, basis::OneParticleBasis) 
+   return all([filter(bb, bsel, basis) for bsel in Bsel.DBsels]) && all([filter(bb, bsel, basis) for bsel in Bsel.ABsels])
+end
+=#

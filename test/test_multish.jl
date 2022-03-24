@@ -34,8 +34,8 @@ println_slim(@test all( ACE.indexrange(B1p_r)[symr] == ACE.indexrange(B1p)[sym]
 basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 basis_r = SymmetricBasis(φ, B1p_r, O3(:lr, :mr), Bsel)
 
-ru = basis.pibasis.basis1p.bases[1].R.ru 
-rl = basis.pibasis.basis1p.bases[1].R.rl 
+ru = basis.pibasis.basis1p["Rn"].basis.ru 
+rl = basis.pibasis.basis1p["Rn"].basis.rl 
 
 for ntest = 1:30 
    local cfg 

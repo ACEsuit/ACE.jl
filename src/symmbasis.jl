@@ -30,21 +30,21 @@ If the PIbasis is already available, this directly constructs a
 resulting SymmetricBasis; all possible permutation-invariant basis functions 
 will be symmetrised and then reduced to a basis (rather than spanning set)
 """
-struct SymmetricBasis{BOP, PROP, SYM, REAL, VPROP} <: ACEBasis
-   pibasis::PIBasis{BOP}
+mutable struct SymmetricBasis{PIB, PROP, SYM, REAL, VPROP} <: ACEBasis
+   pibasis::PIB
    A2Bmap::SparseMatrixCSC{PROP, Int}
    symgrp::SYM
    real::REAL
    B_pool::VectorPool{VPROP}
 end
 
-Base.length(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
+Base.length(basis::SymmetricBasis{PIB, PROP}) where {PIB, PROP} =
       size(basis.A2Bmap, 1)
 
-valtype(basis::SymmetricBasis{BOP, PROP}) where {BOP, PROP} = basis.real(PROP)
+valtype(basis::SymmetricBasis{PIB, PROP}) where {PIB, PROP} = basis.real(PROP)
 
 # TODO: this is not nice, there should be proper promotion 
-valtype(basis::SymmetricBasis{BOP, PROP}, X::AbstractState) where {BOP, PROP} = 
+valtype(basis::SymmetricBasis{PIB, PROP}, X::AbstractState) where {PIB, PROP} = 
       valtype(basis)
 
 gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
@@ -65,7 +65,7 @@ end
         (B1.A2Bmap == B2.A2Bmap) && 
         (B1.real == B2.real) )
 
-write_dict(B::SymmetricBasis{BOP, PROP}) where {BOP, PROP} =
+write_dict(B::SymmetricBasis{PIB, PROP}) where {PIB, PROP} =
       Dict( "__id__" => "ACE_SymmetricBasis",
             "pibasis" => write_dict(B.pibasis),
             "A2Bmap" => write_dict(B.A2Bmap),
@@ -157,8 +157,10 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis,
             # add the same PI basis function several times, but in the call to
             # `sparse` the values will just be added.
             if !haskey(invAAspec, bcol_ordered)
+               @warn("bcol_ordered not in AA-spec")
                @show bcol_ordered
-               @show degree(bcol_ordered, NaiveTotalDegree(), pibasis.basis1p)
+               # @show degree(bcol_ordered, NaiveTotalDegree(), pibasis.basis1p)
+               error("bcol_ordered not in AA-spec")
             end
             idxAA = invAAspec[bcol_ordered]
             push!(Irow, idxB)
@@ -170,7 +172,11 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis,
    # TODO: filter and throw out everything that hasn't been used!!
    # create CSC: [   triplet    ]  nrows   ncols
    A2Bmap = sparse(Irow, Jcol, vals, idxB, length(AAspec))
-   return SymmetricBasis(pibasis, A2Bmap, symgrp, _real)
+   basis = SymmetricBasis(pibasis, A2Bmap, symgrp, _real)
+   # clean up a bit, i.e. remove AA basis functions that we don't need
+   # to evaluate the symmetric basis
+   clean_pibasis!(basis)
+   return basis
 end
 
 function SymmetricBasis(pibasis, A2Bmap, symgrp, _real) 
@@ -202,6 +208,49 @@ function get_spec(basis::SymmetricBasis)
       push!(spec_B, get_sym_spec(basis.symgrp, spec_AA[iAA]))
    end
    return identity.(spec_B)
+end
+
+
+# ---------------- sparsification and cleanup codes 
+
+"""
+`sparsify!(basis::SymmetricBasis; del = ..., keep = ...)`
+
+sparsify the symmetric basis by either specifyin which basis functions to 
+keep or which ones to delete.
+"""
+function sparsify!(basis::SymmetricBasis; 
+                  del::Union{Nothing, AbstractVector{<: Integer}} = nothing, 
+                  keep::Union{Nothing, AbstractVector{<: Integer}} = nothing)
+   if ( (del == nothing && keep == nothing ) || 
+        (del != nothing && keep != nothing ) )
+      error("sparsify!: must provide either del or keep kwarg but not both")
+   end 
+   if del != nothing 
+      keep = setdiff(1:length(basis), del)
+   end
+   basis.A2Bmap = basis.A2Bmap[keep, :]
+   clean_pibasis!(basis; atol = 0.0)
+end
+
+# this is also used for Filtering the AA basis if there are zero-rows in the A2B map
+
+"""
+Remove elements of the AA basis, when there are zero-rows in the A2B map, i.e.
+when some AA basis elements are simply not required to evaluate the 
+symmetric basis. 
+"""
+function clean_pibasis!(basis::SymmetricBasis; atol = 0.0)
+   # get the zero-columns 
+   Inz = sort( findall(x -> x > atol, sum(norm, basis.A2Bmap, dims=1)[:]) )
+   if length(Inz) < size(basis.A2Bmap, 2)
+      # remove those columns from the A2Bmap 
+      sparsify!(basis.pibasis, Inz)
+      # remove those columns from the A2Bmap 
+      basis.A2Bmap = basis.A2Bmap[:, Inz] 
+   end
+   clean_1pbasis!(basis.pibasis)
+   return basis
 end
 
 # ---------------- A modified sparse matmul
@@ -252,66 +301,16 @@ function genmul!(C, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B, mulop)
    return C
 end
 
-#dispatching for SVectors and B being a list of matrices rather than a single matrix
-#the function below does the same, but return identical coppies for all properties
-#only works on things that are parameter independent. 
-function adjointgenmul!(C::AbstractVector{<: SVector}, A::AbstractSparseMatrixCSC, B, mulop)
-   for prop in 1:length(C[1]) #TODO is it worth checking everything?
-      size(A, 2) == size(B[prop], 1) || throw(DimensionMismatch())
-      size(B[prop], 2) == size(C, 2) || throw(DimensionMismatch())
-   end
-   size(A, 1) == size(C, 1) || throw(DimensionMismatch())
-   nzv = nonzeros(A)
-   rv = rowvals(A)
-   fill!(C, zero(eltype(C)))
-   for k in 1:size(C, 2)
-      for prop in 1:length(C[1]) #we add this loop over properties
-         @inbounds for col in 1:size(A, 2)
-            αxj = B[prop][col,k]
-            for j in nzrange(A, col)
-                  mop = mulop(nzv[j], αxj) #find the value we need
-                  zerotmp = zeros(length(C[1])) #make an array of zeros
-                  zerotmp[prop] = 1 #put a one only in the current position
-                  tmp = SVector{length(C[1])}(zerotmp) #make it an SVector
-                  C[rv[j], k] += mop * tmp #this should add only on the current property
-            end
-         end
-      end
-   end
-   return C
-end
-
-#TODO, is this worth having? 
-#dispatching for SVectors
-#here we simply pass a coppy or a fill() or the mulop to every
-#property on the SVector.
-function genmul!(C::AbstractVector{<: SVector}, A::AbstractSparseMatrixCSC, B, mulop)
-   size(A, 2) == size(B, 1) || throw(DimensionMismatch())
-   size(A, 1) == size(C, 1) || throw(DimensionMismatch())
-   size(B, 2) == size(C, 2) || throw(DimensionMismatch())
-   nzv = nonzeros(A)
-   rv = rowvals(A)
-   fill!(C, zero(eltype(C)))
-   for k in 1:size(C, 2)
-       @inbounds for col in 1:size(A, 2)
-           αxj = B[col,k]
-           for j in nzrange(A, col)
-               mop = mulop(nzv[j], αxj)
-               C[rv[j], k] += mop * ones(SVector{length(C[1]),eltype(mop)})
-           end
-       end
-   end
-   return C
-end
 
 # ---------------- Evaluation code
 
-
+# NOTE: Nasty and completely not understood type instability here 
 function evaluate!(B, basis::SymmetricBasis, cfg::AbstractConfiguration)
-   # compute AA
    AA = acquire_B!(basis.pibasis, cfg)
    evaluate!(AA, basis.pibasis, cfg)
-   return evaluate!(B, basis, AA)
+   evaluate!(B, basis, AA)
+   release_B!(basis.pibasis, AA)
+   return B 
 end
 
 # this function allows us to attach multiple symmetric bases to a single

@@ -100,48 +100,50 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
       NaiveEvaluator()
 
 
+# ------- return types
 
+import ACEbase: valtype, gradtype 
+
+valtype(model::LinearACEModel, cfg) = 
+      _valtype(model.basis, cfg, model.c)
+
+function _valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector) 
+   # promote_type(eltype(c), valtype(basis, cfg))
+   VTB = valtype(basis, cfg)
+   return typeof(c[1] * zero(VTB))
+end
+      
+
+gradtype(model::LinearACEModel, cfg, dp = _One()) = 
+      _gradtype(model.basis, cfg, model.c, dp)
+
+# g[ix] += m.c[ib] * dB[ib, ix]
+function _gradtype(basis, cfg, c, dp = _One())
+   # promote_type( eltype(c), gradtype(basis, cfg) )
+   GTB = gradtype(basis, cfg)
+   return typeof( contract(dp, c[1] * zero(GTB))  )
+end
+
+function gradparamtype(model::LinearACEModel, cfg) 
+   v = zero(valtype(model, cfg))
+   return typeof( v * model.c[1]' )
+end
 
 # ------- managing temporaries 
 
 # TODO: consider providing a generic object pool / array pool 
 # acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration) = 
-   acquire_grad_config!(m, cfg, m.c)
 
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: SVector}) =
-   Matrix{gradtype(m.basis, cfg)}(undef, length(cfg), length(m.c[1]))
-
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
-   Vector{gradtype(m.basis, cfg)}(undef, length(cfg))
+acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, dp = _One()) = 
+      Vector{gradtype(m, cfg, dp)}(undef, length(cfg))
 
 release_grad_config!(m::LinearACEModel, g) = nothing 
-      #release!(m.grad_cfg_pool, g)
 
-acquire_grad_params!(m::LinearACEModel, args...) = 
-      acquire_B!(m.basis, args...)
+acquire_grad_params!(m::LinearACEModel, cfg) = 
+      Vector{gradparamtype(m, cfg)}(undef, length(m.c))
 
-release_grad_params!(m::LinearACEModel, g) = 
-      release_B!(m.basis, g)
+release_grad_params!(m::LinearACEModel, g) = nothing 
 
-
-# TODO: somehow it feels wrong that valtype should depend on c. Here the reason 
-#       is that c lives in the model and not in the basis. We should trace
-#       back how this occured and if possible remove these two methods. 
-#       maybe they can be replaced with "private" methods, then I'd be more 
-#       comfortable. 
-function ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: SVector})
-   return SVector{length(c[1]), valtype(basis, zero(eltype(cfg)))}
-end
-
-#calls the regular valtype
-ACEbase.valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector{<: Number}) =
-      valtype(basis, cfg)
-
-ACEbase.valtype(model::LinearACEModel, cfg) = 
-      ACEbase.valtype(model.basis, cfg, model.c)
-
-# ACE.gradtype(model, cfg)      
 
 # ------------------- dispatching on the evaluators 
 
@@ -155,10 +157,20 @@ grad_config!(g, m::LinearACEModel, X::AbstractConfiguration) =
       grad_config!(g, m, m.evaluator, X) 
 
 grad_params(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      grad_params!(acquire_grad_params!(m, cfg, m.c), m, cfg)
+      grad_params!(acquire_grad_params!(m, cfg), m, cfg)
 
 function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
-   evaluate!(g, m.basis, cfg) 
+
+   _gi(Bi, c::Number) = Bi 
+   _gi(Bi, c::SVector{N, <: Number}) where {N} = 
+         SMatrix{N,N}( Diagonal([ Bi for _=1:N ]) )
+
+   B = acquire_B!(m.basis, cfg)
+   evaluate!(B, m.basis, cfg) 
+   for i = 1:length(g) 
+      g[i] = _gi(B[i], m.c[1])
+   end
+   release_B!(m.basis, B)
    return g 
 end
 
@@ -217,26 +229,14 @@ end
 
 # ------------------- an rrule for evaluating a linear model
 
+import ChainRules 
 import ChainRules: rrule, @thunk, NoTangent, @not_implemented
 
-# NOTE: there are lots of rrule implementations in `evaluate.jl`, which seem
-#       to be doing the same thing and are clashing with this. So for now we 
-#       just get something up and running but we must return to this and 
-#       clean up all those different versions of the same thing. 
 
-# adj_evaluate is defined as a separate function so we can rrule it again (see below)
-# should be called _rrule_evaluate, but that would clash with the 
-# crap that's in evaluator.jl -> needs some cleanup 
-function adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
-   # TODO: not clear this is correct. Shouldn't the derivative of 
-   # a property w.r.t. a parameter be a property again? e.g. 
-   # if φ is an invariant, then ∂_p φ is again an invariant?
-   __val(a::AbstractProperty) = ACE.val(a)
-   __val(a::AbstractVector) = ACE.val.(a)
+function _adj_evaluate(dp, model::ACE.LinearACEModel, cfg)
    gp_ = ACE.grad_params(model, cfg)
-   gp = [ __val(a) .* dp for a in gp_ ]
-   g_cfg = ACE._rrule_evaluate(dp, model, cfg) # rrule for cfg only...
-   return NoTangent(), gp, g_cfg
+   gp = [ a * dp for a in gp_ ]
+   return NoTangent(), gp, _rrule_evaluate(dp, model, cfg)
 end
 
 # this is monkey-patching the rotten rrule inside of ACE
@@ -244,18 +244,19 @@ end
 #     evaluating more than we need.
 function ChainRules.rrule(::typeof(evaluate), model::ACE.LinearACEModel, cfg::AbstractConfiguration)
    return evaluate(model, cfg), 
-          dp -> adj_evaluate(dp, model, cfg)
+          dp -> _adj_evaluate(dp, model, cfg)
 end
+
 
 # rrule for the rrule ... this enables mixed second derivatives of the form 
 #   D^2 * / D p Dcfg. 
 # the code double-checks that indeed only those derivatives are needed! 
-function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel, cfg)
+function ChainRules.rrule(::typeof(_adj_evaluate), dp, model::ACE.LinearACEModel, cfg)
    # adj = (_, g_params, g_cfg) 
    #   D(dq[1] * _ + dq[2] * g_params + dq[3] * g_cfg) / D(dp, model, cfg)
    #       0 = ^^^    ^^^ = 0
    #   D( dq[3] * g_cfg ) / D( dq, model, cfg )
-   #  but for simplicity ignore Dcfg for now (not yet implemented)
+   # but for simplicity ignore Dcfg for now (not yet implemented)
    # recall also that g_cfg = D (dp * eval(model, cfg)) / D cfg
    # dp should be a vector of the same length as the number of properties
 
@@ -271,11 +272,10 @@ function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel,
       # adj_n = ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk
       # dp ⋅ adj = ∑_n ∑_j dq_j ⋅ ∂B_k / ∂r_j * θ_nk * dp_n 
       # grad[k] = ∑_j dq_j ⋅ ∂B_k / ∂r_j
-      grad = ACE.adjoint_EVAL_D1(model, model.evaluator, cfg, dq)
+      grad = ACE.adjoint_EVAL_D(model, model.evaluator, cfg, dq)
 
       # gradient w.r.t parameters: 
-      sdp = SVector(dp...)
-      grad_params = grad .* Ref(sdp)
+      grad_params = [ gg * dp for gg in grad ]
 
       # gradient w.r.t. dp    # TODO: remove the |> Vector? 
       grad_dp = sum( model.c[k] * grad[k] for k = 1:length(grad) )  |> Vector 
@@ -283,5 +283,5 @@ function ChainRules.rrule(::typeof(adj_evaluate), dp, model::ACE.LinearACEModel,
       return NoTangent(), grad_dp, grad_params, NoTangent()
    end
 
-   return adj_evaluate(dp, model, cfg), _second_adj
+   return _adj_evaluate(dp, model, cfg), _second_adj
 end

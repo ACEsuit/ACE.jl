@@ -21,7 +21,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
 nX = 10
-Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
 cfg = ACEConfig(Xs)
 
 ##
@@ -57,7 +57,7 @@ tol = 1e-10
 @info("check for rotation, permutation and inversion equivariance")
 for ntest = 1:30
    local Xs, BB
-   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+   Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
    BB = evaluate(basis, ACEConfig(Xs))
    Q = rand([-1,1]) * ACE.Random.rand_rot()
    Xs_rot = Ref(Q) .* shuffle(Xs)
@@ -80,7 +80,7 @@ println()
 # @info("check for rotation, permutation and inversion equivariance")
 # for ntest = 1:30
 #    local Xs, BB
-#    Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+#    Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
 #    BB = evaluate(basis, ACEConfig(Xs))
 #    Q = rand([-1,1]) * ACE.Random.rand_rot()
 #    Xs_rot = Ref(Q) .* shuffle(Xs)

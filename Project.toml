@@ -1,6 +1,6 @@
 name = "ACE"
 uuid = "3e8ccfd2-c8b0-11ea-32f1-f3a5990fd77a"
-version = "0.12.25"
+version = "0.12.34"
 
 [deps]
 ACEbase = "14bae519-eb20-449c-a949-9c58ed33163e"
@@ -23,7 +23,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 [compat]
 ACEbase = "0.2.4"
 NamedTupleTools = "0.13"
-julia = "1.6, 1.7"
+julia = "1.7"
 
 [extras]
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"

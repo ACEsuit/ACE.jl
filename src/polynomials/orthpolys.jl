@@ -7,7 +7,8 @@ using LinearAlgebra: dot
 
 import ACE
 
-import ACE: evaluate!, evaluate_d!, read_dict, write_dict,
+import ACE: evaluate!, evaluate_d!, evaluate_ed!, 
+            read_dict, write_dict,
             transform, transform_d, transform_dd, inv_transform,
             ACEBasis, ScalarACEBasis, 
             valtype, gradtype, 
@@ -105,7 +106,6 @@ OrthPolyBasis(pl, tl::T, pr, tr::T, A::Vector{T}, B::Vector{T}, C::Vector{T},
    OrthPolyBasis(pl, tl, pr, tr, A, B, C, tdf, ww, 
                  VectorPool{T}(), VectorPool{T}())                 
 
-
 valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
       promote_type(T, TX)
 
@@ -118,6 +118,10 @@ Base.length(P::OrthPolyBasis) = length(P.A)
       all( getfield(J1, sym) == getfield(J2, sym)
            for sym in (:pr, :tr, :pl, :tl, :A, :B, :C) )
 
+Base.show(io::IO, P::OrthPolyBasis) = 
+         print(io, "OrthPolyBasis(pl = $(P.pl), tl = $(P.tl), pr = $(P.pr), tr = $(P.tr), ...)")
+
+
 write_dict(J::OrthPolyBasis{T}) where {T} = Dict(
       "__id__" => "ACE_OrthPolyBasis",
       "T" => write_dict(T),
@@ -127,14 +131,16 @@ write_dict(J::OrthPolyBasis{T}) where {T} = Dict(
       "tl" => J.tl,
       "A" => J.A,
       "B" => J.B,
-      "C" => J.C
+      "C" => J.C, 
+      "tdf" => J.tdf, 
+      "ww" => J.ww
    )
 
 OrthPolyBasis(D::Dict, T=read_dict(D["T"])) =
    OrthPolyBasis(
       D["pl"], D["tl"], D["pr"], D["tr"],
       Vector{T}(D["A"]), Vector{T}(D["B"]), Vector{T}(D["C"]),
-      T[], T[]
+      T.(D["tdf"]), T.(D["ww"])
    )
 
 read_dict(::Val{:ACE_OrthPolyBasis}, D::Dict) = OrthPolyBasis(D)
@@ -146,6 +152,9 @@ function ACE.rand_radial(J::OrthPolyBasis)
    @assert maximum(abs, diff(J.ww)) == 0
    return rand(J.tdf)
 end
+
+OrthPolyBasis(N::Integer, J::OrthPolyBasis) = 
+      OrthPolyBasis(N, J.pcut, J.tcut, J.pin, J.tin, J.tdf, J.ww)
 
 function OrthPolyBasis(N::Integer,
                        pcut::Integer,
@@ -167,7 +176,7 @@ function OrthPolyBasis(N::Integer,
    end
 
    if minimum(tdf) < tl || maximum(tdf) > tr
-      @warn("OrthoPolyBasis: t range outside [tl, tr]")
+      @warn("OrthPolyBasis: t range outside [tl, tr]")
    end
 
    A = zeros(T, N)
@@ -252,6 +261,27 @@ function evaluate_d!(dP, J::OrthPolyBasis, t; maxn=length(J))
    return dP
 end
 
+function evaluate_ed!(P, dP, J::OrthPolyBasis, t; maxn=length(J))
+   @assert maxn <= length(P)
+   @assert maxn <= length(dP)
+
+   P[1] = evaluate_P1(J, t)
+   dP[1] = J.A[1] * _fcut_d_(J.pl, J.tl, J.pr, J.tr, t)
+   if maxn == 1; return P, dP; end
+
+   α = J.A[2] * t + J.B[2]
+   P[2] = α * P[1]
+   dP[2] = α * dP[1] + J.A[2] * P[1]
+   if maxn == 2; return P, dP; end
+
+   @inbounds for n = 3:maxn
+      α = J.A[n] * t + J.B[n]
+      P[n] = α * P[n-1] + J.C[n] * P[n-2]
+      dP[n] = α * dP[n-1] + J.C[n] * dP[n-2] + J.A[n] * P[n-1]
+   end
+   return dP
+end
+
 
 # INCORRECT???
 # function evaluate_dd!(ddP, J::OrthPolyBasis, t; maxn=length(J))
@@ -284,7 +314,7 @@ end
 
 A utility function to generate a jacobi-type basis
 """
-function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)
+function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 3 * N)
    tl, tr = minmax(tin, tcut)
    dt = (tr - tl) / Nquad
    tdf = range(tl + dt/2, tr - dt/2, length=Nquad)
@@ -311,6 +341,10 @@ function TransformedPolys(J::OrthPolyBasis{T}, trans, rl, ru)  where {T}
    return TransformedPolys(J, trans, T(rl), T(ru), B_pool, B_pool)
 end
 
+TransformedPolys(maxN::Integer, P::TransformedPolys) = 
+         TransformedPolys(OrthPolyBasis(maxN, P.J), P.trans, P.rl, P.ru)
+
+         
 ==(J1::TransformedPolys, J2::TransformedPolys) = (
    (J1.J == J2.J) &&
    (J1.trans == J2.trans) &&
@@ -344,6 +378,7 @@ valtype(P::TransformedPolys, args...) = valtype(P.J, args...)
 
 gradtype(P::TransformedPolys, args...) = gradtype(P.J, args...)
 
+ACE.degree(P::TransformedPolys, n::Integer) = n
 
 function ACE.rand_radial(J::TransformedPolys)
    t = ACE.rand_radial(J.J)
@@ -373,6 +408,15 @@ function evaluate_d!(dP, J::TransformedPolys, r; maxn=length(J))
    return dP
 end
 
+function evaluate_ed!(P, dP, J::TransformedPolys, r; maxn=length(J))
+   # transform coordinates
+   t = transform(J.trans, r)
+   dt = transform_d(J.trans, r)
+   # evaluate the actual Jacobi polynomials + derivatives w.r.t. x
+   evaluate_ed!(P, dP, J.J, t, maxn=maxn)
+   @. dP *= dt
+   return P, dP
+end
 
 evaluate_dd(J::TransformedPolys, r) = derivative(r -> evaluate_d(J, r), r)
 

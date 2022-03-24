@@ -11,7 +11,7 @@ using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis,
 using ACEbase.Testing: fdtest, println_slim 
 
 
-randconfig(B1p, nX) = ACEConfig( rand(PositionState{Float64}, B1p.bases[1], nX) )
+randconfig(B1p, nX) = ACEConfig( rand(PositionState{Float64}, B1p["Rn"].basis, nX) )
 
 ##
 
@@ -84,6 +84,7 @@ end
 
 @info("Evaluate LinearACEModel with vector")
 for _ = 1:20
+   local cfg 
    cfg = randconfig(B1p, rand(8:15))
    print_tf(@test evaluate(standard, cfg) ≈ evaluate(standard, cfg.Xs))
    print_tf(@test grad_config(standard, cfg) ≈ grad_config(standard, cfg.Xs))
@@ -104,7 +105,7 @@ basis = SymmetricBasis(φ, B1p, O3(), Bsel; isreal=true)
 @info(" test evaluation of basis vs model ")
 
 for ntest = 1:30 
-   local cfg, c  
+   local cfg, c, BB 
    cfg = randconfig(B1p, 10)
    BB = evaluate(basis, cfg)
    c = randn(length(BB)) ./ (1:length(BB)).^2

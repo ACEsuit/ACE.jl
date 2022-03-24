@@ -32,11 +32,31 @@ import Base.*
       Product1pBasis((B1, B2.bases...))
 *(B1::Product1pBasis, B2::Product1pBasis) =
       Product1pBasis((B1.bases..., B2.bases...))
+*(B1::Product1pBasis, B2::B1pComponent) =
+      Product1pBasis((B1.bases..., B2))
 
 
 _numb(b::Product1pBasis{NB}) where {NB} = NB
 
 Base.length(basis::Product1pBasis) = length(basis.indices)
+
+
+function Base.show(io::IO, basis::Product1pBasis)
+   print(io, "Product1pBasis") 
+   print(io, basis.bases)
+end
+
+Base.getindex(basis::Product1pBasis, i::Integer) = basis.bases[i] 
+
+function Base.getindex(basis::Product1pBasis, label::AbstractString)
+   inds = findall(getlabel.(basis.bases) .== label) 
+   if length(inds) == 0
+      error("label not found amongst 1p basis components")
+   elseif length(inds) > 1 
+      error("label not unique amongst 1p basis components")
+   end
+   return basis.bases[inds[1]]
+end
 
 # ------------------------- FIO CODES
 
@@ -78,18 +98,71 @@ valtype(basis::Product1pBasis, X::AbstractState) =
 # valtype(basis::Product1pBasis, cfg::AbstractConfiguration) = 
 #       promote_type( valtype.(basis.bases, Ref(first(cfg)))... )
 
-function valtype(basis::Product1pBasis, cfg::AbstractConfiguration) 
+function valtype(basis::Product1pBasis, cfg::UConfig) 
    X = zero(eltype(cfg))
    return promote_type( valtype.(basis.bases, Ref(X))... )
 end
 
-gradtype(basis::Product1pBasis, cfg::Union{AbstractConfiguration, AbstractVector}) = 
+gradtype(basis::Product1pBasis, cfg::UConfig) = 
       gradtype(basis, zero(eltype(cfg)))
 
 function gradtype(basis::Product1pBasis, X::AbstractState) 
    VALT = valtype(basis, X)
    return dstate_type(VALT, X)
 end
+
+acquire_dB!(basis::Product1pBasis, Xs::UConfig) = 
+      Matrix{gradtype(basis, Xs)}(undef, (length(basis), length(Xs)))
+
+
+function evaluate!(A, basis::Product1pBasis, X::AbstractState)
+   fill!(A, zero(eltype(A)))
+   add_into_A!(A, basis, X)
+   return A
+end
+
+function evaluate!(A, basis::Product1pBasis, cfg::UConfig)
+   fill!(A, zero(eltype(A)))
+   for X in cfg 
+      add_into_A!(A, basis, X)
+   end
+   return A
+end
+
+
+_check_args_is_sym() = true 
+_check_args_is_sym(::Symbol) = true
+
+# args... may be empty or a symbol  for partial derivatives
+function evaluate_d!(dA, basis::Product1pBasis, X::Union{AbstractState, UConfig}, 
+                     args...)
+   A = acquire_B!(basis, X)
+   evaluate_ed!(A, dA, basis, X, args...)
+   release_B!(basis, A)
+   return dA
+end
+
+# args... may be empty or a symbol  for partial derivatives
+function evaluate_ed!(A, dA, basis::OneParticleBasis,
+                     cfg::UConfig, args...)
+   @assert _check_args_is_sym(args...)
+   fill!(A, 0)
+   for (j, X) in enumerate(cfg)
+      add_into_A_dA!(A, (@view dA[:, j]), basis, X, args...)
+   end
+   return A, dA
+end
+
+# args... may be empty or a symbol for partial derivatives
+function evaluate_ed!(A, dA, basis::Product1pBasis, X::AbstractState, args...)
+   @assert _check_args_is_sym(args...)
+   fill!(A, 0)
+   add_into_A_dA!(A, dA, basis, X, args...)
+   return A, dA
+end
+
+
+
 
 import Base.Cartesian: @nexprs
 
@@ -237,8 +310,66 @@ function rand_radial(basis::Product1pBasis)
    return nothing
 end
 
+# -------------- sparsification 
+
+function sparsify!(basis1p::Product1pBasis, keep::AbstractVector{<: NamedTuple})
+   # spec, keep, new_spec will be lists of named tuples, 
+   #                    e.g. [ (n = , l = , m = ), ... ]
+   spec = get_spec(basis1p)
+   new_spec = eltype(spec)[]
+   new_inds = Vector{Int}(undef, length(spec))
+   for (ib, b) in enumerate(spec)
+      if b in keep 
+         push!(new_spec, b)
+         new_inds[ib] = length(new_spec)
+      end
+   end
+
+   # now we need to recompute the indices array, this can be easily done via 
+   # set_spec!(basis::Product1pBasis{NB}, spec), but before we do that 
+   # we should sparsify the basis components as well 
+   #  .... but it is not so clear that his is a good idea, maybe the 
+   #       1p basis components should just remain frozen???
+   #       => turn this off for now 
+   # TODO - return to this point?!?!?
+   # for bas_i in basis1p.bases 
+   #    _sparsify_component!(bas_i, new_spec)
+   # end
+
+   # finally fix the basis1pspec internally: 
+   set_spec!(basis1p, new_spec)
+
+   # return the old to new index mapping so that the pibasis can fix itself. 
+   return basis1p, new_inds
+end
 
 
+using NamedTupleTools: select 
+
+# """
+# this performs some generic work to sparsify a 1p-basis component. 
+# but the actual sparsificatin happens in the individual basis implementations 
+# """
+# function _sparsify_component!(basis1p, keep)
+#    # if basis1p has no symbols (e.g. a multiplier) then it means it must 
+#    # be a one-component basis, so there is nothing to sparsify.
+#    syms = symbols(basis1p)
+#    if isempty(syms)
+#       return basis1p
+#    end
+#    # get rid of all info we don't need 
+#    keep1 = unique( select.(keep, Ref(syms)) )
+#    # double-check that keep1 is compatible 
+#    spec = get_spec(basis1p) 
+#    @assert all(b in spec for b in keep1)
+#    # now get the basis spec and get the list of indices to keep 
+#    if length(keep1) < length(spec)
+#       # Ikeep = findall( [b in keep1 for b in spec] )
+#       # sparsify!(basis1p, Ikeep)
+#       sparsify!(basis1p, keep1)
+#    end 
+#    return basis1p 
+# end
 
 
 # --------------- AD codes

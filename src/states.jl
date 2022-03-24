@@ -26,7 +26,7 @@ struct State{NT <: NamedTuple} <: XState{NT}
 
    # if SYMS are not the same we automatically merge them
    State{NT}(t::NT1) where {NT <: NamedTuple, NT1 <: NamedTuple} = 
-         State{SYMS, TT}( merge( _x(zero(State{SYMS, TT})), t ) )
+         State( merge( _x(zero(State{NT})), t ) )
 end
 
 """
@@ -45,6 +45,9 @@ struct DState{NT <: NamedTuple} <: XState{NT}
    # if SYMS are not the same we automatically merge them
    DState{NT}(t::NT1) where {NT <: NamedTuple, NT1 <: NamedTuple} = 
          DState( merge( _x(zero(DState{NT})), t ) )
+
+   DState{NT}(dX::DState) where {NT} = DState{NT}(_x(dX))
+
 end
 
 # the two standard outward facing constructors
@@ -129,7 +132,6 @@ DState(; kwargs...) = DState(NamedTuple(kwargs))
 DState(X::TX) where {TX <: State} = 
       (dstate_type(X))( select(_x(X), _ctssyms(X)) )
 
-
       
 """
 convert a State to a corresponding DState 
@@ -156,7 +158,7 @@ _mypromrl(::Type{<: SVector{N, P}}, T::Type{<: Number}) where {N, P} =
 _mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P2} = 
       SVector{N, promote_type(P1, P2)}
 
-@generated function dstate_type(x::S, X::TX) where {S, TX <: State}
+@generated function dstate_type(x::S, X::TX) where {S, TX <: XState}
    SYMS, TT = _symstt(TX)
    icts = _findcts(TX)
    CSYMS = SYMS[icts]
@@ -167,7 +169,7 @@ _mypromrl(T::Type{<: SVector{N, P1}}, ::Type{<: SVector{N, P2}}) where {N, P1, P
    end
 end
 
-dstate_type(S::Type, X::State) = dstate_type(zero(S), X)
+dstate_type(S::Type, X::XState) = dstate_type(zero(S), X)
 
 ## ---------- explicit real/complex conversion 
 # this feels a bit like a hack but might be unavoidable; 
@@ -233,14 +235,29 @@ _ace_zero(::Union{Symbol, Type{Symbol}}) = :O
 import Base: +, -
 
 
+# for f in (:+, :-, )
+#    eval( quote 
+#       function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
+#          SYMS = _syms(TX1)
+#          @assert SYMS == _syms(TX2)
+#          vals = ntuple( i -> $f( getproperty(_x(X1), SYMS[i]), 
+#                                  getproperty(_x(X2), SYMS[i]) ), length(SYMS) )
+#          return TX1( NamedTuple{SYMS}(vals) )
+#       end
+#    end )
+# end
+
 for f in (:+, :-, )
    eval( quote 
       function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
-         SYMS = _syms(TX1)
-         @assert SYMS == _syms(TX2)
-         vals = ntuple( i -> $f( getproperty(_x(X1), SYMS[i]), 
-                                 getproperty(_x(X2), SYMS[i]) ), length(SYMS) )
-         return TX1( NamedTuple{SYMS}(vals) )
+         SYMS1 = ACE._syms(TX1)
+         @assert issubset(ACE._syms(TX2), SYMS1)
+         vals = ntuple( i -> begin 
+                  sym = SYMS1[i]
+                  v1 = getproperty(ACE._x(X1), sym)
+                  haskey(ACE._x(X2), sym) ? $f(v1, getproperty(ACE._x(X2), sym)) : v1
+               end, length(SYMS1))
+         return TX1( NamedTuple{SYMS1}(vals) )
       end
    end )
 end
@@ -254,6 +271,9 @@ end
 
 *(a::Number, X1::XState) = *(X1, a)
 
+*(aa::SVector{N, <: Number}, X1::XState) where {N} = aa .* Ref(X1)
+promote_rule(::Type{SVector{N, T}}, ::Type{TX}) where {N, T <: Number, TX <: XState} = 
+      SVector{N, promote_type(T, TX)}
 
 # unary 
 import Base: - 
@@ -275,28 +295,8 @@ import LinearAlgebra: dot
 import Base: isapprox
 
 
-"""
-This is an exported function that is crucial to ACE internals. It implements 
-the operation 
-```
-(x, y) -> ∑_i x[i] * y[i]
-```
-i.e. like `dot` but without taking conjugates. 
-"""
-contract(X1, X2) = sum(x1 * x2 for (x1, x2) in zip(X1, X2))
 
-"""
-sum of squares (without conjugation!)
-"""
-sumsq(x) = contract(x, x)
-
-"""
-norm-squared, i.e. sum xi * xi' 
-"""
-normsq(x) = dot(x, x)
-
-
-for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
+for (f, g) in ( (:dot, :sum), (:isapprox, :all) )  # (:contract, :sum), 
    eval( quote 
       function $f(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
          SYMS = _syms(TX1)
@@ -306,6 +306,22 @@ for (f, g) in ( (:dot, :sum), (:contract, :sum), (:isapprox, :all) )
       end
    end )
 end
+
+@generated function contract(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
+   SYMS = _syms(TX1)
+   @assert SYMS == _syms(TX2)
+   code = "contract(X1.$(SYMS[1]), X2.$(SYMS[1]))"
+   for sym in SYMS[2:end]
+      code *= " + contract(X1.$sym, X2.$sym)"
+   end
+   return quote 
+      $(Meta.parse(code))
+   end
+end
+
+contract(X1::Number, X2::XState) = X1 * X2 
+contract(X2::XState, X1::Number) = X1 * X2 
+
 
 import LinearAlgebra: norm 
 
@@ -379,3 +395,5 @@ function rrule(::typeof(getproperty), X::XState, sym::Symbol)
 end
 
 
+
+const UConfig = Union{ACEConfig, AbstractVector{<: AbstractState}}

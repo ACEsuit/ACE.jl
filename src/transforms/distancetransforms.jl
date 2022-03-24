@@ -1,10 +1,15 @@
 
 
-module Transforms
 
 import Base:   ==
 import ACE: read_dict, write_dict, 
        transform, transform_d, transform_dd, inv_transform
+
+"""
+`DistanceTransform`  - abstract supertype for transformations from real 
+numbers to real numbers. Historically they are called DistanceTransform, 
+but the inputs need not be positive i.e. need not be distances.
+"""
 abstract type DistanceTransform end
 
 export PolyTransform, IdTransform, MorseTransform, AgnesiTransform
@@ -77,8 +82,6 @@ read_dict(::Val{:SHIPs_IdTransform}, D::Dict) =
    read_dict(Val{:ACE_IdTransform}(), D)
 
 
-
-
 @doc raw"""
 Implements the distance transform
 ```math
@@ -140,4 +143,3 @@ inv_transform(t::AgnesiTransform, x::Number) = t.r0 * ( (1/x-1)/t.a )^(1/t.p)
 (t::AgnesiTransform)(x) = transform(t, x)
 
 
-end

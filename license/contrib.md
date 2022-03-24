@@ -1,0 +1,25 @@
+Contributions made in the following commits are licensed under the MIT Software License, cf. MIT.md. Contributors agree to their contributions to be licensed in this way by committing changes to this license file. All other contributions are licensed under ASL.
+
+Commit - Contributer (Github username)
+
+e6ba0362d5d062b67b99f4802b3ac84be0975e08 - MatthiasSachs
+8dc35260e82afbd1dbc5c69159cdd368e6d33a51 - MatthiasSachs
+75d5b6a2bec95ec56518a3298cb10899b28a5139 - MatthiasSachs
+d1fa4129fa909e2c8b04a63b5a6520f1e80fb634 - MatthiasSachs
+f81c451d346b311610b0f6de7a59635328322183 - MatthiasSachs
+c085a441fdac0b0e20832a6ae5db732cbeca62f6 - MatthiasSachs
+f445e562ef0143a09b1520fc4c8118cf1e519c41 - MatthiasSachs
+9dcc9bb3b6716f6260b1e62003506b0b4d748c88 - MatthiasSachs
+f6ea6e80ea3b2f61f0f5358a47c4a5c4e0314d5a - MatthiasSachs
+c7cdea1ed37aa3d285d028fc763b01667320b7da - MatthiasSachs
+ff7a05e2d59e428564315a3749a0acf88a3cb4f3 - MatthiasSachs
+28ac1fb496d4730ef26c4658f3c89c0b2b0ce886 - MatthiasSachs
+b035504dfaf41b8418a2d1fc04b95458eb65459e - MatthiasSachs
+48bca8371c3106d6f1d38744f3fe88efa271a8f6 - MatthiasSachs
+09918210ddeac412e81a5648fd9a8c1d7f5cf9df - MatthiasSachs
+a06a3034b7d31bc411926f9cf3811b27be889593 - MatthiasSachs
+e856741b89aa75e902eda4ef117cd66e732a99aa - MatthiasSachs
+e02dd3663751c92c00c2788d31511a54a29406ed - MatthiasSachs
+4b82aece333ef1e010f9f927f2873d5676d439ed - MatthiasSachs
+
+-- 

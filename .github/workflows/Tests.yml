@@ -27,7 +27,7 @@ jobs:
       uses: julia-actions/setup-julia@latest
       with:
         # The Julia version to download (if necessary) and use.
-        version: 1.6
+        version: 1.7
         # Display InteractiveUtils.versioninfo() after installing
         show-versioninfo: true # optional, default is false
     - run: |
