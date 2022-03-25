@@ -22,6 +22,14 @@ evaluate_d(t::LegibleLambda, x::Real) =     ForwardDiff.derivative(t.λ, x)
 evaluate_dd(t::LegibleLambda, x::Real) =     ForwardDiff.derivative(y -> evaluate_d(t, y), x)
 
 
+function frule_evaluate(t::LegibleLambda, x::Real, dx::SVector)
+      f = evaluate(t, x)
+      df = evaluate_d(t, x)
+      return f, df * dx
+end
+
+
+
 function write_dict(t::LegibleLambda) 
    buf = IOBuffer()
    show(buf, t)

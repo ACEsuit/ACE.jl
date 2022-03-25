@@ -41,6 +41,7 @@ println()
 
 @info("Testing Agnesi Transform")
 for p = 2:4
+   local a 
    r0 = 1+rand()
    trans = agnesitransform(r0, p)
    a = (p-1)/(p+1)
@@ -54,16 +55,16 @@ println()
 
 ##
 
-trans = polytransform(1+rand(), 1+rand())
-B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = 2)
-r = 2+rand()
-V1 = evaluate(B1, r)
-dV = evaluate_d(B1, r)
-# V1 ≈ V2
-u = rand(length(V1))
-F = t -> dot( evaluate(B1, t), u ) 
-dF = t -> dot( evaluate_ed(B1, t)[2], u)
-fdtest(F, dF, 1.235)
+# trans = polytransform(1+rand(), 1+rand())
+# B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = 2)
+# r = 2+rand()
+# V1 = evaluate(B1, r)
+# dV = evaluate_d(B1, r)
+# # V1 ≈ V2
+# u = rand(length(V1))
+# F = t -> dot( evaluate(B1, t), u ) 
+# dF = t -> dot( evaluate_ed(B1, t)[2], u)
+# fdtest(F, dF, 1.235)
 
 
 ##
@@ -80,24 +81,16 @@ for p in 2:4
       B == B1 && @info("basis = 1s")
       B == B2 && @info("basis = 2s")
       for r in [3 * rand(10); [3.0]]
-         P = evaluate(B, r)
-         dP = evaluate_d(B, r)
-         errs = []
-         verbose && @printf("     h    |     error  \n")
-         for p = 2:10
-            local h = 0.1^p
-            dPh = (evaluate(B, r+h) - P) / h
-            push!(errs, norm(dPh - dP, Inf))
-            verbose && @printf(" %.2e | %2e \n", h, errs[end])
-         end
-         print_tf(@test (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10) )
+         u = rand(length(evaluate(B, r)))
+         F = t -> dot( evaluate(B, t), u ) 
+         dF = t -> dot( evaluate_ed(B, t)[2], u)
+         print_tf(@test all( fdtest(F, dF, r; verbose=false) ))
       end
       println()
    end
 end
 
-##
-nothing 
+
 ##
 
 # TODO: This could be moved to some Tools package

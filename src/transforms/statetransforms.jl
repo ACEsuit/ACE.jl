@@ -49,6 +49,12 @@ grad_type_dP(TDP, ::GetVal{VSYM}, X) where {VSYM} =
       typeof(DState( NamedTuple{(VSYM,)}( (zero(TDP),) ) ))
 
 
+function rrule_evaluate(dP, ::GetVal{VSYM}, X) where {VSYM}
+   x = getproperty(X, VSYM)
+   return [ DState( NamedTuple{(VSYM,)}( ( dP[n], ) ) )
+            for n = 1:length(dP) ]
+end
+      
 # TODO - this is incomplete for now 
 # struct GetVali{VSYM, IND} <: StaticGet end 
 # getval(X, ::GetVali{VSYM, IND}) where {VSYM, IND} = getproperty(X, VSYM)[IND]

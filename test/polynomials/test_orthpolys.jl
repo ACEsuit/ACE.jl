@@ -17,6 +17,7 @@ using ACEbase.Testing: print_tf
 @info("de-dictionisation")
 
 for ntest = 1:10
+   local N, Nquad, tdf, ww, Jd 
    N = 8
    Nquad = 1000
    tdf = rand(1000)

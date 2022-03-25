@@ -33,33 +33,54 @@ Base.length(c::SChain) = length(c.F)
    return Expr(:block, code...)
 end
 
-
-# function evaluate_ed(chain::SChain{TT}, X) where {TT} 
-#    LEN = length(chain.F)
-#    Xi = evaluate(chain.F[1], X)
-#    dFi = evaluate_d(chain.F[1], X)
-#    for i = 2:LEN
-#       Xi, dFi = frule_evaluate(chain.F[i], Xi, dFi)
-#    end
-#    return Xi, dFi 
-# end
+# TODO: 
+# - replace with an frule and then wrap that into an evaluate_ed 
+# - generated function to make this fast 
+# - implement the rrule 
 
 function evaluate_ed(chain::SChain{TT}, X) where {TT} 
    LEN = length(chain.F)
    Xi = evaluate(chain.F[1], X)
    dFi = evaluate_d(chain.F[1], X)
    for i = 2:LEN
-      dFi = evaluate_d(chain.F[i], Xi)
-      Xi = evaluate(chain.F[i], Xi)
+      Xi, dFi = frule_evaluate(chain.F[i], Xi, dFi)
    end
    return Xi, dFi 
 end
 
 
-##
-nothing 
+evaluate_d(chain::SChain, X) = evaluate_ed(chain, X)[2]
 
-##
+
+# TODO: This still needs sorting out ... 
+#       maybe we can no kill this? 
+
+valtype(chain::SChain) = valtype(chain.F[end])
+
+valtype(chain::SChain, x) = valtype(chain)
+
+gradtype(chain::SChain) = gradtype(chain.F[end])
+
+# function gradtype(chain::SChain, x) 
+#    LEN = length(chain.F)
+#    Ti = gradtype(chain.F[1], x)
+
+# end
+
+## 
+
+import Base: == 
+
+==(ch1::SChain, ch2::SChain) = 
+      all( F1==F2 for (F1, F2) in zip(ch1.F, ch2.F) )
+
+write_dict(chain::SChain) = Dict(
+            "__id__" => "ACE_SChain", 
+            "F" => write_dict.(chain.F)
+         )
+
+read_dict(::Val{:ACE_SChain}, D::Dict) = 
+         SChain(tuple( read_dict.(D["F"])... ))
 
 ##
 

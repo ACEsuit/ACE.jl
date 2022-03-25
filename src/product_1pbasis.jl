@@ -170,15 +170,14 @@ import Base.Cartesian: @nexprs
    quote
       @nexprs $NB i -> begin 
          bas_i = basis.bases[i]
-         B_i = acquire_B!(bas_i, X)
-         evaluate!(B_i, bas_i, X)
+         B_i = evaluate(bas_i, X)
       end 
       for (iA, ϕ) in enumerate(basis.indices)
          t = one(eltype(A))
          @nexprs $NB i -> (t *= B_i[ϕ[i]])
          A[iA] += t
       end
-      @nexprs $NB i -> release_B!(basis.bases[i], B_i)
+      @nexprs $NB i -> release!(B_i)
       return nothing
    end
 end

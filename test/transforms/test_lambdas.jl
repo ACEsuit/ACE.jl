@@ -5,6 +5,7 @@ using ACE: read_dict, write_dict,
            evaluate, evaluate_d, evaluate_dd
 using ACEbase.Testing: println_slim, print_tf, fdtest
 using LinearAlgebra: norm 
+using LegibleLambdas
 
 # TODO: move this into ACEbase.Testing 
 function save_load(obj)
@@ -48,3 +49,11 @@ f1 = read_dict(write_dict(f))
 print("      Raw Anon:"); @btime $g(($rndx)())
 print(" LegibleLambda:"); @btime evaluate($f, ($rndx)())
 print("  Deserialized:"); @btime evaluate($f1, ($rndx)())
+
+@info("Confirm zero allocations and performance")
+tmin = minimum( (@benchmark $g(($rndx)())).times )
+for h in [f, f1]
+   bm = @benchmark evaluate($h, ($rndx)())
+   println(@test bm.allocs == 0 && bm.memory == 0)
+   println(@test (minimum(bm.times) <= 1.2 * tmin)) 
+end

@@ -9,6 +9,7 @@ import ACE
 
 import ACE: evaluate!, evaluate_d!, evaluate_ed!, 
             evaluate, evaluate_d, evaluate_ed, evaluate_dd, 
+            frule_evaluate, 
             _rrule_evaluate, _rrule_evaluate_d,
             read_dict, write_dict,
             inv_transform,
@@ -241,6 +242,15 @@ function ACE.evaluate_ed(J::OrthPolyBasis, t)
 end
 
 
+
+function frule_evaluate(J::OrthPolyBasis, t, dt)
+   A, dA = evaluate_ed(J, t)   
+   dA_dt = parent(dA) .* Ref(dt)
+   release!(dA)
+   return A, dA_dt 
+end
+
+
 evaluate_P1(J::OrthPolyBasis, t) =
    J.A[1] * _fcut_(J.pl, J.tl, J.pr, J.tr, t)
 
@@ -331,7 +341,10 @@ end
 
 A utility function to generate a jacobi-type basis
 """
-function discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 3 * N)
+function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, Nquad = 3 * N, 
+                            trans = identity)
+   tcut = trans(xcut)
+   tin = trans(xin)
    tl, tr = minmax(tin, tcut)
    dt = (tr - tl) / Nquad
    tdf = range(tl + dt/2, tr - dt/2, length=Nquad)
@@ -358,9 +371,9 @@ function transformed_jacobi(maxdeg::Integer,
                             trans,
                             rcut::Real, rin::Real = 0.0;
                             kwargs...)
-   J =  discrete_jacobi(maxdeg; tcut = evaluate(trans, rcut),
-                                tin = evaluate(trans, rin),
-                                pcut = 2,
+   J = discrete_jacobi(maxdeg; xcut = rcut,
+                                xin = rin,
+                                pcut = 2, trans=trans, 
                                 kwargs...)
    return chain(trans, J)
 end
