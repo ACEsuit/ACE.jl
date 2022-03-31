@@ -28,7 +28,8 @@ pibasis_r = PIBasis(B1p, O3(), Bsel; property = φ, isreal=true)
 
 # generate a configuration
 nX = 10
-Xs = rand(PositionState{Float64}, B1p["Rn"].basis, nX)
+_randX() = State(rr = (0.5 + 2 * rand()) * ACE.rand_sphere() )
+Xs = [_randX() for _=1:nX]
 cfg = ACEConfig(Xs)
 
 AA = evaluate(pibasis, cfg)

@@ -78,6 +78,7 @@ include("transforms/lambdas.jl")
 
 include("pools.jl")
 include("ad.jl")
+include("chain.jl")
 
 
 include("rotations3d.jl")
