@@ -7,20 +7,26 @@ module Random
 import LinearAlgebra: norm
 import ACE: rand_radial, scaling, 
             PositionState, ACEBasis, 
-            rand_sphere, rand_rot, rand_refl, rand_O3 
+            rand_sphere, rand_rot, rand_refl, rand_O3, 
+            B1pComponent
 
 using Random: shuffle
 
 using StaticArrays: @SMatrix, SVector
 
-export rand_nhd, rand_config, rand_sym, randcoeffs, randcombine
+export rand_nhd, rand_config, rand_sym, randcoeffs, randcombine, rand_vec3
 
 # -------------------------------------------
 #   random neighbourhoods and  configurations
 
+rand_radial(Rn::B1pComponent) = 
+         Rn.meta["rin"] + rand() * (Rn.meta["rcut"] - Rn.meta["rin"])
+
+rand_vec3(Rn::B1pComponent) = rand_radial(Rn) * rand_sphere()
+      
 
 Base.rand(::Type{TX}, basis::ACEBasis) where {TX <: PositionState} =
-         TX( (rr = rand_radial(basis) * rand_sphere(),) )
+         TX( (rr = rand_vec3(basis),) )
 
 Base.rand(T::Type{TX}, basis::ACEBasis, N::Integer) where {TX <: PositionState} =
          [ rand(T, basis) for _=1:N ]

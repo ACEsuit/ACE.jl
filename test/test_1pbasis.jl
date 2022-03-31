@@ -7,7 +7,7 @@ using Printf, Test, LinearAlgebra, StaticArrays
 using ACE: evaluate, evaluate_d, evaluate_ed, 
       Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis, getlabel, get_spec, 
-      State, DState, rand_radial, rand_sphere, Scal1pBasis, 
+      State, DState, rand_vec3, rand_radial, rand_sphere, Scal1pBasis, 
       valtype, gradtype, acquire_B!, acquire_dB!, 
       discrete_jacobi
 using Random: shuffle
@@ -36,7 +36,7 @@ A_nlmk = Product1pBasis( (Rn, Ylm, Pk) )
 ACE.init1pspec!(A_nlmk, Bsel)
 
 nX = 10
-Xs = [ State(rr = rand_radial(J) * rand_sphere() ) for _=1:nX ]
+Xs = [ State(rr = rand_vec3(Rn) ) for _=1:nX ]
 cfg = ACEConfig(Xs)
 
 A = evaluate(A_nlm, Xs)
@@ -77,8 +77,7 @@ end
 for basis in (Pk, Rn, Ylm, A_nlm, A_nlmk)
    local X 
    @info(" .... $(basis)")
-   rand_r = () -> 0.5 + rand() * (rcut - 0.5)
-   _randX() = State( rr = rand_r() * rand_sphere(), u = rand_radial(J) )
+   _randX() = State( rr = rand_vec3(Rn), u = rand_radial(J) )
    X = _randX()
    B = evaluate(basis, X)
    dB = evaluate_d(basis, X)
@@ -115,8 +114,7 @@ for basis in (A_nlm, A_nlmk)
    @info(" .... $(basis)")
    local Xs, cfg, A1, nX
    nX = 5
-   Xs = [ State(rr = rand_radial(J) * rand_sphere(), 
-                u = rand_radial(J) ) for _=1:nX ]
+   Xs = [ State(rr = rand_vec3(Rn), u = rand_radial(J) ) for _=1:nX ]
    cfg = ACEConfig(Xs)
    A1 = ACE.acquire_B!(basis, cfg)
    ACE.evaluate!(A1, basis, cfg)

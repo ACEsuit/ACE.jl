@@ -44,6 +44,7 @@ struct B1pComponent{ISYMS, TT, TB, FVAL}
    spec::Vector{NamedTuple{ISYMS, TT}}
    degrees::Vector{Int}
    label::String 
+   meta::Dict{String,Any}
    # ------------ derived fields
    invspec::Dict{NamedTuple{ISYMS, TT}, Int}
    # todo - fields for temporary arrays ...  
@@ -51,13 +52,14 @@ end
 
 function B1pComponent(basis, fval, spec::AbstractVector{<: NamedTuple}, 
                       degrees::Vector{Int}, 
-                      label::AbstractString)
+                      label::AbstractString, 
+                      meta = Dict{String, Any}())
    spec1 = collect(spec)                      
    invspec = Dict{eltype(spec1), Int}()
    for (i, b) in enumerate(spec)
       invspec[b] = i 
    end
-   return B1pComponent(basis, fval, spec, degrees, label, invspec)
+   return B1pComponent(basis, fval, spec, degrees, label, meta, invspec)
 end
 
 

@@ -74,7 +74,7 @@ basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
 
 ##
 
-cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), 
+cfg = [ ACE.State(rr = rand_vec3(B1p["Rn"]), 
                   be = rand([:b,:e]) ) 
         for _ = 1:10 ] |> ACEConfig
 B1 = ACE.evaluate(basis, cfg)
