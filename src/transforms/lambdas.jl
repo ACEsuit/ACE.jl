@@ -15,6 +15,8 @@ evaluate(t::LegibleLambda, x) = t.λ(x)
 
 evaluate_d(t::LegibleLambda, x::SVector) =  ForwardDiff.gradient(t.λ, x)
 
+ACE.evaluate_ed(t::LegibleLambda, x) =  evaluate(t, x), evaluate_d(t, x)
+
 evaluate_dd(t::LegibleLambda, x::SVector) = ForwardDiff.hessian(t.λ, x)
 
 evaluate_d(t::LegibleLambda, x::Real) =     ForwardDiff.derivative(t.λ, x)

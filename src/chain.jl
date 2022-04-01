@@ -37,15 +37,29 @@ end
 # - generated function to make this fast 
 # - implement the rrule 
 
-function evaluate_ed(chain::AbstractSChain{TT}, X) where {TT} 
-   LEN = length(chain.F)
-   Xi = evaluate(chain.F[1], X)
-   dFi = evaluate_d(chain.F[1], X)
-   for i = 2:LEN
-      Xi, dFi = frule_evaluate(chain.F[i], Xi, dFi)
+@generated function evaluate_ed(chain::AbstractSChain{TT}, X) where {TT}
+   LEN = length(TT.types)
+   code = Expr[]  
+   push!(code, :(X_0 = X))
+   push!(code, Meta.parse("X_1, dF_1 = evaluate_ed(chain.F[1], X_0)"))
+   for l = 2:LEN 
+      push!(code, Meta.parse("F_$l = chain.F[$l]"))
+      push!(code, Meta.parse("X_$l, dF_$l = frule_evaluate(F_$l, X_$(l-1), dF_$(l-1))"))
+      push!(code, Meta.parse("release!(X_$(l-1))"))
    end
-   return Xi, dFi 
+   push!(code, Meta.parse("return X_$LEN, dF_$LEN"))
+   return Expr(:block, code...)
 end
+
+# function evaluate_ed(chain::AbstractSChain{TT}, X) where {TT} 
+#    LEN = length(chain.F)
+#    Xi = evaluate(chain.F[1], X)
+#    dFi = evaluate_d(chain.F[1], X)
+#    for i = 2:LEN
+#       Xi, dFi = frule_evaluate(chain.F[i], Xi, dFi)
+#    end
+#    return Xi, dFi 
+# end
 
 
 evaluate_d(chain::AbstractSChain, X) = evaluate_ed(chain, X)[2]

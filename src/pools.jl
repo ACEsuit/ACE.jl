@@ -47,9 +47,10 @@ function ArrayCache{T}() where {T}
    return ArrayCache(vecs, mats)
 end
 
-acquire!(c::ArrayCache{T}, len::Integer, ::Type{T}) where {T} = acquire!(c, len)
+acquire!(c::ArrayCache{T}, len::Integer, ::Type{T}) where {T} = 
+         acquire!(c, len)
 
-acquire!(c::ArrayCache, len::Integer, S::DataType) =
+acquire!(c::ArrayCache{T}, len::Integer, ::Type{S}) where {T, S} =
          Vector{S}(undef, len)
 
 function acquire!(c::ArrayCache{T}, len::Integer) where {T}
