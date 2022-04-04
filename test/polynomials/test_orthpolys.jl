@@ -9,34 +9,15 @@ using ACE, Test, ForwardDiff
 
 using LinearAlgebra: norm, cond
 using ACE.OrthPolys: OrthPolyBasis
-using ACE: evaluate, evaluate_d
+using ACE: evaluate, evaluate_d, evaluate_ed 
 using ACEbase.Testing: print_tf
 
-##
-
-# TODO: replace this test with an orthogonality test
-# @info("Discretised Jacobi are close to the real Jacobi Poly's")
-#
-# N = 15
-# Nquad = 1000
-# dt =  2 / Nquad
-# tdf = range(-1.0+dt/2, 1.0-dt/2, length=Nquad)
-# Jd = OrthPolyBasis(N,  0, 1.0, 0, -1.0, tdf)
-# J = Jacobi(0.0, 0.0, N-1, normalise=true)
-#
-# for ntest = 1:30
-#    x = 2*rand() - 1
-#    Jdx = evaluate(Jd, x)
-#    Jx = evaluate(J, x)
-#    Jx /= Jx[1]
-#    print_tf((@test norm(Jx - Jdx, Inf) < 10/N^2))
-# end
-# println()
 
 ##
 @info("de-dictionisation")
 
 for ntest = 1:10
+   local N, Nquad, tdf, ww, Jd 
    N = 8
    Nquad = 1000
    tdf = rand(1000)
@@ -59,7 +40,10 @@ Jd = OrthPolyBasis(N, 2, 1.0, 2, -1.0, tdf, ww)
 let errtol = 1e-12, ntest = 50
    for itest = 1:ntest
       x = 2*rand() - 1
+      Jx = evaluate(Jd, x)
       dJx = evaluate_d(Jd, x)
+      Jx1, dJx1 = evaluate_ed(Jd, x)
+      print_tf(@test all( (Jx, dJx) .≈ (Jx1, dJx1) ) )
       adJx = ForwardDiff.derivative(x -> evaluate(Jd, x), x)
       err = maximum(abs.(dJx - adJx) ./ (1.0 .+ abs.(dJx)))
       print_tf(@test (err < errtol))
@@ -69,25 +53,27 @@ end
 
 
 
+
 ##
 
-@info("Testing TransformedPolys")
-
-trans = PolyTransform(2, 1.0)
-Pnew = ACE.OrthPolys.transformed_jacobi(10, trans, 2.0, 0.5; pcut = 2, pin = 2)
-
-@info("   ... consistency of derivatives")
-for ntest = 1:30
-   r = 2*rand() + 0.25
-   dp = evaluate_d(Pnew, r)
-   if r <= 0.5 || r >= 2.0
-      print_tf(@test( norm(dp, Inf) == 0 ))
-   else
-      adp = ForwardDiff.derivative(x -> evaluate(Pnew, x), r)
-      print_tf(@test norm(dp - adp) < 1e-12)
-   end
-end
-println()
+# TODO: replace this test with an orthogonality test
+# @info("Discretised Jacobi are close to the real Jacobi Poly's")
+#
+# N = 15
+# Nquad = 1000
+# dt =  2 / Nquad
+# tdf = range(-1.0+dt/2, 1.0-dt/2, length=Nquad)
+# Jd = OrthPolyBasis(N,  0, 1.0, 0, -1.0, tdf)
+# J = Jacobi(0.0, 0.0, N-1, normalise=true)
+#
+# for ntest = 1:30
+#    x = 2*rand() - 1
+#    Jdx = evaluate(Jd, x)
+#    Jx = evaluate(J, x)
+#    Jx /= Jx[1]
+#    print_tf((@test norm(Jx - Jdx, Inf) < 10/N^2))
+# end
+# println()
 
 ##
 

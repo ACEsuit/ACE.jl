@@ -1,6 +1,6 @@
 
 
-import ACE.OrthPolys: TransformedPolys
+import ACE.OrthPolys: OrthPolyBasis, discrete_jacobi
 
 @doc raw"""
 `Scal1pBasis`
@@ -10,17 +10,20 @@ input `x`. This type basically just translates the `TransformedPolys` into a val
 one-particle basis.
 """
 function Scal1pBasis(varsym::Symbol, varidx::Union{Integer, Nothing}, idxsym::Symbol, 
-                       P::TransformedPolys, label::String = "P$idxsym")
-   getval = isnothing(varidx) ? ACE.GetVal{varsym}() : ACE.getVali{varsym, varidx}()
+                     P, label::String = "P$idxsym", trans=nothing)
+   getval = isnothing(varidx) ? ACE.GetVal{varsym}() : ACE.GetVali{varsym, varidx}()
    spec = [ NamedTuple{(idxsym,)}((i,)) for i = 1:length(P) ]
-   return B1pComponent(P, getval, spec, label)
+   degrees = collect(0:(length(P)-1))
+   P1 = (trans == nothing) ? P : chain(trans, P)
+   return B1pComponent(P1, getval, spec, degrees, label)
 end
 
           
-scal1pbasis(varsym::Symbol, idxsym::Symbol, args...; 
-            varidx = nothing, label::String = "P$idxsym", kwargs...) = 
-      Scal1pBasis(varsym, varidx, idxsym,  
-                  ACE.OrthPolys.transformed_jacobi(args...; kwargs...), 
-                  label)
-
+function scal1pbasis(varsym::Symbol, idxsym::Symbol, 
+                     maxdeg::Integer, trans, rcut::Real, rin::Real=0.0; 
+                     varidx = nothing, label::String = "P$idxsym", 
+                     kwargs...)
+   J = discrete_jacobi(maxdeg; trans=trans, xcut=rcut, xin=rin, kwargs...)
+   return Scal1pBasis(varsym, varidx, idxsym, J, label, trans)
+end
 

@@ -1,6 +1,6 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
-using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val, grad_config
+using ACE: evaluate, SymmetricBasis, PIBasis, O3, State, val, grad_config, rand_vec3
 using StaticArrays
 using ChainRules
 import ChainRulesCore: rrule, NoTangent, ZeroTangent
@@ -21,7 +21,7 @@ basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 
 # generate a random configuration
 nX = 10
-cfg = ACEConfig([State(rr = rand(SVector{3, Float64})) for _ in 1:nX])
+cfg = ACEConfig([State(rr = rand_vec3(B1p["Rn"])) for _ in 1:nX])
 
 #initialize the model
 np = 2

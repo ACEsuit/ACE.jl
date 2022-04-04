@@ -4,7 +4,8 @@
 
 ##
 using ACE, Printf, Test, LinearAlgebra
-using ACE: evaluate, evaluate_d, read_dict, write_dict
+using ACE: evaluate, evaluate_d, evaluate_ed, read_dict, write_dict
+using ACEbase.Testing: print_tf, println_slim, fdtest 
 using ACE.Testing
 
 verbose = false
@@ -12,41 +13,14 @@ maxdeg = 10
 
 ##
 
-@info("Testing Transforms and TransformedPolys")
-for p in 2:4
-   @info("p = $p, random transform")
-   trans = PolyTransform(1+rand(), 1+rand())
-   @info("      test (de-)dictionisation")
-   @test all(ACE.Testing.test_fio(trans))
-   B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = p)
-   B2 = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = p, pcut = p)
-   for B in [B1, B2]
-      B == B1 && @info("basis = 1s")
-      B == B2 && @info("basis = 2s")
-      for r in [3 * rand(10); [3.0]]
-         P = evaluate(B, r)
-         dP = evaluate_d(B, r)
-         errs = []
-         verbose && @printf("     h    |     error  \n")
-         for p = 2:10
-            local h = 0.1^p
-            dPh = (evaluate(B, r+h) - P) / h
-            push!(errs, norm(dPh - dP, Inf))
-            verbose && @printf(" %.2e | %2e \n", h, errs[end])
-         end
-         print_tf(@test (/(extrema(errs)...) < 1e-3) || (minimum(errs) < 1e-10) )
-      end
-      println()
-   end
-end
-
-##
-
 @info("Testing PolyTransforms")
 for p = 2:4
    r0 = 1+rand()
-   trans = PolyTransform(p, r0)
-   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
+   trans = polytransform(p, r0)
+   rr = 1 .+ rand(100)
+   val = ((1 + r0) ./ (1 .+ rr)).^p
+   println_slim(@test(trans.(rr) ≈ val))
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0]); println()
 end
 println()
 
@@ -55,8 +29,11 @@ println()
 @info("Testing Morse Transform")
 for lam = 1.0:3.0
    r0 = 1+rand()
-   trans = ACE.Transforms.MorseTransform(lam, r0)
-   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
+   trans = morsetransform(lam, r0)
+   rr = 1 .+ rand(100)
+   val = exp.( - lam * (rr/r0 .- 1))
+   println_slim(@test(trans.(rr) ≈ val))
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0]); println() 
 end
 println()
 
@@ -64,11 +41,55 @@ println()
 
 @info("Testing Agnesi Transform")
 for p = 2:4
+   local a 
    r0 = 1+rand()
-   trans = ACE.Transforms.AgnesiTransform(r0, p)
-   ACE.Testing.test_transform(trans, [r0/2, 3*r0])
+   trans = agnesitransform(r0, p)
+   a = (p-1)/(p+1)
+   rr = 1 .+ rand(100)
+   val = 1 ./ (1 .+ a * (rr / r0).^p)
+   println_slim(@test(trans.(rr) ≈ val))
+   ACE.Testing.test_transform(trans, [r0/2, 3*r0]); println()
 end
 println()
+
+
+##
+
+# trans = polytransform(1+rand(), 1+rand())
+# B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = 2)
+# r = 2+rand()
+# V1 = evaluate(B1, r)
+# dV = evaluate_d(B1, r)
+# # V1 ≈ V2
+# u = rand(length(V1))
+# F = t -> dot( evaluate(B1, t), u ) 
+# dF = t -> dot( evaluate_ed(B1, t)[2], u)
+# fdtest(F, dF, 1.235)
+
+
+##
+
+@info("Testing Transforms and TransformedPolys")
+for p in 2:4
+   @info("p = $p, random transform")
+   trans = polytransform(1+rand(), 1+rand())
+   @info("      test (de-)dictionisation")
+   # @test all(ACE.Testing.test_fio(trans))
+   B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = p)
+   B2 = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = p, pcut = p)
+   for B in [B1, B2]
+      B == B1 && @info("basis = 1s")
+      B == B2 && @info("basis = 2s")
+      for r in [3 * rand(10); [3.0]]
+         u = rand(length(evaluate(B, r)))
+         F = t -> dot( evaluate(B, t), u ) 
+         dF = t -> dot( evaluate_ed(B, t)[2], u)
+         print_tf(@test all( fdtest(F, dF, r; verbose=false) ))
+      end
+      println()
+   end
+end
+
 
 ##
 

@@ -19,7 +19,7 @@ using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
 import ACEbase: evaluate, evaluate_d, gradtype, valtype, 
                 acquire_B!, release_B!, acquire_dB!, release_dB!, 
-                ACEBasis
+                ACEBasis, acquire!, release! 
 
 
 # TODO: gradtype should have a standard fallback 
@@ -74,6 +74,11 @@ normsq(x) = dot(x, x)
 
 
 include("auxiliary.jl")
+include("transforms/lambdas.jl")
+
+include("pools.jl")
+include("ad.jl")
+include("chain.jl")
 
 
 include("rotations3d.jl")

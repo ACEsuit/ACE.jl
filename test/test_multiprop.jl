@@ -1,6 +1,6 @@
 using LinearAlgebra: length
 using ACE, ACEbase, Test, ACE.Testing
-using ACE: evaluate, SymmetricBasis, PIBasis, O3 
+using ACE: evaluate, SymmetricBasis, PIBasis, O3, rand_vec3, rand_radial
 using ACEbase.Testing: println_slim
 using StaticArrays
 
@@ -19,7 +19,7 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 # generate a configuration
 #TODO check if this tests account/test u, and will it work with more things?
 nX = 30
-Xs = () -> ACE.State(rr = rand(SVector{3, Float64}), u = rand())
+Xs = () -> ACE.State(rr = rand_vec3(B1p["Rn"]), u = rand())
 cfg = ACEConfig([Xs() for i in 1:nX])
 
 φ = ACE.Invariant()

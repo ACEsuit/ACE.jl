@@ -74,7 +74,7 @@ basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
 
 ##
 
-cfg = [ ACE.State(rr = SVector{3}(rand(Float64,3)), 
+cfg = [ ACE.State(rr = rand_vec3(B1p["Rn"]), 
                   be = rand([:b,:e]) ) 
         for _ = 1:10 ] |> ACEConfig
 B1 = ACE.evaluate(basis, cfg)
@@ -87,22 +87,26 @@ for ntest = 1:30
 end
 println()
 
-##
+# ##
+# THIS TEST REALLY HAS NO PLACE HERE -- 
+# DELETE IT SOMETIME IN THE FUTURE IF WE DONT REVIVE IT...
+#
 
-@info("Test spherical covariance")
+# @info("Test spherical covariance")
 
-L1 = L2 = 2 
-basis = ACE.SymmetricBasis(ACE.SphericalMatrix(L1,L2; T = ComplexF64), B1p, Bsel; filterfun=ACE.NoConstant())
-@show length(basis)
+# L1 = L2 = 1 
+# basis = ACE.SymmetricBasis(ACE.SphericalMatrix(L1,L2; T = ComplexF64), B1p, Bsel; 
+#                            filterfun=ACE.NoConstant())
+# @show length(basis)
 
-B1 = ACE.evaluate(basis, cfg)
+# B1 = ACE.evaluate(basis, cfg)
 
-for ntest = 1:30
-    Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
-    Xs2 = shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
-    B2 = ACE.evaluate(basis, ACEConfig(Xs2))
-    D1txB1xD2 = Ref(D1') .* B2 .* Ref(D2)
-    print_tf(@test isapprox(D1txB1xD2, B1, rtol=1e-10))
-end
-println()
+# for ntest = 1:30
+#     Q, D1, D2 = ACE.Wigner.rand_QD(L1, L2)
+#     Xs2 = shuffle([ ACE.State(rr = Q * X.rr, be = X.be) for X in cfg.Xs ])
+#     B2 = ACE.evaluate(basis, ACEConfig(Xs2))
+#     D1txB1xD2 = Ref(D1') .* B2 .* Ref(D2)
+#     print_tf(@test isapprox(D1txB1xD2, B1, rtol=1e-10))
+# end
+# println()
 

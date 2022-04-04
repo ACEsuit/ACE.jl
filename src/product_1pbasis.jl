@@ -170,15 +170,14 @@ import Base.Cartesian: @nexprs
    quote
       @nexprs $NB i -> begin 
          bas_i = basis.bases[i]
-         B_i = acquire_B!(bas_i, X)
-         evaluate!(B_i, bas_i, X)
+         B_i = evaluate(bas_i, X)
       end 
       for (iA, ϕ) in enumerate(basis.indices)
          t = one(eltype(A))
          @nexprs $NB i -> (t *= B_i[ϕ[i]])
          A[iA] += t
       end
-      @nexprs $NB i -> release_B!(basis.bases[i], B_i)
+      @nexprs $NB i -> release!(B_i)
       return nothing
    end
 end
@@ -202,15 +201,15 @@ add_into_A_dA!(A, dA, basis::Product1pBasis, X, sym::Symbol) =
          bas_i = basis.bases[i] 
          if !(bas_i isa Discrete1pBasis)
             # only evaluate basis gradients for a continuous basis
-            B_i = acquire_B!(bas_i, X)
-            dB_i = acquire_dB!(bas_i, X)
-            Bt, dBt = evaluate_ed!(B_i, dB_i, bas_i, X, args...)
+            # B_i = acquire_B!(bas_i, X)
+            # dB_i = acquire_dB!(bas_i, X)
+            B_i, dB_i = evaluate_ed(bas_i, X, args...)
          else
             # we still need the basis values for the discrete basis though
             # TODO: maybe the d part should be a no-op and remove this 
             # case distinction ... 
-            B_i = acquire_B!(bas_i, X)
-            evaluate!(B_i, bas_i, X)
+            # B_i = acquire_B!(bas_i, X)
+            B_i = evaluate(bas_i, X)
          end
       end)
       for (iA, ϕ) in enumerate(basis.indices)
@@ -236,9 +235,11 @@ add_into_A_dA!(A, dA, basis::Product1pBasis, X, sym::Symbol) =
          end)
       end
       Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
-         release_B!(bas_i, B_i)
+         # release_B!(bas_i, B_i)
+         release!(B_i)
          if !(basis.bases[i] isa Discrete1pBasis)
-            release_dB!(bas_i, dB_i)
+            # release_dB!(bas_i, dB_i)
+            release!(dB_i)
          end
       end))
       return nothing

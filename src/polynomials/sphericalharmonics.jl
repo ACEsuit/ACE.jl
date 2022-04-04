@@ -15,7 +15,7 @@ import ACE: valtype, gradtype,
 				acquire_dB!, release_dB!, 
 				acquire!, release!
 
-import ACE: VectorPool
+import ACE: VectorPool, ArrayCache 
 
 export SHBasis
 
@@ -128,11 +128,11 @@ struct ALPolynomials{T} <: ACEBasis
 	L::Int
 	A::Vector{T}
 	B::Vector{T}
-	B_pool::VectorPool{T}
+	B_pool::ArrayCache{T}
 end
 
 ALPolynomials(L::Integer, A::Vector{T}, B::Vector{T}) where {T}  = 
-		ALPolynomials(L, A, B, VectorPool{T}())
+		ALPolynomials(L, A, B, ArrayCache{T}())
 
 Base.length(alp::ALPolynomials) = sizeP(alp.L)
 
@@ -146,14 +146,6 @@ valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} =
 
 gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
 			promote_type(T, S) 
-
-# note here: release_B! should just get dispatched but for some 
-# unexplained reason doing this explicitly makes a huge difference 
-# in julia 1.6 
-acquire_B!(alp::ALPolynomials, args...) = acquire!(alp.B_pool, sizeP(alp.L))
-release_B!(alp::ALPolynomials, B) = release!(alp.B_pool, B)
-acquire_dB!(alp::ALPolynomials, args...) = acquire_B!(alp)
-release_dB!(alp::ALPolynomials, dB) = release_B!(alp, dB)
 
 
 function ALPolynomials(L::Integer, T::Type=Float64)
@@ -171,6 +163,10 @@ function ALPolynomials(L::Integer, T::Type=Float64)
 	return alp
 end
 
+function evaluate(alp::ALPolynomials, S::SphericalCoords) 
+	P = acquire!(alp.B_pool, length(alp), valtype(alp, S))
+	return evaluate!(P, alp, S)
+end
 
 function evaluate!(P, alp::ALPolynomials, S::SphericalCoords)
 	L = alp.L 
@@ -205,8 +201,12 @@ function evaluate!(P, alp::ALPolynomials, S::SphericalCoords)
 end
 
 
-_evaluate_ed(alp::ALPolynomials, S::SphericalCoords) = 
-	_evaluate_ed!(acquire_B!(alp), acquire_dB!(alp), alp::ALPolynomials, S::SphericalCoords)
+function _evaluate_ed(alp::ALPolynomials, S::SphericalCoords) 
+	VT = valtype(alp, S)
+	P = acquire!(alp.B_pool, length(alp), VT)
+	dP = acquire!(alp.B_pool, length(alp), VT)
+	return _evaluate_ed!(P, dP, alp::ALPolynomials, S::SphericalCoords)
+end
 
 # this doesn't use the standard name because it doesn't 
 # technically perform the derivative w.r.t. S, but w.r.t. θ
@@ -287,15 +287,16 @@ complex spherical harmonics
 """
 struct SHBasis{T} <: AbstractSHBasis{T}
 	alp::ALPolynomials{T}
-	B_pool::VectorPool{Complex{T}}
-	dB_pool::VectorPool{SVector{3, Complex{T}}}
+	B_pool::ArrayCache{Complex{T}}
+	dB_pool::ArrayCache{SVector{3, Complex{T}}}
 end
 
 SHBasis(maxL::Integer, T::Type=Float64) = SHBasis(ALPolynomials(maxL, T))
 
 SHBasis(alp::ALPolynomials{T}) where {T} = SHBasis(alp, 
-		VectorPool{Complex{T}}(), VectorPool{SVector{3, Complex{T}}}())
+		ArrayCache{Complex{T}}(), ArrayCache{SVector{3, Complex{T}}}())
 
+Base.show(io::IO, SH::SHBasis) = print(io, "SHBasis(L=$(maxL(SH)))")
 
 """
 max L degree for which the alp coefficients have been precomputed
@@ -333,53 +334,49 @@ read_dict(::Val{:ACE_SHBasis}, D::Dict) =
 Base.length(S::AbstractSHBasis) = sizeY(maxL(S))
 
 
-acquire_B!(sh::SHBasis, args...) = 
-		acquire!(sh.B_pool, length(sh))
-acquire_dB!(sh::SHBasis{T}, x::AbstractVector{T}) where {T} = 
-		acquire!(sh.dB_pool, length(sh))
-
-
 _evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)
 
 _evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_ed!(Y, dY, L, S, P, dP)
 
+function ACE.evaluate(SH::SHBasis, R::AbstractVector)
+	Y = acquire!(SH.B_pool, length(SH), valtype(SH, R))
+	return evaluate!(Y, SH, R)
+end
+
 function evaluate!(Y, SH::AbstractSHBasis, R::AbstractVector)
 	@assert length(R) == 3
 	L = maxL(SH)
-
-	P = acquire_B!(SH.alp)
-	__evaluate!(Y, SH, P, R)
-	release_B!(SH.alp, P)
-
+	S = cart2spher(R) 
+	P = evaluate(SH.alp, S)
+	cYlm!(Y, maxL(SH), S, P)
+	release!(P)
 	return Y
 end
 
-# this is just for performance testing 
-function __evaluate!(Y, SH::SHBasis, P, R::AbstractVector) 
-	S = cart2spher(R)
-	evaluate!(P, SH.alp, S)
-	cYlm!(Y, maxL(SH), S, P)
-	return Y 
-end
 
+function ACE.evaluate_d(SH::AbstractSHBasis, R::AbstractVector)
+	B, dB = evaluate_ed(SH, R) 
+	release!(B)
+	return dB 
+end 
+
+function ACE.evaluate_ed(SH::AbstractSHBasis, R::AbstractVector)
+	Y = acquire!(SH.B_pool, length(SH), valtype(SH, R))
+	dY = acquire!(SH.dB_pool, length(SH), gradtype(SH, R))
+	return evaluate_ed!(Y, dY, SH, R)
+end
 
 function evaluate_ed!(Y, dY, SH::AbstractSHBasis, R::AbstractVector)
 	@assert length(R) == 3
 	L = maxL(SH)
-
-	P = acquire_B!(SH.alp)
-	dP = acquire_dB!(SH.alp)
-	__evaluate_ed!(Y, dY, SH, P, dP, R)
-	release_B!(SH.alp, P)
-	release_dB!(SH.alp, dP)
-	return Y, dY
-end
-
-# this is just for performance testing 
-function __evaluate_ed!(Y, dY, SH::SHBasis, P, dP, R::AbstractVector)
 	S = cart2spher(R)
-	_evaluate_ed!(P, dP, SH.alp, S)
-	return cYlm_ed!(Y, dY, maxL(SH), S, P, dP)
+	Y = acquire!(SH.B_pool, length(SH), valtype(SH, R))
+	dY = acquire!(SH.dB_pool, length(SH), gradtype(SH, R))
+	P, dP = _evaluate_ed(SH.alp, S)
+	cYlm_ed!(Y, dY, maxL(SH), S, P, dP)
+	release!(P)
+	release!(dP)
+	return Y, dY
 end
 
 

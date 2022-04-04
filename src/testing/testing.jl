@@ -61,29 +61,29 @@ export print_tf, test_fio, test_transform
 # ---------- code for transform tests
 
 import ForwardDiff
-import ACE: transform, transform_d, inv_transform
+import ACE: evaluate, evaluate_d, inv_transform
 
 function test_transform(T, rrange, ntests = 100)
 
    rmin, rmax = extrema(rrange)
    rr = rmin .+ rand(100) * (rmax-rmin)
-   xx = [ transform(T, r) for r in rr ]
+   xx = evaluate.(Ref(T), rr)
    # check syntactic sugar
-   xx1 = [ T(r) for r in rr ]
+   xx1 = T.(rr)
    print_tf(@test xx1 == xx)
    # check inversion
-   rr1 =  inv_transform.(Ref(T), xx)
+   rr1 = inv_transform.(Ref(T), xx)
    print_tf(@test rr1 ≈ rr)
    # check gradient
-   dx = transform_d.(Ref(T), rr)
-   adx = ForwardDiff.derivative.(Ref(r -> transform(T, r)), rr)
+   dx = evaluate_d.(Ref(T), rr)
+   adx = ForwardDiff.derivative.(Ref(r -> evaluate(T, r)), rr)
    print_tf(@test dx ≈ adx)
 
    # TODO: check that the transform doesn't allocate
    @allocated begin
       x = 0.0;
       for r in rr
-         x += transform(T, r)
+         x += evaluate(T, r)
       end
    end
 end
