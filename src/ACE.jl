@@ -111,6 +111,7 @@ include("b1pcomponent.jl")
 include("b1pcomponents/Rn.jl")
 include("b1pcomponents/Ylm.jl")
 include("b1pcomponents/scal.jl")
+include("b1pcomponents/trig.jl")
 
 # todo - move this once we get to it... 
 include("discrete1pbasis.jl")
