@@ -131,8 +131,8 @@ include("pibasis.jl")
 include("symmbasis.jl")
 
 
-# # some experimental stuff  
-# include("multiplier.jl")
+# some experimental stuff  
+include("multiplier.jl")
 
 # models and model evaluators
 
