@@ -115,6 +115,12 @@ acquire_dB!(basis::Product1pBasis, Xs::UConfig) =
       Matrix{gradtype(basis, Xs)}(undef, (length(basis), length(Xs)))
 
 
+# draft of defining bases via chains
+# function evaluate(basis::Product1pBasis, cfg::UConfig)
+#    A = Vector{valtype(basis)}(undef, length(basis))
+#    return evaluate!(A, basis, cfg)
+# end
+
 function evaluate!(A, basis::Product1pBasis, X::AbstractState)
    fill!(A, zero(eltype(A)))
    add_into_A!(A, basis, X)

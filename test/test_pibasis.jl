@@ -90,4 +90,8 @@ for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
 end
 ##
 
-
+# @info("Test the chained version of PIBasis")
+# B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
+# pibasis = PIBasis(B1p, O3(), Bsel; property = φ)
+# pibc = ACE.chain(B1p, pibasis)
+# evaluate(pibasis, cfg) == evaluate(pibc, cfg)

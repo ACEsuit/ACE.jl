@@ -306,6 +306,12 @@ read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
 function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
    A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
    evaluate!(A, basis.basis1p, config)
+   evaluate!(AA, basis, A)
+   release_B!(basis.basis1p, A)
+   return AA
+end
+
+function evaluate!(AA, basis::PIBasis, A::AbstractVector{<: Number})
    fill!(AA, 1)
    for iAA = 1:length(basis)
       aa = one(eltype(A))
@@ -314,10 +320,16 @@ function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
       end
       AA[iAA] = basis.real(aa)
    end
-   release_B!(basis.basis1p, A)
    return AA
 end
 
+# # draft of defining bases via chains
+# function evaluate(basis::PIBasis, A::AbstractVector{<: Number})
+#    # TODO: replace with cached array 
+#    AA = Vector{valtype(basis)}(undef, length(basis)) 
+#    evaluate!(AA, basis, A) 
+#    return AA 
+# end
 
 # -------------------------------------------------
 # gradients

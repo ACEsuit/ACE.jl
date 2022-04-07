@@ -262,6 +262,7 @@ using SparseArrays: AbstractSparseMatrixCSC,
 
 using LinearAlgebra: Transpose
 
+
 function genmul!(C, A::AbstractSparseMatrixCSC, B, mulop)
     size(A, 2) == size(B, 1) || throw(DimensionMismatch())
     size(A, 1) == size(C, 1) || throw(DimensionMismatch())
@@ -348,3 +349,13 @@ function scaling(basis::SymmetricBasis, p)
    wwrpi = abs2.(norm.(basis.A2Bmap)) * abs2.(wwpi)
    return sqrt.(wwrpi)
 end
+
+
+# ## NEW CHAIN INTERFACE 
+
+# # draft of defining bases via chains
+# function evaluate(basis::SymmetricBasis, AA::AbstractVector{<: Number})
+#    B = Vector{valtype(basis)}(undef, length(basis))
+#    genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
+#    return B 
+# end

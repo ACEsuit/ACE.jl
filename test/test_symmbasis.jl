@@ -309,4 +309,12 @@ println()
 # ProfileView.view()
 
 
-##
+# ##
+
+# @info("Test the chained version of SymmetricBasis")
+# # construct the 1p-basis
+# B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
+# cfg = ACEConfig([ _randX() for _=1:nX ])
+# basis = ACE.SymmetricBasis(ACE.Invariant(), B1p, Bsel)
+# basis_c = ACE.chain(B1p, basis.pibasis, basis)
+# evaluate(basis, cfg) == evaluate(basis_c, cfg)
