@@ -322,6 +322,10 @@ end
 # -------------------------------------------------
 # gradients
 
+ACE.evaluate_d(basis::PIBasis, cfg::AbstractConfiguration, args...) = 
+         ACE.evaluate_ed(basis::PIBasis, cfg::AbstractConfiguration, args...)[2]
+
+         
 function evaluate_ed!(AA, dAA, basis::PIBasis,
                       cfg::AbstractConfiguration, args...)  
    A = acquire_B!(basis.basis1p, cfg)
