@@ -353,9 +353,9 @@ end
 
 # ## NEW CHAIN INTERFACE 
 
-# # draft of defining bases via chains
-# function evaluate(basis::SymmetricBasis, AA::AbstractVector{<: Number})
-#    B = Vector{valtype(basis)}(undef, length(basis))
-#    genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
-#    return B 
-# end
+# draft of defining bases via chains
+function evaluate(basis::SymmetricBasis, AA::AbstractVector{<: Number})
+   B = Vector{valtype(basis)}(undef, length(basis))
+   genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
+   return B 
+end

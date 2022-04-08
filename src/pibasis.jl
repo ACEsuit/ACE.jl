@@ -323,13 +323,13 @@ function evaluate!(AA, basis::PIBasis, A::AbstractVector{<: Number})
    return AA
 end
 
-# # draft of defining bases via chains
-# function evaluate(basis::PIBasis, A::AbstractVector{<: Number})
-#    # TODO: replace with cached array 
-#    AA = Vector{valtype(basis)}(undef, length(basis)) 
-#    evaluate!(AA, basis, A) 
-#    return AA 
-# end
+# draft of defining bases via chains
+function evaluate(basis::PIBasis, A::AbstractVector{<: Number})
+   # TODO: replace with cached array 
+   AA = Vector{valtype(basis)}(undef, length(basis)) 
+   evaluate!(AA, basis, A) 
+   return AA 
+end
 
 # -------------------------------------------------
 # gradients
