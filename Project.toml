@@ -21,6 +21,7 @@ Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+UnsafeArrays = "c4a57d5a-5b31-53a6-b365-19f8c011fbd6"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]

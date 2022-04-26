@@ -107,6 +107,17 @@ write_dict(chain::SChain) = Dict(
 read_dict(::Val{:ACE_SChain}, D::Dict) = 
          SChain(tuple( read_dict.(D["F"])... ))
 
+
+## ALTERNATIVE CHAIN IMPLEMENTATION - LINKS 
+
+abstract type ChainLink end 
+
+next(::ChainLink) = nothing 
+
+previous(::ChainLink) = nothing 
+
+
+
 ##
 
 #=
