@@ -334,7 +334,7 @@ end
 # end
 
 
-
+using Base: @invokelatest
 
 """
 `discrete_jacobi(N; pcut=0, tcut=1.0, pin=0, tin=-1.0, Nquad = 1000)`
@@ -343,8 +343,8 @@ A utility function to generate a jacobi-type basis
 """
 function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, Nquad = 3 * N, 
                             trans = identity)
-   tcut = trans(xcut)
-   tin = trans(xin)
+   tcut = @invokelatest trans(xcut)
+   tin = @invokelatest trans(xin)
    tl, tr = minmax(tin, tcut)
    dt = (tr - tl) / Nquad
    tdf = range(tl + dt/2, tr - dt/2, length=Nquad)
