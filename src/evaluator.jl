@@ -115,9 +115,12 @@ end
 evaluate(::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
       evaluate(V::ProductEvaluator, cfg)
 
-# compute one "site energy"
-function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
+function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration) 
    A = acquire_B!(V.pibasis.basis1p, cfg)
+   return _evaluate!(V::ProductEvaluator, cfg::AbstractConfiguration, A)
+end
+# compute one "site energy"
+function _evaluate!(V::ProductEvaluator, cfg::AbstractConfiguration, A)
    evaluate!(A, V.pibasis.basis1p, cfg)
    spec = V.pibasis.spec
    pireal = V.pibasis.real 
