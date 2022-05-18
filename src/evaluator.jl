@@ -177,6 +177,8 @@ function _rrule_evaluate!(g, dp, m::LinearACEModel, V::ProductEvaluator,
    c̃ = V.coeffs
    dAco =  _alloc_dAco(dAAdA, A, c̃, dp)        # TODO: ALLOCATION 
 
+   # TODO: this is a function barrier needed because of a type instability in 
+   #       the allocation code. 
    return _rrule_evaluate!(g, dp, m, V, cfg, A, dA, dAAdA, dAco)
 end
 
