@@ -303,8 +303,15 @@ read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
 # -------------------------------------------------
 # Evaluation codes
 
+# TODO : this is a function barrier as a stop-gap solution 
+#        to a type instability in valtype
 function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
    A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
+   return _evaluate!(AA, basis::PIBasis, config::AbstractConfiguration, A)
+end
+
+function _evaluate!(AA, basis::PIBasis, config::AbstractConfiguration, A)
+   # A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
    evaluate!(A, basis.basis1p, config)
    fill!(AA, 1)
    for iAA = 1:length(basis)
@@ -425,9 +432,14 @@ _acquire_dAAdA!(basis::PIBasis) = acquire!(basis.dAA_pool, maxcorrorder(basis))
 
 function evaluate_ed!(AA, dAA, basis::PIBasis,
                       A::AbstractVector, dA::AbstractMatrix)
+   dAAdA = _acquire_dAAdA!(basis)
+   _evaluate_ed!(AA, dAA, basis, A, dA, dAAdA) 
+end
+
+function _evaluate_ed!(AA, dAA, basis::PIBasis,
+                       A::AbstractVector, dA::AbstractMatrix, dAAdA)
    orders = basis.spec.orders
    iAA2iA = basis.spec.iAA2iA
-   dAAdA = _acquire_dAAdA!(basis)
 
    # Must treat the constants separately. This is not so elegant and could 
    # maybe be improved? 
