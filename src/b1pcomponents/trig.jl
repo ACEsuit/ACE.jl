@@ -23,7 +23,7 @@ However, for various reasons the implementation takes as input not an angle
 """
 function Trig1pBasis(L::Integer; varsym = :rr, lsym = :l, label = "E$lsym")
    spec = [ (l = l,) for l = -L:L ]
-   degrees = ans.(spec)
+   degrees = [ abs(b.l) for b in spec ] 
    return B1pComponent(Trig(L), GetVal{varsym}(), spec, degrees, label)
 end
 
@@ -57,15 +57,18 @@ function _theta_ed(rr)
    return _theta(rr), SVector(-rr[2]/rsq, rr[1]/rsq)
 end
 
+valtype(E::Trig) = ComplexF64
+valtype(E::Trig, T) = ComplexF64
 
-function evaluate(E::Trig, rr) 
-   θ = _theta(rr)
-   return [ exp(im * θ * l) for l = -E.L:E.L ]
-end
+evaluate(E::Trig, θ::Real) = [ exp(im * θ * l) for l = -E.L:E.L ]
+
+evaluate(E::Trig, rr::AbstractVector) = evaluate(E, _theta(rr))
+
+ACE.evaluate_d(E::Trig, θ::Real) = [ im * l * exp(im * θ * l)  for l = -E.L:E.L ]
 
 function ACE.evaluate_d(E::Trig, rr)
    θ, dθ = _theta_ed(rr)
    return [ (im * l * exp(im * θ * l)) * dθ  for l = -E.L:E.L ]
 end
 
-evaluate_ed(E::Trig, rr) = evaluate(E, rr), evaluate_d(E, rr)
+evaluate_ed(E::Trig, x) = evaluate(E, x), evaluate_d(E, x)

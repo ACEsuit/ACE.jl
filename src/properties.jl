@@ -80,6 +80,9 @@ end
 
 Base.show(io::IO, φ::Invariant) = print(io, "i($(φ.val))")
 
+Base.one(φ::Invariant{T}) where {T} = Invariant(one(T))
+Base.one(::Type{Invariant{T}}) where {T} = Invariant(one(T))
+
 isrealB(::Invariant{<: Real}) = true 
 isrealB(::Invariant{<: Complex}) = false 
 isrealAA(::Invariant{<: Real}) = true 
@@ -125,6 +128,7 @@ end
 filter(φ::Invariant, grp::O3O3, b::Array) = 
       filter(φ, grp.G1, b) && filter(φ, grp.G2, b)
       
+filter(φ::AbstractProperty, grp::NoSym, b::Array) = true
 
 rot3Dcoeffs(::Invariant, T=Float64) = Rot3DCoeffs(T)
 

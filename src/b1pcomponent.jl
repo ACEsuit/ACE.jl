@@ -181,7 +181,9 @@ function show(io::IO, basis::B1pComponent)
    vsyms = Transforms.get_symbols(basis.fval)
    strvsyms = filter(!isequal(':'), "$vsyms")
    if length(vsyms) == 1 
-      strvsyms = strvsyms[1:end-2] * ")"
+      # this doesn't work with unicode!?!?!?
+      # strvsyms = strvsyms[1:end-2] * ")"
+      strvsyms = prod(split(strvsyms, ','))
    end
    print(io, "B1pComponent( $(basis.label)$(strvsyms)")
    for (key, rg) in indexrange(basis)

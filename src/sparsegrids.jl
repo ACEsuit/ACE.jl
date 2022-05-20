@@ -18,6 +18,9 @@ function init1pspec!(B1p::OneParticleBasis,
       b = NamedTuple{syms}(J)
       # check whether valid
       if isadmissible(b, B1p) 
+         if !filter(b, Bsel, B1p)
+            continue 
+         end 
          if level1(b, Bsel, B1p) <= maxlev 
             push!(spec, b)
          end

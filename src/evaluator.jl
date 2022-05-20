@@ -115,9 +115,12 @@ end
 evaluate(::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
       evaluate(V::ProductEvaluator, cfg)
 
-# compute one "site energy"
-function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
+function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration) 
    A = acquire_B!(V.pibasis.basis1p, cfg)
+   return _evaluate!(V::ProductEvaluator, cfg::AbstractConfiguration, A)
+end
+# compute one "site energy"
+function _evaluate!(V::ProductEvaluator, cfg::AbstractConfiguration, A)
    evaluate!(A, V.pibasis.basis1p, cfg)
    spec = V.pibasis.spec
    pireal = V.pibasis.real 
@@ -157,17 +160,34 @@ function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
    return _rrule_evaluate!(g, dp, model, model.evaluator, cfg)
 end
 
+
+
 # NB - testing shows that pre-allocating everything gains about 10% for small 
 #      configs and ca 20% for larger, more realistic configs. 
 #      worth doing at some point, but not really an immediate priority!
 function _rrule_evaluate!(g, dp, m::LinearACEModel, V::ProductEvaluator, 
-                          cfg::AbstractConfiguration)
+                           cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
    pireal = V.pibasis.real 
    symreal = V.real
    A = acquire_B!(V.pibasis.basis1p, cfg)
    dA = acquire_dB!(V.pibasis.basis1p, cfg)    # MAJOR ALLOCATION!! 
    dAAdA = _acquire_dAAdA!(V.pibasis)
+
+   c̃ = V.coeffs
+   dAco =  _alloc_dAco(dAAdA, A, c̃, dp)        # TODO: ALLOCATION 
+
+   # TODO: this is a function barrier needed because of a type instability in 
+   #       the allocation code. 
+   return _rrule_evaluate!(g, dp, m, V, cfg, A, dA, dAAdA, dAco)
+end
+
+function _rrule_evaluate!(g, dp, m::LinearACEModel, V::ProductEvaluator, 
+                          cfg::AbstractConfiguration, 
+                          A, dA, dAAdA, dAco)
+   basis1p = V.pibasis.basis1p
+   pireal = V.pibasis.real 
+   symreal = V.real
    
    # stage 1: precompute all the A values
    evaluate_ed!(A, dA, basis1p, cfg)
@@ -175,7 +195,6 @@ function _rrule_evaluate!(g, dp, m::LinearACEModel, V::ProductEvaluator,
    # stage 2: compute the coefficients for the ∇A_{nlm} = ∇ϕ_{nlm}
    # dAco[nlm] = coefficient of ∇A_{nlm} (via adjoints)
    c̃ = V.coeffs
-   dAco =  _alloc_dAco(dAAdA, A, c̃, dp)        # TODO: ALLOCATION 
    spec = V.pibasis.spec
 
    if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
