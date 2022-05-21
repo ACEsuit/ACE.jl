@@ -41,38 +41,6 @@ cfg = ACEConfig(Xs)
 
 A = evaluate(A_nlm, Xs)
 
-## PROFILING SOME STUFF 
-
-
-
-using BenchmarkTools
-X = Xs[1] 
-A1 = copy(A)
-A2 = copy(A) 
-
-@btime evaluate($A_nlm, $X)
-
-
-@btime begin 
-   fill!($A1, 0)
-   for n = 1:length($Xs)
-      X=($Xs)[n]
-      evaluate($A_nlm, X)
-      copy!($A1, $A)
-   end 
-end
-
-@btime begin
-   fill!($A1, 0)
-   for n = 1:length($Xs)
-      ACE.add_into_A!($A1, $A_nlm, $X)
-   end
-end
-
-@btime begin
-   evaluate($A_nlm, $Xs)
-end
-
 ##
 
 @info("test against manual summation")

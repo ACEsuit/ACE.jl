@@ -2,25 +2,15 @@ using NamedTupleTools: namedtuple, merge
 
 # -------------- Implementation of Product Basis
 
-struct Product1pBasis{NB, TB <: Tuple, VALB} <: OneParticleBasis{Any}
+struct Product1pBasis{NB, TB <: Tuple} <: OneParticleBasis{Any}
    bases::TB
    indices::Vector{NTuple{NB, Int}}
-   B_pool::VectorPool{VALB}
 end
 
 function Product1pBasis(bases)
    NB = length(bases)
    return Product1pBasis(bases, NTuple{NB, Int}[]) 
 end
-
-function Product1pBasis(bases, indices)
-   # TODO: discuss whether to construct an optimal ordering, e.g.
-   #       should the discrete bases come first once we implement the
-   #       "strongzero" method?
-   VT = _valtype(bases)
-   Product1pBasis( tuple(bases...), indices, VectorPool{VT}() )
-end
-
 
 
 import Base.*
@@ -75,53 +65,84 @@ function read_dict(::Val{:ACE_Product1pBasis}, D::Dict)
    return Product1pBasis(bases, indices)   
 end
 
-# # -------- temporary hack for 1.6, should not be needed from 1.7 onwards 
 
-# function acquire_B!(basis::Product1pBasis, args...) 
-#    VT = valtype(basis, args...)
-#    return acquire!(basis.B_pool, length(basis), VT)
+# ----------------- evaluation of the basis 
+
+import Base.Cartesian: @nexprs
+
+# @generated function evaluate(basis::Product1pBasis{NB}, X::AbstractState) where {NB}
+#    getVT = Meta.parse("promote_type(" * prod("eltype(B_$i), " for i = 1:NB) * ")")
+#    prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
+#    quote
+#       @nexprs $NB i -> begin 
+#          bas_i = basis.bases[i]
+#          B_i = evaluate(bas_i, X)
+#       end 
+#       VT = $getVT
+#       A = Vector{VT}(undef, length(basis))
+#       for (iA, ϕ) in enumerate(basis.indices)
+#          @inbounds A[iA] = $prodBi 
+#       end
+#       @nexprs $NB i -> release!(B_i)
+#       return A
+#    end
 # end
 
-# function release_B!(basis::Product1pBasis, B)
-#    return release!(basis.B_pool, B)
-# end
+"""
+`add_into_A!` : this is an internal function implementing the main evaluation 
+for the one-particle basis and possibly add it into the A basis. 
+   
+There are two ways to call it. 
+* Use `A = nothing` for the first argument to allocate the necessary memory to 
+evaluate the 1p basis into it.
+* Use `A::Vector{T}` to evaluate the 1p basis and add it into `A` directly 
+without additional allocation. 
+"""
+@generated function add_into_A!(A::VA, basis::Product1pBasis{NB}, X) where {NB, VA}
+   prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
+   if VA == Nothing 
+      getVT = "promote_type(" * prod("eltype(B_$i), " for i = 1:NB) * ")"
+      getA = Meta.parse("_A = zeros($(getVT), length(basis))")
+   else 
+      getA = :(_A = A)
+   end
 
-# ------------------------------------
-
-valtype(basis::Product1pBasis) = _valtype(basis.bases)
-
-_valtype(bases) = promote_type(valtype.(bases)...)
-
-valtype(basis::Product1pBasis, X::AbstractState) = 
-      promote_type(valtype.(basis.bases, Ref(X))...)
-
-# valtype(basis::Product1pBasis, cfg::AbstractConfiguration) = 
-#       promote_type( valtype.(basis.bases, Ref(first(cfg)))... )
-
-function valtype(basis::Product1pBasis, cfg::UConfig) 
-   X = zero(eltype(cfg))
-   return promote_type( valtype.(basis.bases, Ref(X))... )
+   quote
+      # evaluate the 1p basis components 
+      @nexprs $NB i -> begin 
+         bas_i = basis.bases[i]
+         B_i = evaluate(bas_i, X)
+      end 
+      # allocate A if necessary or just name _A = A if A is a buffer 
+      $(getA)
+      # evaluate the 1p product basis functions and add/write into _A
+      for (iA, ϕ) in enumerate(basis.indices)
+         @inbounds _A[iA] += $prodBi 
+      end
+      # release the memory allocated by the 1p basis components they normally 
+      # use preallocated chache to avoid too many small allocations.
+      @nexprs $NB i -> release!(B_i)
+      return _A
+   end
 end
 
-gradtype(basis::Product1pBasis, cfg::UConfig) = 
-      gradtype(basis, zero(eltype(cfg)))
+evaluate(basis::Product1pBasis, X::AbstractState) = 
+      add_into_A!(nothing, basis, X)
 
-function gradtype(basis::Product1pBasis, X::AbstractState) 
-   VALT = valtype(basis, X)
-   return dstate_type(VALT, X)
-end
+function evaluate(basis::Product1pBasis, cfg::UConfig)
+   @assert length(cfg) > 0 "Product1pBasis can only be evaluated with non-empty configurations"
+   # evaluate the first item "manually", then so we know the output types 
+   # but then write directly into the allocated array to avoid additional 
+   # allocations. 
+   A = evaluate(basis, first(cfg))
+   for (i, X) in enumerate(cfg)
+      if i == 1; continue; end # skip the first since we already covered it
+      add_into_A!(A, basis, X)
+   end
+   return A 
+end 
 
-acquire_dB!(basis::Product1pBasis, Xs::UConfig) = 
-      Matrix{gradtype(basis, Xs)}(undef, (length(basis), length(Xs)))
-
-
-# draft of defining bases via chains
-# function evaluate(basis::Product1pBasis, cfg::UConfig)
-#    A = Vector{valtype(basis)}(undef, length(basis))
-#    return evaluate!(A, basis, cfg)
-# end
-
-function evaluate!(A, basis::Product1pBasis, X::AbstractState)
+function evaluate!(A::AbstractVector, basis::Product1pBasis, X::AbstractState)
    fill!(A, zero(eltype(A)))
    add_into_A!(A, basis, X)
    return A
@@ -136,82 +157,172 @@ function evaluate!(A, basis::Product1pBasis, cfg::UConfig)
 end
 
 
-_check_args_is_sym() = true 
-_check_args_is_sym(::Symbol) = true
+# -------------------- jacobian codes 
 
-# args... may be empty or a symbol  for partial derivatives
-function evaluate_d!(dA, basis::Product1pBasis, X::Union{AbstractState, UConfig}, 
-                     args...)
-   A = acquire_B!(basis, X)
-   evaluate_ed!(A, dA, basis, X, args...)
-   release_B!(basis, A)
-   return dA
-end
+# @generated function evaluate(basis::Product1pBasis{NB}, X, args...) where {NB}
+#    getVT = Meta.parse("promote_type(" * prod("eltype(B_$i), " for i = 1:NB) * ")")
+#    getVT = Meta.parse("promote_type(" * prod("eltype(B_$i), " for i = 1:NB) * ")")
+#    prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
+                                 
+#    quote
+#       Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+#          bas_i = basis.bases[i] 
+#          if !(bas_i isa Discrete1pBasis)
+#             # only evaluate basis gradients for a continuous basis
+#             B_i, dB_i = evaluate_ed(bas_i, X, args...)
+#          else
+#             # we still need the basis values for the discrete basis though
+#             B_i = evaluate(bas_i, X)
+#          end
+#       end)
+#       VT = $getVT
+#       A = Vector{VT}(undef, length(basis))
 
-# args... may be empty or a symbol  for partial derivatives
-function evaluate_ed!(A, dA, basis::OneParticleBasis,
-                     cfg::UConfig, args...)
-   @assert _check_args_is_sym(args...)
-   fill!(A, 0)
-   for (j, X) in enumerate(cfg)
-      add_into_A_dA!(A, (@view dA[:, j]), basis, X, args...)
-   end
-   return A, dA
-end
+#       for (iA, ϕ) in enumerate(basis.indices)
+#          A[iA] = $prodBi
+#          # evaluate dA
+#          # TODO: redo this with adjoints!!!!
+#          #     also reverse order of operations to make fewer multiplications!
+#          dA[iA] = zero(eltype(dA))
+#          Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
+#             if !(basis.bases[a] isa Discrete1pBasis)
+#                dt = dB_a[ϕ[a]]
+#                Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
+#                   if b != a
+#                      dt *= B_b[ϕ[b]]
+#                   end
+#                end)
+#                dA[iA] += dt
+#             end
+#          end)
+#       end
+#       Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+#          release!(B_i)
+#          if !(basis.bases[i] isa Discrete1pBasis)
+#             release!(dB_i)
+#          end
+#       end)
+#    return nothing
+# end
 
-# args... may be empty or a symbol for partial derivatives
-function evaluate_ed!(A, dA, basis::Product1pBasis, X::AbstractState, args...)
-   @assert _check_args_is_sym(args...)
-   fill!(A, 0)
-   add_into_A_dA!(A, dA, basis, X, args...)
-   return A, dA
-end
 
 
 
-import Base.Cartesian: @nexprs
-
-@generated function evaluate(basis::Product1pBasis{NB}, X::AbstractState) where {NB}
-   getVT = Meta.parse("promote_type(" * prod("eltype(B_$i), " for i = 1:NB) * ")")
-   prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
+# args... could be a symbol to enable partial derivatives 
+# at the moment this is just passed into evaluate_ed!(...) 
+# to not evaluate 1p basis derivatives that aren't needed, but 
+# in the future a more complex construction could be envisioned that 
+# might considerably reduce the computational cost here... 
+@generated function _add_into_A_dA!(A, dA, basis::Product1pBasis{NB}, X,
+                                   args...) where {NB}
    quote
-      @nexprs $NB i -> begin 
-         bas_i = basis.bases[i]
-         B_i = evaluate(bas_i, X)
-      end 
-      VT = $getVT
-      A = Vector{VT}(undef, length(basis))
+      Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+         bas_i = basis.bases[i] 
+         if !(bas_i isa Discrete1pBasis)
+            # only evaluate basis gradients for a continuous basis
+            # B_i = acquire_B!(bas_i, X)
+            # dB_i = acquire_dB!(bas_i, X)
+            B_i, dB_i = evaluate_ed(bas_i, X, args...)
+         else
+            # we still need the basis values for the discrete basis though
+            # TODO: maybe the d part should be a no-op and remove this 
+            # case distinction ... 
+            # B_i = acquire_B!(bas_i, X)
+            B_i = evaluate(bas_i, X)
+         end
+      end)
       for (iA, ϕ) in enumerate(basis.indices)
-         @inbounds A[iA] = $prodBi 
-      end
-      @nexprs $NB i -> release!(B_i)
-      return A
-   end
-end
+         # evaluate A
+         t = one(eltype(A))
+         @nexprs $NB i -> (t *= B_i[ϕ[i]])
+         A[iA] += t
 
-@generated function add_into_A!(A, basis::Product1pBasis{NB}, X) where {NB}
-   prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
-   quote
-      @nexprs $NB i -> begin 
-         bas_i = basis.bases[i]
-         B_i = evaluate(bas_i, X)
-      end 
-      for (iA, ϕ) in enumerate(basis.indices)
-         @inbounds A[iA] += $prodBi 
+         # evaluate dA
+         # TODO: redo this with adjoints!!!!
+         #     also reverse order of operations to make fewer multiplications!
+         dA[iA] = zero(eltype(dA))
+         Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
+            if !(basis.bases[a] isa Discrete1pBasis)
+               dt = dB_a[ϕ[a]]
+               Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
+                  if b != a
+                     dt *= B_b[ϕ[b]]
+                  end
+               end)
+               dA[iA] += dt
+            end
+         end)
       end
-      @nexprs $NB i -> release!(B_i)
+      Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
+         # release_B!(bas_i, B_i)
+         release!(B_i)
+         if !(basis.bases[i] isa Discrete1pBasis)
+            # release_dB!(bas_i, dB_i)
+            release!(dB_i)
+         end
+      end))
       return nothing
    end
 end
 
-function evaluate(basis::Product1pBasis, cfg::UConfig)
-   A = evaluate(basis, first(cfg))
-   for (i, X) in enumerate(cfg)
-      if i == 1; continue; end
-      add_into_A!(A, basis, X)
+
+
+# args... could be a symbol to enable partial derivatives 
+# at the moment this is just passed into evaluate_ed!(...) 
+# to not evaluate 1p basis derivatives that aren't needed, but 
+# in the future a more complex construction could be envisioned that 
+# might considerably reduce the computational cost here... 
+@generated function _add_into_A_dA!(A, dA, basis::Product1pBasis{NB}, X,
+                                   args...) where {NB}
+   quote
+      Base.Cartesian.@nexprs($NB, i -> begin   # for i = 1:NB
+         bas_i = basis.bases[i] 
+         if !(bas_i isa Discrete1pBasis)
+            # only evaluate basis gradients for a continuous basis
+            # B_i = acquire_B!(bas_i, X)
+            # dB_i = acquire_dB!(bas_i, X)
+            B_i, dB_i = evaluate_ed(bas_i, X, args...)
+         else
+            # we still need the basis values for the discrete basis though
+            # TODO: maybe the d part should be a no-op and remove this 
+            # case distinction ... 
+            # B_i = acquire_B!(bas_i, X)
+            B_i = evaluate(bas_i, X)
+         end
+      end)
+      for (iA, ϕ) in enumerate(basis.indices)
+         # evaluate A
+         t = one(eltype(A))
+         @nexprs $NB i -> (t *= B_i[ϕ[i]])
+         A[iA] += t
+
+         # evaluate dA
+         # TODO: redo this with adjoints!!!!
+         #     also reverse order of operations to make fewer multiplications!
+         dA[iA] = zero(eltype(dA))
+         Base.Cartesian.@nexprs($NB, a -> begin  # for a = 1:NB
+            if !(basis.bases[a] isa Discrete1pBasis)
+               dt = dB_a[ϕ[a]]
+               Base.Cartesian.@nexprs($NB, b -> begin  # for b = 1:NB
+                  if b != a
+                     dt *= B_b[ϕ[b]]
+                  end
+               end)
+               dA[iA] += dt
+            end
+         end)
+      end
+      Base.Cartesian.@nexprs($NB, i -> ( begin   # for i = 1:NB
+         # release_B!(bas_i, B_i)
+         release!(B_i)
+         if !(basis.bases[i] isa Discrete1pBasis)
+            # release_dB!(bas_i, dB_i)
+            release!(dB_i)
+         end
+      end))
+      return nothing
    end
-   return A 
-end 
+end
 
 
 
@@ -278,6 +389,41 @@ add_into_A_dA!(A, dA, basis::Product1pBasis, X, sym::Symbol) =
    end
 end
 
+
+# ------------- Partial derivative functionality 
+
+_check_args_is_sym() = true 
+_check_args_is_sym(::Symbol) = true
+
+# args... may be empty or a symbol  for partial derivatives
+function evaluate_d!(dA, basis::Product1pBasis, X::Union{AbstractState, UConfig}, 
+                     args...)
+   A = acquire_B!(basis, X)
+   evaluate_ed!(A, dA, basis, X, args...)
+   release_B!(basis, A)
+   return dA
+end
+
+# args... may be empty or a symbol  for partial derivatives
+function evaluate_ed!(A, dA, basis::OneParticleBasis,
+                     cfg::UConfig, args...)
+   @assert _check_args_is_sym(args...)
+   fill!(A, 0)
+   for (j, X) in enumerate(cfg)
+      add_into_A_dA!(A, (@view dA[:, j]), basis, X, args...)
+   end
+   return A, dA
+end
+
+# args... may be empty or a symbol for partial derivatives
+function evaluate_ed!(A, dA, basis::Product1pBasis, X::AbstractState, args...)
+   @assert _check_args_is_sym(args...)
+   fill!(A, 0)
+   add_into_A_dA!(A, dA, basis, X, args...)
+   return A, dA
+end
+
+# ----------------------------------------
 
 _symbols_prod(bases) = tuple(union( symbols.(bases)... )...)
 
@@ -407,53 +553,53 @@ using NamedTupleTools: select
 
 # --------------- AD codes
 
-import ChainRules: rrule, NoTangent, ZeroTangent
+# import ChainRules: rrule, NoTangent, ZeroTangent
 
-_evaluate_bases(basis::Product1pBasis{NB}, X::AbstractState) where {NB} = 
-      ntuple(i -> evaluate(basis.bases[i], X), NB)
+# _evaluate_bases(basis::Product1pBasis{NB}, X::AbstractState) where {NB} = 
+#       ntuple(i -> evaluate(basis.bases[i], X), NB)
 
-_evaluate_A(basis::Product1pBasis{NB}, BB) where {NB} = 
-      [ prod(BB[i][ϕ[i]] for i = 1:NB) for ϕ in basis.indices ]
+# _evaluate_A(basis::Product1pBasis{NB}, BB) where {NB} = 
+#       [ prod(BB[i][ϕ[i]] for i = 1:NB) for ϕ in basis.indices ]
 
-evaluate(basis::Product1pBasis, X::AbstractState) = 
-      _evaluate_A(basis, _evaluate_bases(basis, X)) 
+# evaluate(basis::Product1pBasis, X::AbstractState) = 
+#       _evaluate_A(basis, _evaluate_bases(basis, X)) 
 
-function _rrule_evaluate(basis::Product1pBasis{NB}, X::AbstractState, 
-                         w::AbstractVector{<: Number}, 
-                         BB = _evaluate_bases(basis, X)) where {NB}
-   VT = promote_type(valtype(basis, X), eltype(w))
+# function _rrule_evaluate(basis::Product1pBasis{NB}, X::AbstractState, 
+#                          w::AbstractVector{<: Number}, 
+#                          BB = _evaluate_bases(basis, X)) where {NB}
+#    VT = promote_type(valtype(basis, X), eltype(w))
 
-   # dB = evaluate_d(basis, X)
-   # return sum( (real(w) * real(db) + imag(w) * imag(db)) 
-   #             for (w, db) in zip(w, dB) )
+#    # dB = evaluate_d(basis, X)
+#    # return sum( (real(w) * real(db) + imag(w) * imag(db)) 
+#    #             for (w, db) in zip(w, dB) )
 
-   # Compute the differentials for the individual sub-bases 
-   Wsub = ntuple(i -> zeros(VT, length(BB[i])), NB) 
-   for (ivv, vv) in enumerate(basis.indices)
-      for t = 1:NB 
-         _A = one(VT)
-         for s = 1:NB 
-            if s != t 
-               _A *= BB[s][vv[s]]
-            end
-         end
-         Wsub[t][vv[t]] += w[ivv] * conj(_A)
-      end
-   end
+#    # Compute the differentials for the individual sub-bases 
+#    Wsub = ntuple(i -> zeros(VT, length(BB[i])), NB) 
+#    for (ivv, vv) in enumerate(basis.indices)
+#       for t = 1:NB 
+#          _A = one(VT)
+#          for s = 1:NB 
+#             if s != t 
+#                _A *= BB[s][vv[s]]
+#             end
+#          end
+#          Wsub[t][vv[t]] += w[ivv] * conj(_A)
+#       end
+#    end
 
-   # now these can be propagated into the inner basis 
-   #  -> type instab to be fixed here 
-   g = sum( _rrule_evaluate(basis.bases[t], X, Wsub[t] )
-            for t = 1:NB )
-   return g
-end
+#    # now these can be propagated into the inner basis 
+#    #  -> type instab to be fixed here 
+#    g = sum( _rrule_evaluate(basis.bases[t], X, Wsub[t] )
+#             for t = 1:NB )
+#    return g
+# end
 
-function rrule(::typeof(evaluate), basis::Product1pBasis, X::AbstractState)
-   BB = _evaluate_bases(basis, X)
-   A = _evaluate_A(basis, BB)
-   return A, 
-      w -> (NoTangent(), NoTangent(), _rrule_evaluate(basis, X, w, BB))
-end
+# function rrule(::typeof(evaluate), basis::Product1pBasis, X::AbstractState)
+#    BB = _evaluate_bases(basis, X)
+#    A = _evaluate_A(basis, BB)
+#    return A, 
+#       w -> (NoTangent(), NoTangent(), _rrule_evaluate(basis, X, w, BB))
+# end
 
 
 #    function _rrule_evaluate(basis::Scal1pBasis, X::AbstractState, 
