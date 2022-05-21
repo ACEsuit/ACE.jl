@@ -18,8 +18,8 @@ using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim
 
 @info "Build a 1p basis from scratch"
 
-maxdeg = 12
-maxL = 5
+maxdeg = 15
+maxL = 10
 r0 = 1.0
 rcut = 3.0
 maxorder = 3
@@ -35,11 +35,45 @@ ACE.init1pspec!(A_nlm, Bsel)
 A_nlmk = Product1pBasis( (Rn, Ylm, Pk) )
 ACE.init1pspec!(A_nlmk, Bsel)
 
-nX = 10
+nX = 20
 Xs = [ State(rr = rand_vec3(Rn) ) for _=1:nX ]
 cfg = ACEConfig(Xs)
 
 A = evaluate(A_nlm, Xs)
+
+## PROFILING SOME STUFF 
+
+
+
+using BenchmarkTools
+X = Xs[1] 
+A1 = copy(A)
+A2 = copy(A) 
+
+@btime evaluate($A_nlm, $X)
+
+
+@btime begin 
+   fill!($A1, 0)
+   for n = 1:length($Xs)
+      X=($Xs)[n]
+      evaluate($A_nlm, X)
+      copy!($A1, $A)
+   end 
+end
+
+@btime begin
+   fill!($A1, 0)
+   for n = 1:length($Xs)
+      ACE.add_into_A!($A1, $A_nlm, $X)
+   end
+end
+
+@btime begin
+   evaluate($A_nlm, $Xs)
+end
+
+##
 
 @info("test against manual summation")
 A1 = sum( evaluate(A_nlm, X) for X in Xs )

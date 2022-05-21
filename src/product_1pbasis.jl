@@ -169,24 +169,50 @@ end
 
 
 
-
 import Base.Cartesian: @nexprs
 
+@generated function evaluate(basis::Product1pBasis{NB}, X::AbstractState) where {NB}
+   getVT = Meta.parse("promote_type(" * prod("eltype(B_$i), " for i = 1:NB) * ")")
+   prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
+   quote
+      @nexprs $NB i -> begin 
+         bas_i = basis.bases[i]
+         B_i = evaluate(bas_i, X)
+      end 
+      VT = $getVT
+      A = Vector{VT}(undef, length(basis))
+      for (iA, ϕ) in enumerate(basis.indices)
+         @inbounds A[iA] = $prodBi 
+      end
+      @nexprs $NB i -> release!(B_i)
+      return A
+   end
+end
+
 @generated function add_into_A!(A, basis::Product1pBasis{NB}, X) where {NB}
+   prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
    quote
       @nexprs $NB i -> begin 
          bas_i = basis.bases[i]
          B_i = evaluate(bas_i, X)
       end 
       for (iA, ϕ) in enumerate(basis.indices)
-         t = one(eltype(A))
-         @nexprs $NB i -> (t *= B_i[ϕ[i]])
-         A[iA] += t
+         @inbounds A[iA] += $prodBi 
       end
       @nexprs $NB i -> release!(B_i)
       return nothing
    end
 end
+
+function evaluate(basis::Product1pBasis, cfg::UConfig)
+   A = evaluate(basis, first(cfg))
+   for (i, X) in enumerate(cfg)
+      if i == 1; continue; end
+      add_into_A!(A, basis, X)
+   end
+   return A 
+end 
+
 
 
 # this is a hack to resolve a method ambiguity. 
