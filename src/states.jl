@@ -63,6 +63,9 @@ State{NT}(; kwargs...) where {NT <: NamedTuple} = State{NT}(NamedTuple(kwargs))
 _x(X::XState) = getfield(X, :x)
 getproperty(X::XState, sym::Symbol) = getproperty(_x(X), sym)
 
+Base.length(::XState) = 1 
+
+
 # ----------- printing / output 
 
 const _showdigits = Ref{Int64}(2)
@@ -145,6 +148,52 @@ dstate_type(X::DState) = typeof(X)
       typeof( DState( select(_x(X), $CSYMS) ) )
    end
 end
+
+# ------------ type promotion 
+
+@generated function promote_rule(::Type{TDX}, ::Type{S}
+                                ) where {TDX <: DState, S <: Number}
+   SYMS, TT = _symstt(TDX)
+   PTT = [ _mypromrl(S, TT.types[i]) for i = 1:length(SYMS) ]
+   PTTstr = "Tuple{" * "$(tuple(PTT...))"[2:end-1] * "}"
+   quote
+      $(Meta.parse( "DState{NamedTuple{$(SYMS), $PTTstr}}" ))
+   end
+end
+
+
+@generated function promote_rule(::Type{TDX1}, ::Type{TDX2}
+                        ) where {TDX1 <: DState, TDX2 <: DState}
+   SYMS1, TT1 = _symstt(TDX1)
+   SYMS2, TT2 = _symstt(TDX2)
+   SYMS = tuple(union(SYMS1, SYMS2)...)
+   PTT = [] 
+   for sym in SYMS 
+      if sym in SYMS1 && !(sym in SYMS2)
+         push!(PTT, TT1.types[findfirst(isequal(sym), SYMS1)])
+      elseif !(sym in SYMS1) && sym in SYMS2
+         push!(PTT, TT2.types[findfirst(isequal(sym), SYMS2)])
+      else 
+         T1 = TT1.types[findfirst(isequal(sym), SYMS1)]
+         T2 = TT2.types[findfirst(isequal(sym), SYMS2)]
+         push!(PTT, _mypromrl(T1, T2))
+      end
+   end
+   PTTstr = "Tuple{" * "$(tuple(PTT...))"[2:end-1] * "}"
+   quote
+      $(Meta.parse( "DState{NamedTuple{$(SYMS), $PTTstr}}" ))
+   end
+end
+
+
+@generated function dstate_type(X::TX)  where {TX <: State}
+   CSYMS = _ctssyms(TX) 
+   quote
+      typeof( DState( select(_x(X), $CSYMS) ) )
+   end
+end
+
+# -------------------
       
 # the next variant of dstate_type is used to potentially extend 
 # from real states to complex dstates. 
