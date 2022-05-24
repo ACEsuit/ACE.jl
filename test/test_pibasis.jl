@@ -16,7 +16,7 @@ using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
 @info("Basic test of PIBasis construction and evaluation")
 
 maxdeg = 6
-ord = 3
+ord = 2
 Bsel = SimpleSparseBasis(ord, maxdeg) 
 
 φ = ACE.Invariant()
@@ -27,12 +27,14 @@ pibasis = PIBasis(B1p, O3(), Bsel; property = φ)
 pibasis_r = PIBasis(B1p, O3(), Bsel; property = φ, isreal=true)
 
 # generate a configuration
-nX = 10
+nX = 20
 _randX() = State(rr = rand_vec3(B1p["Rn"]) )
 Xs = [_randX() for _=1:nX]
 cfg = ACEConfig(Xs)
 
 AA = evaluate(pibasis, cfg)
+evaluate(pibasis, cfg) == evaluate(pibasis, Xs)
+
 AA_r = evaluate(pibasis_r, cfg)
 
 println_slim(@test(length(pibasis) == length(AA)))
@@ -64,8 +66,8 @@ AA_r_naive = real.(AA_naive)
 println_slim(@test( AA_r_naive ≈ AA_r ))
 
 
-## FIO tests 
 
+## FIO tests 
 @warn("Turned off failing FIO tests")
 @info("FIO Test")
 # println_slim(@test( all(test_fio(pibasis)) ))

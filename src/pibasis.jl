@@ -142,14 +142,11 @@ PIBasis(basis1p, N, D, maxdeg)
 * `D` : an abstract degee specification, e.g., SparsePSHDegree
 * `maxdeg` : the maximum polynomial degree as measured by `D`
 """
-mutable struct PIBasis{BOP, REAL, TB, TA} <: ACEBasis
+mutable struct PIBasis{BOP, REAL} <: ACEBasis
    basis1p::BOP             # a one-particle basis
    spec::PIBasisSpec
    real::REAL     # could be `real` or `identity` to keep AA complex
-   # evaluator    # classic vs graph   
-   B_pool::VectorPool{TB}
-   dAA_pool::VectorPool{TA}
-end
+end               # TODO -> chain?? 
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
@@ -158,13 +155,6 @@ cutoff(basis::PIBasis) = cutoff(basis.basis1p)
         (B1.spec == B2.spec) && 
         (B1.real == B2.real) )
 
-valtype(basis::PIBasis) = basis.real( valtype(basis.basis1p) )
-
-valtype(basis::PIBasis, cfg::AbstractConfiguration) = 
-      basis.real( valtype(basis.basis1p, cfg) )
-
-gradtype(basis::PIBasis, cfgorX) = 
-      basis.real( gradtype(basis.basis1p, cfgorX) )
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
@@ -177,14 +167,6 @@ PIBasis(basis1p, symgrp, Bsel::AbstractBasisSelector;
    PIBasis(basis1p, 
            PIBasisSpec(basis1p, symgrp, Bsel; kwargs...),
            isreal ? Base.real : Base.identity )
-
-function PIBasis(basis1p::OneParticleBasis, spec::PIBasisSpec, real)
-   VT1 = valtype(basis1p)
-   VT = real(VT1)  # default valtype 
-   B_pool = VectorPool{VT}()
-   dAA_pool = VectorPool{VT1}()
-   return PIBasis(basis1p, spec, real, B_pool, dAA_pool)
-end
 
 get_spec(pibasis::PIBasis) =
    [ get_spec(pibasis, i) for i = 1:length(pibasis) ]
@@ -224,15 +206,6 @@ function clean_1pbasis!(basis::PIBasis)
    return basis 
 end
 
-# syms = symbols(B1p)
-# rgs = Dict{Symbol, Any}([sym => [] for sym in syms]...)
-# for bb in spec, b in bb, sym in keys(b)
-#    push!(rgs[sym], getproperty(b, sym)) 
-# end
-# for sym in syms 
-#    rgs[sym] = identity.(unique(rgs[sym]))
-# end
-
 
 # -------------------
 
@@ -253,27 +226,6 @@ function scaling(pibasis::PIBasis, p)
    end
    return ww
 end
-
-
-# function scaling(pibasis::PIBasis, p)
-#    ww = zeros(Float64, length(pibasis))
-#    for iz0 = 1:numz(pibasis)
-#       wwin = @view ww[pibasis.inner[iz0].AAindices]
-#       for i = 1:length(pibasis.inner[iz0])
-#          bspec = get_basis_spec(pibasis, iz0, i)
-#          wwin[i] = scaling(bspec, p)
-#       end
-#    end
-#    return ww
-# end
-
-
-
-# graphevaluator(basis::PIBasis) =
-#    PIBasis(basis.basis1p, zlist(basis), basis.inner, DAGEvaluator())
-#
-# standardevaluator(basis::PIBasis) =
-#    PIBasis(basis.basis1p, zlist(basis), basis.inner, StandardEvaluator())
 
 
 
@@ -303,19 +255,11 @@ read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
 # -------------------------------------------------
 # Evaluation codes
 
-# TODO : this is a function barrier as a stop-gap solution 
-#        to a type instability in valtype
-function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
-   A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
-   return _evaluate!(AA, basis::PIBasis, config::AbstractConfiguration, A)
-end
-
-function _evaluate!(AA, basis::PIBasis, config::AbstractConfiguration, A)
-   # A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
-   evaluate!(A, basis.basis1p, config)
+function evaluate!(AA, basis::PIBasis, config::UConfig)
+   A = evaluate(basis.basis1p, config)
    evaluate!(AA, basis, A)
-   release_B!(basis.basis1p, A)
-   return AA
+   release!(A) 
+   return AA 
 end
 
 function evaluate!(AA, basis::PIBasis, A::AbstractVector{<: Number})
@@ -332,11 +276,20 @@ end
 
 # draft of defining bases via chains
 function evaluate(basis::PIBasis, A::AbstractVector{<: Number})
-   # TODO: replace with cached array 
-   AA = Vector{valtype(basis)}(undef, length(basis)) 
+   VT = basis.real(eltype(A))
+   AA = Vector{VT}(undef, length(basis)) 
    evaluate!(AA, basis, A) 
    return AA 
 end
+
+# draft of defining bases via chains
+function evaluate(basis::PIBasis, config::UConfig) 
+   A = evaluate(basis.basis1p, config)
+   AA = evaluate(basis, A)
+   release!(A) 
+   return AA 
+end
+
 
 # -------------------------------------------------
 # gradients
