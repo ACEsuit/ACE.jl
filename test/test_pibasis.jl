@@ -75,6 +75,10 @@ println_slim(@test( AA_r_naive ≈ AA_r ))
 
 ## Testing derivatives
 
+AA, dAA = ACE.evaluate_ed(pibasis, cfg)
+
+##
+
 @info("Derivatives of PIbasis")
 for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
   AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
@@ -90,10 +94,13 @@ for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
   end
   println()
 end
+
 ##
 
-# @info("Test the chained version of PIBasis")
-# B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
-# pibasis = PIBasis(B1p, O3(), Bsel; property = φ)
-# pibc = ACE.chain(B1p, pibasis)
-# evaluate(pibasis, cfg) == evaluate(pibc, cfg)
+import ACE: evaluate_ed 
+@info("Test the chained version of PIBasis")
+A = evaluate(pibasis.basis1p, cfg)
+println_slim(@test evaluate(pibasis, A) == evaluate(pibasis, cfg))
+
+A, dA = ACE.evaluate_ed(pibasis.basis1p, cfg)
+println_slim(@test evaluate_ed(pibasis, A, dA) == evaluate_ed(pibasis, cfg))

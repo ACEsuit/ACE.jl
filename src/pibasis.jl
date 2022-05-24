@@ -274,9 +274,12 @@ function evaluate!(AA, basis::PIBasis, A::AbstractVector{<: Number})
    return AA
 end
 
+_valtype(basis::PIBasis, A::AbstractVector{<: Number}) = 
+      basis.real(eltype(A))
+
 # draft of defining bases via chains
 function evaluate(basis::PIBasis, A::AbstractVector{<: Number})
-   VT = basis.real(eltype(A))
+   VT = _valtype(basis, A)   
    AA = Vector{VT}(undef, length(basis)) 
    evaluate!(AA, basis, A) 
    return AA 
@@ -294,30 +297,49 @@ end
 # -------------------------------------------------
 # gradients
 
-ACE.evaluate_d(basis::PIBasis, cfg::AbstractConfiguration, args...) = 
-         ACE.evaluate_ed(basis::PIBasis, cfg::AbstractConfiguration, args...)[2]
+evaluate_d(basis::PIBasis, cfg::UConfig, args...) = 
+         evaluate_ed(basis, cfg, args...)[2]
 
-         
-function evaluate_ed!(AA, dAA, basis::PIBasis,
-                      cfg::AbstractConfiguration, args...)  
-   A = acquire_B!(basis.basis1p, cfg)
-   dA = acquire_dB!(basis.basis1p, cfg)   # TODO: THIS WILL ALLOCATE!!!!!
-   evaluate_ed!(A, dA, basis.basis1p, cfg, args...)
-   evaluate_ed!(AA, dAA, basis, A, dA)
-   release_dB!(basis.basis1p, dA)
-   release_B!(basis.basis1p, A)
+function evaluate_ed(basis::PIBasis, cfg::UConfig, args...) 
+   A, dA = evaluate_ed(basis.basis1p, cfg, args...)
+   AA, dAA = evaluate_ed(basis, A, dA)
+   release!(A)
+   release!(dA)
    return AA, dAA 
 end
+
+_gradtype(basis::PIBasis, A, dA) = 
+      basis.real( promote_type(eltype(A), eltype(dA)) )
+
+# this is really an frule I think 
+function evaluate_ed(basis::PIBasis, A, dA)
+   VT = _valtype(basis, A)   
+   GT = _gradtype(basis, A, dA)
+   AA = Vector{VT}(undef, length(basis))
+   dAA = Matrix{GT}(undef, length(basis), size(dA, 2))
+   evaluate_ed!(AA, dAA, basis, A, dA)
+   release!(A)
+   release!(dA)
+   return AA, dAA 
+end
+
+function evaluate_ed!(AA, dAA, basis::PIBasis,
+                      cfg::AbstractConfiguration, args...)
+   A, dA = evaluate_ed(basis.basis1p, cfg, args...)
+   evaluate_ed!(AA, dAA, basis, A, dA)
+   release!(dA)
+   release!(A)
+   return AA, dAA
+end
+
+
+
 
 function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
    if ord == 1
       return _AA_local_adjoints_1!(dAAdA, A, iAA2iA, iAA, ord, _real)
    elseif ord == 2
       return _AA_local_adjoints_2!(dAAdA, A, iAA2iA, iAA, ord, _real)
-   # elseif ord == 3
-   #    return _AA_local_adjoints_3!(dAAdA, A, iAA2iA, iAA, ord, _real)
-   # elseif ord == 4
-   #    return _AA_local_adjoints_4!(dAAdA, A, iAA2iA, iAA, ord, _real)
    else 
       return _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
    end
@@ -336,32 +358,6 @@ function _AA_local_adjoints_2!(dAAdA, A, iAA2iA, iAA, ord, _real)
    @inbounds dAAdA[2] = A1
    return _real(A1 * A2)
 end
-
-# function _AA_local_adjoints_3!(dAAdA, A, iAA2iA, iAA, ord, _real)
-#    A1 = A[iAA2iA[iAA, 1]]
-#    A2 = A[iAA2iA[iAA, 2]]
-#    A3 = A[iAA2iA[iAA, 3]]
-#    A12 = A1 * A2
-#    dAAdA[1] = A2 * A3  
-#    dAAdA[2] = A1 * A3 
-#    dAAdA[3] = A12
-#    return _real(A12 * A3)
-# end
-
-# function _AA_local_adjoints_4!(dAAdA, A, iAA2iA, iAA, ord, _real)
-#    @inbounds A1 = A[iAA2iA[iAA, 1]]
-#    @inbounds A2 = A[iAA2iA[iAA, 2]]
-#    @inbounds A3 = A[iAA2iA[iAA, 3]]
-#    @inbounds A4 = A[iAA2iA[iAA, 4]]
-#    A12 = A1 * A2
-#    A34 = A3 * A4
-#    @inbounds dAAdA[1] = A2 * A34  
-#    @inbounds dAAdA[2] = A1 * A34 
-#    @inbounds dAAdA[3] = A12 * A4 
-#    @inbounds dAAdA[4] = A12 * A3
-#    return _real(A12 * A34)
-# end
-
 
 function _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
    @assert length(dAAdA) >= ord
@@ -393,11 +389,16 @@ function _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
    return aa 
 end
 
-_acquire_dAAdA!(basis::PIBasis) = acquire!(basis.dAA_pool, maxcorrorder(basis))
+
+function _acquire_dAAdA!(basis::PIBasis, A, AA) 
+   T = promote_type(eltype(A), eltype(AA)) 
+   return Vector{T}(undef, maxcorrorder(basis))
+end
+   
 
 function evaluate_ed!(AA, dAA, basis::PIBasis,
                       A::AbstractVector, dA::AbstractMatrix)
-   dAAdA = _acquire_dAAdA!(basis)
+   dAAdA = _acquire_dAAdA!(basis, A, AA)
    _evaluate_ed!(AA, dAA, basis, A, dA, dAAdA) 
 end
 
