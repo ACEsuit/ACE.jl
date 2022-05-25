@@ -116,14 +116,10 @@ for basis in (A_nlm, A_nlmk)
    local Xs, cfg, A1, nX
    nX = 5
    Xs = [ State(rr = rand_vec3(Rn), u = rand_radial(J) ) for _=1:nX ]
-   cfg = ACEConfig(Xs)
-   A1 = ACE.acquire_B!(basis, cfg)
-   ACE.evaluate!(A1, basis, cfg)
-   A2 = ACE.acquire_B!(basis, cfg)
-   dA = ACE.acquire_dB!(basis, cfg)
-   ACE.evaluate_ed!(A2, dA, basis, cfg)
+   A1 = ACE.evaluate(basis, Xs)
+   A2, dA2 = ACE.evaluate_ed(basis, Xs)
    println_slim(@test A1 ≈ A2)
-   println_slim(@test( evaluate_d(basis, Xs) ≈ dA ))
+   println_slim(@test( evaluate_d(basis, Xs) ≈ dA2 ))
 
    for ntest = 1:30
       nX = 5

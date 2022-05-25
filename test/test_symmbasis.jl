@@ -191,16 +191,6 @@ for L = 0:3
 end
 
 
-# ## Keep for futher profiling
-# L = 1
-# φ = ACE.SphericalVector(L; T = ComplexF64)
-# pibasis = PIBasis(B1p, 4, 8; property = φ, isreal = false)
-# basis = SymmetricBasis(pibasis, φ)
-# @time SymmetricBasis(pibasis, φ);
-#
-# Profile.clear(); # Profile.init(; delay = 0.0001)
-# @profile SymmetricBasis(pibasis, φ);
-# ProfileView.view()
 
 ##
 

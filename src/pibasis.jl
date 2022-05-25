@@ -390,15 +390,12 @@ function _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
 end
 
 
-function _acquire_dAAdA!(basis::PIBasis, A, AA) 
-   T = promote_type(eltype(A), eltype(AA)) 
-   return Vector{T}(undef, maxcorrorder(basis))
-end
+_acquire_dAAdA!(basis::PIBasis, A) = Vector{eltype(A)}(undef, maxcorrorder(basis))
    
 
 function evaluate_ed!(AA, dAA, basis::PIBasis,
                       A::AbstractVector, dA::AbstractMatrix)
-   dAAdA = _acquire_dAAdA!(basis, A, AA)
+   dAAdA = _acquire_dAAdA!(basis, A)
    _evaluate_ed!(AA, dAA, basis, A, dA, dAAdA) 
 end
 

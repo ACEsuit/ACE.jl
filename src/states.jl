@@ -358,8 +358,8 @@ for (f, g) in ( (:dot, :sum), (:isapprox, :all) )  # (:contract, :sum),
 end
 
 @generated function contract(X1::TX1, X2::TX2) where {TX1 <: XState, TX2 <: XState}
-   SYMS = _syms(TX1)
-   @assert SYMS == _syms(TX2)
+   # this line is important - it means that missing symbols are interpreted as zero
+   SYMS = intersect(_syms(TX1), _syms(TX2))
    code = "contract(X1.$(SYMS[1]), X2.$(SYMS[1]))"
    for sym in SYMS[2:end]
       code *= " + contract(X1.$sym, X2.$sym)"
