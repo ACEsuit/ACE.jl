@@ -324,7 +324,7 @@ function evaluate_ed(basis::PIBasis, A, dA)
 end
 
 function evaluate_ed!(AA, dAA, basis::PIBasis,
-                      cfg::AbstractConfiguration, args...)
+                      cfg::UConfig, args...)
    A, dA = evaluate_ed(basis.basis1p, cfg, args...)
    evaluate_ed!(AA, dAA, basis, A, dA)
    release!(dA)

@@ -15,8 +15,8 @@ using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
 
 @info("Basic test of PIBasis construction and evaluation")
 
-maxdeg = 6
-ord = 2
+maxdeg = 8
+ord = 3
 Bsel = SimpleSparseBasis(ord, maxdeg) 
 
 φ = ACE.Invariant()
@@ -27,7 +27,7 @@ pibasis = PIBasis(B1p, O3(), Bsel; property = φ)
 pibasis_r = PIBasis(B1p, O3(), Bsel; property = φ, isreal=true)
 
 # generate a configuration
-nX = 20
+nX = 40
 _randX() = State(rr = rand_vec3(B1p["Rn"]) )
 Xs = [_randX() for _=1:nX]
 cfg = ACEConfig(Xs)
@@ -104,3 +104,19 @@ println_slim(@test evaluate(pibasis, A) == evaluate(pibasis, cfg))
 
 A, dA = ACE.evaluate_ed(pibasis.basis1p, cfg)
 println_slim(@test evaluate_ed(pibasis, A, dA) == evaluate_ed(pibasis, cfg))
+
+##
+
+# using BenchmarkTools
+
+# A, dA = ACE.evaluate_ed(pibasis.basis1p, cfg)
+# AA, dAA =  evaluate_ed(pibasis, A, dA)
+
+# @btime evaluate_ed($pibasis, $Xs)
+# @btime ACE.evaluate_ed!($AA, $dAA, $pibasis, $Xs)
+
+# @profview begin 
+#   for _=1:100 
+#     ACE.evaluate_ed!(AA, dAA, pibasis, Xs)
+#   end 
+# end
