@@ -40,25 +40,6 @@ Xs = [ State(rr = rand_vec3(Rn) ) for _=1:nX ]
 cfg = ACEConfig(Xs)
 
 A = evaluate(A_nlm, Xs)
-##
-using BenchmarkTools
-X = Xs[1] 
-@btime evaluate($A_nlm, $X) 
-@btime evaluate_ed($A_nlm, $X)
-
-@btime evaluate($A_nlm, $Xs) 
-bm = @benchmark evaluate_ed($A_nlm, $Xs)
-display(bm) 
-
-##
-
-let A_nlm = A_nlm, Xs = Xs 
-   @profview begin 
-      for _ = 1:4_000 
-         evaluate_ed(A_nlm, Xs) 
-      end
-   end
-end
 
 ##
 
@@ -90,7 +71,6 @@ for _B in (J, Ylm,)
    print(string(Base.typename(typeof(_B)))[10:end-1], " - ", getlabel(_B), " : ")
    println_slim((@test(all(test_fio(_B)))))
 end
-
 
 ##
 

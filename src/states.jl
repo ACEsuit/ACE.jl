@@ -166,7 +166,7 @@ end
                         ) where {TDX1 <: DState, TDX2 <: DState}
    SYMS1, TT1 = _symstt(TDX1)
    SYMS2, TT2 = _symstt(TDX2)
-   SYMS = tuple(union(SYMS1, SYMS2)...)
+   SYMS = tuple(sort([union(SYMS1, SYMS2)...])...)
    PTT = [] 
    for sym in SYMS 
       if sym in SYMS1 && !(sym in SYMS2)
@@ -180,8 +180,9 @@ end
       end
    end
    PTTstr = "Tuple{" * "$(tuple(PTT...))"[2:end-1] * "}"
+   NTTex = Meta.parse("NamedTuple{$SYMS, $PTTstr}")
    quote
-      $(Meta.parse( "DState{NamedTuple{$(SYMS), $PTTstr}}" ))
+      return DState{$NTTex}
    end
 end
 
