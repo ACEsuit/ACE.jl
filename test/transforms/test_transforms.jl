@@ -66,6 +66,8 @@ println()
 # dF = t -> dot( evaluate_ed(B1, t)[2], u)
 # fdtest(F, dF, 1.235)
 
+# ACE.Testing.test_fio(trans; warntype=false)
+
 
 ##
 
@@ -74,7 +76,7 @@ for p in 2:4
    @info("p = $p, random transform")
    trans = polytransform(1+rand(), 1+rand())
    @info("      test (de-)dictionisation")
-   # @test all(ACE.Testing.test_fio(trans))
+   @test all(ACE.Testing.test_fio(trans; warntype=false))
    B1 = transformed_jacobi(maxdeg, trans, 3.0; pcut = p)
    B2 = transformed_jacobi(maxdeg, trans, 3.0, 0.5, pin = p, pcut = p)
    for B in [B1, B2]

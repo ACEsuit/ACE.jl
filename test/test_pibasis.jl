@@ -68,10 +68,9 @@ println_slim(@test( AA_r_naive ≈ AA_r ))
 
 
 ## FIO tests 
-@warn("Turned off failing FIO tests")
 @info("FIO Test")
-# println_slim(@test( all(test_fio(pibasis)) ))
-# println_slim(@test( all(test_fio(pibasis_r)) ))
+println_slim(@test( all(test_fio(pibasis; warntype=false)) ))
+println_slim(@test( all(test_fio(pibasis_r; warntype=false)) ))
 
 ## Testing derivatives
 
@@ -81,6 +80,7 @@ AA, dAA = ACE.evaluate_ed(pibasis, cfg)
 
 @info("Derivatives of PIbasis")
 for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
+  local AA, dAA 
   AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
   println_slim(@test AA1 ≈ AA)
 

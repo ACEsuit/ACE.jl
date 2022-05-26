@@ -38,8 +38,7 @@ end
 
 @info("Test FIO")
 using ACEbase.Testing: test_fio
-@warn("failing FIO test")
-# println_slim(@test(all(test_fio(basis; warntype = false))))
+println_slim(@test(all(test_fio(basis; warntype = false))))
 
 ##
 
