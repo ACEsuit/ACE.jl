@@ -44,7 +44,7 @@ println()
 
 for ntest = 1:30 
    local cfg , BB1 
-   cfg = [ State(rr = ACE.rand_radial(B1p["Rn"].basis) * ACE.rand_sphere()) for _=1:10 ] 
+   cfg = [ State(rr = ACE.rand_vec3(B1p["Rn"])) for _=1:10 ] 
    BB1 = evaluate(symB, cfg)
    BB2 = evaluate(symB2, cfg)
    print_tf(@test BB1[keep] ≈ BB2)

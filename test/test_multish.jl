@@ -6,15 +6,10 @@
 using ACE
 using StaticArrays, Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, 
-           State, O3 
+           State, O3, rand_sphere
 using ACE.Random: rand_rot, rand_refl
 using ACEbase.Testing: fdtest, println_slim 
 using ACE.Testing: __TestSVec
-
-rands3nrm() = ( rr = randn(SVector{3, Float64}); rr / norm(rr) )
-rands3(rl, ru) = (rl + rand() * (ru-rl)) * rands3nrm()
-
-
 
 ## FIRST TEST (l, m) vs custom (lr, ms) 
 
@@ -34,12 +29,11 @@ println_slim(@test all( ACE.indexrange(B1p_r)[symr] == ACE.indexrange(B1p)[sym]
 basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 basis_r = SymmetricBasis(φ, B1p_r, O3(:lr, :mr), Bsel)
 
-ru = basis.pibasis.basis1p["Rn"].basis.ru 
-rl = basis.pibasis.basis1p["Rn"].basis.rl 
+Rn = basis.pibasis.basis1p["Rn"]
 
 for ntest = 1:30 
    local cfg 
-   cfg = ACEConfig( [ State(rr = rands3(rl, ru)) for _=1:10 ] )
+   cfg = ACEConfig( [ State(rr = rand_vec3(Rn)) for _=1:10 ] )
    print_tf(@test evaluate(basis, cfg) ≈ evaluate(basis_r, cfg))
 end 
 println()
@@ -50,9 +44,9 @@ println()
 
 maxdeg = 6
 
-X = State( rr = rands3(rl, ru), ss = rands3nrm() )
+X = State( rr = rand_vec3(Rn), ss = rand_sphere() )
 MagState = typeof(X)
-Base.rand(::Type{MagState}) = MagState( rr = rands3(rl, ru), ss = rands3nrm() )
+Base.rand(::Type{MagState}) = MagState( rr = rand_vec3(Rn), ss = rand_sphere() )
 Base.rand(::Type{MagState}, N::Integer) = [ rand(MagState) for _ = 1:N ]
 
 B1p_r = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg, 

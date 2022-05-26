@@ -282,7 +282,7 @@ cat_weighted_degree(bb::Prodb, Bsel::CategorySparseBasis, basis::OneParticleBasi
       )
 
 
-      # --------------------------- 
+# --------------------------- 
 # Some useful filters 
 
 struct NoConstant 

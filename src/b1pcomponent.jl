@@ -42,20 +42,24 @@ struct B1pComponent{ISYMS, TT, TB, FVAL}
    basis::TB
    fval::FVAL
    spec::Vector{NamedTuple{ISYMS, TT}}
+   degrees::Vector{Int}
    label::String 
+   meta::Dict{String,Any}
    # ------------ derived fields
    invspec::Dict{NamedTuple{ISYMS, TT}, Int}
    # todo - fields for temporary arrays ...  
 end
 
 function B1pComponent(basis, fval, spec::AbstractVector{<: NamedTuple}, 
-                      label::AbstractString)
+                      degrees::Vector{Int}, 
+                      label::AbstractString, 
+                      meta = Dict{String, Any}())
    spec1 = collect(spec)                      
    invspec = Dict{eltype(spec1), Int}()
    for (i, b) in enumerate(spec)
       invspec[b] = i 
    end
-   return B1pComponent(basis, fval, spec, label, invspec)
+   return B1pComponent(basis, fval, spec, degrees, label, meta, invspec)
 end
 
 
@@ -135,7 +139,7 @@ end
 function degree(b::NamedTuple, basis::B1pComponent)
    ISYMS = _idxsyms(basis)
    idx = basis.invspec[ b[ISYMS] ]
-   return degree(basis.basis, idx)
+   return basis.degrees[idx]
 end
 
 function degree(b::NamedTuple, basis::B1pComponent, weight::Dict)
@@ -148,7 +152,8 @@ end
 
 ==(P1::B1pComponent, P2::B1pComponent) = ( 
       (P1.basis == P2.basis) && (P1.spec == P2.spec) && 
-      (P1.label == P2.label) && (P1.fval == P2.fval) )
+      (P1.label == P2.label) && (P1.fval == P2.fval) && 
+      (P1.degrees == P2.degrees) )
 
 
 function write_dict(basis::B1pComponent)
@@ -158,6 +163,7 @@ function write_dict(basis::B1pComponent)
                 "basis" => write_dict(basis.basis), 
                  "fval" => write_dict(basis.fval), 
                  "spec" => convert.(Dict, basis.spec), 
+              "degrees" => basis.degrees, 
                 "label" => basis.label )
 end
 
@@ -167,7 +173,7 @@ function read_dict(::Val{:ACE_B1pComponent}, D::Dict)
    ISYMS = tuple(Symbol.(D["syms"])...)
    spec = NamedTuple{ISYMS}.(namedtuple.(D["spec"]))
    fval = read_dict(D["fval"])
-   return B1pComponent(basis, fval, spec, D["label"])
+   return B1pComponent(basis, fval, spec, Int.(D["degrees"]), D["label"])
 end
 
 
@@ -175,7 +181,9 @@ function show(io::IO, basis::B1pComponent)
    vsyms = Transforms.get_symbols(basis.fval)
    strvsyms = filter(!isequal(':'), "$vsyms")
    if length(vsyms) == 1 
-      strvsyms = strvsyms[1:end-2] * ")"
+      # this doesn't work with unicode!?!?!?
+      # strvsyms = strvsyms[1:end-2] * ")"
+      strvsyms = prod(split(strvsyms, ','))
    end
    print(io, "B1pComponent( $(basis.label)$(strvsyms)")
    for (key, rg) in indexrange(basis)
@@ -185,70 +193,29 @@ function show(io::IO, basis::B1pComponent)
 end
 
 
-# ------------------- preparation for evaluation and managing temporaries 
-
-valtype(basis::B1pComponent) = valtype(basis.basis)
-
-valtype(basis::B1pComponent, X::AbstractState) = 
-      valtype(basis.basis, evaluate(basis.fval, X))
-
-function gradtype(basis::B1pComponent, X::AbstractState) 
-   x = evaluate(basis.fval, X)
-   # gradient type of the inner basis which knows nothing about states 
-   TDB = gradtype(basis.basis, x)
-   # now we need to incorporate the grad type of fval itself 
-   # dx = evaluate_d(basis.fval, X)
-   # the gradient will be a product of a TDB times a TDVAL 
-   return Transforms.grad_type_dP(TDB, basis.fval, X)
-      # dstate_type(valtype(basis, X), X)
-end
-
-acquire_B!(basis::B1pComponent, args...) = 
-         Vector{valtype(basis, args...)}(undef, length(basis))
-
-release_B!(basis::B1pComponent, args...) = nothing
-
-acquire_dB!(basis::B1pComponent, X::AbstractState) = 
-            Vector{gradtype(basis, X)}(undef, length(basis))
-
-release_dB!(basis::B1pComponent, args...) = nothing
-
-
 # ------------------------ Evaluation code
 #                          this is basically an interface for the inner basis
 
 evaluate(basis::B1pComponent, X::AbstractState) = 
-      evaluate!(acquire_B!(basis, X), basis, X)
+         evaluate(basis.basis, evaluate(basis.fval, X))
 
-evaluate!(B, basis::B1pComponent, X::AbstractState) =
-      evaluate!(B, basis.basis, evaluate(basis.fval, X))
+# evaluate!(B, basis::B1pComponent, X::AbstractState) =
+#       evaluate!(B, basis.basis, )
 
-
-
-evaluate_d(basis::B1pComponent, X::AbstractState) = 
-      evaluate_d!(acquire_dB!(basis, X), basis, X)
-
-evaluate_ed(basis::B1pComponent, X::AbstractState) = 
-      evaluate_ed!(acquire_B!(basis, X), acquire_dB!(basis, X), basis, X)
-
-
-function evaluate_d!(dB, basis::B1pComponent, X::AbstractState)
-   B = acquire_B!(basis.basis, evaluate(basis.fval, X))
-   evaluate_ed!(B, dB, basis, X)[2]
-   release_B!(basis.basis, B)
+function evaluate_d(basis::B1pComponent, X::AbstractState) 
+   B, dB = evaluate_ed(basis, X)
+   release!(B)
    return dB 
 end 
 
-
-function evaluate_ed!(B, dB, basis::B1pComponent, X::AbstractState)
-   TDX = eltype(dB)
+function evaluate_ed(basis::B1pComponent, X::AbstractState) 
    x = evaluate(basis.fval, X)
-   dP = acquire_dB!(basis.basis, x)
-   evaluate_ed!(B, dP, basis.basis, x)
-   Transforms.dx_x_dP!(dB, dP, basis.fval, X)
-   release_dB!(basis.basis, dP)
+   B, dP = evaluate_ed(basis.basis, x)
+   dB = rrule_evaluate(dP, basis.fval, X)
+   release!(dP)
    return B, dB
 end
+
 
 
 # this one we probably only need for training so ...
@@ -256,12 +223,16 @@ end
 #   - we actually never need the evaluate_dd but only the 
 #     associated backpropagation operation which may be a bit simpler 
 #     to implement. 
+# so we will likely remove this entirely.
 # evaluate_dd(basis::B1pComponent, X::AbstractState)
 
 
-#=   *** TODO 
 # -------------- AD codes 
 
+
+
+
+#=   *** TODO 
 import ChainRules: rrule, ZeroTangent, NoTangent
 
 function _rrule_evaluate(basis::Scal1pBasis, X::AbstractState, 

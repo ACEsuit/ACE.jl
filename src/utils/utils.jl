@@ -4,7 +4,7 @@ module Utils
 
 import ACE
 
-import ACE: PolyTransform, transformed_jacobi, Rn1pBasis,
+import ACE: polytransform, discrete_jacobi, Rn1pBasis,
             init1pspec!, Ylm1pBasis,
             Product1pBasis, SimpleSparseBasis
 
@@ -28,7 +28,7 @@ defaults:
 function Rn_basis(;
       # transform parameters
       r0 = 1.0,
-      trans = PolyTransform(2, r0),
+      trans = polytransform(2, r0),
       # degree parameters
       maxdeg = 6,
       # radial basis parameters
@@ -38,11 +38,14 @@ function Rn_basis(;
       pin = 0,
       constants = false, 
       varsym = :rr, 
-      nsym = :n)
+      nsym = :n, 
+      label="R$nsym")
 
-   J = transformed_jacobi(maxdeg, trans, rcut, rin; pcut=pcut, pin=pin)
-   return Rn1pBasis(J; varsym = varsym, nsym = nsym)
+   J = discrete_jacobi(maxdeg; pcut=pcut, xcut=rcut, pin=pin, xin=rin,
+                       trans = r -> Base.invokelatest(trans, r))
+   return Rn1pBasis(J, trans; varsym = varsym, nsym = nsym, label=label)
 end
+
 
 @doc raw"""
 Construct a ``R_n * Y_l^m`` 1-particle basis.

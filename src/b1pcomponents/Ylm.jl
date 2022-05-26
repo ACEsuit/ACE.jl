@@ -21,7 +21,8 @@ function Ylm1pBasis(L::Integer; varsym = :rr, lsym = :l, msym = :m,
    NTLM = NamedTuple{(lsym, msym)}
    spec = [ NTLM(tuple(SphericalHarmonics.idx2lm(i)...))
             for i = 1:length(SH) ]
-   return B1pComponent(SH, GetVal{varsym}(), spec, label)
+   degrees = [ b[lsym] for b in spec ]
+   return B1pComponent(SH, GetVal{varsym}(), spec, degrees, label)
 end
 
 

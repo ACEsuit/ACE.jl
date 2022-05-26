@@ -37,7 +37,6 @@ struct LinearACEModel{TB, TP, TEV} <: AbstractACEModel
    basis::TB
    c::Vector{TP}
    evaluator::TEV   
-   # grad_params_pool::VectorPool{TP}
 end 
 
 struct NaiveEvaluator end 
@@ -100,93 +99,37 @@ read_dict(::Val{:ACE_NaiveEvaluator}, D::Dict, args...) =
       NaiveEvaluator()
 
 
-# ------- return types
 
-import ACEbase: valtype, gradtype 
-
-valtype(model::LinearACEModel, cfg) = 
-      _valtype(model.basis, cfg, model.c)
-
-function _valtype(basis::ACEBasis, cfg::AbstractConfiguration, c::AbstractVector) 
-   # promote_type(eltype(c), valtype(basis, cfg))
-   VTB = valtype(basis, cfg)
-   return typeof(c[1] * zero(VTB))
-end
-      
-
-gradtype(model::LinearACEModel, cfg, dp = _One()) = 
-      _gradtype(model.basis, cfg, model.c, dp)
-
-# g[ix] += m.c[ib] * dB[ib, ix]
-function _gradtype(basis, cfg, c, dp = _One())
-   # promote_type( eltype(c), gradtype(basis, cfg) )
-   GTB = gradtype(basis, cfg)
-   return typeof( contract(dp, c[1] * zero(GTB))  )
-end
-
-function gradparamtype(model::LinearACEModel, cfg) 
-   v = zero(valtype(model, cfg))
-   return typeof( v * model.c[1]' )
-end
-
-# ------- managing temporaries 
-
-# TODO: consider providing a generic object pool / array pool 
-# acquire!(m.grad_cfg_pool, length(cfg), gradtype(m.basis, X))
-
-acquire_grad_config!(m::LinearACEModel, cfg::AbstractConfiguration, dp = _One()) = 
-      Vector{gradtype(m, cfg, dp)}(undef, length(cfg))
-
-release_grad_config!(m::LinearACEModel, g) = nothing 
-
-acquire_grad_params!(m::LinearACEModel, cfg) = 
-      Vector{gradparamtype(m, cfg)}(undef, length(m.c))
-
-release_grad_params!(m::LinearACEModel, g) = nothing 
 
 
 # ------------------- dispatching on the evaluators 
 
 evaluate(m::LinearACEModel, X::AbstractConfiguration) = 
-      evaluate(m::LinearACEModel, m.evaluator, X::AbstractConfiguration)
+      evaluate(m, m.evaluator, X)
 
 grad_config(m::LinearACEModel, X::AbstractConfiguration) = 
-      grad_config!(acquire_grad_config!(m, X), m, X)
+      grad_config(m, m.evaluator, X)
 
-grad_config!(g, m::LinearACEModel, X::AbstractConfiguration) = 
-      grad_config!(g, m, m.evaluator, X) 
-
-grad_params(m::LinearACEModel, cfg::AbstractConfiguration) = 
-      grad_params!(acquire_grad_params!(m, cfg), m, cfg)
-
-function grad_params!(g, m::LinearACEModel, cfg::AbstractConfiguration) 
-
+# there is a canonical implementation for this, so no need to dispatch 
+function grad_params(m::LinearACEModel, cfg::AbstractConfiguration)
    _gi(Bi, c::Number) = Bi 
    _gi(Bi, c::SVector{N, <: Number}) where {N} = 
          SMatrix{N,N}( Diagonal([ Bi for _=1:N ]) )
 
-   B = acquire_B!(m.basis, cfg)
-   evaluate!(B, m.basis, cfg) 
-   for i = 1:length(g) 
-      g[i] = _gi(B[i], m.c[1])
-   end
-   release_B!(m.basis, B)
+   B = evaluate(m.basis, cfg) 
+   g = [ _gi(B[i], m.c[i]) for i = 1:length(B) ]
+   release!(B)
    return g 
 end
 
-# currently doesn't work with multiple properties
-function grad_params_config(m::LinearACEModel, cfg::AbstractConfiguration) 
-   dB = acquire_dB!(m.basis, cfg)
-   return grad_params_config!(dB, m, cfg)
-end
-
 # ∂_params ∂_config V
-# this function should likely never be used in production, but could be 
-# useful for testing
-grad_params_config!(dB, m::LinearACEModel, cfg::AbstractConfiguration)  = 
-      evaluate_d!(dB, m.basis, cfg) 
+# currently doesn't work with multiple properties
+grad_params_config(m::LinearACEModel, cfg::AbstractConfiguration) = 
+      evaluate_d(m.basis, cfg)
 
-# TODO: fix terminology, bring in linear with the _rrule_.... thing 
+
+
+      # TODO: fix terminology, bring in linear with the _rrule_.... thing 
 adjoint_EVAL_D(m::LinearACEModel, cfg::AbstractConfiguration, w) = 
       adjoint_EVAL_D(m, m.evaluator, cfg, w)
 
@@ -196,22 +139,21 @@ adjoint_EVAL_D(m::LinearACEModel, cfg::AbstractConfiguration, w) =
 #  the symmetric basis, rather than the conversion to the AA basis
 
 function evaluate(m::LinearACEModel, ::NaiveEvaluator, cfg::AbstractConfiguration)  
-   B = acquire_B!(m.basis, cfg)
-   evaluate!(B, m.basis, cfg)
-   val = sum(prod, zip(m.c, B))
-   release_B!(m.basis, B) 
+   B = evaluate(m.basis, cfg)
+   val = contract(m.c, B)
+   release!(B)
    return val 
 end 
 
-function grad_config!(g, m::LinearACEModel, ::NaiveEvaluator, 
-                     cfg::AbstractConfiguration)
-   dB = acquire_dB!(m.basis, cfg) 
-   evaluate_d!(dB, m.basis, cfg) 
-   fill!(g, zero(eltype(g)))
+function grad_config(m::LinearACEModel, ::NaiveEvaluator, 
+                    cfg::AbstractConfiguration)
+   dB = evaluate_d(m.basis, cfg) 
+   TG = promote_type(eltype(m.c), eltype(dB))
+   g = zeros(TG, length(cfg))
    for ix = 1:length(cfg), ib = 1:length(m.basis)
       g[ix] += m.c[ib] * dB[ib, ix]
    end
-   release_dB!(m.basis, dB)
+   release!(dB)
    return g 
 end
 

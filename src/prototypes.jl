@@ -52,3 +52,40 @@ diagonal_regulariser(basis; diff = 0) = Diagonal(scaling(basis, diff))
 every scalar basis must implement this
 """
 function rand_radial end
+
+@doc raw"""
+```math
+\begin{aligned}
+a &= A(x)
+b &= B(a) = B(A(x))
+∂b/∂x &= ∂b/∂a ⋅ ∂a/∂x
+\end{aligned}
+```
+In code this becomes 
+```julia
+a = evaluate(A, x)
+b = evaluate(B, a)
+∂a∂x = evaluate_d(A, x)
+∂b∂x = frule_evaluate(B, a, ∂a∂x)
+```
+"""
+function frule_evaluate! end 
+
+
+@doc raw"""
+```math
+\begin{aligned}
+a &= A(x)
+b &= B(a) = B(A(x))
+∂b/∂x &= ∂b/∂a ⋅ ∂a/∂x
+\end{aligned}
+```
+In code this becomes 
+```julia
+a = evaluate(A, x)
+b = evaluate(B, a)
+∂b∂a = evaluate_d(B, a)
+∂b∂x = rrule_evaluate(∂b∂a, A, x)
+```
+"""
+function rrule_evaluate! end 

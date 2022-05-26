@@ -4,10 +4,11 @@
 
 using ACE
 using Printf, Test, LinearAlgebra, StaticArrays
-using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
+using ACE: evaluate, evaluate_d, evaluate_ed, 
+      Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis, getlabel, get_spec, 
-      State, rand_radial, rand_sphere, Scal1pBasis, 
-      valtype, gradtype, acquire_B!, acquire_dB!
+      State, DState, rand_vec3, rand_radial, rand_sphere, Scal1pBasis, 
+      discrete_jacobi
 using Random: shuffle
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim
 
@@ -16,16 +17,16 @@ using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim
 
 @info "Build a 1p basis from scratch"
 
-maxdeg = 12
-maxL = 5
+maxdeg = 15
+maxL = 10
 r0 = 1.0
 rcut = 3.0
 maxorder = 3
 Bsel = SimpleSparseBasis(maxorder, maxdeg)
 
-trans = PolyTransform(1, r0)   # r -> x = 1/r^2
-J = transformed_jacobi(maxdeg, trans, rcut; pcut = 2)   #  J_n(x) * (x - xcut)^pcut
-Rn = Rn1pBasis(J)
+trans = polytransform(1, r0)   # r -> x = 1/r^2
+J = discrete_jacobi(maxdeg; pcut=2, xcut = rcut, pin = 0, xin = 0.0, trans=trans)
+Rn = Rn1pBasis(J, trans)
 Ylm = Ylm1pBasis(maxL)
 Pk = Scal1pBasis(:u, nothing, :k, J)
 A_nlm = Product1pBasis( (Rn, Ylm) )
@@ -33,11 +34,13 @@ ACE.init1pspec!(A_nlm, Bsel)
 A_nlmk = Product1pBasis( (Rn, Ylm, Pk) )
 ACE.init1pspec!(A_nlmk, Bsel)
 
-nX = 10
-Xs = [ State(rr = rand_radial(J) * rand_sphere() ) for _=1:nX ]
+nX = 20
+Xs = [ State(rr = rand_vec3(Rn) ) for _=1:nX ]
 cfg = ACEConfig(Xs)
 
 A = evaluate(A_nlm, Xs)
+
+##
 
 @info("test against manual summation")
 A1 = sum( evaluate(A_nlm, X) for X in Xs )
@@ -63,7 +66,7 @@ println_slim(@test(A_nlmk["Pk"] === Pk))
 @info("Test FIO")
 for _B in (J, Rn, Ylm, Pk, A_nlm, A_nlmk)
    print(string(Base.typename(typeof(_B)))[10:end-1], " - ", getlabel(_B), " : ")
-   println_slim((@test(all(test_fio(_B)))))
+   println_slim((@test(all(test_fio(_B; warntype=false)))))
 end
 
 ##
@@ -72,21 +75,14 @@ end
 for basis in (Pk, Rn, Ylm, A_nlm, A_nlmk)
    local X 
    @info(" .... $(basis)")
-   _randX() = State( rr = rand_radial(J) * rand_sphere(), u = rand_radial(J) )
+   _randX() = State( rr = rand_vec3(Rn), u = rand_radial(J) )
    X = _randX()
-   B = acquire_B!(basis, X)
-   dB = acquire_dB!(basis, X)
-   B1 = acquire_B!(basis, X)
-   dB1 = acquire_dB!(basis, X)
-   # println_slim(@test (typeof(dY) == eltype(Ylm.dB_pool.arrays[Base.Threads.threadid()])))
-   ACE.evaluate!(B, basis, X)
-   ACE.evaluate_d!(dB, basis, X)
-   ACE.evaluate_ed!(B1, dB1, basis, X) 
-   println_slim(@test (evaluate(basis, X) ≈ B))
-   println_slim(@test (evaluate_d(basis, X) ≈ dB))
-   println_slim(@test ((B ≈ B1) && (dB ≈ dB1)) )
+   B = evaluate(basis, X)
+   dB = evaluate_d(basis, X)
+   B1, dB1 = evaluate_ed(basis, X)   
+   println(@test all((B, dB) .≈ (B1, dB1)))
 
-   # this could be moved into ACE proper ... 
+   # TODO: this could be moved into ACE proper ... 
    z_contract(dx::DState, u::DState) = 
          sum( ACE.contract(getproperty(dx, sym), getproperty(u, sym))
               for sym in ACE._syms(dx) )
@@ -98,7 +94,6 @@ for basis in (Pk, Rn, Ylm, A_nlm, A_nlmk)
       c = randn(length(B))
       F = t -> sum( evaluate(basis, X + t * U) .* c )
       dF = t -> sum( c .* z_contract.( evaluate_d(basis, X + t * U), Ref(U) ) )
-      
       tf = fdtest(F, dF, 0.0; verbose=false)
       print_tf(@test all(tf))
    end
@@ -117,16 +112,11 @@ for basis in (A_nlm, A_nlmk)
    @info(" .... $(basis)")
    local Xs, cfg, A1, nX
    nX = 5
-   Xs = [ State(rr = rand_radial(J) * rand_sphere(), 
-                u = rand_radial(J) ) for _=1:nX ]
-   cfg = ACEConfig(Xs)
-   A1 = ACE.acquire_B!(basis, cfg)
-   ACE.evaluate!(A1, basis, cfg)
-   A2 = ACE.acquire_B!(basis, cfg)
-   dA = ACE.acquire_dB!(basis, cfg)
-   ACE.evaluate_ed!(A2, dA, basis, cfg)
+   Xs = [ State(rr = rand_vec3(Rn), u = rand_radial(J) ) for _=1:nX ]
+   A1 = ACE.evaluate(basis, Xs)
+   A2, dA2 = ACE.evaluate_ed(basis, Xs)
    println_slim(@test A1 ≈ A2)
-   println_slim(@test( evaluate_d(basis, Xs) ≈ dA ))
+   println_slim(@test( evaluate_d(basis, Xs) ≈ dA2 ))
 
    for ntest = 1:30
       nX = 5

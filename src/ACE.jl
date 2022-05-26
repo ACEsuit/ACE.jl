@@ -14,12 +14,11 @@ include("imports.jl")
 # TODO 
 # - move to imports
 
+import ACEbase: evaluate, evaluate_d, 
+                ACEBasis, acquire!, release! 
 using ACEbase.ObjectPools: acquire!, release!, VectorPool
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
-import ACEbase: evaluate, evaluate_d, gradtype, valtype, 
-                acquire_B!, release_B!, acquire_dB!, release_dB!, 
-                ACEBasis
 
 
 # TODO: gradtype should have a standard fallback 
@@ -73,7 +72,12 @@ normsq(x) = dot(x, x)
 
 
 
-include("auxiliary.jl")
+include("utils/auxiliary.jl")
+include("transforms/lambdas.jl")
+
+include("utils/pools.jl")
+include("ad.jl")
+include("chain.jl")
 
 
 include("rotations3d.jl")
@@ -106,6 +110,7 @@ include("b1pcomponent.jl")
 include("b1pcomponents/Rn.jl")
 include("b1pcomponents/Ylm.jl")
 include("b1pcomponents/scal.jl")
+include("b1pcomponents/trig.jl")
 
 # todo - move this once we get to it... 
 include("discrete1pbasis.jl")
@@ -125,8 +130,8 @@ include("pibasis.jl")
 include("symmbasis.jl")
 
 
-# # some experimental stuff  
-# include("multiplier.jl")
+# some experimental stuff  
+include("multiplier.jl")
 
 # models and model evaluators
 
@@ -135,11 +140,11 @@ include("linearmodel.jl")
 include("evaluator.jl")
 # include("grapheval.jl")
 
-include("random.jl")
+include("utils/random.jl")
 @reexport using ACE.Random
 
 
-include("utils.jl")
+include("utils/utils.jl")
 @reexport using ACE.Utils
 
 include("testing/testing.jl")
