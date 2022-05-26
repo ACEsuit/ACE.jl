@@ -8,7 +8,6 @@ using ACE: evaluate, evaluate_d, evaluate_ed,
       Rn1pBasis, Ylm1pBasis,
       PositionState, Product1pBasis, getlabel, get_spec, 
       State, DState, rand_vec3, rand_radial, rand_sphere, Scal1pBasis, 
-      valtype, gradtype, acquire_B!, acquire_dB!, 
       discrete_jacobi
 using Random: shuffle
 using ACEbase.Testing: dirfdtest, fdtest, print_tf, test_fio, println_slim

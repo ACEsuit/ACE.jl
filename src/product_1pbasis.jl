@@ -250,14 +250,6 @@ end
 _check_args_is_sym() = true 
 _check_args_is_sym(::Symbol) = true
 
-# args... may be empty or a symbol  for partial derivatives
-function evaluate_d!(dA, basis::Product1pBasis, X::Union{AbstractState, UConfig}, 
-                     args...)
-   A = acquire_B!(basis, X)
-   evaluate_ed!(A, dA, basis, X, args...)
-   release_B!(basis, A)
-   return dA
-end
 
 # args... may be empty or a symbol  for partial derivatives
 function evaluate_ed!(A, dA, basis::OneParticleBasis,

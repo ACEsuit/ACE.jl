@@ -14,12 +14,11 @@ include("imports.jl")
 # TODO 
 # - move to imports
 
+import ACEbase: evaluate, evaluate_d, 
+                ACEBasis, acquire!, release! 
 using ACEbase.ObjectPools: acquire!, release!, VectorPool
 using ForwardDiff: derivative
 import ChainRules: rrule, ZeroTangent, NoTangent
-import ACEbase: evaluate, evaluate_d, gradtype, valtype, 
-                acquire_B!, release_B!, acquire_dB!, release_dB!, 
-                ACEBasis, acquire!, release! 
 
 
 # TODO: gradtype should have a standard fallback 

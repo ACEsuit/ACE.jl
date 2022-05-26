@@ -61,7 +61,6 @@ _get_eff_coeffs!(c̃, basis::SymmetricBasis, c::AbstractVector) =
 
 
 function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector)
-   # c̃ = acquire_B!(basis, size(basis.A2Bmap, 2))
    c̃ = _alloc_ctilde(basis,c)
    return _get_eff_coeffs!(c̃, basis, c) 
 end
