@@ -142,14 +142,11 @@ PIBasis(basis1p, N, D, maxdeg)
 * `D` : an abstract degee specification, e.g., SparsePSHDegree
 * `maxdeg` : the maximum polynomial degree as measured by `D`
 """
-mutable struct PIBasis{BOP, REAL, TB, TA} <: ACEBasis
+mutable struct PIBasis{BOP, REAL} <: ACEBasis
    basis1p::BOP             # a one-particle basis
    spec::PIBasisSpec
    real::REAL     # could be `real` or `identity` to keep AA complex
-   # evaluator    # classic vs graph   
-   B_pool::VectorPool{TB}
-   dAA_pool::VectorPool{TA}
-end
+end               # TODO -> chain?? 
 
 cutoff(basis::PIBasis) = cutoff(basis.basis1p)
 
@@ -158,13 +155,6 @@ cutoff(basis::PIBasis) = cutoff(basis.basis1p)
         (B1.spec == B2.spec) && 
         (B1.real == B2.real) )
 
-valtype(basis::PIBasis) = basis.real( valtype(basis.basis1p) )
-
-valtype(basis::PIBasis, cfg::AbstractConfiguration) = 
-      basis.real( valtype(basis.basis1p, cfg) )
-
-gradtype(basis::PIBasis, cfgorX) = 
-      basis.real( gradtype(basis.basis1p, cfgorX) )
 
 Base.length(basis::PIBasis) = length(basis.spec)
 
@@ -177,14 +167,6 @@ PIBasis(basis1p, symgrp, Bsel::AbstractBasisSelector;
    PIBasis(basis1p, 
            PIBasisSpec(basis1p, symgrp, Bsel; kwargs...),
            isreal ? Base.real : Base.identity )
-
-function PIBasis(basis1p::OneParticleBasis, spec::PIBasisSpec, real)
-   VT1 = valtype(basis1p)
-   VT = real(VT1)  # default valtype 
-   B_pool = VectorPool{VT}()
-   dAA_pool = VectorPool{VT1}()
-   return PIBasis(basis1p, spec, real, B_pool, dAA_pool)
-end
 
 get_spec(pibasis::PIBasis) =
    [ get_spec(pibasis, i) for i = 1:length(pibasis) ]
@@ -224,15 +206,6 @@ function clean_1pbasis!(basis::PIBasis)
    return basis 
 end
 
-# syms = symbols(B1p)
-# rgs = Dict{Symbol, Any}([sym => [] for sym in syms]...)
-# for bb in spec, b in bb, sym in keys(b)
-#    push!(rgs[sym], getproperty(b, sym)) 
-# end
-# for sym in syms 
-#    rgs[sym] = identity.(unique(rgs[sym]))
-# end
-
 
 # -------------------
 
@@ -253,27 +226,6 @@ function scaling(pibasis::PIBasis, p)
    end
    return ww
 end
-
-
-# function scaling(pibasis::PIBasis, p)
-#    ww = zeros(Float64, length(pibasis))
-#    for iz0 = 1:numz(pibasis)
-#       wwin = @view ww[pibasis.inner[iz0].AAindices]
-#       for i = 1:length(pibasis.inner[iz0])
-#          bspec = get_basis_spec(pibasis, iz0, i)
-#          wwin[i] = scaling(bspec, p)
-#       end
-#    end
-#    return ww
-# end
-
-
-
-# graphevaluator(basis::PIBasis) =
-#    PIBasis(basis.basis1p, zlist(basis), basis.inner, DAGEvaluator())
-#
-# standardevaluator(basis::PIBasis) =
-#    PIBasis(basis.basis1p, zlist(basis), basis.inner, StandardEvaluator())
 
 
 
@@ -303,16 +255,14 @@ read_dict(::Val{:ACE_PIBasisSpec}, D::Dict) =
 # -------------------------------------------------
 # Evaluation codes
 
-# TODO : this is a function barrier as a stop-gap solution 
-#        to a type instability in valtype
-function evaluate!(AA, basis::PIBasis, config::AbstractConfiguration)
-   A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
-   return _evaluate!(AA, basis::PIBasis, config::AbstractConfiguration, A)
+function evaluate!(AA, basis::PIBasis, config::UConfig)
+   A = evaluate(basis.basis1p, config)
+   evaluate!(AA, basis, A)
+   release!(A) 
+   return AA 
 end
 
-function _evaluate!(AA, basis::PIBasis, config::AbstractConfiguration, A)
-   # A = acquire_B!(basis.basis1p, config)   #  THIS ALLOCATES!!!! 
-   evaluate!(A, basis.basis1p, config)
+function evaluate!(AA, basis::PIBasis, A::AbstractVector{<: Number})
    fill!(AA, 1)
    for iAA = 1:length(basis)
       aa = one(eltype(A))
@@ -321,38 +271,75 @@ function _evaluate!(AA, basis::PIBasis, config::AbstractConfiguration, A)
       end
       AA[iAA] = basis.real(aa)
    end
-   release_B!(basis.basis1p, A)
    return AA
+end
+
+_valtype(basis::PIBasis, A::AbstractVector{<: Number}) = 
+      basis.real(eltype(A))
+
+# draft of defining bases via chains
+function evaluate(basis::PIBasis, A::AbstractVector{<: Number})
+   VT = _valtype(basis, A)   
+   AA = Vector{VT}(undef, length(basis)) 
+   evaluate!(AA, basis, A) 
+   return AA 
+end
+
+# draft of defining bases via chains
+function evaluate(basis::PIBasis, config::UConfig) 
+   A = evaluate(basis.basis1p, config)
+   AA = evaluate(basis, A)
+   release!(A) 
+   return AA 
 end
 
 
 # -------------------------------------------------
 # gradients
 
-ACE.evaluate_d(basis::PIBasis, cfg::AbstractConfiguration, args...) = 
-         ACE.evaluate_ed(basis::PIBasis, cfg::AbstractConfiguration, args...)[2]
+evaluate_d(basis::PIBasis, cfg::UConfig, args...) = 
+         evaluate_ed(basis, cfg, args...)[2]
 
-         
-function evaluate_ed!(AA, dAA, basis::PIBasis,
-                      cfg::AbstractConfiguration, args...)  
-   A = acquire_B!(basis.basis1p, cfg)
-   dA = acquire_dB!(basis.basis1p, cfg)   # TODO: THIS WILL ALLOCATE!!!!!
-   evaluate_ed!(A, dA, basis.basis1p, cfg, args...)
-   evaluate_ed!(AA, dAA, basis, A, dA)
-   release_dB!(basis.basis1p, dA)
-   release_B!(basis.basis1p, A)
+function evaluate_ed(basis::PIBasis, cfg::UConfig, args...) 
+   A, dA = evaluate_ed(basis.basis1p, cfg, args...)
+   AA, dAA = evaluate_ed(basis, A, dA)
+   release!(A)
+   release!(dA)
    return AA, dAA 
 end
+
+_gradtype(basis::PIBasis, A, dA) = 
+      basis.real( promote_type(eltype(A), eltype(dA)) )
+
+# this is really an frule I think 
+function evaluate_ed(basis::PIBasis, A, dA)
+   VT = _valtype(basis, A)   
+   GT = _gradtype(basis, A, dA)
+   AA = Vector{VT}(undef, length(basis))
+   dAA = Matrix{GT}(undef, length(basis), size(dA, 2))
+   evaluate_ed!(AA, dAA, basis, A, dA)
+   release!(A)
+   release!(dA)
+   return AA, dAA 
+end
+
+function evaluate_ed!(AA, dAA, basis::PIBasis,
+                      cfg::UConfig, args...)
+   A, dA = evaluate_ed(basis.basis1p, cfg, args...)
+   evaluate_ed!(AA, dAA, basis, A, dA)
+   release!(dA)
+   release!(A)
+   return AA, dAA
+end
+
+
+
 
 function _AA_local_adjoints!(dAAdA, A, iAA2iA, iAA, ord, _real)
    if ord == 1
       return _AA_local_adjoints_1!(dAAdA, A, iAA2iA, iAA, ord, _real)
    elseif ord == 2
       return _AA_local_adjoints_2!(dAAdA, A, iAA2iA, iAA, ord, _real)
-   # elseif ord == 3
-   #    return _AA_local_adjoints_3!(dAAdA, A, iAA2iA, iAA, ord, _real)
-   # elseif ord == 4
-   #    return _AA_local_adjoints_4!(dAAdA, A, iAA2iA, iAA, ord, _real)
    else 
       return _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
    end
@@ -371,32 +358,6 @@ function _AA_local_adjoints_2!(dAAdA, A, iAA2iA, iAA, ord, _real)
    @inbounds dAAdA[2] = A1
    return _real(A1 * A2)
 end
-
-# function _AA_local_adjoints_3!(dAAdA, A, iAA2iA, iAA, ord, _real)
-#    A1 = A[iAA2iA[iAA, 1]]
-#    A2 = A[iAA2iA[iAA, 2]]
-#    A3 = A[iAA2iA[iAA, 3]]
-#    A12 = A1 * A2
-#    dAAdA[1] = A2 * A3  
-#    dAAdA[2] = A1 * A3 
-#    dAAdA[3] = A12
-#    return _real(A12 * A3)
-# end
-
-# function _AA_local_adjoints_4!(dAAdA, A, iAA2iA, iAA, ord, _real)
-#    @inbounds A1 = A[iAA2iA[iAA, 1]]
-#    @inbounds A2 = A[iAA2iA[iAA, 2]]
-#    @inbounds A3 = A[iAA2iA[iAA, 3]]
-#    @inbounds A4 = A[iAA2iA[iAA, 4]]
-#    A12 = A1 * A2
-#    A34 = A3 * A4
-#    @inbounds dAAdA[1] = A2 * A34  
-#    @inbounds dAAdA[2] = A1 * A34 
-#    @inbounds dAAdA[3] = A12 * A4 
-#    @inbounds dAAdA[4] = A12 * A3
-#    return _real(A12 * A34)
-# end
-
 
 function _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
    @assert length(dAAdA) >= ord
@@ -428,11 +389,13 @@ function _AA_local_adjoints_x!(dAAdA, A, iAA2iA, iAA, ord, _real)
    return aa 
 end
 
-_acquire_dAAdA!(basis::PIBasis) = acquire!(basis.dAA_pool, maxcorrorder(basis))
+
+_acquire_dAAdA!(basis::PIBasis, A) = Vector{eltype(A)}(undef, maxcorrorder(basis))
+   
 
 function evaluate_ed!(AA, dAA, basis::PIBasis,
                       A::AbstractVector, dA::AbstractMatrix)
-   dAAdA = _acquire_dAAdA!(basis)
+   dAAdA = _acquire_dAAdA!(basis, A)
    _evaluate_ed!(AA, dAA, basis, A, dA, dAAdA) 
 end
 

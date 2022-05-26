@@ -58,8 +58,7 @@ evaluate_ref(basis, cfg, c) ≈ evaluate(naive, cfg)
 grad_params(naive, cfg) ≈ grad_params(standard, cfg)
 grad_config(naive, cfg) ≈ grad_config(standard, cfg)
 
-
-(fun, funref, str) = (ACE.grad_params_config, grad_params_config_ref, "grad_params_config")
+# (fun, funref, str) = (ACE.grad_params_config, grad_params_config_ref, "grad_params_config")
 
 for (fun, funref, str) in [ 
          (evaluate, evaluate_ref, "evaluate"), 

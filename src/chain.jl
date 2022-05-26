@@ -65,33 +65,6 @@ end
 evaluate_d(chain::AbstractSChain, X) = evaluate_ed(chain, X)[2]
 
 
-# TODO: This still needs sorting out ... 
-#       maybe we can no kill this? 
-
-valtype(chain::SChain) = valtype(chain.F[end])
-
-valtype(chain::SChain, x) = valtype(chain)
-
-gradtype(chain::SChain) = gradtype(chain.F[end])
-
-# function gradtype(chain::SChain, x) 
-#    LEN = length(chain.F)
-#    Ti = gradtype(chain.F[1], x)
-
-# end
-
-
-valtype(chain::TypedChain{TT, IN, OUT}, args...) where {TT, IN, OUT} = OUT
-
-gradtype(chain::TypedChain{TT, IN, OUT}, args...) where {TT, IN, OUT} = _gradtype(OUT, IN)
-
-_gradtype(::Type{Vector{T1}}, ::Type{T2}) where {T1 <: Number, T2 <: Number} = 
-      Vector{promote_type(T1, T2)}
-
-_gradtype(::Type{Vector{T1}}, ::Type{SVector{N, T2}}) where {N, T1 <: Number, T2 <: Number} = 
-      Vector{SVector{N, promote_type(T1, T2)}}
-
-
 ## 
 
 import Base: == 
@@ -106,6 +79,17 @@ write_dict(chain::SChain) = Dict(
 
 read_dict(::Val{:ACE_SChain}, D::Dict) = 
          SChain(tuple( read_dict.(D["F"])... ))
+
+
+## ALTERNATIVE CHAIN IMPLEMENTATION - LINKS 
+
+abstract type ChainLink end 
+
+next(::ChainLink) = nothing 
+
+previous(::ChainLink) = nothing 
+
+
 
 ##
 

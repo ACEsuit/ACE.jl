@@ -30,33 +30,15 @@ If the PIbasis is already available, this directly constructs a
 resulting SymmetricBasis; all possible permutation-invariant basis functions 
 will be symmetrised and then reduced to a basis (rather than spanning set)
 """
-mutable struct SymmetricBasis{PIB, PROP, SYM, REAL, VPROP} <: ACEBasis
+mutable struct SymmetricBasis{PIB, PROP, SYM, REAL} <: ACEBasis
    pibasis::PIB
    A2Bmap::SparseMatrixCSC{PROP, Int}
    symgrp::SYM
    real::REAL
-   B_pool::VectorPool{VPROP}
 end
 
 Base.length(basis::SymmetricBasis{PIB, PROP}) where {PIB, PROP} =
       size(basis.A2Bmap, 1)
-
-valtype(basis::SymmetricBasis{PIB, PROP}) where {PIB, PROP} = basis.real(PROP)
-
-# TODO: this is not nice, there should be proper promotion 
-valtype(basis::SymmetricBasis{PIB, PROP}, X::AbstractState) where {PIB, PROP} = 
-      valtype(basis)
-
-gradtype(basis::SymmetricBasis, X::AbstractState) = gradtype(basis, typeof(X))
-
-function gradtype(basis::SymmetricBasis, cfgorX)
-   φ = zero(eltype(basis.A2Bmap))
-   dAA = zero(gradtype(basis.pibasis, cfgorX))
-   # note up to 0.12.4, basis.real used to be replaced with _real1234 
-   # a weird hacky thing. not sure why it now works with basis.real
-   return typeof( basis.real( coco_o_daa(φ, dAA) ))
-end
-
 
 # -------- FIO
 
@@ -126,7 +108,7 @@ function SymmetricBasis(φ::TP, symgrp::SymmetryGroup, pibasis::PIBasis,
    #       or maybe written to a file on disk? and then flushed every time
    #       we finish with a basis construction???
    # TODO: for sure this needs to become a function of the symmetry group?
-   rotc = Rot3DCoeffs(φ, real(valtype(pibasis)))
+   rotc = Rot3DCoeffs(φ, Float64)
    # allocate triplet format
    TCC = coco_type(TP)
    Irow, Jcol, vals = Int[], Int[], TCC[]
@@ -262,6 +244,7 @@ using SparseArrays: AbstractSparseMatrixCSC,
 
 using LinearAlgebra: Transpose
 
+
 function genmul!(C, A::AbstractSparseMatrixCSC, B, mulop)
     size(A, 2) == size(B, 1) || throw(DimensionMismatch())
     size(A, 1) == size(C, 1) || throw(DimensionMismatch())
@@ -302,49 +285,63 @@ function genmul!(C, xA::Transpose{<:Any,<:AbstractSparseMatrixCSC}, B, mulop)
 end
 
 
+function genmul(A, B, mulop)
+   T = typeof(mulop(A[1], B[1]))
+   C = Array{T}(undef, (size(A, 1), size(B)[2:end]...) )
+   return genmul!(C, A, B, mulop)
+end
+
+
 # ---------------- Evaluation code
 
-# NOTE: Nasty and completely not understood type instability here 
-function evaluate!(B, basis::SymmetricBasis, cfg::AbstractConfiguration)
-   AA = acquire_B!(basis.pibasis, cfg)
-   evaluate!(AA, basis.pibasis, cfg)
-   evaluate!(B, basis, AA)
-   release_B!(basis.pibasis, AA)
+function evaluate(basis::SymmetricBasis, cfg::UConfig)
+   AA = evaluate(basis.pibasis, cfg)
+   B = evaluate(basis, AA)
+   release!(AA)
    return B 
 end
 
-# this function allows us to attach multiple symmetric bases to a single
-#     𝑨 basis
-#  TODO: this is extremely inefficient for multiple species But it is simple
-#        and clean and will do for now...
-function evaluate!(B, basis::SymmetricBasis, AA::AbstractVector{<: Number})
-   genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
+# NOTE: Nasty and completely not understood type instability here 
+function evaluate!(B, basis::SymmetricBasis, cfg::UConfig)
+   AA = evaluate(basis.pibasis, cfg)
+   evaluate!(B, basis, AA)
+   release!(AA)
+   return B 
 end
+
+evaluate(basis::SymmetricBasis, AA::AbstractVector{<: Number}) = 
+      genmul(basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
+
+evaluate!(B, basis::SymmetricBasis, AA::AbstractVector{<: Number}) = 
+      genmul!(B, basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
 
 
 # ---------------- gradients
 
-function evaluate_d!(dB, basis::SymmetricBasis, cfg::AbstractConfiguration, 
-                     args...)   # args... could be nothing or sym
-   # compute AA
-   AA = acquire_B!(basis.pibasis, cfg)
-   dAA = acquire_dB!(basis.pibasis, cfg)
-   evaluate_ed!(AA, dAA, basis.pibasis, cfg, args...)
-   evaluate_d!(dB, basis, AA, dAA)
-   return dB
+# args... could be nothing or sym
+function evaluate_ed(basis::SymmetricBasis, cfg::UConfig, args...)
+   AA, dAA = evaluate_ed(basis.pibasis, cfg, args...)
+   B, dB = evaluate_ed(basis, AA, dAA) 
+   release!(AA)
+   release!(dAA)
+   return B, dB
 end
 
-
-function evaluate_d!(dB, basis::SymmetricBasis,
-                     AA::AbstractVector{<: Number}, dAA)
-   # note up to 0.12.4, basis.real used to be replaced with _real1234 
-   # a weird hacky thing. not sure why it now works with basis.real
-   genmul!(dB, basis.A2Bmap, dAA, 
-           (a, b) -> basis.real( ACE.coco_o_daa(a, b) ) )
+function evaluate_ed(basis::SymmetricBasis, AA::AbstractVector{<: Number}, dAA)
+   B = genmul(basis.A2Bmap, AA, (a, b) -> basis.real(a * b))
+   dB = genmul(basis.A2Bmap, dAA, (a, b) -> basis.real( ACE.coco_o_daa(a, b) ))
+   return B, dB 
 end
+
+evaluate_d(basis::SymmetricBasis, args...) = evaluate_ed(basis, args...)[2]
+
+# ------------------------------- 
+
 
 function scaling(basis::SymmetricBasis, p)
    wwpi = scaling(basis.pibasis, p)
    wwrpi = abs2.(norm.(basis.A2Bmap)) * abs2.(wwpi)
    return sqrt.(wwrpi)
 end
+
+
