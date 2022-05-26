@@ -106,5 +106,5 @@ dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ));
 F1(θ)
 dF1(θ)
 println(@test all( ACEbase.Testing.fdtest(F1, dF1, θ; verbose=true) )) 
-@warn("test removed due to unexplained segfaults only occuring in testing runs")
+# @warn("test removed due to unexplained segfaults only occuring in testing runs")
 

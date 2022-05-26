@@ -24,7 +24,7 @@ rcut = 3.0
 maxorder = 3
 Bsel = SimpleSparseBasis(maxorder, maxdeg)
 
-trans = PolyTransform(1, r0)   # r -> x = 1/r^2
+trans = polytransform(1, r0)   # r -> x = 1/r^2
 J = discrete_jacobi(maxdeg; pcut=2, xcut = rcut, pin = 0, xin = 0.0, trans=trans)
 Rn = Rn1pBasis(J, trans)
 Ylm = Ylm1pBasis(maxL)
@@ -63,12 +63,10 @@ println_slim(@test(A_nlmk["Pk"] === Pk))
 
 ##
 
-@warn("Turned off failing FIO tests; this requires an idea for LegibleLambdas...")
 @info("Test FIO")
-# for _B in (J, Rn, Ylm, Pk, A_nlm, A_nlmk)
-for _B in (J, Ylm,)   
+for _B in (J, Rn, Ylm, Pk, A_nlm, A_nlmk)
    print(string(Base.typename(typeof(_B)))[10:end-1], " - ", getlabel(_B), " : ")
-   println_slim((@test(all(test_fio(_B)))))
+   println_slim((@test(all(test_fio(_B; warntype=false)))))
 end
 
 ##

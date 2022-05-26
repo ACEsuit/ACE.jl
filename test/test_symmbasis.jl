@@ -90,12 +90,11 @@ end
 
 ##
 
-@warn("Turned off failing FIO test")
 import ACEbase
 @info("Test FIO")
-# let basis1 = basis 
-#    println_slim(@test(all(ACEbase.Testing.test_fio(basis1; warntype=true))))
-# end
+let basis1 = basis 
+   println_slim(@test(all(ACEbase.Testing.test_fio(basis1; warntype=false))))
+end
 
 
 ## 

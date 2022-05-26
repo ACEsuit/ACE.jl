@@ -4,7 +4,7 @@ module Utils
 
 import ACE
 
-import ACE: PolyTransform, discrete_jacobi, Rn1pBasis,
+import ACE: polytransform, discrete_jacobi, Rn1pBasis,
             init1pspec!, Ylm1pBasis,
             Product1pBasis, SimpleSparseBasis
 
@@ -28,7 +28,7 @@ defaults:
 function Rn_basis(;
       # transform parameters
       r0 = 1.0,
-      trans = PolyTransform(2, r0),
+      trans = polytransform(2, r0),
       # degree parameters
       maxdeg = 6,
       # radial basis parameters
