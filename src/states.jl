@@ -86,10 +86,13 @@ _2str(x::SVector{N, <: Complex}) where {N} = string(round.(x, digits=_showdigits
 _showsym(X::State) = ""
 _showsym(X::DState) = "′"
 
-function show(io::IO, X::XState) 
-   str = prod( "$(sym):$(_2str(getproperty(_x(X), sym))), " 
-               for sym in keys(_x(X)) )
-   print(io,  "⟨" * str[1:end-2] * "⟩" * _showsym(X))
+function show(io::IO, X::XState)
+   _str(sym) = "$(sym):$(ACE._2str(getproperty(ACE._x(X), sym)))"
+   strs = [ _str(sym) for sym in keys(ACE._x(X)) ]
+   str = prod(strs[i] * ", " for i = 1:length(strs)-1; init="") * strs[end] 
+   # str = prod( "$(sym):$(_2str(getproperty(_x(X), sym))), " 
+   #             for sym in keys(_x(X)) )
+   print(io,  "⟨" * str * "⟩" * _showsym(X))
 end
 
 # ----------- some basic manipulations 
