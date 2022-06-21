@@ -383,8 +383,8 @@ import ACE: frule_evaluate
 
 function ACE.frule_evaluate(J::OrthPolyBasis, t::Number, dt::Number) 
    len = length(J)
-   B = acquire!(J.B_pool, len)
-   dB = acquire!(J.B_pool, len)
+   B = acquire!(J.B_pool, len, typeof(t))
+   dB = acquire!(J.B_pool, len, typeof(t))
    evaluate_ed!(B, dB, J, t)
    dB[:] .*= dt 
    return B, dB
