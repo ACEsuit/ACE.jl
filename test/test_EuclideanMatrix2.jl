@@ -1,10 +1,10 @@
 using ACE, StaticArrays
 using Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, EuclideanMatrix
-using ACE.Random: rand_rot, rand_refl, rand_vec3
-using ACEbase.Testing: fdtest
+using ACE.Random: rand_rot, rand_refl
+using ACEbase.Testing: fdtest, print_tf
 using ACEbase.Testing: println_slim
-# construct the 1p-basis
+## construct the 1p-basis
 maxdeg = 5
 ord = 2
 Bsel = SimpleSparseBasis(ord, maxdeg)
@@ -13,20 +13,26 @@ B1p = ACE.Utils.RnYlm_1pbasis(; maxdeg=maxdeg)
 
 # generate a configuration
 nX = 10
-_randX() = State(rr = rand_vec3(B1p["Rn"]))
-Xs = [ _randX() for _=1:nX ] 
+Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
 ##
 
 @info("SymmetricBasis construction and evaluation: EuclideanMatrix")
 
-for symmetry in [:general :symmetric]
+
+φ = ACE.EuclideanMatrix(Float64,:antisymmetric)
+pibasis = PIBasis(B1p, Bsel; property = φ)
+basis = SymmetricBasis(φ, pibasis)
+#@time SymmetricBasis(φ, pibasis)
+BB = evaluate(basis, cfg)
+
+for symmetry in [:antisymmetric]
    @info("Symmetry type: ", symmetry )
    φ = ACE.EuclideanMatrix(Float64,symmetry)
    pibasis = PIBasis(B1p, Bsel; property = φ)
    basis = SymmetricBasis(φ, pibasis)
-   @time SymmetricBasis(φ, pibasis)
+   #@time SymmetricBasis(φ, pibasis)
    @show length(basis)
    BB = evaluate(basis, cfg)
 
@@ -70,7 +76,7 @@ for symmetry in [:general :symmetric]
       for ntest = 1:30
          local Xs, BB
          Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
-         BB = evaluate(basis, ACEConfig(Xs))
+      BB = evaluate(basis, ACEConfig(Xs))
          print_tf(@test any([ b.val != transpose(b.val)
                               for b in BB  ]))
       end
@@ -113,9 +119,57 @@ for symmetry in [:general :symmetric]
       #print_tf(@test all([ norm(imag(b.val)) < .1  for b in BB  ]))
    end
    println()
-   print(ACE.get_spec(basis)[1])
+   #print(ACE.get_spec(basis)[1])
 end
+
+@info("SymmetricBasis construction and evaluation: Positive definite EuclideanMatrix")
+
+tol = 1e-12
+φ = ACE.EuclideanVector(Float64)
+pibasis = PIBasis(B1p, Bsel; property = φ)
+basis = SymmetricBasis(φ, pibasis)
+_symmetrize(val::SVector{3, T}) where {T} = real(val) * transpose(real(val))
+for ntest = 1:30
+   local Xs, BB
+   Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
+   BB = evaluate(basis, ACEConfig(Xs))
+   Q = rand([-1,1]) * ACE.Random.rand_rot()
+   Xs_rot = Ref(Q) .* shuffle(Xs)
+   BB_rot = evaluate(basis, ACEConfig(Xs_rot))
+   all([ norm(Q' * b1  - b2) < tol
+                        for (b1, b2) in zip(BB_rot, BB)  ])
+
+   print_tf(@test all([ norm(Q' * b1 - b2) < tol
+      for (b1, b2) in zip(BB_rot, BB)  ])
+   )
+
+   BBB = [_symmetrize(b.val) for b in BB]
+   BBB_rot = [_symmetrize(b.val)  for b in BB_rot]
+   print_tf(@test all([ norm(Q' * b1 * Q - b2) < tol
+      for (b1, b2) in zip(BBB_rot, BBB)  ])
+   )
+end
+
 ##
+
+# function coco_filter(φ::EuclideanMatrix, ll, mm)
+#     if φ.symmetry == :general
+#        return iseven(sum(ll)) && (abs(sum(mm)) <= 2)
+#     elseif φ.symmetry == :symmetric
+#        return iseven(sum(ll)) && (abs(sum(mm)) <= 2)
+#     elseif φ.symmetry == :antisymmetric
+#        return iseven(sum(ll)) && (abs(sum(mm)) <= 1)
+#     end
+#  end
+#  function coco_filter(φ::EuclideanMatrix, ll, mm, kk) 
+#     if φ.symmetry == :general
+#        return iseven(sum(ll)) && (abs(sum(mm)) <= 2 && abs(sum(kk)) <= 2)
+#     elseif φ.symmetry == :symmetric
+#        return iseven(sum(ll)) && (abs(sum(mm)) <= 2 && abs(sum(kk)) <= 2)
+#     elseif φ.symmetry == :antisymmetric
+#        return iseven(sum(ll)) && (abs(sum(mm)) <= 1 && abs(sum(kk)) <= 1)
+#     end
+#  end
 
 @info("Test equivariance properties for complex version")
 

@@ -259,7 +259,7 @@ function filter(bb, Bsel::CategorySparseBasis, basis::OneParticleBasis)
                             for s in keys(Bsel.minorder_dict) )
    # Within category max correlation order constaint:   
    cond_ord_cats_max = all( num_b_is_(s) <= maxorder(Bsel, s)
-                            for s in keys(Bsel.minorder_dict) )
+                            for s in keys(Bsel.maxorder_dict) )
 
    return cond_ord_cats_min && cond_ord_cats_max
 end

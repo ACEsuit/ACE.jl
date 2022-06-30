@@ -251,8 +251,9 @@ include("eucl/cov_coeffs_dict.jl")
 
 #---------------------- Equivariant matrices
 
-struct EuclideanMatrix{T} <: AbstractProperty
+struct EuclideanMatrix{T} <: AbstractProperty 
    val::SMatrix{3, 3, T, 9}
+   symmetry::Symbol # :symmetric, :antisymmetric, :general
 end
 
 function Base.show(io::IO, φ::EuclideanMatrix)
@@ -266,7 +267,7 @@ real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val))
 complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val))
 complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
 
-+(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val)
++(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val) # include symmetries, i.e., :symmetric + :symmetric =   :symmetric, :antisymmetric + :antisymmetric = :antisymmetric, :antisymmetric + :symmetric = :general etc.
 Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::EuclideanMatrix) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
 
 isrealB(::EuclideanMatrix{T}) where {T} = (T == real(T))
@@ -275,9 +276,10 @@ isrealAA(::EuclideanMatrix) = false
 
 #fltype(::EuclideanMatrix{T}) where {T} = T
 
-EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T}(zero(SMatrix{3, 3, T, 9}))
+EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T}(zero(SMatrix{3, 3, T, 9}), :general)
 EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
-
+EuclideanMatrix(T::DataType, symmetry::Symbol) = EuclideanMatrix{T}(zero(SMatrix{3, 3, T, 9}), symmetry)
+EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = EuclideanMatrix(val, :general) # should depend on symmetry of val
 
 function filter(φ::EuclideanMatrix, grp::O3, bb::Array)
    if length(bb) == 0  # no zero-correlations allowed 
@@ -300,13 +302,15 @@ write_dict(φ::EuclideanMatrix{T}) where {T} =
       Dict("__id__" => "ACE_EuclideanMatrix",
               "valr" => write_dict(real.(Matrix(φ.val))),
               "vali" => write_dict(imag.(Matrix(φ.val))),
-                "T" => write_dict(T) )
+                "T" => write_dict(T),
+                "symmetry" => φ.symmetry)
 
 function read_dict(::Val{:ACE_EuclideanMatrix}, D::Dict)
    T = read_dict(D["T"])
    valr = SMatrix{3, 3, T, 9}(read_dict(D["valr"]))
    vali = SMatrix{3, 3, T, 9}(read_dict(D["vali"]))
-   return EuclideanMatrix{T}(valr + im * vali)
+   symmetry = Symbol(D["symmetry"])
+   return EuclideanMatrix{T}(valr + im * vali, symmetry)
 end
 
 # differentiation - cf #27
@@ -316,10 +320,28 @@ end
 #      (l <= 2 && abs(m) <= l && abs(μ) <= l)
 #         ? vec([EuclideanMatrix(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
 #         : coco_zeros(phi, l, m, μ, T, A)  )
-coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
-   (l <= 2 && abs(m) <= l && abs(μ) <= l)
-      ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
-      : coco_zeros(phi, l, m, μ, T, A)  )
+function coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real}
+   if phi.symmetry == :general
+      return ( (l <= 2 && abs(m) <= l && abs(μ) <= l)
+            ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)]), :general) for i=1:3 for j=1:3])
+            : coco_zeros(phi, l, m, μ, T, A)  )
+   elseif phi.symmetry == :symmetric
+      return ( ( (l == 2 && abs(m) <= 2 && abs(μ) <= 2) || (l == 0 && abs(m) == 0 && abs(μ) == 0) )
+         ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)]), :symmetric) for i=1:3 for j=1:3])
+         : coco_zeros(phi, l, m, μ, T, A)  )
+   elseif phi.symmetry == :antisymmetric
+      return ( (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
+         ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)]), :antisymmetric) for i=1:3 for j=1:3])
+         : coco_zeros(phi, l, m, μ, T, A)  )
+   else
+      @error "The value of field phi.symmetry of phi::EuclideanMatrix must be one of the following symbols :general, :symmetric, or :antisymmetric."
+   end
+end
+
+#coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
+#   (l <= 2 && abs(m) <= l && abs(μ) <= l)
+#      ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
+#      : coco_zeros(phi, l, m, μ, T, A)  )
 
 #coco_init(::EuclideanMatrix{CT}) where {CT<:Real} = [EuclideanMatrix(SMatrix{3,3,Complex{CT},9}([1.0,0,0,0,1.0,0,0,0,1.0]))]       
 coco_type(φ::EuclideanMatrix) = typeof(complex(φ))

@@ -136,3 +136,74 @@ read_dict(::Val{:ACE_Categorical1pBasis}, D::Dict)  =
    Categorical1pBasis( read_dict(D["categories"]), 
                   Symbol(D["VSYM"]), Symbol(D["ISYM"]), 
                   D["label"] )
+
+function sparsify!(basis::Categorical1pBasis, spec)
+   return basis
+end
+# struct CategoricalPair1pBasis{LEN, T} <: Discrete1pBasis{Bool}
+#    categories::SList{LEN, T}
+#    label::String 
+#    vsyms::Tuple{Symbol,Symbol}
+#    isyms::Symbol
+
+# end
+
+# _varsym(B::CategoricalPair1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = B.vsyms
+# _isym(B::CategoricalPair1pBasis{VSYM, ISYM}) where {VSYM, ISYM} = B.isyms
+
+# _val(X, B::CategoricalPair1pBasis) = (getproperty(X, _varsym(B)[1]),getproperty(X, _varsym(B)[2]))
+# _idx(b, B::CategoricalPair1pBasis) = getproperty(b, _isym(B))
+
+# Base.length(B::CategoricalPair1pBasis) = length(B.categories)
+
+# permute = []
+# CategoricalPair1pBasis(categories::AbstractArray; 
+#                varsym::Symbol = nothing, idxsym::Symbol = nothing, 
+#                label = "C$(idxsym)") = 
+#       CategoricalPair1pBasis(categories, varsym, idxsym, label)
+
+# CategoricalPair1pBasis(categories::AbstractArray, varsym::Symbol, isym::Symbol, label::String) = 
+#       CategoricalPair1pBasis(SList(categories), varsym, isym, label)
+
+# CategoricalPair1pBasis(categories::SList{LEN, T}, varsym::Symbol, isym::Symbol, label::String) where {LEN, T} = 
+#       CategoricalPair1pBasis{varsym, isym, LEN, T}(categories, label)
+
+# function ACE.evaluate!(A, basis::CategoricalPair1pBasis, X::AbstractState)
+#    fill!(A, false)
+#    A[val2i(basis.categories, _val(X, basis))] = true
+#    return A
+# end
+
+# ACE.valtype(::CategoricalPair1pBasis, args...) = Bool
+
+# symbols(basis::CategoricalPair1pBasis) = [ _isym(basis), ]
+
+# indexrange(basis::CategoricalPair1pBasis) = Dict( _isym(basis) => basis.categories.list )
+
+# isadmissible(b, basis::CategoricalPair1pBasis) = (_idx(b, basis) in basis.categories)
+
+# get_index(B::CategoricalPair1pBasis, b) = val2i(B.categories, _idx(b, B) )
+
+# degree(b, basis::CategoricalPair1pBasis, args...) = 0
+
+# Base.rand(basis::CategoricalPair1pBasis) = rand(basis.list)
+
+# function get_spec(basis::CategoricalPair1pBasis, i)
+#    return NamedTuple{(_isym(basis),)}((i2val(basis.categories, i),))
+# end
+
+# get_spec(basis::CategoricalPair1pBasis) = [ get_spec(basis, i) for i = 1:length(basis) ]
+
+
+# write_dict(B::CategoricalPair1pBasis) = 
+#       Dict( "__id__" => "ACE_CategoricalPair1pBasis", 
+#             "categories" => write_dict(B.categories), 
+#             "VSYM" => String(_varsym(B)), 
+#             "ISYM" => String(_isym(B)), 
+#             "label" => B.label)
+
+# read_dict(::Val{:ACE_CategoricalPair1pBasis}, D::Dict)  = 
+#    CategoricalPair1pBasis( read_dict(D["categories"]), 
+#                   Symbol(D["VSYM"]), Symbol(D["ISYM"]), 
+#                   D["label"] )
+                  
