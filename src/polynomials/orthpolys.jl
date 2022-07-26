@@ -337,7 +337,8 @@ using Base: @invokelatest
 
 A utility function to generate a jacobi-type basis
 """
-function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, Nquad = 3 * N, 
+function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, 
+                            Nquad = max(300, 3 * N), 
                             trans = identity)
    tcut = @invokelatest trans(xcut)
    tin = @invokelatest trans(xin)
