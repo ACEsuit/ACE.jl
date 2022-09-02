@@ -275,9 +275,13 @@ end
 real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val))
 complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val))
 complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
+complex(φ::EuclideanMatrix{T,Val{symb}}) where {T,symb} = EuclideanMatrix(complex(φ.val), symb)
 
 +(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val) # include symmetries, i.e., :symmetric + :symmetric =   :symmetric, :antisymmetric + :antisymmetric = :antisymmetric, :antisymmetric + :symmetric = :general etc.
 Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::EuclideanMatrix) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
+Base.convert(::Type{EuclideanMatrix{T, Val{:symmetric}}}, φ::EuclideanMatrix{T, Val{:general}}) where {T<:Number} = EuclideanMatrix(φ.val,:symmetric)
+
+
 
 isrealB(::EuclideanMatrix{T}) where {T} = (T == real(T))
 isrealAA(::EuclideanMatrix) = false
@@ -290,10 +294,12 @@ isrealAA(::EuclideanMatrix) = false
 # EuclideanMatrix(T::DataType, symmetry::Symbol) = EuclideanMatrix{T,Val{symmetry}}(zero(SMatrix{3, 3, T, 9}), symmetry, Val{symmetry})
 # EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = EuclideanMatrix(val, :general,Val(:general)) # should depend on symmetry of val
 
-# ACE.EuclideanMatrix{T}() where {T <: Number} = ACE.EuclideanMatrix{T,Val{:general}}(zero(SMatrix{3, 3, T, 9}), :general, Val(:general))
-# ACE.EuclideanMatrix(T::DataType=Float64) = ACE.EuclideanMatrix{T}()
-# ACE.EuclideanMatrix(T::DataType, symmetry::Symbol) = ACE.EuclideanMatrix(zero(SMatrix{3, 3, T, 9}), symmetry, Val(symmetry))
-# ACE.EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = ACE.EuclideanMatrix(val, :general,Val(:general)) # should depend on symmetry of val
+EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T,Val{:general}}(zero(SMatrix{3, 3, T, 9}), :general, Val(:general))
+EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
+EuclideanMatrix(T::DataType, symmetry::Symbol) = EuclideanMatrix(zero(SMatrix{3, 3, T, 9}), symmetry, Val(symmetry))
+EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = EuclideanMatrix(val, :general,Val(:general)) # should depend on symmetry of val
+EuclideanMatrix(val::SMatrix{3, 3, T, 9}, symmetry::Symbol) where {T <: Number} = EuclideanMatrix{T,Val{symmetry}}(val, symmetry,Val(symmetry))
+EuclideanMatrix{T,S}() where {T <: Number,S} = EuclideanMatrix{T,S}(zero(SMatrix{3, 3, T, 9}), :general, S())
 
 
 function filter(φ::EuclideanMatrix, grp::O3, bb::Array)
