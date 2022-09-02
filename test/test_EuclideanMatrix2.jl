@@ -16,7 +16,7 @@ nX = 10
 Xs = rand(PositionState{Float64}, B1p.bases[1], nX)
 cfg = ACEConfig(Xs)
 
-##
+
 
 @info("SymmetricBasis construction and evaluation: EuclideanMatrix")
 

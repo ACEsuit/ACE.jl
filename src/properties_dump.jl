@@ -235,7 +235,6 @@ coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
 coco_type(φ::EuclideanVector) = typeof(complex(φ))
 coco_type(::Type{EuclideanVector{T}}) where {T} = EuclideanVector{complex(T)}
 
-
 coco_zeros(φ::EuclideanVector, ll, mm, kk, T, A) = zeros(typeof(complex(φ)), 3)
 
 coco_filter(::EuclideanVector, ll, mm) =

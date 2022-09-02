@@ -1,3 +1,4 @@
+test_EuclideanMatrix_dump.jl
 using ACE, StaticArrays
 using Random, Printf, Test, LinearAlgebra, ACE.Testing
 using ACE: evaluate, evaluate_d, SymmetricBasis, PIBasis, EuclideanMatrix
@@ -28,7 +29,12 @@ ACE.EuclideanMatrix(val::SMatrix{3, 3, T, 9}, symmetry::Symbol) where {T <: Numb
 # Needs to take care of symbol
 ACE.EuclideanMatrix{T,S}() where {T <: Number,S} = ACE.EuclideanMatrix{T,S}(zero(SMatrix{3, 3, T, 9}), :general, S())
 
-Base.convert(::Type{EuclideanMatrix{T, Val{:symmetric}}}, φ::EuclideanMatrix{T, Val{:general}}) where {T<:Number} = ACE.EuclideanMatrix(φ.val,:symmetric)
+# Base.convert(::Type{SMatrix{3, 3, ComplexF64, 9}}, φ::EuclideanMatrix{Float64, Val{:general}}) = φ.val
+# Base.convert(::Type{EuclideanMatrix{T, Val{:symmetric}}}, φ::EuclideanMatrix{T, Val{:general}}) where {T<:Number} = ACE.EuclideanMatrix(φ.val,:symmetric)
+# Base.convert(::ACE.EuclideanMatrix{Float64, Val{:general}}, val::SMatrix{3, 3, ComplexF64, 9}) = ACE.EuclideanMatrix(val,:general)
+# Base.convert(::Type{ACE.EuclideanMatrix{Float64, Val{:general}}}, val::SMatrix{3, 3, ComplexF64, 9}) = ACE.EuclideanMatrix(val,:general)
+
+Base.convert(::Type{ACE.EuclideanMatrix{ComplexF64, Val{:general}}}, φ::ACE.EuclideanMatrix{Float64, Val{:general}}) = ACE.complex(φ)
 
 function Base.convert(T::Type, φ::ACE.AbstractProperty)
    @show T
@@ -36,34 +42,46 @@ function Base.convert(T::Type, φ::ACE.AbstractProperty)
    @show typeof(φ)
    convert(T, φ.val)
 end
-# ACE.coco_type(::Type{EuclideanMatrix{T,S}}) where {T,S} = EuclideanMatrix{complex(T),S}
+ACE.coco_type(::Type{EuclideanMatrix{T,S}}) where {T,S} = EuclideanMatrix{complex(T),S}
 
-# ACE.EuclideanMatrix{Float64,Val{:general}}(zero(SMatrix{3, 3, Float64, 9}), :general, Val(:general))
+ACE.EuclideanMatrix{Float64,Val{:general}}(zero(SMatrix{3, 3, Float64, 9}), :general, Val(:general))
 
-# convert(ACE.EuclideanMatrix{Float64, Val{:general}}, zero(SMatrix{3, 3, ComplexF64, 9}))
+convert(ACE.EuclideanMatrix{Float64, Val{:general}}, zero(SMatrix{3, 3, ComplexF64, 9}))
 
-# ACE.EuclideanMatrix{Float64,Val{:general}}() 
-# ACE.EuclideanMatrix{Float64}()
-# a= ACE.EuclideanMatrix(zero(SMatrix{3, 3, Float64, 9}), :general, Val(:general))
-# ACE.coco_type(a) 
-# ACE.coco_type(EuclideanMatrix{Float64})
-# ACE.coco_type(EuclideanMatrix{Float64,Val{:general}})
-# ACE.coco_type(EuclideanMatrix{Float64,Val{:symmetric}})
-# ACE.coco_type(EuclideanMatrix{Float64})
+a = ACE.EuclideanMatrix{Float64,Val{:general}}() 
+typeof(a)
+ACE.EuclideanMatrix{Float64}()
+a= ACE.EuclideanMatrix(zero(SMatrix{3, 3, Float64, 9}), :general, Val(:general))
+typeof(a)
+ACE.coco_type(a) 
+ACE.coco_type(EuclideanMatrix{Float64})
+ACE.coco_type(EuclideanMatrix{Float64,Val{:general}})
+ACE.coco_type(EuclideanMatrix{Float64,Val{:symmetric}})
+ACE.coco_type(EuclideanMatrix{Float64})
+EuclideanMatrix{Float64,Val{:general}}<:EuclideanMatrix{Float64}
+
+φ = ACE.EuclideanMatrix(Float64, :symmetric)
+typeof(φ)
+g= ACE.coco_zeros(φ, 1,1,1,1,1) 
+# Take care of symbol
+ACE.complex(φ::EuclideanMatrix{T,S}) where {T,S} = ACE.EuclideanMatrix{T,S}(ACE.complex(φ.val),:general, S())
+ACE.complex(::Type{EuclideanMatrix{T,S}}) where {T,S} = ACE.EuclideanMatrix{ACE.complex(T),S}
 
 
-coco_zeros(φ::EuclideanMatrix, ll, mm, kk, T, A) =  zeros(typeof(complex(φ)), 9)
 
-# typeof(a)
-# a= ACE.EuclideanMatrix(zero(SMatrix{3, 3, Float64, 9}))
-# typeof(a)
-# a= ACE.EuclideanMatrix(Float64, :symmetric) 
-# typeof(a)
-# a = ACE.EuclideanMatrix{Float64}()
-# typeof(a)
-# a = ACE.EuclideanMatrix(zero(SMatrix{3, 3, Float64, 9}), :symmetric)
-# typeof(a)
 
+eltype(g)
+
+typeof(a)
+a= ACE.EuclideanMatrix(zero(SMatrix{3, 3, Float64, 9}))
+typeof(a)
+a= ACE.EuclideanMatrix(Float64, :symmetric) 
+typeof(a)
+a = ACE.EuclideanMatrix{Float64}()
+typeof(a)
+a = ACE.EuclideanMatrix(zero(SMatrix{3, 3, Float64, 9}), :symmetric)
+typeof(a)
+##
 # v = ACE.Invariant()
 # v + 1.0
 # 1.0 + v
