@@ -52,8 +52,20 @@ end
 # ACE.coco_type(EuclideanMatrix{Float64})
 
 
-coco_zeros(φ::EuclideanMatrix, ll, mm, kk, T, A) =  zeros(typeof(complex(φ)), 9)
+ACE.coco_zeros(φ::EuclideanMatrix, ll, mm, kk, T, A) =  zeros(typeof(ACE.complex(φ)), 9)
 
+ACE.complex(φ::EuclideanMatrix{T,Val{symb}}) where {T,symb} = EuclideanMatrix(ACE.complex(φ.val), symb)
+
+#ACE.complex(φ::EuclideanMatrix{T,Val{:general}}) where {T} = EuclideanMatrix(ACE.complex(φ.val),:general, Val(:general))
+#ACE.complex(φ::EuclideanMatrix{T,Val{:antisymmetric}}) where {T} = EuclideanMatrix(ACE.complex(φ.val),:antisymmetric, Val(:antisymmetric))
+#complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
+
+φ = ACE.EuclideanMatrix(Float64, :symmetric)
+typeof(φ)<: EuclideanMatrix{T,Val{symb}} where {T, symb}
+EuclideanMatrix(ACE.complex(φ.val),:symmetric)
+typeof(ACE.complex(φ))
+typeof(φ) 
+a = ACE.coco_zeros(φ, 1, 1, 1, 1, 1)
 # typeof(a)
 # a= ACE.EuclideanMatrix(zero(SMatrix{3, 3, Float64, 9}))
 # typeof(a)
