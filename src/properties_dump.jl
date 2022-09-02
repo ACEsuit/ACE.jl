@@ -258,6 +258,8 @@ include("eucl/cov_coeffs_dict.jl")
 
 # MatrixSymmetry =  Union{Val{:general}, Val{:symmetric}, Val{:antisymmetric}}
 
+
+
 struct EuclideanMatrix{T,S}  <: AbstractProperty #where {S<:MatrixSymmetry}
    val::SMatrix{3, 3, T, 9}
    symmetry  

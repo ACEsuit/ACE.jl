@@ -259,10 +259,12 @@ include("eucl/cov_coeffs_dict.jl")
 
 # MatrixSymmetry =  Union{Val{:general}, Val{:symmetric}, Val{:antisymmetric}}
 
-struct EuclideanMatrix{T,S}  <: AbstractProperty #where {S<:MatrixSymmetry}
+
+abstract type AbstractEuclideanMatrix{T} <: AbstractProperty end
+
+struct EuclideanMatrix{T}  <: AbstractProperty #where {S<:MatrixSymmetry}
    val::SMatrix{3, 3, T, 9}
    symmetry  
-   symtype::S # Val(:symmetric), Val(:antisymmetric), Val(:general) 
 end
 
 function Base.show(io::IO, φ::EuclideanMatrix)
@@ -272,14 +274,13 @@ function Base.show(io::IO, φ::EuclideanMatrix)
    print(io,   "   $(φ.val[3,1]), $(φ.val[3,2]), $(φ.val[3,3]) ]")
 end
 
-real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val))
-complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val))
+real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val),φ.symmetry)
+complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val),φ.symmetry)
 complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
-complex(φ::EuclideanMatrix{T,Val{symb}}) where {T,symb} = EuclideanMatrix(complex(φ.val), symb)
 
 +(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val) # include symmetries, i.e., :symmetric + :symmetric =   :symmetric, :antisymmetric + :antisymmetric = :antisymmetric, :antisymmetric + :symmetric = :general etc.
 Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::EuclideanMatrix) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
-Base.convert(::Type{EuclideanMatrix{T, Val{:symmetric}}}, φ::EuclideanMatrix{T, Val{:general}}) where {T<:Number} = EuclideanMatrix(φ.val,:symmetric)
+Base.convert(::Type{EuclideanMatrix{T}}, φ::EuclideanMatrix{T}) where {T<:Number} = EuclideanMatrix(φ.val,φ.symmetry)
 
 
 
@@ -294,13 +295,11 @@ isrealAA(::EuclideanMatrix) = false
 # EuclideanMatrix(T::DataType, symmetry::Symbol) = EuclideanMatrix{T,Val{symmetry}}(zero(SMatrix{3, 3, T, 9}), symmetry, Val{symmetry})
 # EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = EuclideanMatrix(val, :general,Val(:general)) # should depend on symmetry of val
 
-EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T,Val{:general}}(zero(SMatrix{3, 3, T, 9}), :general, Val(:general))
+EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T}(zero(SMatrix{3, 3, T, 9}),:general)
 EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
-EuclideanMatrix(T::DataType, symmetry::Symbol) = EuclideanMatrix(zero(SMatrix{3, 3, T, 9}), symmetry, Val(symmetry))
-EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = EuclideanMatrix(val, :general,Val(:general)) # should depend on symmetry of val
-EuclideanMatrix(val::SMatrix{3, 3, T, 9}, symmetry::Symbol) where {T <: Number} = EuclideanMatrix{T,Val{symmetry}}(val, symmetry,Val(symmetry))
-EuclideanMatrix{T,S}() where {T <: Number,S} = EuclideanMatrix{T,S}(zero(SMatrix{3, 3, T, 9}), :general, S())
-
+EuclideanMatrix(T::DataType, symmetry::Symbol) = EuclideanMatrix(zero(SMatrix{3, 3, T, 9}), symmetry)
+EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = EuclideanMatrix(val, :general) # should depend on symmetry of val
+EuclideanMatrix(val::SMatrix{3, 3, T, 9}, symmetry::Symbol) where {T <: Number} = EuclideanMatrix{T}(val, symmetry)
 
 function filter(φ::EuclideanMatrix, grp::O3, bb::Array)
    if length(bb) == 0  # no zero-correlations allowed 
@@ -367,7 +366,6 @@ end
 #coco_init(::EuclideanMatrix{CT}) where {CT<:Real} = [EuclideanMatrix(SMatrix{3,3,Complex{CT},9}([1.0,0,0,0,1.0,0,0,0,1.0]))]       
 coco_type(φ::EuclideanMatrix) = typeof(complex(φ))
 coco_type(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
-coco_type(::Type{EuclideanMatrix{T,S}}) where {T,S} = EuclideanMatrix{complex(T),S}
 
 # This is slightly different from implementation in EuclideanVector!
 coco_zeros(φ::EuclideanMatrix, ll, mm, kk, T, A) =  zeros(typeof(complex(φ)), 9)
