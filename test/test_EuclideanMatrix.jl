@@ -24,7 +24,7 @@ typeof(φ2)
 
 methods(ACE.read_dict)
 
-for symmetry in [:general, :symmetric]
+for symmetry in [:general, :symmetric] #test fails for ACE.AntiSymmetricEuclideanMatrix
    @info("Symmetry type: ", symmetry )
    if symmetry == :general
       φ = ACE.EuclideanMatrix(Float64,symmetry)
