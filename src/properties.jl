@@ -264,15 +264,12 @@ abstract type AbstractEuclideanMatrix{T} <: AbstractProperty end
 
 struct EuclideanMatrix{T}  <: AbstractEuclideanMatrix{T} #where {S<:MatrixSymmetry}
    val::SMatrix{3, 3, T, 9}
-   symmetry  
 end
 struct SymmetricEuclideanMatrix{T}  <: AbstractEuclideanMatrix{T} #where {S<:MatrixSymmetry}
    val::SMatrix{3, 3, T, 9}
-   symmetry  
 end
 struct AntiSymmetricEuclideanMatrix{T}  <: AbstractEuclideanMatrix{T} #where {S<:MatrixSymmetry}
    val::SMatrix{3, 3, T, 9}
-   symmetry  
 end
 
 function Base.show(io::IO, φ::E) where {E<:AbstractEuclideanMatrix}
@@ -289,8 +286,8 @@ for E = (:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricEuclideanMatr
 
 
 
-      real(φ::$E) = $E(real.(φ.val),φ.symmetry)
-      complex(φ::$E) = $E(complex(φ.val),φ.symmetry)
+      real(φ::$E) = $E(real.(φ.val))
+      complex(φ::$E) = $E(complex(φ.val))
       complex(::Type{$E{T}}) where {T} = $E{complex(T)}
       #Base.$op(a::MyNumber) = MyNumber($op(a.x))
    
@@ -299,7 +296,7 @@ for E = (:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricEuclideanMatr
 
       +(x::SMatrix{3}, y::$E) = $E(x + y.val) # include symmetries, i.e., :symmetric + :symmetric =   :symmetric, :antisymmetric + :antisymmetric = :antisymmetric, :antisymmetric + :symmetric = :general etc.
       Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::$E) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
-      Base.convert(::Type{$E{T}}, φ::$E{T}) where {T<:Number} = $E(φ.val,φ.symmetry)
+      Base.convert(::Type{$E{T}}, φ::$E{T}) where {T<:Number} = $E(φ.val)
 
 
 
@@ -314,11 +311,14 @@ for E = (:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricEuclideanMatr
       # EuclideanMatrix(T::DataType, symmetry::Symbol) = EuclideanMatrix{T,Val{symmetry}}(zero(SMatrix{3, 3, T, 9}), symmetry, Val{symmetry})
       # EuclideanMatrix(val::SMatrix{3, 3, T, 9}) where {T <: Number} = EuclideanMatrix(val, :general,Val(:general)) # should depend on symmetry of val
 
-      $E{T}() where {T <: Number} = $E{T}(zero(SMatrix{3, 3, T, 9}),:general)
+      # $E{T}() where {T <: Number} = $E{T}(zero(SMatrix{3, 3, T, 9}),:general)
+      # $E(T::DataType=Float64) = $E{T}()
+      # $E(T::DataType, symmetry::Symbol) = $E(zero(SMatrix{3, 3, T, 9}), symmetry)
+      # $E(val::SMatrix{3, 3, T, 9}) where {T <: Number} = $E(val, :general) # should depend on symmetry of val
+      # $E(val::SMatrix{3, 3, T, 9}, symmetry::Symbol) where {T <: Number} = $E{T}(val, symmetry)
+
+      $E{T}() where {T <: Number} = $E{T}(zero(SMatrix{3, 3, T, 9}))
       $E(T::DataType=Float64) = $E{T}()
-      $E(T::DataType, symmetry::Symbol) = $E(zero(SMatrix{3, 3, T, 9}), symmetry)
-      $E(val::SMatrix{3, 3, T, 9}) where {T <: Number} = $E(val, :general) # should depend on symmetry of val
-      $E(val::SMatrix{3, 3, T, 9}, symmetry::Symbol) where {T <: Number} = $E{T}(val, symmetry)
 
       function filter(φ::$E, grp::O3, bb::Array)
          if length(bb) == 0  # no zero-correlations allowed 
@@ -341,8 +341,7 @@ for E = (:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricEuclideanMatr
       Dict("__id__" => "ACE_$E",
             "valr" => write_dict(real.(Matrix(φ.val))),
             "vali" => write_dict(imag.(Matrix(φ.val))),
-               "T" => write_dict(T),
-               "symmetry" => φ.symmetry)
+               "T" => write_dict(T))
 
             # differentiation - cf #27
             # *(φ::EuclideanMatrix, dAA::SVector) = φ.val * dAA'
@@ -366,8 +365,7 @@ for (E,Val_E) = zip((:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricE
          T = read_dict(D["T"])
          valr = SMatrix{3, 3, T, 9}(read_dict(D["valr"]))
          vali = SMatrix{3, 3, T, 9}(read_dict(D["vali"]))
-         symmetry = Symbol(D["symmetry"])
-         return $E{T}(valr + im * vali, symmetry)
+         return $E{T}(valr + im * vali)
       end
 
    end
@@ -375,17 +373,17 @@ for (E,Val_E) = zip((:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricE
 end
 function coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real}
       return ( (l <= 2 && abs(m) <= l && abs(μ) <= l)
-            ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)]), :general) for i=1:3 for j=1:3])
+            ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
             : coco_zeros(phi, l, m, μ, T, A)  )
 end
 function coco_init(phi::SymmetricEuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real}
       return ( ( (l == 2 && abs(m) <= 2 && abs(μ) <= 2) || (l == 0 && abs(m) == 0 && abs(μ) == 0) )
-         ? vec([SymmetricEuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)]), :symmetric) for i=1:3 for j=1:3])
+         ? vec([SymmetricEuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
          : coco_zeros(phi, l, m, μ, T, A)  )
 end
 function coco_init(phi::AntiSymmetricEuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real}
       return ( (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
-         ? vec([AntiSymmetricEuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)]), :antisymmetric) for i=1:3 for j=1:3])
+         ? vec([AntiSymmetricEuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
          : coco_zeros(phi, l, m, μ, T, A)  )
 end
 #       @error "The value of field phi.symmetry of phi::EuclideanMatrix must be one of the following symbols :general, :symmetric, or :antisymmetric."

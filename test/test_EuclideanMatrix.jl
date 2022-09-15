@@ -17,7 +17,7 @@ _randX() = State(rr = rand_vec3(B1p["Rn"]))
 Xs = [ _randX() for _=1:nX ] 
 cfg = ACEConfig(Xs)
 
-φ = ACE.EuclideanMatrix(Float64,:symmetric)
+φ = ACE.EuclideanMatrix(Float64)
 φ2  = ACE.complex(φ)
 typeof(φ2)
 @info("SymmetricBasis construction and evaluation: EuclideanMatrix")
@@ -27,11 +27,11 @@ methods(ACE.read_dict)
 for symmetry in [:general, :symmetric] #test fails for ACE.AntiSymmetricEuclideanMatrix
    @info("Symmetry type: ", symmetry )
    if symmetry == :general
-      φ = ACE.EuclideanMatrix(Float64,symmetry)
+      φ = ACE.EuclideanMatrix(Float64)
    elseif symmetry == :symmetric 
-      φ = ACE.SymmetricEuclideanMatrix(Float64,symmetry)
+      φ = ACE.SymmetricEuclideanMatrix(Float64)
    else 
-      φ = ACE.AntiSymmetricEuclideanMatrix(Float64,symmetry)
+      φ = ACE.AntiSymmetricEuclideanMatrix(Float64)
    end
    pibasis = PIBasis(B1p, Bsel; property = φ)
    basis = SymmetricBasis(φ, pibasis)
