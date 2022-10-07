@@ -57,9 +57,6 @@ function _theta_ed(rr)
    return _theta(rr), SVector(-rr[2]/rsq, rr[1]/rsq)
 end
 
-valtype(E::Trig) = ComplexF64
-valtype(E::Trig, T) = ComplexF64
-
 evaluate(E::Trig, θ::Real) = [ exp(im * θ * l) for l = -E.L:E.L ]
 
 evaluate(E::Trig, rr::AbstractVector) = evaluate(E, _theta(rr))

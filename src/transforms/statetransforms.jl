@@ -1,6 +1,6 @@
 using StaticArrays
 import ACE 
-import ACE: evaluate, evaluate_d, evaluate_dd, valtype, gradtype, 
+import ACE: evaluate, evaluate_d, evaluate_dd,  
             write_dict, read_dict, 
             DState, 
             rrule_evaluate!, frule_evaluate! 

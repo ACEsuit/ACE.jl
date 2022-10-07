@@ -1,50 +1,56 @@
 
 import ForwardDiff
 import LegibleLambdas
-import LegibleLambdas: @λ, LegibleLambda
+import LegibleLambdas: LegibleLambda
 import ACE: read_dict, write_dict 
 
+export λ, lambda 
 
-λ(str::String) = λ(Meta.parse(str))
+struct Lambda{TL}
+   ll::TL
+   exstr::String
+end
 
-λ(ex::Expr) = LegibleLambda(ex, eval(ex))
+Base.show(io::IO, t::Lambda) = print(io, "λ($(t.exstr))")
 
-analytic(str::String) = legiblelambda(str)
+function λ(str::String) 
+   ex = Meta.parse(str)   
+   ll = LegibleLambda(ex, eval(ex))
+   return Lambda(ll, str)
+end
 
-evaluate(t::LegibleLambda, x) = t.λ(x)
+lambda(str::String) = λ(str)
 
-evaluate_d(t::LegibleLambda, x::SVector) =  ForwardDiff.gradient(t.λ, x)
+(t::Lambda)(x) = evaluate(t, x)
 
-ACE.evaluate_ed(t::LegibleLambda, x) =  evaluate(t, x), evaluate_d(t, x)
+evaluate(t::Lambda, x) = t.ll.λ(x)
 
-evaluate_dd(t::LegibleLambda, x::SVector) = ForwardDiff.hessian(t.λ, x)
+evaluate_d(t::Lambda, x::SVector) =  ForwardDiff.gradient(t.ll.λ, x)
 
-evaluate_d(t::LegibleLambda, x::Real) =     ForwardDiff.derivative(t.λ, x)
+ACE.evaluate_ed(t::Lambda, x) =  evaluate(t, x), evaluate_d(t, x)
 
-evaluate_dd(t::LegibleLambda, x::Real) =     ForwardDiff.derivative(y -> evaluate_d(t, y), x)
+evaluate_dd(t::Lambda, x::SVector) = ForwardDiff.hessian(t.ll.λ, x)
+
+evaluate_d(t::Lambda, x::Real) =     ForwardDiff.derivative(t.ll.λ, x)
+
+evaluate_dd(t::Lambda, x::Real) =     ForwardDiff.derivative(y -> evaluate_d(t, y), x)
 
 
-function frule_evaluate(t::LegibleLambda, x::Real, dx::SVector)
+function frule_evaluate(t::Lambda, x::Real, dx::SVector)
       f = evaluate(t, x)
       df = evaluate_d(t, x)
       return f, df * dx
 end
 
 
-
-function write_dict(t::LegibleLambda) 
-   buf = IOBuffer()
-   show(buf, t)
-   return Dict(
-         "__id__" => "ACE_LegibleLambda", 
-         "ex" => "$(t.ex)",             # f is reconstructed from ex 
-         "meta" => String(take!(buf))   # this will be ignored 
+write_dict(t::Lambda)  = Dict(
+         "__id__" => "ACE_Lambda", 
+         "exstr" => t.exstr
       )
-end
 
-read_dict(::Val{:ACE_LegibleLambda}, D::Dict) = λ(D["ex"])
+read_dict(::Val{:ACE_Lambda}, D::Dict) = λ(D["exstr"])
 
 import Base: ==
 
-==(F1::LegibleLambda, F2::LegibleLambda) = (F1.ex == F2.ex)
+==(F1::Lambda, F2::Lambda) = (F1.exstr == F2.exstr)
 

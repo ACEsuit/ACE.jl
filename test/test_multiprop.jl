@@ -37,13 +37,6 @@ c_m = rand(SVector{3,Float64}, length(BB))
 singlProp = [ACE.LinearACEModel(basis, rand(length(BB)), evaluator = :standard) for i in 1:length(c_m[1])]
 multiProp = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 
-ACE.valtype(singlProp[1], cfg)
-ACE.valtype(multiProp, cfg)
-ACE.gradtype(singlProp[1], cfg)
-ACE.gradtype(multiProp, cfg)
-ACE.gradparamtype(singlProp[1], cfg)
-ACE.gradparamtype(multiProp, cfg)
-
 ##
 
 @info("set_params!")
@@ -88,7 +81,6 @@ println()
 
 @info("grad_config")
 
-ACE.acquire_grad_config!(multiProp, cfg)
 mgcfg = ACE.grad_config(multiProp, cfg)
 
 for i in 1:length(c_m[1])

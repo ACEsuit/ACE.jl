@@ -15,7 +15,7 @@ using ACE: evaluate, evaluate_d, Rn1pBasis, Ylm1pBasis,
 
 @info("Basic test of PIBasis construction and evaluation")
 
-maxdeg = 6
+maxdeg = 8
 ord = 3
 Bsel = SimpleSparseBasis(ord, maxdeg) 
 
@@ -27,12 +27,14 @@ pibasis = PIBasis(B1p, O3(), Bsel; property = φ)
 pibasis_r = PIBasis(B1p, O3(), Bsel; property = φ, isreal=true)
 
 # generate a configuration
-nX = 10
+nX = 40
 _randX() = State(rr = rand_vec3(B1p["Rn"]) )
 Xs = [_randX() for _=1:nX]
 cfg = ACEConfig(Xs)
 
 AA = evaluate(pibasis, cfg)
+evaluate(pibasis, cfg) == evaluate(pibasis, Xs)
+
 AA_r = evaluate(pibasis_r, cfg)
 
 println_slim(@test(length(pibasis) == length(AA)))
@@ -64,17 +66,21 @@ AA_r_naive = real.(AA_naive)
 println_slim(@test( AA_r_naive ≈ AA_r ))
 
 
-## FIO tests 
 
-@warn("Turned off failing FIO tests")
+## FIO tests 
 @info("FIO Test")
-# println_slim(@test( all(test_fio(pibasis)) ))
-# println_slim(@test( all(test_fio(pibasis_r)) ))
+println_slim(@test( all(test_fio(pibasis; warntype=false)) ))
+println_slim(@test( all(test_fio(pibasis_r; warntype=false)) ))
 
 ## Testing derivatives
 
+AA, dAA = ACE.evaluate_ed(pibasis, cfg)
+
+##
+
 @info("Derivatives of PIbasis")
 for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
+  local AA, dAA 
   AA1, dAA = ACE.evaluate_ed(pibasis, cfg)
   println_slim(@test AA1 ≈ AA)
 
@@ -88,6 +94,29 @@ for (pibasis, AA) in [(pibasis, AA), (pibasis_r, AA_r)]
   end
   println()
 end
+
 ##
 
+import ACE: evaluate_ed 
+@info("Test the chained version of PIBasis")
+A = evaluate(pibasis.basis1p, cfg)
+println_slim(@test evaluate(pibasis, A) == evaluate(pibasis, cfg))
 
+A, dA = ACE.evaluate_ed(pibasis.basis1p, cfg)
+println_slim(@test evaluate_ed(pibasis, A, dA) == evaluate_ed(pibasis, cfg))
+
+##
+
+# using BenchmarkTools
+
+# A, dA = ACE.evaluate_ed(pibasis.basis1p, cfg)
+# AA, dAA =  evaluate_ed(pibasis, A, dA)
+
+# @btime evaluate_ed($pibasis, $Xs)
+# @btime ACE.evaluate_ed!($AA, $dAA, $pibasis, $Xs)
+
+# @profview begin 
+#   for _=1:100 
+#     ACE.evaluate_ed!(AA, dAA, pibasis, Xs)
+#   end 
+# end
