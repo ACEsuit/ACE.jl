@@ -146,13 +146,13 @@ for symmetry in [:general, :symmetric] #test fails for ACE.AntiSymmetricEuclidea
 end
 ##
 
-@info("Test equivariance properties for complex version")
+# @info("Test equivariance properties for complex version")
 
-basis = SymmetricBasis(φ, pibasis; isreal=false)
-# a stupid but necessary test
-BB = evaluate(basis, cfg)
-BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
-println_slim(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
+# basis = SymmetricBasis(φ, pibasis; isreal=false)
+# # a stupid but necessary test
+# BB = evaluate(basis, cfg)
+# BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
+# println_slim(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
 
 
 # @info("check for rotation, permutation and inversion equivariance")
