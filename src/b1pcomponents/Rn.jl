@@ -18,7 +18,7 @@ function Rn1pBasis(  R::OrthPolyBasis, trans = nothing;
                      varsym = :rr, nsym = :n, label="R$nsym", )
    spec = [ NamedTuple{(nsym,)}((i,)) for i = 1:length(R) ]
    degrees = collect(0:(length(R)-1))
-   R1 = chain((@λ rr -> norm(rr)), trans, R)
+   R1 = chain(λ("rr -> norm(rr)"), trans, R)
    Rn = B1pComponent(R1, GetVal{varsym}(), spec, degrees, label)
    rl = ACE.inv_transform(r -> Base.invokelatest(trans, r), R.tl)
    rr = ACE.inv_transform(r -> Base.invokelatest(trans, r), R.tr)

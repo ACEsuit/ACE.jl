@@ -39,11 +39,10 @@ standard = ACE.LinearACEModel(basis, c, evaluator = :standard)
 
 ## FIO 
 
-@warn("failing FIO tests turned off")
 @info("Check FIO")
 using ACEbase.Testing: test_fio 
-# println_slim(@test(all(test_fio(naive; warntype = false))))
-# println_slim(@test(all(test_fio(standard; warntype = false))))
+println_slim(@test(all(test_fio(naive; warntype = false))))
+println_slim(@test(all(test_fio(standard; warntype = false))))
 
 ##
 
@@ -58,8 +57,7 @@ evaluate_ref(basis, cfg, c) ≈ evaluate(naive, cfg)
 grad_params(naive, cfg) ≈ grad_params(standard, cfg)
 grad_config(naive, cfg) ≈ grad_config(standard, cfg)
 
-
-(fun, funref, str) = (ACE.grad_params_config, grad_params_config_ref, "grad_params_config")
+# (fun, funref, str) = (ACE.grad_params_config, grad_params_config_ref, "grad_params_config")
 
 for (fun, funref, str) in [ 
          (evaluate, evaluate_ref, "evaluate"), 

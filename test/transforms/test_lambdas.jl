@@ -3,9 +3,8 @@
 using ACE, Test, StaticArrays, BenchmarkTools, ACEbase 
 using ACE: read_dict, write_dict, 
            evaluate, evaluate_d, evaluate_dd
-using ACEbase.Testing: println_slim, print_tf, fdtest
+using ACEbase.Testing: println_slim, print_tf, fdtest, test_fio 
 using LinearAlgebra: norm 
-using LegibleLambdas
 
 # TODO: move this into ACEbase.Testing 
 function save_load(obj)
@@ -19,14 +18,15 @@ end
 ##
 
 @info("Testing Legible Lambdas")
-ff = [ ((@λ r -> exp(-r)), r -> exp(-r), () -> 3 * rand()), 
-       ((@λ r -> 1 / (1 + r)^3), r -> 1 / (1 + r)^3, () -> 3 * rand()), 
-       ((@λ rr -> norm(rr)), rr -> norm(rr), () -> randn(SVector{3, Float64})), 
-       ((@λ rr -> exp(-sum(abs2, rr))), rr -> exp(-sum(abs2, rr)), () -> randn(SVector{3, Float64})), 
+ff = [ (λ("  r -> exp(-r)"), r -> exp(-r), () -> 3 * rand()), 
+       (λ("  r -> 1 / (1 + r)^3"), r -> 1 / (1 + r)^3, () -> 3 * rand()), 
+       (λ(" rr -> norm(rr)"), rr -> norm(rr), () -> randn(SVector{3, Float64})), 
+       (λ(" rr -> exp(-sum(abs2, rr))"), rr -> exp(-sum(abs2, rr)), () -> randn(SVector{3, Float64})), 
        ]
 
 for (f, g, rndx) in ff 
    show(f);  println() 
+   println_slim(@test all(test_fio(f; warntype=false)))
    xx = [ rndx() for _=1:30 ]
    println_slim( @test f.(xx) ≈ g.(xx) )
    f1 = save_load(f)

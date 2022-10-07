@@ -1,6 +1,7 @@
 
 
 import ACEbase: Discrete1pBasis
+import ACE: evaluate, evaluate!
 
 export Categorical1pBasis
 
@@ -98,13 +99,18 @@ Categorical1pBasis(categories::AbstractArray, varsym::Symbol, isym::Symbol, labe
 Categorical1pBasis(categories::SList{LEN, T}, varsym::Symbol, isym::Symbol, label::String) where {LEN, T} = 
       Categorical1pBasis{varsym, isym, LEN, T}(categories, label)
 
+
+function evaluate(basis::Categorical1pBasis, X::AbstractState)      
+   A = Vector{Bool}(undef, length(basis))
+   return evaluate!(A, basis, X)
+end
+
 function ACE.evaluate!(A, basis::Categorical1pBasis, X::AbstractState)
    fill!(A, false)
    A[val2i(basis.categories, _val(X, basis))] = true
    return A
 end
 
-ACE.valtype(::Categorical1pBasis, args...) = Bool
 
 symbols(basis::Categorical1pBasis) = [ _isym(basis), ]
 

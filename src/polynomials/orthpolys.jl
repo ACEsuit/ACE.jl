@@ -14,7 +14,6 @@ import ACE: evaluate!, evaluate_d!, evaluate_ed!,
             read_dict, write_dict,
             inv_transform,
             ACEBasis, ScalarACEBasis, 
-            valtype, gradtype, 
             acquire!, release!, 
             ArrayCache, 
             chain 
@@ -104,13 +103,10 @@ OrthPolyBasis(pl, tl::T, pr, tr::T, A::Vector{T}, B::Vector{T}, C::Vector{T},
    OrthPolyBasis(pl, tl, pr, tr, A, B, C, tdf, ww, 
                  ArrayCache{T}(), ArrayCache{T}())
 
-valtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
-      promote_type(T, TX)
-
-gradtype(P::OrthPolyBasis{T}, x::TX = one(T)) where {T, TX <: Number} = 
-      promote_type(T, TX)
-
 Base.length(P::OrthPolyBasis) = length(P.A)
+
+_valtype(::OrthPolyBasis{T}, t::S) where {T, S} = 
+         promote_type(T, S) 
 
 ==(J1::OrthPolyBasis, J2::OrthPolyBasis) =
       all( getfield(J1, sym) == getfield(J2, sym)
@@ -223,20 +219,20 @@ end
 
 
 function evaluate(J::OrthPolyBasis, t) 
-   cA = acquire!(J.B_pool, length(J), valtype(J, t))
+   cA = acquire!(J.B_pool, length(J), _valtype(J, t))
    evaluate!(parent(cA), J, t)
    return cA 
 end
 
 function evaluate_d(J::OrthPolyBasis, t) 
-   cA = acquire!(J.B_pool, length(J), gradtype(J, t))
+   cA = acquire!(J.B_pool, length(J), _valtype(J, t))
    evaluate_d!(parent(cA), J, t)
    return cA 
 end
 
 function ACE.evaluate_ed(J::OrthPolyBasis, t) 
-   cA = acquire!(J.B_pool, length(J), valtype(J, t))
-   cdA = acquire!(J.B_pool, length(J), gradtype(J, t))
+   cA = acquire!(J.B_pool, length(J), _valtype(J, t))
+   cdA = acquire!(J.B_pool, length(J), _valtype(J, t))
    evaluate_ed!(parent(cA), parent(cdA), J, t)
    return cA, cdA 
 end
@@ -341,7 +337,8 @@ using Base: @invokelatest
 
 A utility function to generate a jacobi-type basis
 """
-function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, Nquad = 3 * N, 
+function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, 
+                            Nquad = max(300, 3 * N), 
                             trans = identity)
    tcut = @invokelatest trans(xcut)
    tin = @invokelatest trans(xin)
@@ -387,8 +384,8 @@ import ACE: frule_evaluate
 
 function ACE.frule_evaluate(J::OrthPolyBasis, t::Number, dt::Number) 
    len = length(J)
-   B = acquire!(J.B_pool, len)
-   dB = acquire!(J.B_pool, len)
+   B = acquire!(J.B_pool, len, typeof(t))
+   dB = acquire!(J.B_pool, len, typeof(t))
    evaluate_ed!(B, dB, J, t)
    dB[:] .*= dt 
    return B, dB

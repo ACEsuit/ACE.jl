@@ -84,27 +84,27 @@ println(@test all( ACEbase.Testing.fdtest(fsmodelp, grad_fsmodelp, θ) ))
 @info("Check AD for a second partial derivative w.r.t cfg and params")
 
 
-# fsmodel1 = (model, cfg) -> FS(evaluate(model, cfg))
-# grad_fsmodel1 = (model, cfg) -> Zygote.gradient(x -> fsmodel1(model, x), cfg)[1]
+fsmodel1 = (model, cfg) -> FS(evaluate(model, cfg))
+grad_fsmodel1 = (model, cfg) -> Zygote.gradient(x -> fsmodel1(model, x), cfg)[1]
 
-# y = randn(SVector{3, Float64}, length(cfg))
-# loss1 = model -> sum(sum(abs2, g.rr - y) 
-#                      for (g, y) in zip(grad_fsmodel1(model, cfg), y))
+y = randn(SVector{3, Float64}, length(cfg))
+loss1 = model -> sum(sum(abs2, g.rr - y) 
+                     for (g, y) in zip(grad_fsmodel1(model, cfg), y))
 
-# # check that loss and gradient evaluate ok 
-# loss1(model)
-# Zygote.refresh()
-# g = Zygote.gradient(loss1, model)[1]  # SEGFAULT IN THIS LINE ON J1.7!!!
+# check that loss and gradient evaluate ok 
+loss1(model)
+Zygote.refresh()
+g = Zygote.gradient(loss1, model)[1]  # SEGFAULT IN THIS LINE ON J1.7!!!
 
-# # wrappers to take derivatives w.r.t. the vector or parameters
-# F1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
-#             loss1(model) )
+# wrappers to take derivatives w.r.t. the vector or parameters
+F1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
+            loss1(model) )
 
-# dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
-#              Zygote.gradient(loss1, model)[1] |> svecs2vec  )
+dF1 = θ -> ( ACE.set_params!(model, mat2svecs(θ)); 
+             Zygote.gradient(loss1, model)[1] |> svecs2vec  )
 
-# F1(θ)
-# dF1(θ)
-# println(@test all( ACEbase.Testing.fdtest(F1, dF1, θ; verbose=true) )) 
-@warn("test removed due to unexplained segfaults only occuring in testing runs")
+F1(θ)
+dF1(θ)
+println(@test all( ACEbase.Testing.fdtest(F1, dF1, θ; verbose=true) )) 
+# @warn("test removed due to unexplained segfaults only occuring in testing runs")
 

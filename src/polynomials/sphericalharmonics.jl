@@ -7,13 +7,11 @@ using StaticArrays, LinearAlgebra
 
 import ACE, ACEbase 
 
-import ACE: valtype, gradtype, 
-		      evaluate!, evaluate_d!, evaluate_ed!,
+import ACE: evaluate!, evaluate_d!, evaluate_ed!,
 			   write_dict, read_dict,
 				ACEBasis, 
-				acquire_B!, release_B!, 
-				acquire_dB!, release_dB!, 
-				acquire!, release!
+				acquire!, release!, 
+				evaluate, evaluate_d, evaluate_ed 
 
 import ACE: VectorPool, ArrayCache 
 
@@ -141,10 +139,7 @@ import Base.==
 		((B1.L == B2.L) && (B1.A ≈ B2.A) && (B1.B ≈ B2.B))
 
 
-valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
-			promote_type(T, S) 
-
-gradtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
+_valtype(alp::ALPolynomials{T}, x::SphericalCoords{S}) where {T, S} = 
 			promote_type(T, S) 
 
 
@@ -164,8 +159,9 @@ function ALPolynomials(L::Integer, T::Type=Float64)
 end
 
 function evaluate(alp::ALPolynomials, S::SphericalCoords) 
-	P = acquire!(alp.B_pool, length(alp), valtype(alp, S))
-	return evaluate!(P, alp, S)
+	P = acquire!(alp.B_pool, length(alp), _valtype(alp, S))
+	evaluate!(parent(P), alp, S)
+	return P 
 end
 
 function evaluate!(P, alp::ALPolynomials, S::SphericalCoords)
@@ -202,10 +198,11 @@ end
 
 
 function _evaluate_ed(alp::ALPolynomials, S::SphericalCoords) 
-	VT = valtype(alp, S)
+	VT = _valtype(alp, S)
 	P = acquire!(alp.B_pool, length(alp), VT)
 	dP = acquire!(alp.B_pool, length(alp), VT)
-	return _evaluate_ed!(P, dP, alp::ALPolynomials, S::SphericalCoords)
+	_evaluate_ed!(parent(P), parent(dP), alp::ALPolynomials, S::SphericalCoords)
+	return P, dP 
 end
 
 # this doesn't use the standard name because it doesn't 
@@ -303,14 +300,10 @@ max L degree for which the alp coefficients have been precomputed
 """
 maxL(sh::AbstractSHBasis) = sh.alp.L
 
-valtype(sh::SHBasis{T}) where {T} = Complex{T}
-
-valtype(sh::SHBasis{T}, x::AbstractVector{S}) where {T, S} = 
+_valtype(sh::SHBasis{T}, x::AbstractVector{S}) where {T, S} = 
 			Complex{promote_type(T, S)}
 
-gradtype(sh::SHBasis{T}) where {T} = SVector{3, Complex{T}}
-
-gradtype(sh::SHBasis{T}, x::AbstractVector{S})  where {T, S} = 
+_gradtype(sh::SHBasis{T}, x::AbstractVector{S})  where {T, S} = 
 			SVector{3, Complex{promote_type(T, S)}}
 
 function ACE.degree(sh::SHBasis, i::Integer)			
@@ -339,8 +332,9 @@ _evaluate_d!(dY, L, S, P, dP, ::SHBasis) = cYlm_d!(dY, L, S, P, dP)
 _evaluate_ed!(Y, dY, L, S, P, dP, ::SHBasis) = cYlm_ed!(Y, dY, L, S, P, dP)
 
 function ACE.evaluate(SH::SHBasis, R::AbstractVector)
-	Y = acquire!(SH.B_pool, length(SH), valtype(SH, R))
-	return evaluate!(Y, SH, R)
+	Y = acquire!(SH.B_pool, length(SH), _valtype(SH, R))
+	evaluate!(parent(Y), SH, R)
+	return Y 
 end
 
 function evaluate!(Y, SH::AbstractSHBasis, R::AbstractVector)
@@ -361,17 +355,16 @@ function ACE.evaluate_d(SH::AbstractSHBasis, R::AbstractVector)
 end 
 
 function ACE.evaluate_ed(SH::AbstractSHBasis, R::AbstractVector)
-	Y = acquire!(SH.B_pool, length(SH), valtype(SH, R))
-	dY = acquire!(SH.dB_pool, length(SH), gradtype(SH, R))
-	return evaluate_ed!(Y, dY, SH, R)
+	Y = acquire!(SH.B_pool, length(SH), _valtype(SH, R))
+	dY = acquire!(SH.dB_pool, length(SH), _gradtype(SH, R))
+	evaluate_ed!(parent(Y), parent(dY), SH, R)
+	return Y, dY
 end
 
 function evaluate_ed!(Y, dY, SH::AbstractSHBasis, R::AbstractVector)
 	@assert length(R) == 3
 	L = maxL(SH)
 	S = cart2spher(R)
-	Y = acquire!(SH.B_pool, length(SH), valtype(SH, R))
-	dY = acquire!(SH.dB_pool, length(SH), gradtype(SH, R))
 	P, dP = _evaluate_ed(SH.alp, S)
 	cYlm_ed!(Y, dY, maxL(SH), S, P, dP)
 	release!(P)

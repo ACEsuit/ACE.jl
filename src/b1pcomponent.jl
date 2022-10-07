@@ -193,43 +193,11 @@ function show(io::IO, basis::B1pComponent)
 end
 
 
-# ------------------- preparation for evaluation and managing temporaries 
-
-valtype(basis::B1pComponent) = valtype(basis.basis)
-
-valtype(basis::B1pComponent, X::AbstractState) = 
-      valtype(basis.basis, evaluate(basis.fval, X))
-
-function gradtype(basis::B1pComponent, X::AbstractState) 
-   x = evaluate(basis.fval, X)
-   # gradient type of the inner basis which knows nothing about states 
-   TDB = gradtype(basis.basis, x)
-   # now we need to incorporate the grad type of fval itself 
-   # dx = evaluate_d(basis.fval, X)
-   # the gradient will be a product of a TDB times a TDVAL 
-   return Transforms.grad_type_dP(TDB, basis.fval, X)
-      # dstate_type(valtype(basis, X), X)
-end
-
-acquire_B!(basis::B1pComponent, args...) = 
-         Vector{valtype(basis, args...)}(undef, length(basis))
-
-release_B!(basis::B1pComponent, args...) = nothing
-
-acquire_dB!(basis::B1pComponent, X::AbstractState) = 
-            Vector{gradtype(basis, X)}(undef, length(basis))
-
-release_dB!(basis::B1pComponent, args...) = nothing
-
-
 # ------------------------ Evaluation code
 #                          this is basically an interface for the inner basis
 
 evaluate(basis::B1pComponent, X::AbstractState) = 
          evaluate(basis.basis, evaluate(basis.fval, X))
-
-# evaluate!(B, basis::B1pComponent, X::AbstractState) =
-#       evaluate!(B, basis.basis, )
 
 function evaluate_d(basis::B1pComponent, X::AbstractState) 
    B, dB = evaluate_ed(basis, X)
