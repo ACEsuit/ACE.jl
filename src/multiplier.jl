@@ -14,6 +14,8 @@ Derived types must implement
 """
 abstract type B1pMultiplier{T} <: OneParticleBasis{T} end 
 
+valtype(::B1pMultiplier{T}, args...)  where {T} = T 
+
 function _inner_evaluate end 
 function _inner_evaluate_d end 
 

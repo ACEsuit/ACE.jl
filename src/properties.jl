@@ -99,6 +99,7 @@ complex(φ::AbstractVector{<: Invariant}) = complex.(φ)
 +(φ::Invariant, x::Number) = Invariant(φ.val + x)
 +(x::Number, φ::Invariant) = Invariant(φ.val + x)
 
+# TODO: could generalize this if we have a valtype(::Type{<: AbstractProperty})
 Base.convert(::Type{Invariant{T}}, x::Number) where {T} = Invariant(convert(T, x))
 
 *(φ1::Invariant, φ2::Invariant) = Invariant(φ1.val * φ2.val)

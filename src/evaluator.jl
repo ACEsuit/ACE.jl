@@ -51,7 +51,7 @@ function set_params!(ev::ProductEvaluator, basis::SymmetricBasis, c::AbstractVec
    c̃ = _acquire_ctilde(basis, len_AA, c)
    _get_eff_coeffs!(c̃, basis, c)
    set_params!(ev, basis.pibasis, c̃)
-   release!(c̃)
+   release!(basis.B_pool, c̃)
    return ev 
 end
 
@@ -61,6 +61,7 @@ _get_eff_coeffs!(c̃, basis::SymmetricBasis, c::AbstractVector) =
 
 
 function _get_eff_coeffs(basis::SymmetricBasis, c::AbstractVector)
+   # c̃ = acquire_B!(basis, size(basis.A2Bmap, 2))
    c̃ = _alloc_ctilde(basis,c)
    return _get_eff_coeffs!(c̃, basis, c) 
 end
@@ -102,9 +103,6 @@ function _alloc_dAco(dAAdA::AbstractVector, A::AbstractVector,
                      c̃::Union{TP, SVector{N, TP}}, dp = _One()
                      ) where {N, TP <: AbstractProperty} 
    c̃_dp = contract(c̃, dp)   
-   @show eltype(dAAdA)
-   @show typeof(c̃_dp)
-   @show promote_type(eltype(dAAdA), eltype(c̃_dp))
    zeros( promote_type(eltype(dAAdA), typeof(c̃_dp)), length(A) )
 end
 
@@ -117,9 +115,13 @@ end
 evaluate(::LinearACEModel, V::ProductEvaluator, cfg::AbstractConfiguration) = 
       evaluate(V::ProductEvaluator, cfg)
 
+function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration) 
+   A = acquire_B!(V.pibasis.basis1p, cfg)
+   return _evaluate!(V::ProductEvaluator, cfg::AbstractConfiguration, A)
+end
 # compute one "site energy"
-function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
-   A = evaluate(V.pibasis.basis1p, cfg)
+function _evaluate!(V::ProductEvaluator, cfg::AbstractConfiguration, A)
+   evaluate!(A, V.pibasis.basis1p, cfg)
    spec = V.pibasis.spec
    pireal = V.pibasis.real 
    symreal = V.real
@@ -142,41 +144,62 @@ function evaluate(V::ProductEvaluator, cfg::AbstractConfiguration)
       val += symreal(pireal(aa) * V.coeffs[iAA])
    end
 
-   release!(A)
+   release_B!(V.pibasis.basis1p, A)
    return val
 end
 
 
-grad_config(m::LinearACEModel, V::ProductEvaluator, cfg::UConfig) = 
-      _rrule_evaluate(_One(), m, V, cfg)
+# compute one site energy gradient 
+grad_config!(g, m::LinearACEModel, V::ProductEvaluator, 
+                     cfg::AbstractConfiguration) = 
+      _rrule_evaluate!(g, _One(), m, V, cfg)         
 
 
-_rrule_evaluate(dp, m::LinearACEModel, cfg::UConfig) = 
-       _rrule_evaluate(dp, m, m.evaluator, cfg)
+function _rrule_evaluate(dp, model::LinearACEModel, cfg::AbstractConfiguration)
+   g = acquire_grad_config!(model, cfg, dp)
+   return _rrule_evaluate!(g, dp, model, model.evaluator, cfg)
+end
+
 
 
 # NB - testing shows that pre-allocating everything gains about 10% for small 
 #      configs and ca 20% for larger, more realistic configs. 
 #      worth doing at some point, but not really an immediate priority!
-function _rrule_evaluate(dp, m::LinearACEModel, V::ProductEvaluator, cfg::UConfig)
+function _rrule_evaluate!(g, dp, m::LinearACEModel, V::ProductEvaluator, 
+                           cfg::AbstractConfiguration)
    basis1p = V.pibasis.basis1p
    pireal = V.pibasis.real 
    symreal = V.real
+   A = acquire_B!(V.pibasis.basis1p, cfg)
+   dA = acquire_dB!(V.pibasis.basis1p, cfg)    # MAJOR ALLOCATION!! 
+   dAAdA = _acquire_dAAdA!(V.pibasis)
+
    c̃ = V.coeffs
-   spec = V.pibasis.spec
+   dAco =  _alloc_dAco(dAAdA, A, c̃, dp)        # TODO: ALLOCATION 
+
+   # TODO: this is a function barrier needed because of a type instability in 
+   #       the allocation code. 
+   return _rrule_evaluate!(g, dp, m, V, cfg, A, dA, dAAdA, dAco)
+end
+
+function _rrule_evaluate!(g, dp, m::LinearACEModel, V::ProductEvaluator, 
+                          cfg::AbstractConfiguration, 
+                          A, dA, dAAdA, dAco)
+   basis1p = V.pibasis.basis1p
+   pireal = V.pibasis.real 
+   symreal = V.real
    
    # stage 1: precompute all the A values
-   A, dA = evaluate_ed(basis1p, cfg)
+   evaluate_ed!(A, dA, basis1p, cfg)
 
    # stage 2: compute the coefficients for the ∇A_{nlm} = ∇ϕ_{nlm}
    # dAco[nlm] = coefficient of ∇A_{nlm} (via adjoints)
+   c̃ = V.coeffs
+   spec = V.pibasis.spec
 
    if spec.orders[1] == 0; iAAinit = 2; else iAAinit = 1; end 
 
-   dAAdA = _acquire_dAAdA!(V.pibasis, A)
-   T_dAco = typeof(dAAdA[1] * contract(dp, c̃[1]))
-   dAco = zeros(T_dAco, length(A))
-
+   fill!(dAco, zero(eltype(dAco)))
    @inbounds for iAA = iAAinit:length(spec)
       _AA_local_adjoints!(dAAdA, A, spec.iAA2iA, iAA, spec.orders[iAA], pireal)
       @fastmath for t = 1:spec.orders[iAA]
@@ -185,16 +208,13 @@ function _rrule_evaluate(dp, m::LinearACEModel, V::ProductEvaluator, cfg::UConfi
    end
    
    # stage 3: get the gradients
-   GT = typeof(symreal( coco_o_daa(dAco[1], dA[1,1]) )) # promote_type(eltype(dA), eltype(dAAdA), eltype(A)))
-   g = zeros(GT, length(cfg))
+   fill!(g, zero(eltype(g)))
    for iX = 1:length(cfg), iA = 1:length(basis1p)
       g[iX] += symreal( coco_o_daa(dAco[iA], dA[iA, iX]) )
    end
 
-   release!(A)
-   release!(dA) 
-   release!(dAco)
-   release!(dAAdA)
+   release_B!(V.pibasis.basis1p, A)
+   release_dB!(V.pibasis.basis1p, dA)   
 
    return g
 end
@@ -203,27 +223,30 @@ end
 
 function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
    basis1p = V.pibasis.basis1p
+   TDX = gradtype(m.basis, cfg)
    _real = V.real
+   A = acquire_B!(V.pibasis.basis1p, cfg)
+   dA = acquire_dB!(V.pibasis.basis1p, cfg)   
+   dAAdA = _acquire_dAAdA!(V.pibasis)
+
+   # dAw = acquire_B!(V.pibasis.basis1p, cfg)
+   # dAAw = acquire_B!(V.pibasis, cfg)
+   _dAw = contract(w[1], dA[1])
+   dAw = zeros(typeof(_dAw), length(V.pibasis.basis1p))
+
+   _dAAw = _real(_dAw * dAAdA[1])
+   dAAw = zeros(typeof(_dAAw), length(V.pibasis))
 
    # [1] dA_t = ∑_j ∂ϕ_t / ∂X_j
-   A, dA = evaluate_ed(V.pibasis.basis1p, cfg)
-
-   # some allocations based on the types of A, dA 
-   dAAdA = _acquire_dAAdA!(V.pibasis, A)
-
-   _dAw = contract(w[1], dA[1])
-   T_dAw = typeof(_dAw)
-   dAw = zeros(T_dAw, length(V.pibasis.basis1p))
-
-   T_dAAw = typeof(_real(_dAw * dAAdA[1]))
-   dAAw = zeros(T_dAAw, length(V.pibasis))
-
+   evaluate_ed!(A, dA, basis1p, cfg)
+   # fill!(dAw, 0)
    for k = 1:length(basis1p), j = 1:length(w)
       dAw[k] += contract(w[j], dA[k, j])
    end
 
    # [2] dAA_k 
    spec = V.pibasis.spec
+   # fill!(dAAw, 0)
    if spec.orders[1] == 0; iAAinit=2; else; iAAinit=1; end 
    @inbounds for iAA = iAAinit:length(spec)
       ord = spec.orders[iAA]
@@ -234,10 +257,17 @@ function adjoint_EVAL_D(m::LinearACEModel, V::ProductEvaluator, cfg, w)
       end
    end
 
+   # dB = similar(m.c)
+   # @show m.basis.A2Bmap[1] 
+   # @show dAAw[1] 
+   # @show m.basis.A2Bmap[1].val * dAAw[1]
+   # genmul!(dB, m.basis.A2Bmap, dAAw, (a, x) -> a * x)
    dB = m.basis.A2Bmap * dAAw
 
-   release!(A)
-   release!(dA)   
+   release_B!(V.pibasis.basis1p, A)
+   release_dB!(V.pibasis.basis1p, dA)   
+   # release_B!(V.pibasis.basis1p, dAw)
+   # release_B!(V.pibasis, dAAw)
 
    # [3] dB_k
    return dB

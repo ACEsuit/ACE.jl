@@ -20,6 +20,7 @@ end
    import ACEbase
 
    import ACEbase: ACEBasis, ScalarACEBasis, OneParticleBasis, Discrete1pBasis, 
+                   valtype, gradtype,
                    evaluate, evaluate_d, evaluate_dd, evaluate_ed,
                    evaluate!, evaluate_d!, evaluate_dd!, evaluate_ed!,
                    precon!, _allfieldsequal,

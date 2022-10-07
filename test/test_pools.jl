@@ -4,8 +4,6 @@ using ACE, BenchmarkTools
 
 pool = ACE.ArrayCache{Float64}()
 
-newpool = ACE.GenArrayCache()
-
 ##
 
 

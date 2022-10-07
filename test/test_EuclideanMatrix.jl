@@ -44,11 +44,7 @@ for symmetry in [:general, :symmetric] #test fails for ACE.AntiSymmetricEuclidea
       @warn("The A2B map for EuclideanMatrix has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
    end
 
-
-  @info("Test FIO")
-  using ACEbase.Testing: test_fio
-  println_slim(@test(all(test_fio(basis; warntype = false))))
-
+   ##
 
    @info("Test FIO")
    using ACEbase.Testing: test_fio
