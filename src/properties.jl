@@ -214,6 +214,7 @@ end
 
 # differentiation - cf #27
 # *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
+#*(prop::EuclideanVector, c::SVector{N, T}) where {T<:Number,N} = SVector{N}(prop*c[i] for i=1:N)
 
 coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
@@ -310,7 +311,7 @@ end
 
 # differentiation - cf #27
 # *(φ::EuclideanMatrix, dAA::SVector) = φ.val * dAA'
-
+#*(prop::ACE.EuclideanMatrix, c::SVector{N, T}) where {T<:Number,N} = SVector{N}(prop*c[i] for i=1:N)
 #coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
 #      (l <= 2 && abs(m) <= l && abs(μ) <= l)
 #         ? vec([EuclideanMatrix(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
