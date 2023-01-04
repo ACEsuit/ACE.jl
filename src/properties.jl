@@ -250,35 +250,15 @@ include("eucl/cov_coeffs_dict.jl")
 
 #---------------------- Equivariant matrices
 
-struct EuclideanMatrix{T} <: AbstractProperty
-   val::SMatrix{3, 3, T, 9}
-end
+abstract type AbstractEuclideanMatrix{T} <: AbstractProperty end
 
-function Base.show(io::IO, φ::EuclideanMatrix)
-   # println(io, "3x3 $(typeof(φ)):")
-   println(io, "e[ $(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3]);")
-   println(io, "   $(φ.val[2,1]), $(φ.val[2,2]), $(φ.val[2,3]);")
-   print(io,   "   $(φ.val[3,1]), $(φ.val[3,2]), $(φ.val[3,3]) ]")
-end
+real(φ::E) where { E <: AbstractEuclideanMatrix} = E(real.(φ.val))
++(x::SMatrix{3}, y::E) where { E <: AbstractEuclideanMatrix} = E(x + y.val)
+Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::AbstractEuclideanMatrix) where {T}  =  convert(SMatrix{3, 3, T, 9}, φ.val)
 
-real(φ::EuclideanMatrix) = EuclideanMatrix(real.(φ.val))
-complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val))
-complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
+isrealAA(::AbstractEuclideanMatrix)  = false
 
-+(x::SMatrix{3}, y::EuclideanMatrix) = EuclideanMatrix(x + y.val)
-Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::EuclideanMatrix) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
-
-isrealB(::EuclideanMatrix{T}) where {T} = (T == real(T))
-isrealAA(::EuclideanMatrix) = false
-
-
-#fltype(::EuclideanMatrix{T}) where {T} = T
-
-EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T}(zero(SMatrix{3, 3, T, 9}))
-EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
-
-
-function filter(φ::EuclideanMatrix, grp::O3, bb::Array)
+function filter(::AbstractEuclideanMatrix, grp::O3, bb::Array)
    if length(bb) == 0  # no zero-correlations allowed 
       return false 
    end
@@ -293,7 +273,38 @@ function filter(φ::EuclideanMatrix, grp::O3, bb::Array)
    return iseven(suml)
 end
 
-rot3Dcoeffs(::EuclideanMatrix,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
+rot3Dcoeffs(::AbstractEuclideanMatrix,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
+
+coco_type(φ::AbstractEuclideanMatrix) = typeof(complex(φ))
+
+coco_zeros(φ::AbstractEuclideanMatrix, ll, mm, kk, T, A) =  zeros(typeof(complex(φ)), 9)
+
+coco_filter(::AbstractEuclideanMatrix, ll, mm) = iseven(sum(ll)) && (abs(sum(mm)) <= 2)
+
+coco_filter(::AbstractEuclideanMatrix, ll, mm, kk) =  abs(sum(mm)) <= 2 && 
+                                 abs(sum(kk)) <= 2 &&
+                                 iseven(sum(ll))
+coco_dot(u1::AbstractEuclideanMatrix, u2::AbstractEuclideanMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
+struct EuclideanMatrix{T} <: AbstractEuclideanMatrix{T}
+   val::SMatrix{3, 3, T, 9}
+end
+
+function Base.show(io::IO, φ::EuclideanMatrix)
+   # println(io, "3x3 $(typeof(φ)):")
+   println(io, "e[ $(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3]);")
+   println(io, "   $(φ.val[2,1]), $(φ.val[2,2]), $(φ.val[2,3]);")
+   print(io,   "   $(φ.val[3,1]), $(φ.val[3,2]), $(φ.val[3,3]) ]")
+end
+
+complex(φ::EuclideanMatrix) = EuclideanMatrix(complex(φ.val))
+complex(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
+
+isrealB(::EuclideanMatrix{T}) where {T} = (T == real(T))
+
+
+
+EuclideanMatrix{T}() where {T <: Number} = EuclideanMatrix{T}(zero(SMatrix{3, 3, T, 9}))
+EuclideanMatrix(T::DataType=Float64) = EuclideanMatrix{T}()
 
 write_dict(φ::EuclideanMatrix{T}) where {T} =
       Dict("__id__" => "ACE_EuclideanMatrix",
@@ -311,43 +322,22 @@ end
 # differentiation - cf #27
 # *(φ::EuclideanMatrix, dAA::SVector) = φ.val * dAA'
 
-#coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
-#      (l <= 2 && abs(m) <= l && abs(μ) <= l)
-#         ? vec([EuclideanMatrix(conj.(transpose(mrmatrices[(m,μ,i,j)]))) for i=1:3 for j=1:3])
-#         : coco_zeros(phi, l, m, μ, T, A)  )
 coco_init(phi::EuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real} = (
    (l <= 2 && abs(m) <= l && abs(μ) <= l)
       ? vec([EuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
       : coco_zeros(phi, l, m, μ, T, A)  )
 
-#coco_init(::EuclideanMatrix{CT}) where {CT<:Real} = [EuclideanMatrix(SMatrix{3,3,Complex{CT},9}([1.0,0,0,0,1.0,0,0,0,1.0]))]       
-coco_type(φ::EuclideanMatrix) = typeof(complex(φ))
 coco_type(::Type{EuclideanMatrix{T}}) where {T} = EuclideanMatrix{complex(T)}
-
-# This is slightly different from implementation in EuclideanVector!
-coco_zeros(φ::EuclideanMatrix, ll, mm, kk, T, A) =  zeros(typeof(complex(φ)), 9)
-#EuclideanMatrix.(zeros(SMatrix{3, 3, Complex{T}, 9},9))
-
-coco_filter(::EuclideanMatrix, ll, mm) =
-            iseven(sum(ll)) && (abs(sum(mm)) <= 2)
-
-coco_filter(::EuclideanMatrix, ll, mm, kk) =
-      abs(sum(mm)) <= 2 &&
-      abs(sum(kk)) <= 2 &&
-      iseven(sum(ll))
-
-coco_dot(u1::EuclideanMatrix, u2::EuclideanMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
-#dot(u1.val, u2.val)
 
 include("eucl/equi_coeffs_dict.jl")
 
 # ---------------------
 # symmetric and antisymmetric matrix properties
 
-struct SymmetricEuclideanMatrix{T}  <: AbstractProperty #where {S<:MatrixSymmetry}
+struct SymmetricEuclideanMatrix{T} <:  AbstractEuclideanMatrix{T} #where {S<:MatrixSymmetry}
    val::SMatrix{3, 3, T, 9}
 end
-struct AntiSymmetricEuclideanMatrix{T}  <: AbstractProperty #where {S<:MatrixSymmetry}
+struct AntiSymmetricEuclideanMatrix{T} <: AbstractEuclideanMatrix{T} #where {S<:MatrixSymmetry}
    val::SMatrix{3, 3, T, 9}
 end
 
@@ -369,44 +359,14 @@ function Base.show(io::IO, φ::E) where {E<:AntiSymmetricEuclideanMatrix}
     eval(
        quote
  
- 
- 
-       real(φ::$E) = $E(real.(φ.val))
        complex(φ::$E) = $E(complex(φ.val))
        complex(::Type{$E{T}}) where {T} = $E{complex(T)}
-       #Base.$op(a::MyNumber) = MyNumber($op(a.x))
     
- 
- 
- 
-       +(x::SMatrix{3}, y::$E) = $E(x + y.val) # include symmetries, i.e., :symmetric + :symmetric =   :symmetric, :antisymmetric + :antisymmetric = :antisymmetric, :antisymmetric + :symmetric = :general etc.
-       Base.convert(::Type{SMatrix{3, 3, T, 9}}, φ::$E) where {T} =  convert(SMatrix{3, 3, T, 9}, φ.val)
        Base.convert(::Type{$E{T}}, φ::$E{T}) where {T<:Number} = $E(φ.val)
- 
- 
- 
        isrealB(::$E{T}) where {T} = (T == real(T))
-       isrealAA(::$E) = false
  
        $E{T}() where {T <: Number} = $E{T}(zero(SMatrix{3, 3, T, 9}))
        $E(T::DataType=Float64) = $E{T}()
- 
-       function filter(φ::$E, grp::O3, bb::Array)
-          if length(bb) == 0  # no zero-correlations allowed 
-             return false 
-          end
-          if length(bb) == 1 #MS: Not sure if this should be here
-             return true
-          end
-          suml = sum( getl(grp, bi) for bi in bb )
-          if haskey(bb[1], msym(grp))  # depends on context whether m come along?
-             summ = sum( getm(grp, bi) for bi in bb )
-             return iseven(suml) && abs(summ) <= 2
-          end
-          return iseven(suml)
-       end
- 
-       rot3Dcoeffs(::$E,T=Float64) = Rot3DCoeffsEquiv{T,1}(Dict[], ClebschGordan(T))
         
        end
     ) 
@@ -426,22 +386,7 @@ function Base.show(io::IO, φ::E) where {E<:AntiSymmetricEuclideanMatrix}
  for E = (:SymmetricEuclideanMatrix, :AntiSymmetricEuclideanMatrix) 
     eval(
        quote
-    
-       coco_type(φ::$E) = typeof(complex(φ))
        coco_type(::Type{$E{T}}) where {T} = $E{complex(T)}
- 
-       coco_zeros(φ::$E, ll, mm, kk, T, A) =  zeros(typeof(complex(φ)), 9)
- 
-       coco_filter(::$E, ll, mm) =
-                   iseven(sum(ll)) && (abs(sum(mm)) <= 2)
- 
-       coco_filter(::$E, ll, mm, kk) =
-             abs(sum(mm)) <= 2 &&
-             abs(sum(kk)) <= 2 &&
-             iseven(sum(ll))
- 
-       coco_dot(u1::$E, u2::$E) = sum(transpose(conj.( u1.val)) * u2.val)
- 
        end
     )
  end
@@ -474,7 +419,7 @@ function ACE.write_dict(φ::AntiSymmetricEuclideanMatrix{T}) where {T}
          "vali" => write_dict(imag.(Matrix(φ.val))),
             "T" => write_dict(T))         
 end 
-import ACE: read_dict
+# import ACE: read_dict
 function ACE.read_dict(::Val{:ACE_SymmetricEuclideanMatrix}, D::Dict)
    T = read_dict(D["T"])
    valr = SMatrix{3, 3, T, 9}(read_dict(D["valr"]))
