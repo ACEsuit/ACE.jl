@@ -199,9 +199,6 @@ end
 evaluate(basis::B1pComponent, X::AbstractState) = 
          evaluate(basis.basis, evaluate(basis.fval, X))
 
-# evaluate!(B, basis::B1pComponent, X::AbstractState) =
-#       evaluate!(B, basis.basis, )
-
 function evaluate_d(basis::B1pComponent, X::AbstractState) 
    B, dB = evaluate_ed(basis, X)
    release!(B)

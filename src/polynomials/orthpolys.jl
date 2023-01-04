@@ -337,7 +337,8 @@ using Base: @invokelatest
 
 A utility function to generate a jacobi-type basis
 """
-function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, Nquad = 3 * N, 
+function discrete_jacobi(N; pcut=0, xcut=1.0, pin=0, xin=-1.0, 
+                            Nquad = max(300, 3 * N), 
                             trans = identity)
    tcut = @invokelatest trans(xcut)
    tin = @invokelatest trans(xin)
@@ -383,8 +384,8 @@ import ACE: frule_evaluate
 
 function ACE.frule_evaluate(J::OrthPolyBasis, t::Number, dt::Number) 
    len = length(J)
-   B = acquire!(J.B_pool, len)
-   dB = acquire!(J.B_pool, len)
+   B = acquire!(J.B_pool, len, typeof(t))
+   dB = acquire!(J.B_pool, len, typeof(t))
    evaluate_ed!(B, dB, J, t)
    dB[:] .*= dt 
    return B, dB

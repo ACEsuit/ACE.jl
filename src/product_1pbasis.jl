@@ -71,7 +71,11 @@ end
 import Base.Cartesian: @nexprs
 
 function _write_A_code(VA, NB)
-   prodBi = Meta.parse("B_1[ϕ[1]]" * prod(" * B_$i[ϕ[$i]]" for i = 2:NB))
+   prodBi_str = "B_1[ϕ[1]]" 
+   for i in 2:NB
+      prodBi_str *= " * B_$i[ϕ[$i]]"
+   end
+   prodBi = Meta.parse(prodBi_str)
    if VA == Nothing 
       getVT = "promote_type(" * prod("eltype(B_$i), " for i = 1:NB) * ")"
       getA = Meta.parse("_A = zeros($(getVT), length(basis))")
