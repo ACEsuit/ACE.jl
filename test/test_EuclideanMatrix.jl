@@ -20,7 +20,7 @@ cfg = ACEConfig(Xs)
 
 @info("SymmetricBasis construction and evaluation: EuclideanMatrix")
 
-for symmetry in [:general, :symmetric] #test fails for ACE.AntiSymmetricEuclideanMatrix
+for symmetry in [:general, :symmetric] # Test fails for anti-symmetric matrices: for symmetry == :antisymmeteric the expression BB = evaluate(basis, cfg) will throw an error
    @info("Symmetry type: ", symmetry )
    if symmetry == :general
       φ = ACE.EuclideanMatrix(Float64)
@@ -143,10 +143,8 @@ end
 @info("Test equivariance properties for complex version")
 
 
-# The follow test fails for ACE.AntiSymmetricEuclideanMatrix:
-# More precisely,  ACE.get_spec(basis) for symmetry = :antisymmetric will throw an error and 
-# execution of the below loop for symmetry = :antisymmetric willl throw an error 
-# the second time it is executed even after ACE.get_spec(basis)  is removed VERY WEIRD!!!! 
+# The following test fails for ACE.AntiSymmetricEuclideanMatrix:
+# More precisely, if symmetry = :antisymmetric evaluation of ACE.get_spec(basis) will throw an error
 
 for symmetry in [:general, :symmetric] 
     if symmetry == :general
@@ -156,12 +154,28 @@ for symmetry in [:general, :symmetric]
     else 
        φ = ACE.AntiSymmetricEuclideanMatrix(Float64)
     end
-
+    println(φ)
+    pibasis = PIBasis(B1p, Bsel; property = φ)
     basis = SymmetricBasis(φ, pibasis; isreal=false)
     # a stupid but necessary test
     BB = evaluate(basis, cfg)
     BB1 = basis.A2Bmap * evaluate(basis.pibasis, cfg)
     println_slim(@test isapprox(BB, BB1, rtol=1e-10)) # MS: This test will fail for isreal=true
+
+
+   Iz = findall(iszero, sum(norm, basis.A2Bmap, dims=1)[:])
+   if !isempty(Iz)
+      @warn("The A2B map for EuclideanMatrix has $(length(Iz))/$(length(basis.pibasis)) zero-columns!!!!")
+   end
+
+   ##
+    @info("Test FIO")
+    using ACEbase.Testing: test_fio
+    println_slim(@test(all(test_fio(basis; warntype = false))))
+
+    @info("Test equivariance properties of complex version")
+
+    tol = 1e-12
 
     @info("check for rotation, permutation and inversion equivariance")
     for ntest = 1:30
