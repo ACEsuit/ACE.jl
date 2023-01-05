@@ -354,33 +354,34 @@ function ACE.read_dict(::Val{:ACE_SymmetricEuclideanMatrix}, D::Dict)
 end
 
 # Equivariant 3 x 3 anti-symmetric Euclidean Matrix 
-struct AntiSymmetricEuclideanMatrix{T} <: AbstractEuclideanMatrix{T} #where {S<:MatrixSymmetry}
-   val::SMatrix{3, 3, T, 9}
-end
+# struct AntiSymmetricEuclideanMatrix{T} <: AbstractEuclideanMatrix{T} #where {S<:MatrixSymmetry}
+#    val::SMatrix{3, 3, T, 9}
+# end
 
-_type_marker(φ::AntiSymmetricEuclideanMatrix) = "ase"
+# _type_marker(φ::AntiSymmetricEuclideanMatrix) = "ase"
 
-function coco_init(phi::AntiSymmetricEuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real}
-   return ( (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
-      ? vec([AntiSymmetricEuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
-      : coco_zeros(phi, l, m, μ, T, A)  )
-end
+# function coco_init(phi::AntiSymmetricEuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real}
+#    return ( (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
+#       ? vec([AntiSymmetricEuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])
+#       : coco_zeros(phi, l, m, μ, T, A)  )
+# end
 
-function ACE.write_dict(φ::AntiSymmetricEuclideanMatrix{T}) where {T}
-   Dict("__id__" => "ACE_AntiSymmetricEuclideanMatrix",
-         "valr" => write_dict(real.(Matrix(φ.val))),
-         "vali" => write_dict(imag.(Matrix(φ.val))),
-            "T" => write_dict(T))         
-end 
+# function ACE.write_dict(φ::AntiSymmetricEuclideanMatrix{T}) where {T}
+#    Dict("__id__" => "ACE_AntiSymmetricEuclideanMatrix",
+#          "valr" => write_dict(real.(Matrix(φ.val))),
+#          "vali" => write_dict(imag.(Matrix(φ.val))),
+#             "T" => write_dict(T))         
+# end 
 
-function ACE.read_dict(::Val{:ACE_AntiSymmetricEuclideanMatrix}, D::Dict)
-   T = read_dict(D["T"])
-   valr = SMatrix{3, 3, T, 9}(read_dict(D["valr"]))
-   vali = SMatrix{3, 3, T, 9}(read_dict(D["vali"]))
-   return AntiSymmetricEuclideanMatrix{T}(valr + im * vali)
-end
+# function ACE.read_dict(::Val{:ACE_AntiSymmetricEuclideanMatrix}, D::Dict)
+#    T = read_dict(D["T"])
+#    valr = SMatrix{3, 3, T, 9}(read_dict(D["valr"]))
+#    vali = SMatrix{3, 3, T, 9}(read_dict(D["vali"]))
+#    return AntiSymmetricEuclideanMatrix{T}(valr + im * vali)
+# end
 
- for E = (:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricEuclideanMatrix)
+#  for E = (:EuclideanMatrix,:SymmetricEuclideanMatrix, :AntiSymmetricEuclideanMatrix)
+for E = (:EuclideanMatrix,:SymmetricEuclideanMatrix)
     eval(
        quote
  
