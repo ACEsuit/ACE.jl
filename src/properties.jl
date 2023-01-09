@@ -289,6 +289,8 @@ coco_filter(::AbstractEuclideanMatrix, ll, mm, kk) =  abs(sum(mm)) <= 2 &&
                                  iseven(sum(ll))
 coco_dot(u1::AbstractEuclideanMatrix, u2::AbstractEuclideanMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
 
+*(prop::ACE.AbstractEuclideanMatrix, c::SVector{N, T}) where {T<:Number,N} = SVector{N}(prop*c[i] for i=1:N)
+
 function Base.show(io::IO, φ::AbstractEuclideanMatrix)
    # println(io, "3x3 $(typeof(φ)):")
    println(io, "$(_type_marker(φ))[ $(φ.val[1,1]), $(φ.val[1,2]), $(φ.val[1,3]);")
@@ -333,7 +335,7 @@ struct SymmetricEuclideanMatrix{T} <:  AbstractEuclideanMatrix{T} #where {S<:Mat
 end
 
 _type_marker(φ::SymmetricEuclideanMatrix) = "se"
-*(prop::ACE.EuclideanMatrix, c::SVector{N, T}) where {T<:Number,N} = SVector{N}(prop*c[i] for i=1:N)
+
 function coco_init(phi::SymmetricEuclideanMatrix{CT}, l, m, μ, T, A) where {CT<:Real}
    return ( ( (l == 2 && abs(m) <= 2 && abs(μ) <= 2) || (l == 0 && abs(m) == 0 && abs(μ) == 0) )
       ? vec([SymmetricEuclideanMatrix(conj.(mrmatrices[(l=l,m=-m,mu=-μ,i=i,j=j)])) for i=1:3 for j=1:3])

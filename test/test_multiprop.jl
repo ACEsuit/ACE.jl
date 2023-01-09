@@ -22,74 +22,75 @@ nX = 30
 Xs = () -> ACE.State(rr = rand_vec3(B1p["Rn"]), u = rand())
 cfg = ACEConfig([Xs() for i in 1:nX])
 
-φ = ACE.Invariant()
-basis = SymmetricBasis(φ, B1p, O3(), Bsel)
+for φ in [ACE.Invariant(),ACE.EuclideanVector(Float64),ACE.EuclideanMatrix(Float64), ACE.SymmetricEuclideanMatrix(Float64)]
+    @info("Test for $(typeof(φ))-valued property.")
+    basis = SymmetricBasis(φ, B1p, O3(), Bsel)
 
-##
+    ##
 
-BB = evaluate(basis, cfg)
-dBB = ACE.evaluate_d(basis, cfg)
+    BB = evaluate(basis, cfg)
+    dBB = ACE.evaluate_d(basis, cfg)
 
-c_m = rand(SVector{3,Float64}, length(BB))
+    c_m = rand(SVector{3,Float64}, length(BB))
 
-##
+    ##
 
-singlProp = [ACE.LinearACEModel(basis, rand(length(BB)), evaluator = :standard) for i in 1:length(c_m[1])]
-multiProp = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
+    singlProp = [ACE.LinearACEModel(basis, rand(length(BB)), evaluator = :standard) for i in 1:length(c_m[1])]
+    multiProp = ACE.LinearACEModel(basis, c_m, evaluator = :standard)
 
-##
+    ##
 
-@info("set_params!")
-c_s = [[c_m[j][i] for j in 1:length(c_m)] for i in 1:length(c_m[1])]
+    @info("set_params!")
+    c_s = [[c_m[j][i] for j in 1:length(c_m)] for i in 1:length(c_m[1])]
 
-ACE.set_params!(multiProp,c_m)
-for i in 1:length(c_m[1])
-    ACE.set_params!(singlProp[i],c_s[i])
-    print_tf(@test(c_s[i] ≈ singlProp[i].c))
+    ACE.set_params!(multiProp,c_m)
+    for i in 1:length(c_m[1])
+        ACE.set_params!(singlProp[i],c_s[i])
+        print_tf(@test(c_s[i] ≈ singlProp[i].c))
+    end
+    println()
+
+    ##
+
+    # We compare a model with a sinlge property, to the corresponding solution
+    # of the multiple property model. We do this by giving the same parameters
+    # to both models and then using isapprox 
+
+    @info("evaluate")
+
+    for i in 1:length(c_m[1])
+        print_tf(@test(evaluate(singlProp[i],cfg).val ≈ evaluate(multiProp,cfg)[i].val))
+    end
+    println()
+
+    ##
+
+    @info("grad_params")
+
+    multiGradP = ACE.grad_params(multiProp,cfg)
+
+    println_slim(@test all(isdiag, multiGradP))
+
+    for i in 1:length(c_m[1])
+        singl = ACE.grad_params(singlProp[i], cfg)
+        mult_i = [ multiGradP[j][i,i] for j = 1:length(c_m)] 
+        print_tf(@test(singl ≈ mult_i))
+    end
+    println()
+
+    ##
+
+    @info("grad_config")
+
+    mgcfg = ACE.grad_config(multiProp, cfg)
+
+    for i in 1:length(c_m[1])
+        singl = ACE.grad_config(singlProp[i],cfg)
+        mult_i = [ g[i] for g in mgcfg ]
+        print_tf(@test(singl ≈ mult_i))
+    end
+    println()
 end
-println()
-
-##
-
-# We compare a model with a sinlge property, to the corresponding solution
-# of the multiple property model. We do this by giving the same parameters
-# to both models and then using isapprox 
-
-@info("evaluate")
-
-for i in 1:length(c_m[1])
-    print_tf(@test(evaluate(singlProp[i],cfg).val ≈ evaluate(multiProp,cfg)[i].val))
-end
-println()
-
-##
-
-@info("grad_params")
-
-multiGradP = ACE.grad_params(multiProp,cfg)
-
-println_slim(@test all(isdiag, multiGradP))
-
-for i in 1:length(c_m[1])
-    singl = ACE.grad_params(singlProp[i], cfg)
-    mult_i = [ multiGradP[j][i,i] for j = 1:length(c_m)] 
-    print_tf(@test(singl ≈ mult_i))
-end
-println()
-
-##
-
-@info("grad_config")
-
-mgcfg = ACE.grad_config(multiProp, cfg)
-
-for i in 1:length(c_m[1])
-    singl = ACE.grad_config(singlProp[i],cfg)
-    mult_i = [ g[i] for g in mgcfg ]
-    print_tf(@test(singl ≈ mult_i))
-end
-println()
-
 ##
 
 # @info("adjoint_EVAL_D 1 prop")
