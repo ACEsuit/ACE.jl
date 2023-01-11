@@ -249,6 +249,8 @@ maxorder(Bsel::CategorySparseBasis, category) = Bsel.maxorder_dict[category]
 
 minorder(Bsel::CategorySparseBasis, category) = Bsel.minorder_dict[category]
 
+filter(b::ACE.Onepb, Bsel::CategorySparseBasis, basis::OneParticleBasis) = true
+
 function filter(bb, Bsel::CategorySparseBasis, basis::OneParticleBasis) 
    # auxiliary function to count the number of 1pbasis functions in bb 
    # for which b.isym == s.
