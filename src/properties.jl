@@ -214,6 +214,7 @@ end
 
 # differentiation - cf #27
 # *(φ::EuclideanVector, dAA::SVector) = φ.val * dAA'
+*(prop::EuclideanVector, c::SVector{N, T}) where {T<:Number,N} = SVector{N}(prop*c[i] for i=1:N)
 
 coco_init(phi::EuclideanVector{CT}, l, m, μ, T, A) where {CT<:Real} = (
       (l == 1 && abs(m) <= 1 && abs(μ) <= 1)
@@ -287,6 +288,8 @@ coco_filter(::AbstractEuclideanMatrix, ll, mm, kk) =  abs(sum(mm)) <= 2 &&
                                  abs(sum(kk)) <= 2 &&
                                  iseven(sum(ll))
 coco_dot(u1::AbstractEuclideanMatrix, u2::AbstractEuclideanMatrix) = sum(transpose(conj.( u1.val)) * u2.val)
+
+*(prop::ACE.AbstractEuclideanMatrix, c::SVector{N, T}) where {T<:Number,N} = SVector{N}(prop*c[i] for i=1:N)
 
 function Base.show(io::IO, φ::AbstractEuclideanMatrix)
    # println(io, "3x3 $(typeof(φ)):")
