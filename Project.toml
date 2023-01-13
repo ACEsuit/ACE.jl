@@ -1,6 +1,6 @@
 name = "ACE"
 uuid = "3e8ccfd2-c8b0-11ea-32f1-f3a5990fd77a"
-version = "0.12.44"
+version = "0.12.45"
 
 [deps]
 ACEbase = "14bae519-eb20-449c-a949-9c58ed33163e"
