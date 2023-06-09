@@ -11,7 +11,7 @@
 <!-- [![Codecov](https://codecov.io/gh/JuliaMolSim/ACE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMolSim/ACE.jl) -->
 
 Notes: 
-* This is currently a development branch of ACE (though we are still tagging versions regularly). For the latest stable version see [ACE1.jl](https://github.com/ACEsuit/ACE1.jl)
+* This is currently a development branch of ACE (though we are still tagging versions regularly). For the latest stable version see [ACE1.jl](https://github.com/ACEsuit/ACE1.jl) and for a more user-oriented interface [ACE1pack.jl](https://github.com/ACEsuit/ACE1pack.jl) 
 * [Preliminary Documentation](https://acesuit.github.io/ACE.jl/dev/), WIP.
 
 This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, such as permutation and isometry invariance.
