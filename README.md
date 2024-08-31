@@ -10,7 +10,9 @@
 
 <!-- [![Codecov](https://codecov.io/gh/JuliaMolSim/ACE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMolSim/ACE.jl) -->
 
-**Note:** This package is currently unmaintained. Functionality in this package has been moved into various different packages within `ACEsuit`. For machine learning interatomic potentials see [ACEpotentials.jl](https://github.com/ACEsuit/ACEpotentials.jl) 
+**Note: This package is currently unmaintained. Functionality in this package has been moved into various different packages within `ACEsuit`. For machine learning interatomic potentials see [ACEpotentials.jl](https://github.com/ACEsuit/ACEpotentials.jl)**
+
+---
 
 This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, such as permutation and isometry invariance.
 Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. Implementations of other symmetries are in preparation. 
