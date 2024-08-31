@@ -1,7 +1,7 @@
 # ACE.jl
 
 <!-- [![tests](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml/badge.svg)](https://github.com/ACEsuit/ACE.jl/actions/workflows/Tests.yml) -->
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ACEsuit/ACE.jl/Tests) [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://acesuit.github.io/ACE.jl/dev/) 
+<!-- ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/ACEsuit/ACE.jl/Tests) [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://acesuit.github.io/ACE.jl/dev/) -->
 <!-- [![docs-stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://libatoms.github.io/ExtXYZ.jl/stable) -->
 <!-- [![docs-dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/ACEsuit/ACE.jl/dev) -->
 
@@ -10,9 +10,7 @@
 
 <!-- [![Codecov](https://codecov.io/gh/JuliaMolSim/ACE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMolSim/ACE.jl) -->
 
-Notes: 
-* This is currently a development branch of ACE (though we are still tagging versions regularly). For the latest stable version see [ACE1.jl](https://github.com/ACEsuit/ACE1.jl) and for a more user-oriented interface [ACE1pack.jl](https://github.com/ACEsuit/ACE1pack.jl) 
-* [Preliminary Documentation](https://acesuit.github.io/ACE.jl/dev/), WIP.
+**Note:** This package is currently unmaintained. Functionality in this package has been moved into various different packages within `ACEsuit`. For machine learning interatomic potentials see [ACEpotentials.jl](https://github.com/ACEsuit/ACEpotentials.jl) 
 
 This package implements approximation schemes for permutation and isometry invariant functions, with focus on modelling atomic interactions. It provides constructions of symmetric polynomial bases, such as permutation and isometry invariance.
 Heavy use is made of trigonometric polynomials and spherical harmonics to obtain rotation invariance. Implementations of other symmetries are in preparation. 
