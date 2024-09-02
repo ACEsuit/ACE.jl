@@ -108,3 +108,26 @@ dF1(θ)
 println(@test all( ACEbase.Testing.fdtest(F1, dF1, θ; verbose=true) )) 
 # @warn("test removed due to unexplained segfaults only occuring in testing runs")
 
+## Test with two such models added up
+# NB - this seems to fail for Matthias - why?
+
+fsmodel1 = (model, cfg) -> dot([1.0, 1.0], [FS(evaluate(model, cfg)), FS(evaluate(model, cfg))])
+grad_fsmodel1 = (model, cfg) -> Zygote.gradient(x -> fsmodel1(model, x), cfg)[1]
+y = randn(SVector{3, Float64}, length(cfg))
+loss1 = model -> sum(sum(abs2, g.rr - y) 
+                     for (g, y) in zip(grad_fsmodel1(model, cfg), y))
+loss1(model)
+g = Zygote.gradient(loss1, model)[1]  # SEGFAULT IN THIS LINE ON J1.7!!!
+
+## Workaround 
+
+import ACE: evaluate 
+struct Add
+   m1 
+   m2 
+end
+
+evaluate(m::Add, cfg) = evaluate(m.m1, cfg) + evaluate(m.m2, cfg)
+
+
+
