@@ -190,13 +190,6 @@ end
 end
 
 
-@generated function dstate_type(X::TX)  where {TX <: State}
-   CSYMS = _ctssyms(TX) 
-   quote
-      typeof( DState( select(_x(X), $CSYMS) ) )
-   end
-end
-
 # -------------------
       
 # the next variant of dstate_type is used to potentially extend 
