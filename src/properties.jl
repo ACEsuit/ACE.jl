@@ -488,7 +488,7 @@ using ACE.Wigner: wigner_D_indices
 # ∫_{SO3} D^{ll}_{μμmm} D^*(Q) e^t dQ -> 2L+1 column vector
 function vec_cou_coe(rotc::Rot3DCoeffs{T},
 					      l::Integer, m::Integer, μ::Integer,
-					      L::Integer, t::Integer) where {T,N}
+					      L::Integer, t::Integer) where {T}
 	@assert 0 < t <= 2L+1
 	D = wigner_D_indices(L)'   # Dt = D[:,t]  -->  # D^* ⋅ e^t
 	LL = SA[l, L]
@@ -585,7 +585,7 @@ end
 SphericalMatrix{L1, L2, LEN1, LEN2, T, LL}()  where {L1, L2, LEN1, LEN2, T, LL} =
       SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 
-SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T, LL} =
+SphericalMatrix{L1, L2, LEN1, LEN2, T}()  where {L1, L2, LEN1, LEN2, T} =
 		SphericalMatrix( zero(SMatrix{LEN1, LEN2, T}), Val{L1}(), Val{L2}() )
 
 function filter(φ::SphericalMatrix, grp::O3, b::Array)

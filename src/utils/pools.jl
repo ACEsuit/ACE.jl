@@ -124,7 +124,7 @@ Base.size(pA::GenCachedArray, args...) = size(pA.A, args...)
 Base.parent(pA::GenCachedArray) = pA.A
 
 
-function GenArrayCache() where {T} 
+function GenArrayCache()
    nt = nthreads()
    vecs = [ Stack{Vector{UInt8}}() for _=1:nt ]
    return GenArrayCache(vecs)
