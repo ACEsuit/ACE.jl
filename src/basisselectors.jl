@@ -311,7 +311,7 @@ function (f::ACE.EvenL)(bb)
 end
 
 
-#=
+
 """
 `DownsetIntersection`: Basis selector whose set of admissible specifications is the intersection 
 of the sets of admissible specifications of the sparse basis selectors contained in the lists `DBsels` and `ABsels`.
@@ -323,11 +323,15 @@ struct DownsetIntersection <: DownsetBasisSelector
 end
 
 maxlevel(Bsel::DownsetIntersection, basis::OneParticleBasis) = 1.0 
+
+maxlevel(bb::Prodb, Bsel::DownsetIntersection, basis::OneParticleBasis) = 1.0
+
+
 maxorder(Bsel::DownsetIntersection) = Bsel.maxorder
 
-
+const MAXORDER = 10000
 function Base.intersect(Bsel1::DownsetIntersection,Bsel2::DownsetBasisSelector)
-      return DownsetIntersection(vcat(Bsel1.DBsels,[Bsel2]), BSel1.ABsels, minimum([maxorder(Bsel1),maxorder(Bsel2)]))
+      return DownsetIntersection(vcat(Bsel1.DBsels,[Bsel2]), Bsel1.ABsels, minimum([maxorder(Bsel1),maxorder(Bsel2)]))
 end
 
 function Base.intersect(Bsel1::DownsetIntersection,Bsel2::AbstractBasisSelector)
@@ -335,7 +339,12 @@ function Base.intersect(Bsel1::DownsetIntersection,Bsel2::AbstractBasisSelector)
 end
 
 function Base.intersect(Bsel1::DownsetBasisSelector, Bsel2::AbstractBasisSelector) 
-      Bsel = DownsetIntersection(Vector{DownsetBasisSelector}([]), Vector{AbstractBasisSelector}([]), Inf)
+      Bsel = DownsetIntersection(Vector{DownsetBasisSelector}([]), Vector{AbstractBasisSelector}([]), MAXORDER)
+      return intersect(intersect(Bsel, Bsel1), Bsel2)
+end
+
+function Base.intersect(Bsel1::DownsetBasisSelector, Bsel2::DownsetBasisSelector) 
+      Bsel = DownsetIntersection(Vector{DownsetBasisSelector}([]), Vector{AbstractBasisSelector}([]), MAXORDER)
       return intersect(intersect(Bsel, Bsel1), Bsel2)
 end
 
@@ -358,4 +367,4 @@ end
 function filter(bb, Bsel::DownsetIntersection, basis::OneParticleBasis) 
    return all([filter(bb, bsel, basis) for bsel in Bsel.DBsels]) && all([filter(bb, bsel, basis) for bsel in Bsel.ABsels])
 end
-=#
+
